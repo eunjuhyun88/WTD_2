@@ -26,15 +26,25 @@ def _make_outcome(
     outcome: str = "pending",
     entry_price: float | None = None,
     peak_price: float | None = None,
+    exit_price: float | None = None,
+    max_gain_pct: float | None = None,
+    exit_return_pct: float | None = None,
+    definition_id: str | None = None,
+    definition_ref: dict | None = None,
     accumulation_at: datetime | None = None,
     breakout_at: datetime | None = None,
 ) -> PatternOutcome:
     o = PatternOutcome(
         pattern_slug=slug,
+        definition_id=definition_id,
+        definition_ref=definition_ref,
         symbol=symbol,
         outcome=outcome,  # type: ignore[arg-type]
         entry_price=entry_price,
         peak_price=peak_price,
+        exit_price=exit_price,
+        max_gain_pct=max_gain_pct,
+        exit_return_pct=exit_return_pct,
         accumulation_at=accumulation_at,
         breakout_at=breakout_at,
     )
@@ -116,6 +126,26 @@ class TestListPending:
         for sym in ["A", "B", "C"]:
             store.save(_make_outcome(symbol=sym))
         assert len(store.list_all(SLUG)) == 3
+
+    def test_list_all_filters_by_definition_id(self, store: LedgerStore) -> None:
+        store.save(
+            _make_outcome(
+                symbol="A",
+                outcome="success",
+                definition_id=f"{SLUG}:v1",
+                definition_ref={"definition_id": f"{SLUG}:v1", "pattern_slug": SLUG},
+            )
+        )
+        store.save(
+            _make_outcome(
+                symbol="B",
+                outcome="failure",
+                definition_id=f"{SLUG}:v2",
+                definition_ref={"definition_id": f"{SLUG}:v2", "pattern_slug": SLUG},
+            )
+        )
+
+        assert [outcome.symbol for outcome in store.list_all(SLUG, definition_id=f"{SLUG}:v2")] == ["B"]
 
 
 class TestCloseOutcome:
@@ -287,6 +317,35 @@ class TestComputeStats:
         store.close_outcome(SLUG, o.id, "timeout")
 
         stats = store.compute_stats(SLUG)
+        assert stats.failure_count == 1
+        assert stats.success_count == 0
+
+    def test_compute_stats_filters_by_definition_id(self, store: LedgerStore) -> None:
+        store.save(
+            _make_outcome(
+                symbol="V1_WIN",
+                outcome="success",
+                entry_price=100.0,
+                peak_price=120.0,
+                max_gain_pct=0.2,
+                definition_id=f"{SLUG}:v1",
+                definition_ref={"definition_id": f"{SLUG}:v1", "pattern_slug": SLUG},
+            )
+        )
+        store.save(
+            _make_outcome(
+                symbol="V2_LOSS",
+                outcome="failure",
+                entry_price=100.0,
+                exit_price=95.0,
+                exit_return_pct=-0.05,
+                definition_id=f"{SLUG}:v2",
+                definition_ref={"definition_id": f"{SLUG}:v2", "pattern_slug": SLUG},
+            )
+        )
+
+        stats = store.compute_stats(SLUG, definition_id=f"{SLUG}:v2")
+        assert stats.total_instances == 1
         assert stats.failure_count == 1
         assert stats.success_count == 0
 

@@ -11,7 +11,7 @@ from ledger.dataset import build_pattern_training_records, summarize_pattern_dat
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, _compute_stats_from_outcomes
 from ledger.types import PatternLedgerRecord
 from patterns.alert_policy import ALERT_POLICY_STORE
-from patterns.definitions import PatternDefinitionService
+from patterns.definitions import PatternDefinitionService, current_definition_id
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.model_registry import MODEL_REGISTRY_STORE
 from patterns.training_service import train_pattern_model_from_ledger
@@ -30,6 +30,31 @@ def _require_pattern(slug: str) -> None:
         get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
+
+
+def _outcome_definition_id(outcome) -> str | None:
+    value = getattr(outcome, "definition_id", None)
+    if isinstance(value, str) and value:
+        return value
+    definition_ref = getattr(outcome, "definition_ref", None)
+    if not isinstance(definition_ref, dict):
+        return None
+    nested = definition_ref.get("definition_id")
+    return nested if isinstance(nested, str) and nested else None
+
+
+def _list_outcomes_scoped(ledger: LedgerStore, slug: str, *, definition_id: str | None = None) -> list:
+    if definition_id is None:
+        return ledger.list_all(slug)
+    try:
+        return ledger.list_all(slug, definition_id=definition_id)
+    except TypeError:
+        return [
+            outcome
+            for outcome in ledger.list_all(slug)
+            if _outcome_definition_id(outcome) == definition_id
+            or (_outcome_definition_id(outcome) is None and current_definition_id(slug) == definition_id)
+        ]
 
 
 def list_patterns_sync() -> dict:
@@ -111,14 +136,35 @@ def get_candidates_sync(slug: str) -> dict:
 def _summarize_record_family(
     slug: str,
     *,
+    definition_id: str | None = None,
     record_store=None,
 ) -> tuple[dict[str, int | float | None], PatternLedgerRecord | None, PatternLedgerRecord | None]:
     store = record_store or LEDGER_RECORD_STORE
     summarize_family = getattr(store, "summarize_family", None)
     if callable(summarize_family):
-        return summarize_family(slug)
+        try:
+            return summarize_family(slug, definition_id=definition_id)
+        except TypeError:
+            if definition_id is None:
+                return summarize_family(slug)
 
-    records = store.list(slug)
+    try:
+        records = store.list(slug, definition_id=definition_id)
+    except TypeError:
+        records = store.list(slug)
+        if definition_id is not None:
+            records = [
+                record
+                for record in records
+                if isinstance(getattr(record, "payload", None), dict)
+                and (
+                    record.payload.get("definition_ref", {}).get("definition_id") == definition_id
+                    or (
+                        not record.payload.get("definition_ref")
+                        and current_definition_id(slug) == definition_id
+                    )
+                )
+            ]
     counts = {
         "entry": 0,
         "capture": 0,
@@ -180,10 +226,15 @@ def get_stats_sync(
         else None
     )
     if outcomes is None:
-        outcomes = ledger.list_all(slug)
+        outcomes = _list_outcomes_scoped(ledger, slug, definition_id=resolved_definition_id)
+    elif resolved_definition_id is not None:
+        outcomes = [
+            outcome for outcome in outcomes if _outcome_definition_id(outcome) == resolved_definition_id
+        ]
     stats = _compute_stats_from_outcomes(slug, outcomes)
     record_family, latest_training_run_record, latest_model_record = _summarize_record_family(
         slug,
+        definition_id=resolved_definition_id,
         record_store=record_store,
     )
     registry_entries = MODEL_REGISTRY_STORE.list(slug, definition_id=resolved_definition_id)
@@ -220,8 +271,8 @@ def get_stats_sync(
         "scope": {
             "pattern_slug": slug,
             "definition_id": resolved_definition_id,
-            "outcome_metrics": "pattern_slug",
-            "record_family": "pattern_slug",
+            "outcome_metrics": "definition_id" if resolved_definition_id is not None else "pattern_slug",
+            "record_family": "definition_id" if resolved_definition_id is not None else "pattern_slug",
             "model_artifacts": "definition_id" if resolved_definition_id is not None else "pattern_slug",
         },
         "total": stats.total_instances,
@@ -363,7 +414,11 @@ def get_training_records_sync(
     definition_id: str | None = None,
 ) -> dict:
     definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
-    outcomes = ledger.list_all(slug)
+    outcomes = _list_outcomes_scoped(
+        ledger,
+        slug,
+        definition_id=definition_ref.get("definition_id"),
+    )
     records = build_pattern_training_records(outcomes)
     summary = summarize_pattern_dataset(outcomes)
     return {

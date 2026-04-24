@@ -59,6 +59,17 @@ def _json_loads(value: str | None, default: Any) -> Any:
         return default
 
 
+def _capture_matches_definition(capture: CaptureRecord, definition_id: str | None) -> bool:
+    if definition_id is None:
+        return True
+    if capture.definition_id:
+        return capture.definition_id == definition_id
+    slug, separator, version_token = definition_id.partition(":v")
+    if separator != ":v" or not version_token.isdigit():
+        return False
+    return capture.pattern_slug == slug and capture.pattern_version == int(version_token)
+
+
 class CaptureStore:
     """Local-first durable capture store."""
 
@@ -85,6 +96,8 @@ class CaptureStore:
                   symbol TEXT NOT NULL,
                   pattern_slug TEXT NOT NULL,
                   pattern_version INTEGER NOT NULL DEFAULT 1,
+                  definition_id TEXT,
+                  definition_ref_json TEXT,
                   phase TEXT NOT NULL,
                   timeframe TEXT NOT NULL,
                   captured_at_ms INTEGER NOT NULL,
@@ -112,6 +125,14 @@ class CaptureStore:
                 """
             )
             self._ensure_column(conn, "capture_records", "research_context_json", "TEXT")
+            self._ensure_column(conn, "capture_records", "definition_id", "TEXT")
+            self._ensure_column(conn, "capture_records", "definition_ref_json", "TEXT")
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_capture_records_definition
+                  ON capture_records(definition_id, captured_at_ms)
+                """
+            )
 
     @staticmethod
     def _ensure_column(
@@ -136,17 +157,19 @@ class CaptureStore:
                 """
                 INSERT INTO capture_records (
                   capture_id, capture_kind, user_id, symbol, pattern_slug,
-                  pattern_version, phase, timeframe, captured_at_ms,
+                  pattern_version, definition_id, definition_ref_json, phase, timeframe, captured_at_ms,
                   candidate_transition_id, candidate_id, scan_id, user_note,
                   chart_context_json, research_context_json, feature_snapshot_json, block_scores_json,
                   verdict_id, outcome_id, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(capture_id) DO UPDATE SET
                   capture_kind=excluded.capture_kind,
                   user_id=excluded.user_id,
                   symbol=excluded.symbol,
                   pattern_slug=excluded.pattern_slug,
                   pattern_version=excluded.pattern_version,
+                  definition_id=excluded.definition_id,
+                  definition_ref_json=excluded.definition_ref_json,
                   phase=excluded.phase,
                   timeframe=excluded.timeframe,
                   captured_at_ms=excluded.captured_at_ms,
@@ -169,6 +192,8 @@ class CaptureStore:
                     capture.symbol,
                     capture.pattern_slug,
                     capture.pattern_version,
+                    capture.definition_id,
+                    _json_dumps(capture.definition_ref),
                     capture.phase,
                     capture.timeframe,
                     capture.captured_at_ms,
@@ -202,6 +227,7 @@ class CaptureStore:
         *,
         user_id: str | None = None,
         pattern_slug: str | None = None,
+        definition_id: str | None = None,
         symbol: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -227,7 +253,8 @@ class CaptureStore:
                 f"SELECT * FROM capture_records {where} ORDER BY captured_at_ms DESC LIMIT ?",
                 tuple(params),
             ).fetchall()
-        return [self._row_to_record(row) for row in rows]
+        captures = [self._row_to_record(row) for row in rows]
+        return [capture for capture in captures if _capture_matches_definition(capture, definition_id)]
 
     def list_due_for_outcome(
         self,
@@ -298,6 +325,8 @@ class CaptureStore:
             symbol=row["symbol"],
             pattern_slug=row["pattern_slug"],
             pattern_version=int(row["pattern_version"]),
+            definition_id=row["definition_id"],
+            definition_ref=_json_loads(row["definition_ref_json"], None),
             phase=row["phase"],
             timeframe=row["timeframe"],
             captured_at_ms=int(row["captured_at_ms"]),

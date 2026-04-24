@@ -59,13 +59,16 @@ def _generated_at() -> str:
 
 def _serialize_capture(capture: CaptureRecord) -> dict[str, Any]:
     payload = capture.to_dict()
-    if capture.pattern_slug:
+    definition_ref = capture.definition_ref if isinstance(capture.definition_ref, dict) else None
+    if (not isinstance(definition_ref, dict) or not definition_ref) and capture.pattern_slug:
         definition_ref = get_definition_service().get_definition_ref(
             pattern_slug=capture.pattern_slug,
             pattern_version=capture.pattern_version,
         )
         if definition_ref is not None:
             payload["definition_ref"] = definition_ref
+    elif definition_ref:
+        payload["definition_ref"] = definition_ref
     return payload
 
 
@@ -184,14 +187,11 @@ async def list_runtime_captures(
     captures = get_capture_store().list(
         user_id=user_id,
         pattern_slug=pattern_slug,
+        definition_id=definition_ref["definition_id"] if definition_ref is not None else None,
         symbol=symbol,
         status=status,
         limit=max(1, min(limit, 500)),
     )
-    if definition_ref is not None:
-        captures = [
-            capture for capture in captures if capture.pattern_version == definition_ref["pattern_version"]
-        ]
     rows = [_serialize_capture(capture) for capture in captures]
     return RuntimeCaptureListResponse(
         generated_at=_generated_at(),

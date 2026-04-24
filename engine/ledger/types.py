@@ -20,6 +20,8 @@ class PatternOutcome:
     """One instance of a pattern playing out."""
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     pattern_slug: str = ""
+    definition_id: str | None = None
+    definition_ref: dict | None = None
     symbol: str = ""
     user_id: str | None = None
 
