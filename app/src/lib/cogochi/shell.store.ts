@@ -2,6 +2,8 @@ import { writable, derived } from 'svelte/store';
 import { defaultVisible } from '$lib/indicators/registry';
 
 export interface TabState {
+  symbol: string;
+  timeframe: string;
   tradePrompt: string;
   rangeSelection: boolean;
   setupTokens: any;
@@ -47,6 +49,8 @@ export interface ShellState {
 }
 
 const FRESH_TAB_STATE = (): TabState => ({
+  symbol: 'BTCUSDT',
+  timeframe: '4h',
   tradePrompt: '',
   rangeSelection: false,
   setupTokens: null,
@@ -187,6 +191,30 @@ function createShellStore() {
         ...st,
         tabs: st.tabs.map(t =>
           t.id === st.activeTabId ? { ...t, tabState: updater(t.tabState) } : t
+        ),
+      }));
+    },
+
+    setSymbol: (symbol: string, tabId?: string) => {
+      const base = symbol.replace(/USDT$/, '');
+      update(st => {
+        const id = tabId ?? st.activeTabId;
+        return {
+          ...st,
+          tabs: st.tabs.map(t =>
+            t.id === id
+              ? { ...t, title: `${base} · session`, tabState: { ...t.tabState, symbol } }
+              : t
+          ),
+        };
+      });
+    },
+
+    setTimeframe: (timeframe: string) => {
+      update(st => ({
+        ...st,
+        tabs: st.tabs.map(t =>
+          t.id === st.activeTabId ? { ...t, tabState: { ...t.tabState, timeframe } } : t
         ),
       }));
     },

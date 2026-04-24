@@ -29,8 +29,13 @@
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
   let symbolPickerOpen = $state(false);
+  let desktopSymbolPickerOpen = $state(false);
   let modeSheetOpen = $state(false);
   let indicatorSettingsOpen = $state(false);
+
+  // Desktop: symbol/timeframe driven by active tab's persisted state
+  const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
+  const desktopTF = $derived($activeTabState.timeframe ?? '4h');
 
   function appendAIDetail(userText: string, assistantText: string) {
     shellStore.update((s) => ({ ...s, aiVisible: true }));
@@ -160,7 +165,7 @@
     {#if symbolPickerOpen}
       <SymbolPickerSheet
         currentSymbol={mobileSymbol}
-        onSelect={(s) => (mobileSymbol = s)}
+        onSelect={(s) => { mobileSymbol = s; shellStore.setSymbol(s); }}
         onClose={() => (symbolPickerOpen = false)}
       />
     {/if}
@@ -249,8 +254,10 @@
             mode={$activeMode}
             tabState={$activeTabState}
             updateTabState={(updater) => shellStore.updateTabState(updater)}
-            symbol="BTCUSDT"
-            timeframe="4h"
+            symbol={desktopSymbol}
+            timeframe={desktopTF}
+            onSymbolTap={() => (desktopSymbolPickerOpen = true)}
+            onTFChange={(tf) => shellStore.setTimeframe(tf)}
           />
         {:else if $activeMode === 'train'}
           <TrainMode mode={$activeMode} />
@@ -288,6 +295,14 @@
       modelDelta={$modelDelta}
       onSwitchMode={(m) => shellStore.switchMode(m)}
       sidebarVisible={$shellStore.sidebarVisible}
+    />
+  {/if}
+
+  {#if desktopSymbolPickerOpen}
+    <SymbolPickerSheet
+      currentSymbol={desktopSymbol}
+      onSelect={(s) => shellStore.setSymbol(s)}
+      onClose={() => (desktopSymbolPickerOpen = false)}
     />
   {/if}
 
