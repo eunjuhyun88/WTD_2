@@ -1,0 +1,52 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - app/Dockerfile
+      - -t
+      - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image
+      - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
+      - --region
+      - ${_SERVICE_REGION}
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --port
+      - '3000'
+      - --update-env-vars=^~^APP_DEPLOY_TARGET=cloudrun~ENGINE_URL=${_ENGINE_URL}~PUBLIC_SITE_URL=${_PUBLIC_SITE_URL}~PUBLIC_SUPABASE_URL=${_PUBLIC_SUPABASE_URL}~PUBLIC_SUPABASE_PUBLISHABLE_KEY=${_PUBLIC_SUPABASE_PUBLISHABLE_KEY}~SECURITY_ALLOWED_HOSTS=${_ALLOWED_HOSTS}~SECURITY_TRUST_PROXY_HEADERS=true
+      - --update-secrets
+      - ENGINE_INTERNAL_SECRET=${_ENGINE_INTERNAL_SECRET_SECRET}:latest,DATABASE_URL=${_DATABASE_URL_SECRET}:latest,SECRETS_ENCRYPTION_KEY=${_SECRETS_ENCRYPTION_KEY_SECRET}:latest
+
+images:
+  - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_IMAGE_TAG}
+
+substitutions:
+  _AR_REGION: us-east4
+  _AR_REPOSITORY: cloud-run-source-deploy
+  _IMAGE_NAME: wtd-app-web
+  _IMAGE_TAG: latest
+  _SERVICE_NAME: app-web
+  _SERVICE_REGION: us-east4
+  _ENGINE_URL: https://cogotchi-103912432221.us-east4.run.app
+  _PUBLIC_SITE_URL: https://app.cogotchi.dev
+  _PUBLIC_SUPABASE_URL: https://your-project.supabase.co
+  _PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_xxx
+  _ALLOWED_HOSTS: app.cogotchi.dev,app-web-103912432221.us-east4.run.app
+  _ENGINE_INTERNAL_SECRET_SECRET: engine-internal-secret
+  _DATABASE_URL_SECRET: app-web-database-url
+  _SECRETS_ENCRYPTION_KEY_SECRET: app-web-secrets-encryption-key

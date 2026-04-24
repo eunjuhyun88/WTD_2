@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "./node_modules/.bin/vite dev",
     "build": "vite build",
+    "build:vercel": "APP_DEPLOY_TARGET=vercel vite build",
+    "build:cloudrun": "APP_DEPLOY_TARGET=cloudrun vite build",
     "start": "node build",
     "preview": "vite preview",
     "deploy:preview:cogochi": "node scripts/dev/deploy-cogochi-preview.mjs",
@@ -130,6 +132,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.0",
+    "@sveltejs/adapter-node": "^5.5.4",
     "@sveltejs/adapter-vercel": "^6.3.3",
     "@sveltejs/kit": "^2.50.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",

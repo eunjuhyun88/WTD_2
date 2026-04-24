@@ -78,7 +78,7 @@ function isPublicApiPath(pathname: string): boolean {
 }
 
 function isPublicPagePath(pathname: string): boolean {
-  return pathname === '/' || pathname === '/cogochi';
+  return pathname === '/' || pathname === '/cogochi' || pathname === '/healthz' || pathname === '/readyz';
 }
 
 export const handle: Handle = async ({ event, resolve }) => {

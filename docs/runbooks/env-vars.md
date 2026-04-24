@@ -8,6 +8,7 @@ Canonical env contract for local/prod runtime.
 |---|---|---|---|
 | `ENGINE_URL` | `http://localhost:8000` | `app-web` | App -> engine API base URL |
 | `DATABASE_URL` | none | `app-web` | Postgres connection |
+| `APP_DEPLOY_TARGET` | `vercel` | `app-web` | Build target selection: `vercel` or `cloudrun` |
 | `ENGINE_PORT` | `8000` | `engine-api` | Engine HTTP port |
 | `APP_ORIGIN` | `http://localhost:3000` | `engine-api` | CORS allow-origin |
 
@@ -42,6 +43,7 @@ Notes:
 - `SUPABASE_SERVICE_ROLE_KEY` belongs only to trusted engine runtimes because it bypasses RLS.
 - W-0126 is an explicit engine-side case where `engine-api` also needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to serve shared ledger-backed reads such as `/patterns/stats/all`.
 - `DATABASE_URL` should use a least-privilege app role; avoid shipping a `postgres*` superuser DSN to production app-web.
+- `APP_DEPLOY_TARGET=cloudrun` switches `app-web` to `@sveltejs/adapter-node`; leave the default `vercel` path for the current Vercel lane.
 - Set `SECURITY_ALLOWED_HOSTS` and `ENGINE_ALLOWED_HOSTS` in production to reject unexpected `Host` headers at the app and engine boundaries.
 - Leave `ENGINE_EXPOSE_DOCS=false` on public deployments unless the engine is behind auth or a private network boundary.
 

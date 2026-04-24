@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`7397cbb5` — local `main` baseline; W-0139 merge 반영, PR #189 / #190 포함
+`41bd62ac` — local `origin/main` baseline; PR #194 (W-0126 post-cutover stats hotfix) 포함
 
 ## 완료 (이번 세션)
 
@@ -26,6 +26,7 @@
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 QA-BLOCKED | manual browser QA + lab autorun/watch activation rule |
+| **W-0143** | `W-0143-app-cloud-run.md` | 🟡 FOLLOW-UP | `app-web` Cloud Run live; external shallow health path, DB least-privilege, Turnstile, custom domain 후속만 남음 |
 | **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | chart/analyze/AI/backend source 를 하나의 canonical data plane 으로 재정의 |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / shared study contract 추가 정리 |
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy + post-cutover stats hotfix 완료, canonical engine region 결정만 남음 |
@@ -37,7 +38,7 @@
 ## 즉시 실행 순서
 
 1. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
-2. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
+2. **W-0143** — Cloud Run follow-up hardening (`/healthz` vs `/livez`, DB role, Turnstile, custom domain)
 3. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
 
 ---
@@ -46,7 +47,8 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | 최신 (`7397cbb5`) |
+| main | — | 최신 (`41bd62ac`) |
+| codex/w-0143-app-cloud-run | W-0143 | ACTIVE |
 | codex/w-0139-terminal-core-loop-capture | W-0139 | ACTIVE |
 | codex/w-0141-market-data-plane | W-0141 | MERGED INTO `main` |
 | codex/w-0138-engine-runtime-role-split | W-0138 | MERGED (#190) |
