@@ -122,6 +122,36 @@ describe('createPatternCapture', () => {
           thesis: ['second dump + oi spike'],
           phase_annotations: [],
           research_tags: ['second_dump', 'oi_reexpand'],
+          pattern_draft: {
+            schema_version: 1,
+            pattern_family: 'tradoor_ptb_oi_reversal',
+            pattern_label: 'Second dump reclaim',
+            source_type: 'terminal_capture',
+            source_text: 'second dump + oi spike',
+            symbol_candidates: ['TRADOORUSDT'],
+            timeframe: '15m',
+            thesis: ['second dump + oi spike'],
+            phases: [],
+            trade_plan: { entry: 'accumulation reclaim' },
+            search_hints: {
+              must_have_signals: ['oi_spike'],
+              preferred_timeframes: ['15m', '1h'],
+              exclude_patterns: ['continued_dump_after_low_oi'],
+              similarity_focus: ['phase_path', 'oi'],
+              symbol_scope: ['TRADOORUSDT'],
+            },
+            confidence: 0.72,
+            ambiguities: ['breakout threshold unspecified'],
+          },
+          parser_meta: {
+            parser_role: 'pattern_parser',
+            parser_model: 'gpt-5.4',
+            parser_prompt_version: 'pattern-draft-v1',
+            pattern_draft_schema_version: 1,
+            signal_vocab_version: 'signal-vocab-v1',
+            confidence: 0.72,
+            ambiguity_count: 1,
+          },
         },
         block_scores: {},
       },
@@ -214,9 +244,48 @@ describe('createPatternCapture', () => {
   });
 
   it('allows draft-only researchContext when parser output is present', async () => {
-    (engine.createCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (engine.createRuntimeCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      capture: { capture_id: 'cap-1' },
+      capture: {
+        capture_id: 'cap-1',
+        symbol: 'BTCUSDT',
+        timeframe: '4h',
+        captured_at_ms: 1_776_566_400_000,
+        chart_context: {},
+        research_context: {
+          pattern_family: 'tradoor_ptb_oi_reversal',
+          thesis: [],
+          phase_annotations: [],
+          research_tags: [],
+          pattern_draft: {
+            schema_version: 1,
+            pattern_family: 'tradoor_ptb_oi_reversal',
+            source_type: 'manual_note',
+            source_text: 'OI spike then reclaim',
+            symbol_candidates: ['TRADOORUSDT'],
+            thesis: [],
+            phases: [],
+            trade_plan: {},
+            search_hints: {
+              must_have_signals: [],
+              preferred_timeframes: [],
+              exclude_patterns: [],
+              similarity_focus: [],
+              symbol_scope: [],
+            },
+            ambiguities: [],
+          },
+          parser_meta: {
+            parser_role: 'pattern_parser',
+            parser_model: 'gpt-5.4',
+            parser_prompt_version: 'pattern-draft-v1',
+            pattern_draft_schema_version: 1,
+            signal_vocab_version: 'signal-vocab-v1',
+            ambiguity_count: 0,
+          },
+        },
+        block_scores: {},
+      },
     });
 
     const input: PatternCaptureCreateRequest = {
@@ -256,7 +325,7 @@ describe('createPatternCapture', () => {
 
     await createPatternCapture('user-1', input);
 
-    expect(engine.createCapture).toHaveBeenCalledWith(
+    expect(engine.createRuntimeCapture).toHaveBeenCalledWith(
       expect.objectContaining({
         research_context: expect.objectContaining({
           pattern_family: 'tradoor_ptb_oi_reversal',

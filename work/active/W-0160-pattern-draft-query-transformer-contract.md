@@ -57,6 +57,7 @@ Contract change
 5. app now has a canonical `SearchQuerySpec` TypeScript contract, and `SeedSearchResult` can carry the same additive `search_query_spec` shape instead of falling back to untyped dict payloads later.
 6. `PatternSeedScout` now bridges `Find Similar` through engine `/captures`, `/captures/{id}/benchmark_search`, and `/patterns/{slug}/similar-live`, and the surface response includes the emitted `searchQuerySpec`.
 7. engine search/runtime/ledger already exists and phase truth remains rule-first, but the live DOUNI path still uses app-owned `analyze_market` / raw-provider fan-out instead of a canonical `PatternDraft -> SearchQuerySpec -> engine search` flow.
+8. app `createPatternCapture(...)` writes through `engine.createRuntimeCapture(...)`, so capture translation tests must model `/runtime/captures` echoing exact `pattern_draft` / `parser_meta` payloads instead of the legacy `/captures` client.
 
 ## Assumptions
 
@@ -83,12 +84,13 @@ Contract change
 - benchmark-pack draft generation should accept `pattern_draft` as a fallback source for phase/timeframe intent so captures no longer require hand-authored `phase_annotations` before the parser boundary exists.
 - the next executable slice persists engine-generated `search_query_spec` on benchmark-search artifacts by threading it through `PatternBenchmarkSearchConfig` instead of storing it only in capture-local compatibility projections.
 - the first live surface bridge stays app-orchestrated: `PatternSeedScout` may build a narrow heuristic `PatternDraft`, but it must persist that draft through engine `/captures`, trigger engine `/captures/{id}/benchmark_search`, and read candidates from engine `/patterns/{slug}/similar-live`.
+- app-side capture translation tests must follow the runtime plane contract because runtime is now the canonical terminal capture store.
 - this slice preserves the current panel response shape where practical so route truth changes land before broader surface redesign.
 - execution branch is `codex/w-0160-pattern-seed-engine-bridge`; unrelated `CURRENT.md` drift is treated as upstream lane movement and should not be folded into the W-0160 merge unit.
 
 ## Next Steps
 
-1. replace the app-local heuristic parser inside `PatternSeedScout` with the canonical parser boundary once engine-owned parser ingress is available.
+1. align app runtime capture tests with `/runtime/captures` round-trip semantics so the bridge slice is green on a clean main-based branch.
 2. extend the same `SearchQuerySpec` persistence path to seed-search / other benchmark consumers so they emit the canonical app contract instead of route-local dict payloads.
 3. tighten the signal-rule registry and query-spec schema from the current transitional numeric-bound maps into fully versioned shared engine/app contracts.
 
