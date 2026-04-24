@@ -115,7 +115,7 @@ Engine logic change
 - production topology for this reset is `app-web`, `engine-api`, and `worker-control` on separate runtimes; `app-web` must support both current Vercel compatibility and a canonical Cloud Run node build so the repo can run as an all-server deployment without re-architecting the app later.
 - `app-web` on Cloud Run remains surface/orchestration only: it may proxy canonical `facts/search/runtime` contracts and own public auth/session/readiness, but it must not absorb engine compute or privileged worker secrets.
 - server health/readiness endpoints (`/healthz`, `/readyz`) are public operational surfaces and must remain outside page-auth redirects.
-- after PR #230 / #231 / #232, the post-merge execution queue is `W-0122 facts -> W-0145 search -> W-0142 runtime -> W-0160 contract follow-up -> W-0159 public liquidation source`, not another branch-extraction wave.
+- after PR #236 / #238 / #239 layered onto PR #230 / #231 / #232, the post-merge execution queue is still `W-0122 facts -> W-0145 search -> W-0142 runtime -> W-0160 contract follow-up -> W-0159 public liquidation source`, not another branch-extraction wave.
 
 ## Current Layer Map
 
@@ -250,7 +250,7 @@ Engine logic change
 
 ## Next Steps
 
-1. refresh the canonical queue after merged PR #230 / #231 / #232 so `W-0122`, `W-0145`, and `W-0142` are again the top execution lanes and `W-0159` is narrowed to public-liquidation follow-up only.
+1. refresh the canonical queue after merged PR #236 / #238 / #239 so `W-0122`, `W-0145`, and `W-0142` stay the top execution lanes, `W-0160` is reframed as post-#239 contract follow-up, and `W-0159` stays narrowed to public-liquidation follow-up only.
 2. W-0156/W-0122 implementation lanes should codify the raw retention split explicitly: canonical normalized tables for replay-critical data, TTL cache for provider-native blobs, and materialized `feature_windows` as the cross-pattern contract.
 3. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
 
