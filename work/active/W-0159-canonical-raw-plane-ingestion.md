@@ -138,12 +138,13 @@ Engine logic change
 - the raw-ingest CLI should report liquidation credential state explicitly so local-env issues are diagnosable without reading secret values.
 - the default raw-ingest path should not touch user-private liquidation APIs unless explicitly opted in.
 - commit/merge for this lane must run from a clean `W-0159` branch/worktree because the active local worktree currently also contains uncommitted `W-0160` contract changes.
+- the raw/search baseline for this lane is now merged on `origin/main` via PR #232, and the optional user-data liquidation diagnostics follow-up landed via PR #231.
 
 ## Next Steps
 
-1. widen query resolution beyond Binance/DexScreener only when a concrete search gap appears.
-2. choose a true market-wide liquidation source before promoting liquidation windows beyond optional user-private diagnostics.
-3. decide whether market search metrics should also be surfaced in a dedicated route or stay inside observability snapshot only.
+1. choose a true public or market-wide liquidation source before promoting liquidation windows beyond optional user-private diagnostics.
+2. widen query resolution beyond Binance/DexScreener only when a concrete venue/search gap appears.
+3. decide whether market search telemetry/metrics should surface in a dedicated route or stay observability-only.
 
 ## Exit Criteria
 
@@ -165,9 +166,9 @@ Engine logic change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0159-canonical-raw-plane-ingestion.md`
-- branch: `codex/w-0159-canonical-raw-plane-ingestion`
+- branch: `origin/main` baseline merged; next follow-up should branch cleanly from current main
 - verification:
   - `uv run --group dev python -m pytest tests/test_binance_credentials.py tests/test_liquidation_windows.py tests/test_fetch_binance_liquidations.py tests/test_market_search.py tests/test_raw_store.py tests/test_raw_ingest.py tests/test_fetch_binance_perp.py tests/test_data_cache.py tests/test_alpha_pipeline.py tests/test_jobs_routes.py tests/test_scheduler.py tests/test_universe_routes.py -q`
   - `uv run python -m data_cache.raw_ingest BTCUSDT --timeframe 1h --liquidation-lookback-hours 4 --db-path /tmp/wtd-binance-credential-check.sqlite --no-cache-refresh`
   - `npm --prefix app run check` (`0 errors`, existing warnings only)
-- remaining blockers: Binance `forceOrders` is user-private and cannot serve as market-wide liquidation truth; a public or market-wide liquidation source is still needed before liquidation can graduate beyond optional diagnostics
+- remaining blockers: Binance `forceOrders` is user-private and cannot serve as market-wide liquidation truth; a public or market-wide liquidation source plus an explicit next raw-family priority are still needed before this lane can graduate from baseline ingestion to full fact-plane promotion
