@@ -7,8 +7,7 @@
   import AIPanel from './AIPanel.svelte';
   import Splitter from './Splitter.svelte';
   import TradeMode from './modes/TradeMode.svelte';
-  import TrainMode from './modes/TrainMode.svelte';
-  import RadialTopology from './modes/RadialTopology.svelte';
+  import WorkspaceStage from './WorkspaceStage.svelte';
   import { get } from 'svelte/store';
   import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta } from './shell.store';
   import { viewportTier } from '$lib/stores/viewportTier';
@@ -19,23 +18,21 @@
   import ModeSheet from './ModeSheet.svelte';
   import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
 
-  interface Props {
-    canvasComponent?: any;
-  }
-
-  const { canvasComponent = TradeMode }: Props = $props();
-
   let paletteOpen = $state(false);
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
   let symbolPickerOpen = $state(false);
   let desktopSymbolPickerOpen = $state(false);
+  let desktopSymbolPickerTabId = $state<string | null>(null);
   let modeSheetOpen = $state(false);
   let indicatorSettingsOpen = $state(false);
 
-  // Desktop: symbol/timeframe driven by active tab's persisted state
   const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
-  const desktopTF = $derived($activeTabState.timeframe ?? '4h');
+
+  function openDesktopSymbolPicker(tabId?: string) {
+    desktopSymbolPickerTabId = tabId ?? $shellStore.activeTabId;
+    desktopSymbolPickerOpen = true;
+  }
 
   function appendAIDetail(userText: string, assistantText: string) {
     shellStore.update((s) => ({ ...s, aiVisible: true }));
@@ -48,21 +45,14 @@
         prevAssistant?.role === 'assistant' &&
         prevUser.text === userText &&
         prevAssistant.text === assistantText
-      ) {
-        return s;
-      }
+      ) return s;
       return {
         ...s,
-        chat: [
-          ...chat,
-          { role: 'user', text: userText },
-          { role: 'assistant', text: assistantText },
-        ],
+        chat: [...chat, { role: 'user', text: userText }, { role: 'assistant', text: assistantText }],
       };
     });
   }
 
-  // AI sheet swipe-down dismiss
   let aiSwipeTouchStartY = $state(0);
   function onAITouchStart(e: TouchEvent) { aiSwipeTouchStartY = e.touches[0].clientY; }
   function onAITouchEnd(e: TouchEvent) {
@@ -78,30 +68,30 @@
   });
 
   onMount(() => {
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const workspaceMode = searchParams?.get('m');
+    const workspacePanel = searchParams?.get('panel');
+    const targetPanel =
+      workspacePanel === 'scan' || workspacePanel === 'judge' || workspacePanel === 'analyze'
+        ? workspacePanel : 'analyze';
+
+    if (workspaceMode === 'detail') {
+      if (get(viewportTier).tier === 'MOBILE') {
+        mobileMode.setActive('detail');
+      } else {
+        shellStore.updateTabState((s) => ({ ...s, peekOpen: true, drawerTab: targetPanel }));
+      }
+    }
+
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        shellStore.toggleSidebar();
-      }
-      if (mod && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        shellStore.toggleAI();
-      }
-      if (mod && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        paletteOpen = !paletteOpen;
-      }
-      if (mod && e.key.toLowerCase() === 't') {
-        e.preventDefault();
-        shellStore.openTab({ kind: 'trade', title: 'new session' });
-      }
+      if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); shellStore.toggleSidebar(); }
+      if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); shellStore.toggleAI(); }
+      if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); paletteOpen = !paletteOpen; }
+      if (mod && e.key.toLowerCase() === 't') { e.preventDefault(); shellStore.openTab({ kind: 'trade', title: 'new session' }); }
       if (mod && e.key.toLowerCase() === 'w') {
         const st = get(shellStore);
-        if (st.tabs.length > 1) {
-          e.preventDefault();
-          shellStore.closeTab(st.activeTabId);
-        }
+        if (st.tabs.length > 1) { e.preventDefault(); shellStore.closeTab(st.activeTabId); }
       }
     };
 
@@ -114,21 +104,15 @@
       else if (c.id === 'mode_train') shellStore.switchMode('train');
       else if (c.id === 'mode_fly') shellStore.switchMode('flywheel');
       else if (c.id === 'new_trade') shellStore.openTab({ kind: 'trade', title: 'new session' });
-      else if (c.id === 'open_indicator_settings') {
-        indicatorSettingsOpen = true;
-      }
+      else if (c.id === 'open_indicator_settings') { indicatorSettingsOpen = true; }
       else if (c.id === 'open_ai_detail') {
         appendAIDetail(c.userText ?? '현재 analyze detail 설명해줘', c.assistantText ?? '');
       }
-      else if (c.id === 'reset') {
-        shellStore.reset();
-        window.location.reload();
-      }
+      else if (c.id === 'reset') { shellStore.reset(); window.location.reload(); }
     };
 
     window.addEventListener('keydown', onKey);
     window.addEventListener('cogochi:cmd', onCmd as EventListener);
-
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('cogochi:cmd', onCmd as EventListener);
@@ -138,7 +122,7 @@
 
 <div class="app-shell">
   {#if $viewportTier.tier === 'MOBILE'}
-    <!-- ── MOBILE shell ── -->
+    <!-- ── MOBILE ── -->
     <MobileTopBar
       symbol={mobileSymbol}
       timeframe={mobileTF}
@@ -170,10 +154,7 @@
       />
     {/if}
     {#if modeSheetOpen}
-      <ModeSheet
-        activeMode={$activeMode}
-        onClose={() => (modeSheetOpen = false)}
-      />
+      <ModeSheet activeMode={$activeMode} onClose={() => (modeSheetOpen = false)} />
     {/if}
     {#if $shellStore.aiVisible}
       <div
@@ -196,19 +177,16 @@
             shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
             shellStore.update(st => ({
               ...st,
-              tabs: st.tabs.map(t =>
-                t.id === st.activeTabId
-                  ? { ...t, title: setup.text.slice(0, 30) }
-                  : t
-              ),
+              tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
             }));
           }}
           onClose={() => shellStore.toggleAI()}
         />
       </div>
     {/if}
+
   {:else}
-    <!-- ── DESKTOP / TABLET shell ── -->
+    <!-- ── DESKTOP / TABLET ── -->
     <CommandBar
       sessionName={$activeTab?.title?.slice(0, 32) || ''}
       onRangeSelect={() => {
@@ -225,19 +203,10 @@
       onIndicators={() => (indicatorSettingsOpen = true)}
     />
 
-    <TabBar
-      tabs={$shellStore.tabs}
-      activeTabId={$shellStore.activeTabId}
-      setActiveTabId={(id) => shellStore.setActiveTabId(id)}
-      onCloseTab={(id) => shellStore.closeTab(id)}
-      onNewTab={() => shellStore.openTab({ kind: 'trade', title: 'new session' })}
-      sidebarVisible={$shellStore.sidebarVisible}
-      toggleSidebar={() => shellStore.toggleSidebar()}
-    />
-
     <div class="main-row">
+      <!-- Sidebar -->
       {#if $shellStore.sidebarVisible}
-        <div style:width={`${$shellStore.sidebarWidth}px`} style:flex-shrink="0" style:display="flex">
+        <div class="sidebar-pane" style:width={`${$shellStore.sidebarWidth}px`}>
           <Sidebar
             visible={true}
             activeSection={$shellStore.activeSection}
@@ -245,30 +214,48 @@
             onOpenTab={(tab) => shellStore.openTab(tab)}
           />
         </div>
-        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} />
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
       {/if}
 
-      <div style:flex="1" style:min-width="0" style:display="flex" style:flex-direction="column" style:overflow="hidden">
-        {#if $activeMode === 'trade'}
-          <TradeMode
-            mode={$activeMode}
-            tabState={$activeTabState}
-            updateTabState={(updater) => shellStore.updateTabState(updater)}
-            symbol={desktopSymbol}
-            timeframe={desktopTF}
-            onSymbolTap={() => (desktopSymbolPickerOpen = true)}
-            onTFChange={(tf) => shellStore.setTimeframe(tf)}
-          />
-        {:else if $activeMode === 'train'}
-          <TrainMode mode={$activeMode} />
-        {:else if $activeMode === 'flywheel'}
-          <RadialTopology mode={$activeMode} />
-        {/if}
+      <!-- Canvas + TabBar -->
+      <div class="canvas-col">
+        <TabBar
+          tabs={$shellStore.tabs}
+          activeTabId={$shellStore.activeTabId}
+          setActiveTabId={(id) => shellStore.setActiveTabId(id)}
+          onCloseTab={(id) => shellStore.closeTab(id)}
+          onNewTab={() => shellStore.openTab({ kind: 'trade', title: 'new session' })}
+          sidebarVisible={$shellStore.sidebarVisible}
+          toggleSidebar={() => shellStore.toggleSidebar()}
+          workMode={$shellStore.workMode}
+          workspaceMode={$shellStore.workspaceMode}
+          workspacePaneIds={$shellStore.workspacePaneIds}
+          workspaceImmersivePaneId={$shellStore.workspaceImmersivePaneId}
+          onToggleCompare={(id) => shellStore.toggleTabCompare(id)}
+          onExpandPane={(id) => shellStore.expandWorkspacePane(id)}
+          onSetWorkMode={(mode) => shellStore.setWorkMode(mode)}
+          onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
+          onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
+        />
+
+        <WorkspaceStage
+          tabs={$shellStore.tabs}
+          activeTabId={$shellStore.activeTabId}
+          workMode={$shellStore.workMode}
+          workspaceMode={$shellStore.workspaceMode}
+          workspacePaneIds={$shellStore.workspacePaneIds}
+          workspaceImmersivePaneId={$shellStore.workspaceImmersivePaneId}
+          workspaceColumnSplit={$shellStore.workspaceColumnSplit}
+          workspaceLeftSplitY={$shellStore.workspaceLeftSplitY}
+          workspaceRightSplitY={$shellStore.workspaceRightSplitY}
+          onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
+        />
       </div>
 
+      <!-- AI panel -->
       {#if $shellStore.aiVisible}
-        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} />
-        <div style:width={`${$shellStore.aiWidth}px`} style:flex-shrink="0">
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
+        <div class="ai-pane" style:width={`${Math.max(300, $shellStore.aiWidth)}px`}>
           <AIPanel
             messages={$activeTabState.chat || []}
             onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
@@ -276,11 +263,7 @@
               shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
               shellStore.update(st => ({
                 ...st,
-                tabs: st.tabs.map(t =>
-                  t.id === st.activeTabId
-                    ? { ...t, title: setup.text.slice(0, 30) }
-                    : t
-                ),
+                tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
               }));
             }}
             onClose={() => shellStore.toggleAI()}
@@ -298,10 +281,14 @@
     />
   {/if}
 
+  <!-- Global overlays -->
   {#if desktopSymbolPickerOpen}
     <SymbolPickerSheet
       currentSymbol={desktopSymbol}
-      onSelect={(s) => shellStore.setSymbol(s)}
+      onSelect={(s) => {
+        shellStore.setSymbol(s, desktopSymbolPickerTabId ?? undefined);
+        desktopSymbolPickerOpen = false;
+      }}
       onClose={() => (desktopSymbolPickerOpen = false)}
     />
   {/if}
@@ -337,6 +324,25 @@
     min-height: 0;
   }
 
+  .sidebar-pane {
+    flex-shrink: 0;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .canvas-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ai-pane {
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
   .mobile-canvas {
     flex: 1;
     min-height: 0;
@@ -347,9 +353,7 @@
 
   .mobile-ai-sheet {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: 0; right: 0; bottom: 0;
     height: 52%;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     z-index: 200;
@@ -371,18 +375,15 @@
   }
 
   .sheet-handle {
-    width: 36px;
-    height: 4px;
+    width: 36px; height: 4px;
     background: var(--g5);
     border-radius: 2px;
   }
 
   .sheet-close {
     position: absolute;
-    right: 12px;
-    top: 6px;
-    width: 28px;
-    height: 28px;
+    right: 12px; top: 6px;
+    width: 28px; height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -394,10 +395,7 @@
     cursor: pointer;
     line-height: 1;
   }
-
-  .sheet-close:active {
-    background: var(--g3);
-  }
+  .sheet-close:active { background: var(--g3); }
 
   @keyframes sheetSlideUp {
     from { transform: translateY(100%); }
