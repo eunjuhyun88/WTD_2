@@ -33,6 +33,7 @@
 | **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
 | **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
 | **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
+| **W-0159** | `W-0159-intent-driven-visualization-engine.md` | 🔴 IN-PROGRESS | query intent 기반 chart template/highlight planner scaffold |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
@@ -99,8 +100,9 @@
 - current doc lane `codex/w-0153-protocol-doc-recovery` was split and pushed clean at `44431562`
 - engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
 - `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
-- active execution lane is `codex/w-0157-similar-live-feature-ranking`
-- `W-0157` local cut now applies `canonical_feature_snapshot` to `similar-live` ranking and passed targeted `live_monitor` / route tests on `codex/w-0157-similar-live-feature-ranking`
+- `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
+- active execution lane is `codex/w-0159-intent-visualization-engine`
+- `W-0159` local cut adds a pure contract/surface scaffold: query intent + pattern context -> template -> highlight -> chart config, exported through `chart-engine`, with targeted vitest passing and `npm --prefix app run check` clean except for pre-existing warnings
 
 ---
 
@@ -132,6 +134,7 @@
 | codex/w-0153-protocol-doc-recovery | W-0153 | protocol doc recovery reference lane; pushed clean |
 | codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
 | codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
+| codex/w-0159-intent-visualization-engine | W-0159 | active contract/app lane for intent-driven chart planning scaffold |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |

@@ -12,6 +12,25 @@ export type {
 	PriceChartViewSpec,
 } from './contracts/chartViewSpec';
 export type {
+	IntentDrivenChartConfig,
+	IntentDrivenChartRequest,
+	VisualizationFeatureSnapshot,
+	VisualizationHighlightPlan,
+	VisualizationHighlightTarget,
+	VisualizationIntent,
+	VisualizationLayout,
+	VisualizationMarkerSpec,
+	VisualizationOverlaySpec,
+	VisualizationPanelConfig,
+	VisualizationPanelType,
+	VisualizationPatternContext,
+	VisualizationSignal,
+	VisualizationSignalKey,
+	VisualizationSummaryItem,
+	VisualizationTemplate,
+	VisualizationTradePlan,
+} from './contracts/intentDrivenChart';
+export type {
 	CandlePoint,
 	CompareWindow,
 	EventMarker,
@@ -23,3 +42,9 @@ export type {
 export {
 	createPriceChartRuntime,
 } from './core/createPriceChartRuntime';
+export {
+	buildIntentDrivenChartConfig,
+	classifyVisualizationIntent,
+	planVisualizationHighlights,
+	selectVisualizationTemplate,
+} from './intent';
