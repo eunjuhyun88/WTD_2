@@ -387,6 +387,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/runtime/definitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Definitions */
+        get: operations["list_runtime_definitions_runtime_definitions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/definitions/{pattern_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Runtime Definition */
+        get: operations["get_runtime_definition_runtime_definitions__pattern_slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/runtime/workspace/pins": {
         parameters: {
             query?: never;
@@ -498,6 +532,23 @@ export interface paths {
         };
         /** Get Ledger */
         get: operations["get_ledger_runtime_ledger__ledger_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Ledger */
+        get: operations["list_ledger_runtime_ledger_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -928,6 +979,26 @@ export interface paths {
          * @description Return the current registry snapshot for a pattern.
          */
         get: operations["get_model_registry_patterns__slug__model_registry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/model-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Model History
+         * @description Return training/model ledger history for a pattern.
+         */
+        get: operations["get_model_history_patterns__slug__model_history_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3059,6 +3130,40 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** RuntimeLedgerListResponse */
+        RuntimeLedgerListResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Ledgers */
+            ledgers: {
+                [key: string]: unknown;
+            }[];
+            /** Count */
+            count: number;
+        };
         /** RuntimeLedgerResponse */
         RuntimeLedgerResponse: {
             /**
@@ -3088,6 +3193,72 @@ export interface components {
             generated_at: string;
             /** Ledger */
             ledger: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimePatternDefinitionListResponse */
+        RuntimePatternDefinitionListResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Definitions */
+            definitions: {
+                [key: string]: unknown;
+            }[];
+            /** Count */
+            count: number;
+        };
+        /** RuntimePatternDefinitionResponse */
+        RuntimePatternDefinitionResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Definition */
+            definition: {
                 [key: string]: unknown;
             };
         };
@@ -3300,6 +3471,10 @@ export interface components {
             timeframe?: string | null;
             /** Score */
             score: number;
+            /** Definition Ref */
+            definition_ref?: {
+                [key: string]: unknown;
+            } | null;
             /** Payload */
             payload?: {
                 [key: string]: unknown;
@@ -3356,6 +3531,8 @@ export interface components {
         };
         /** SeedSearchRequest */
         SeedSearchRequest: {
+            /** Definition Id */
+            definition_id?: string | null;
             /** Symbol */
             symbol?: string | null;
             /** Timeframe */
@@ -3645,6 +3822,8 @@ export interface components {
         _PatternTrainBody: {
             /** User Id */
             user_id?: string | null;
+            /** Definition Id */
+            definition_id?: string | null;
             /**
              * Target Name
              * @default breakout
@@ -3670,6 +3849,8 @@ export interface components {
         };
         /** _PromotePatternModelBody */
         _PromotePatternModelBody: {
+            /** Definition Id */
+            definition_id?: string | null;
             /** Model Key */
             model_key: string;
             /** Model Version */
@@ -3787,6 +3968,8 @@ export interface components {
         };
         /** ScanRequest */
         api__schemas_search__ScanRequest: {
+            /** Definition Id */
+            definition_id?: string | null;
             /** Symbol */
             symbol?: string | null;
             /** Timeframe */
@@ -4468,6 +4651,7 @@ export interface operations {
         parameters: {
             query?: {
                 user_id?: string | null;
+                definition_id?: string | null;
                 pattern_slug?: string | null;
                 symbol?: string | null;
                 status?: string | null;
@@ -4550,6 +4734,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuntimeCaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_definitions_runtime_definitions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimePatternDefinitionListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_runtime_definition_runtime_definitions__pattern_slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pattern_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimePatternDefinitionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4775,6 +5021,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuntimeLedgerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_ledger_runtime_ledger_get: {
+        parameters: {
+            query?: {
+                definition_id?: string | null;
+                kind?: string | null;
+                subject_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeLedgerListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5277,7 +5557,9 @@ export interface operations {
     };
     get_stats_patterns__slug__stats_get: {
         parameters: {
-            query?: never;
+            query?: {
+                definition_id?: string | null;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -5312,6 +5594,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                definition_id?: string | null;
             };
             header?: never;
             path: {
@@ -5415,7 +5698,46 @@ export interface operations {
     };
     get_model_registry_patterns__slug__model_registry_get: {
         parameters: {
-            query?: never;
+            query?: {
+                definition_id?: string | null;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_history_patterns__slug__model_history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                definition_id?: string | null;
+                record_type?: string | null;
+            };
             header?: never;
             path: {
                 slug: string;
