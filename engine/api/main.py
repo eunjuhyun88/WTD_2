@@ -30,6 +30,7 @@ from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 from workers.kline_prefetcher import prefetch_klines
+from workers.feature_windows_prefetcher import prefetch_feature_windows
 from security_runtime import (
     assert_public_runtime_security,
     build_allowed_hosts,
@@ -88,6 +89,12 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     except Exception as exc:
         log.warning("kline prefetch warm-up failed (non-fatal): %s", exc)
 
+    # Pre-populate feature_windows store (non-blocking, best-effort)
+    try:
+        await prefetch_feature_windows()
+    except Exception as exc:
+        log.warning("feature_windows warm-up failed (non-fatal): %s", exc)
+
     if scheduler_enabled():
         from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore[import]
         _kline_scheduler = AsyncIOScheduler()
@@ -96,6 +103,13 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
             "interval",
             minutes=5,
             id="kline_prefetch",
+            replace_existing=True,
+        )
+        _kline_scheduler.add_job(
+            prefetch_feature_windows,
+            "interval",
+            hours=6,
+            id="feature_windows_build",
             replace_existing=True,
         )
         _kline_scheduler.start()
