@@ -4,6 +4,7 @@ export interface LedgerRecord {
 	id: string;
 	kind?: string | null;
 	subject_id?: string | null;
+	definition_ref?: Record<string, unknown>;
 	verdict?: string | null;
 	outcome?: string | null;
 	summary?: string | null;
@@ -18,4 +19,14 @@ export interface RuntimeLedgerResponse {
 	status: RuntimePlaneState;
 	generated_at: string;
 	ledger: LedgerRecord;
+}
+
+export interface RuntimeLedgerListResponse {
+	ok: boolean;
+	owner: 'engine';
+	plane: 'runtime';
+	status: RuntimePlaneState;
+	generated_at: string;
+	ledgers: LedgerRecord[];
+	count: number;
 }

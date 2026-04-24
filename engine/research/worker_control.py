@@ -25,6 +25,7 @@ class ResearchJobSpec:
     baseline_ref: str
     search_policy: dict
     evaluation_protocol: dict
+    definition_ref: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,7 @@ class ResearchWorkerController:
             search_policy=spec.search_policy,
             evaluation_protocol=spec.evaluation_protocol,
             created_at=created_at,
+            definition_ref=spec.definition_ref,
         )
         started = self.store.start_run(run.research_run_id, started_at=now())
 

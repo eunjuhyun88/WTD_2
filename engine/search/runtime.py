@@ -18,10 +18,17 @@ def run_seed_search(
     reference_signature = request.get("signature")
     if not isinstance(reference_signature, dict):
         reference_signature = {}
+    definition_ref = request.get("definition_ref")
+    if not isinstance(definition_ref, dict):
+        definition_ref = None
 
     windows = store.list_windows(symbol=symbol, timeframe=timeframe, limit=max(limit * 3, limit))
     candidates = [
-        _candidate_from_window(window, _score_signature(window.signature, reference_signature))
+        _candidate_from_window(
+            window,
+            _score_signature(window.signature, reference_signature),
+            definition_ref=definition_ref,
+        )
         for window in windows
     ]
     candidates.sort(key=lambda item: item["score"], reverse=True)
@@ -46,10 +53,13 @@ def run_scan(
     symbol = _optional_str(request.get("symbol"))
     timeframe = _optional_str(request.get("timeframe"))
     limit = _bounded_limit(request.get("limit"), default=20)
+    definition_ref = request.get("definition_ref")
+    if not isinstance(definition_ref, dict):
+        definition_ref = None
 
     windows = store.list_windows(symbol=symbol, timeframe=timeframe, limit=limit)
     candidates = [
-        _candidate_from_window(window, _scan_score(window))
+        _candidate_from_window(window, _scan_score(window), definition_ref=definition_ref)
         for window in windows
     ]
     candidates.sort(key=lambda item: item["score"], reverse=True)
@@ -80,22 +90,30 @@ def _bounded_limit(value: Any, *, default: int) -> int:
     return max(1, min(parsed, 100))
 
 
-def _candidate_from_window(window: CorpusWindow, score: float) -> dict[str, Any]:
+def _candidate_from_window(
+    window: CorpusWindow,
+    score: float,
+    *,
+    definition_ref: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "window_id": window.window_id,
+        "symbol": window.symbol,
+        "timeframe": window.timeframe,
+        "start_ts": window.start_ts,
+        "end_ts": window.end_ts,
+        "bars": window.bars,
+        "source": window.source,
+        "signature": window.signature,
+    }
+    if definition_ref is not None:
+        payload["definition_ref"] = definition_ref
     return {
         "window_id": window.window_id,
         "symbol": window.symbol,
         "timeframe": window.timeframe,
         "score": round(max(0.0, min(score, 1.0)), 6),
-        "payload": {
-            "window_id": window.window_id,
-            "symbol": window.symbol,
-            "timeframe": window.timeframe,
-            "start_ts": window.start_ts,
-            "end_ts": window.end_ts,
-            "bars": window.bars,
-            "source": window.source,
-            "signature": window.signature,
-        },
+        "payload": payload,
     }
 
 

@@ -13,6 +13,7 @@ def test_write_refinement_report_includes_objective_and_selection(tmp_path) -> N
         search_policy={"mode": "reset-bounded-eval"},
         evaluation_protocol={"kind": "walk-forward"},
         created_at="2026-04-16T16:00:00+00:00",
+        definition_ref={"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
     )
     store.start_run(run.research_run_id, started_at="2026-04-16T16:00:01+00:00")
     completed = store.complete_run(
@@ -74,6 +75,7 @@ def test_write_refinement_report_includes_objective_and_selection(tmp_path) -> N
     assert "reset_search" in text
     assert "Variance gate failed." in text
     assert "Repeated variance failure." in text
+    assert "Definition Ref" in text
     assert "Mean AUC vs Gate" in text
     assert "Std AUC vs Variance Ceiling" in text
     assert "Baseline Ref" in text

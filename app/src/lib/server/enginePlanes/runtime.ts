@@ -1,5 +1,5 @@
 import type { RuntimeCaptureListResponse, RuntimeCaptureResponse } from '$lib/contracts/runtime/captures';
-import type { RuntimeLedgerResponse } from '$lib/contracts/runtime/ledger';
+import type { RuntimeLedgerListResponse, RuntimeLedgerResponse } from '$lib/contracts/runtime/ledger';
 import type { RuntimeResearchContextResponse } from '$lib/contracts/runtime/researchContext';
 import type { RuntimeWorkspaceStateResponse } from '$lib/contracts/runtime/workspaceState';
 import { fetchEnginePlaneJson, postEnginePlaneJson } from './shared';
@@ -76,6 +76,27 @@ export async function fetchRuntimeLedgerProxy(
 ): Promise<RuntimeLedgerResponse | null> {
 	return fetchEnginePlaneJson<RuntimeLedgerResponse>(fetchFn, 'runtime', {
 		path: `ledger/${ledgerId}`,
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchRuntimeLedgerListProxy(
+	fetchFn: ServerFetch,
+	query: {
+		definitionId?: string;
+		kind?: string;
+		subjectId?: string;
+		limit?: number;
+	},
+): Promise<RuntimeLedgerListResponse | null> {
+	return fetchEnginePlaneJson<RuntimeLedgerListResponse>(fetchFn, 'runtime', {
+		path: 'ledger',
+		query: {
+			definition_id: query.definitionId,
+			kind: query.kind,
+			subject_id: query.subjectId,
+			limit: query.limit,
+		},
 		timeoutMs: 8_000,
 	});
 }

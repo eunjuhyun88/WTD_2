@@ -32,10 +32,12 @@ class SearchCandidate(BaseModel):
     symbol: str | None = None
     timeframe: str | None = None
     score: float
+    definition_ref: dict[str, Any] | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class SeedSearchRequest(BaseModel):
+    definition_id: str | None = None
     symbol: str | None = None
     timeframe: str | None = None
     signature: dict[str, Any] = Field(default_factory=dict)
@@ -54,6 +56,7 @@ class SeedSearchResponse(BaseModel):
 
 
 class ScanRequest(BaseModel):
+    definition_id: str | None = None
     symbol: str | None = None
     timeframe: str | None = None
     limit: int = Field(default=20, ge=1, le=100)
