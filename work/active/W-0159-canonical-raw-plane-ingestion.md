@@ -22,7 +22,9 @@ Engine logic change
 - Binance kline / perp fetch 결과를 normalized raw rows 로 쓰는 ingestion path 추가
 - Binance `forceOrders` recent history를 optional user-private liquidation event rows 로 쓰는 ingress path 추가
 - optional user-private liquidation events에서 1h / 4h rolling window aggregates를 materialize 하는 path 추가
+- Coinalyze liquidation history를 optional public market-wide liquidation windows로 materialize 하는 ingress path 추가
 - Binance user-data liquidation credential source를 engine runtime에서 deterministic 하게 resolve / diagnose 하고 signed USER_DATA request 를 만드는 helper 추가
+- Coinalyze liquidation credential source를 engine runtime에서 deterministic 하게 resolve / diagnose 하는 helper 추가
 - contract / coin query 를 canonical symbol 로 resolve 하는 search helper 추가
 - resolve 결과를 기존 raw ingress 로 연결하는 on-demand ingestion helper 추가
 - high-QPS search를 위한 persisted local market search index 추가
@@ -52,6 +54,7 @@ Engine logic change
 - `engine/data_cache/binance_credentials.py`
 - `engine/data_cache/fetch_binance_perp.py`
 - `engine/data_cache/fetch_binance_liquidations.py`
+- `engine/data_cache/fetch_coinalyze_liquidations.py`
 - `engine/data_cache/fetch_dexscreener.py`
 - `engine/data_cache/liquidation_windows.py`
 - `engine/data_cache/loader.py`
@@ -102,6 +105,10 @@ Engine logic change
 28. current workspace inspection shows no `BINANCE_*` key names in tracked local env files that `engine/env_bootstrap.py` loads, so credential resolution needs to be explicit and diagnosable rather than implicit.
 29. the current local cut adds a small engine-owned Binance credential resolver with explicit key/secret env aliases and exposes the resolved liquidation credential state in raw-ingest results.
 30. Binance `forceOrders` requires signed `USER_DATA` auth (`api key + api secret + timestamp/signature`), so a header-only key path is not sufficient.
+31. the repo already has an app-owned Coinalyze liquidation-history proxy, so the fastest path to market-wide liquidation truth is to move that provider contract into engine-owned ingress instead of inventing a new schema.
+32. Coinalyze liquidation history is aggregated market-wide data rather than user-private event truth, so it should materialize directly into `market_liquidation_windows`, not `raw_liquidation_events`.
+33. PR #248 merged `engine/data_cache/coinalyze_credentials.py` and `engine/data_cache/fetch_coinalyze_liquidations.py`, so Coinalyze key resolution and liquidation-history fetch now live in engine ownership instead of the app bridge.
+34. PR #248 keeps public Coinalyze windows and optional user-private Binance windows in the same read model by separating them with `provider` / `venue`, and public refresh rewrites only the Coinalyze slice so stale public windows survive temporary upstream failures.
 
 ## Assumptions
 
@@ -110,7 +117,7 @@ Engine logic change
 
 ## Open Questions
 
-- whether the next raw family after this slice should be liquidation aggregates or on-chain/fundamental snapshots.
+- whether the next raw family after merged public liquidation should be on-chain/fundamental snapshots or richer orderflow depth.
 
 ## Decisions
 
@@ -137,14 +144,18 @@ Engine logic change
 - Binance force-order auth should resolve from a small explicit key/secret env alias list, sign requests correctly, and expose which aliases, if any, were actually used.
 - the raw-ingest CLI should report liquidation credential state explicitly so local-env issues are diagnosable without reading secret values.
 - the default raw-ingest path should not touch user-private liquidation APIs unless explicitly opted in.
+- public market-wide liquidation ingestion may run by default when Coinalyze credentials are available because it is not user-private data and it feeds the canonical window read model directly.
+- `market_liquidation_windows` may contain multiple liquidation truth lanes distinguished by `provider` / `venue`; user-private Binance diagnostics must not overwrite public market-wide Coinalyze windows.
+- Coinalyze public liquidation refresh rewrites only the `coinalyze_market_wide` venue slice for each timeframe; transient upstream failures keep the last successful public windows in place instead of deleting them.
 - commit/merge for this lane must run from a clean `W-0159` branch/worktree because the active local worktree currently also contains uncommitted `W-0160` contract changes.
 - the raw/search baseline for this lane is now merged on `origin/main` via PR #232, and the optional user-data liquidation diagnostics follow-up landed via PR #231.
+- the public market-wide Coinalyze liquidation ingress follow-up landed on `origin/main` via PR #248.
 
 ## Next Steps
 
-1. choose a true public or market-wide liquidation source before promoting liquidation windows beyond optional user-private diagnostics.
-2. widen query resolution beyond Binance/DexScreener only when a concrete venue/search gap appears.
-3. decide whether market search telemetry/metrics should surface in a dedicated route or stay observability-only.
+1. decide whether `market_liquidation_windows` should now be promoted into a dedicated fact/read route for consumers instead of remaining raw-plane only.
+2. choose the next canonical raw family after liquidation between on-chain/fundamental snapshots and richer orderflow depth only when a concrete search/product gap appears.
+3. decide whether market search and liquidation telemetry should surface in a dedicated route or stay observability-only.
 
 ## Exit Criteria
 
@@ -162,13 +173,15 @@ Engine logic change
 - [x] `/universe?q=` can answer token/contract search from the local index while preserving `UniverseResponse`.
 - [x] repeated market queries can be shared across engine instances through a bounded Redis cache without making Redis the source of truth.
 - [x] hot misses are coalesced by default and emit cache-path telemetry for later tuning.
+- [x] public market-wide liquidation windows can be materialized from Coinalyze into `market_liquidation_windows` without app-bridge ownership.
+- [x] public Coinalyze windows and optional user-private Binance diagnostics can coexist in the same window read model without overwriting each other.
 
 ## Handoff Checklist
 
 - active work item: `work/active/W-0159-canonical-raw-plane-ingestion.md`
 - branch: `origin/main` baseline merged; next follow-up should branch cleanly from current main
 - verification:
-  - `uv run --group dev python -m pytest tests/test_binance_credentials.py tests/test_liquidation_windows.py tests/test_fetch_binance_liquidations.py tests/test_market_search.py tests/test_raw_store.py tests/test_raw_ingest.py tests/test_fetch_binance_perp.py tests/test_data_cache.py tests/test_alpha_pipeline.py tests/test_jobs_routes.py tests/test_scheduler.py tests/test_universe_routes.py -q`
+  - `uv run --group dev python -m pytest tests/test_coinalyze_credentials.py tests/test_fetch_coinalyze_liquidations.py tests/test_binance_credentials.py tests/test_liquidation_windows.py tests/test_fetch_binance_liquidations.py tests/test_market_search.py tests/test_raw_store.py tests/test_raw_ingest.py tests/test_fetch_binance_perp.py tests/test_data_cache.py tests/test_alpha_pipeline.py tests/test_jobs_routes.py tests/test_scheduler.py tests/test_universe_routes.py -q`
   - `uv run python -m data_cache.raw_ingest BTCUSDT --timeframe 1h --liquidation-lookback-hours 4 --db-path /tmp/wtd-binance-credential-check.sqlite --no-cache-refresh`
-  - `npm --prefix app run check` (`0 errors`, existing warnings only)
-- remaining blockers: Binance `forceOrders` is user-private and cannot serve as market-wide liquidation truth; a public or market-wide liquidation source plus an explicit next raw-family priority are still needed before this lane can graduate from baseline ingestion to full fact-plane promotion
+  - app check was not part of the merge gate for PR #248 because no app files changed; repo-wide app warning cleanup already landed separately via PR #244
+- remaining blockers: `market_liquidation_windows` still lacks a dedicated fact-plane route/contract for consumers, and the next raw-family priority after liquidation is still open between on-chain/fundamental snapshots and richer orderflow depth

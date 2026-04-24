@@ -233,12 +233,12 @@
   <!-- OI Δ pane -->
   {#if showOI && oiBars.length > 0}
     {@const normed = normBars(oiBars, oiPaneH - 16)}
-    <div
+    <button
+      type="button"
       class="pane-resize-handle"
-      role="separator"
       aria-label="Resize OI pane"
       onmousedown={(e) => startPaneResize(e, () => oiPaneH, (v) => oiPaneH = v)}
-    ></div>
+    ></button>
     <div class="ind-pane" style="--ph:{oiPaneH}px">
       <div class="ind-label">OI Δ <span class="ind-val {oiLatest !== null && oiLatest >= 0 ? 'pos' : 'neg'}">{oiSummary}</span></div>
       <div class="ind-bars-center">
@@ -260,12 +260,12 @@
 
   <!-- Funding pane -->
   {#if showFunding && fundingBars.length > 0}
-    <div
+    <button
+      type="button"
       class="pane-resize-handle"
-      role="separator"
       aria-label="Resize Funding pane"
       onmousedown={(e) => startPaneResize(e, () => fundingPaneH, (v) => fundingPaneH = v)}
-    ></div>
+    ></button>
     <div class="ind-pane" style="--ph:{fundingPaneH}px">
       <div class="ind-label">
         FUNDING
@@ -281,12 +281,12 @@
 
   <!-- CVD pane -->
   {#if showCVD}
-    <div
+    <button
+      type="button"
       class="pane-resize-handle"
-      role="separator"
       aria-label="Resize CVD pane"
       onmousedown={(e) => startPaneResize(e, () => cvdPaneH, (v) => cvdPaneH = v)}
-    ></div>
+    ></button>
     <div class="ind-pane" style="--ph:{cvdPaneH}px">
       <div class="ind-label">CVD 15m <span class="ind-val pos">양전환</span></div>
       <svg class="ind-svg" viewBox="0 0 400 28" preserveAspectRatio="none">
@@ -316,6 +316,8 @@
     width: 100%;
     cursor: ns-resize;
     background: rgba(42,46,57,0.9);
+    border: none;
+    padding: 0;
     transition: background 0.15s;
   }
   .pane-resize-handle:hover {

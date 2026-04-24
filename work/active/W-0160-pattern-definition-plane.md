@@ -25,6 +25,7 @@ Contract change
 - runtime ledger history 와 pattern model history / registry views 가 `definition_id` 기준 query/list 를 지원하도록 contract 정렬
 - capture truth 와 outcome truth 가 canonical `definition_ref` 를 write time 에 저장하도록 정렬
 - per-pattern stats / record-family summary 가 stored `definition_id` 기준 fully definition-scoped aggregate 를 지원하도록 정렬
+- stats read surfaces expose explicit `definition_scope` (`current_definition` default, `all_definitions` opt-in) so callers can choose scoped vs aggregate reads without abusing missing `definition_id`
 - targeted engine tests 추가
 
 ## Non-Goals
@@ -68,6 +69,7 @@ Contract change
 16. previous stats/read-model surfaces were mixed-scope: outcome aggregates stayed slug-wide while model artifacts were definition-aware, so the next contract had to move definition truth into capture/outcome writers instead of extending read-time inference only.
 17. current local cut now persists canonical `definition_id` / `definition_ref` on `CaptureRecord`, `PatternOutcome`, and append-only ledger records, adds an additive Supabase migration for `capture_records` / `pattern_outcomes`, and makes `/patterns/{slug}/stats`, training, and bounded refinement/objective consumers read stored definition scope first.
 18. current local cut also keeps definition-scoped reads backward-compatible during rollout: file/supabase capture/outcome/ledger readers prefer stored metadata first, then fall back only for legacy rows that predate stored definition truth.
+19. current local cut now exposes explicit `definition_scope` on `/patterns/{slug}/stats` and `/patterns/stats/all`, keeping `current_definition` as the default while allowing callers to request `all_definitions` aggregate reads without abusing missing `definition_id`.
 
 ## Assumptions
 
@@ -90,6 +92,9 @@ Contract change
 - model registry/training producers now store canonical definition metadata at write time; route-level `definition_id` filters must prefer persisted metadata before any slug-only fallback.
 - the next slice should make model identity and active-selection scope definition-version aware, but remain backward-compatible for older slug-only records while the registry/history migrate forward.
 - preferred-model consumers should resolve the current definition scope first and only fall back to slug-only registry rows for legacy artifacts that predate definition-aware model keys.
+- capture/outcome truth now persists canonical definition identity at write time, so stats/training/runtime readers should prefer stored `definition_id` / `definition_ref` over `pattern_version` inference.
+- current-definition fallback is acceptable only for legacy rows with missing stored definition metadata; new rows must always carry canonical definition identity.
+- stats routes distinguish `current_definition` default reads from explicit `all_definitions` aggregate reads, and reject conflicting `definition_id + all_definitions` requests instead of overloading `definition_id` omission.
 - stats/training/refinement consumers now treat stored definition identity as canonical truth; legacy slug-only outcomes remain visible only when callers do not request a scoped definition dataset.
 - mixed-scope responses are acceptable only when the scope split is explicit in the contract; silent partial filtering is not acceptable.
 - `#228` merged 이후에도 W-0160 후속 contract 가 남아 있어, 이번 slice 는 기존 merged branch를 재사용하지 않고 new main-based execution branch로 분리한다.
@@ -98,9 +103,9 @@ Contract change
 
 ## Next Steps
 
-1. backfill or explicitly sunset legacy slug-only capture/outcome truth so definition-scoped reads can stop carrying fallback logic.
+1. decide whether the same explicit scope contract should also be exposed on runtime capture/ledger list routes now that stats surfaces are closed.
 2. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
-3. split capture-linked evidence into a dedicated definition store only if the read contract stays stable after rollout.
+3. backfill or explicitly sunset legacy slug-only capture/outcome truth so definition-scoped reads can stop carrying fallback logic.
 
 ## Exit Criteria
 
@@ -115,13 +120,15 @@ Contract change
 - model training, promotion, and preferred-model lookup are definition-version aware so sibling definition revisions under one slug do not collide.
 - capture and outcome truth persist canonical `definition_id` / `definition_ref` at write time.
 - per-pattern stats and record-family summary are definition-scoped from stored truth, with legacy fallback only for rows that predate stored metadata.
+- stats routes accept an explicit aggregate scope (`all_definitions`) while keeping `current_definition` as the default.
+- per-pattern stats and record-family summaries are fully definition-scoped for the current/requested definition, with current-definition fallback only for legacy rows missing stored definition metadata.
 - targeted engine tests pass.
 
 ## Handoff Checklist
 
 - active work item: `work/active/W-0160-pattern-definition-plane.md`
-- branch: `codex/w-0160-definition-truth-scope`
+- branch: `codex/w-0160-pattern-stats-scope`
 - verification:
-  - `uv run --directory engine python -m pytest tests/test_capture_store.py tests/test_outcome_resolver.py tests/test_runtime_routes.py tests/test_pattern_candidate_routes.py tests/test_pattern_refinement.py tests/test_research_objectives.py tests/test_pattern_search.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_capture_verdict_inbox.py tests/test_ledger_store.py tests/test_model_registry.py tests/test_patterns_scanner.py -q`
-  - `npm --prefix app run check` currently blocked in this worktree (`svelte-kit: command not found`)
-- remaining blockers: legacy truth backfill policy, durable definition store/UUID namespace decision, and UI consumption remain future slices
+  - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py tests/test_search_routes.py tests/test_runtime_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py tests/test_model_registry.py tests/test_pattern_entry_scorer.py tests/test_patterns_scanner.py -q`
+  - `npm --prefix app run check`
+- remaining blockers: explicit scope on runtime capture/ledger list routes, legacy truth backfill policy, durable definition namespace decision, and UI consumption remain future slices

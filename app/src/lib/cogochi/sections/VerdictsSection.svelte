@@ -14,6 +14,18 @@
     { sym: 'DOGEUSDT', setup: 'cvd_div', v: 'disagree', when: '08:31', alpha: -32, pnl: null },
     { sym: 'SOLUSDT', setup: 'tradoor_v2', v: 'agree', when: '06:14', alpha: 71, pnl: '+1.1%' },
   ];
+
+  function openVerdict(index: number): void {
+    const verdict = verdicts[index];
+    onOpenTab({ id: `v_${index}`, kind: 'rejudge', title: `${verdict.sym} · rejudge`, verdict });
+  }
+
+  function onItemKeyDown(event: KeyboardEvent, index: number): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openVerdict(index);
+    }
+  }
 </script>
 
 <div class="section">
@@ -23,7 +35,10 @@
       class="item"
       class:agree={v.v === 'agree'}
       class:disagree={v.v === 'disagree'}
-      onclick={() => onOpenTab({ id: `v_${i}`, kind: 'rejudge', title: `${v.sym} · rejudge`, verdict: v })}
+      onclick={() => openVerdict(i)}
+      onkeydown={(event) => onItemKeyDown(event, i)}
+      role="button"
+      tabindex="0"
     >
       <div class="header">
         <span class="verdict">{v.v === 'agree' ? 'Y' : 'N'}</span>

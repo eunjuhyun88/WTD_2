@@ -8,6 +8,7 @@
    * - Persisted: open state + height + active tab in localStorage.
    */
   import { onMount } from 'svelte';
+  import type { Snippet } from 'svelte';
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
 
@@ -20,6 +21,10 @@
     reviewCount?: number;
     /** Programmatically open to a specific tab (e.g. from capture annotation click on tablet). */
     openTab?: Tab | null;
+    analyze?: Snippet;
+    scan?: Snippet;
+    judge?: Snippet;
+    review?: Snippet;
   }
   let {
     analyzeCount = 0,
@@ -27,6 +32,10 @@
     judgeCount = 0,
     reviewCount = 0,
     openTab = null,
+    analyze,
+    scan,
+    judge,
+    review,
   }: Props = $props();
 
   $effect(() => {
@@ -169,13 +178,13 @@
       transition:fly={{ y: prefersReducedMotion ? 0 : 20, duration: prefersReducedMotion ? 0 : 180, easing: cubicOut }}
     >
       {#if activeTab === 'analyze'}
-        <slot name="analyze" />
+        {@render analyze?.()}
       {:else if activeTab === 'scan'}
-        <slot name="scan" />
+        {@render scan?.()}
       {:else if activeTab === 'judge'}
-        <slot name="judge" />
+        {@render judge?.()}
       {:else if activeTab === 'review'}
-        <slot name="review" />
+        {@render review?.()}
       {/if}
     </div>
   {/if}

@@ -121,29 +121,30 @@
     {/if}
   </div>
 
+  {#snippet reviewContent()}
+    {#if isTablet && selectedCapture}
+      <CaptureReviewDrawer
+        annotation={selectedCapture}
+        variant="inline"
+        onClose={clearCapture}
+        onVerdict={() => clearCapture()}
+      />
+    {:else}
+      {@render review?.()}
+    {/if}
+  {/snippet}
+
   <PeekDrawer
     {analyzeCount}
     {scanCount}
     {judgeCount}
     reviewCount={effectiveReviewCount}
     openTab={peekOpenTab}
-  >
-    <svelte:fragment slot="analyze">{@render analyze?.()}</svelte:fragment>
-    <svelte:fragment slot="scan">{@render scan?.()}</svelte:fragment>
-    <svelte:fragment slot="judge">{@render judge?.()}</svelte:fragment>
-    <svelte:fragment slot="review">
-      {#if isTablet && selectedCapture}
-        <CaptureReviewDrawer
-          annotation={selectedCapture}
-          variant="inline"
-          onClose={clearCapture}
-          onVerdict={() => clearCapture()}
-        />
-      {:else}
-        {@render review?.()}
-      {/if}
-    </svelte:fragment>
-  </PeekDrawer>
+    {analyze}
+    {scan}
+    {judge}
+    review={reviewContent}
+  />
 </main>
 
 <style>

@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`46382882` — current local `origin/main` ref
+`219dc317` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -41,12 +41,13 @@
 | #237 (W-0148) | docs queue refresh landed on main so post-raw execution order and branch map were realigned to the canonical lane order |
 | #238 (W-0122) | `/api/confluence/current` fallback now reads analyze service directly instead of loopbacking through `/api/cogochi/analyze`; W-0122 conflict-marker drift was cleaned |
 | #239 (W-0160) | DOUNI pattern search now flows through `PatternSeedScout` / canonical `PatternDraft -> SearchQuerySpec` contracts instead of local route-specific wiring |
+| #240 (W-0148 / W-0160) | post-merge refresh branch restores `captures` benchmark-search route truth and keeps the next-step plan aligned with the live repo state |
 | #241 (W-0148) | post-merge execution queue was refreshed again after the W-0122/W-0160 follow-up merges so the next lanes stayed fact -> search -> runtime -> contract -> raw follow-up |
 | #242 (W-0160) | `/patterns/{slug}/stats` and `/patterns/stats/all` now expose explicit `definition_scope`, and app pattern-stats proxies pass through scoped queries |
 | #243 (W-0148) | next execution plan was resynced again after the latest merged follow-ups so CURRENT stayed aligned with the canonical lane order and branch map |
 | #244 (W-0161) | app warning cleanup landed on latest main base; `npm --prefix app run check` now reports `0 errors / 0 warnings` and the queue resumes on engine lanes without app warning noise |
 | #248 (W-0159) | engine-owned Coinalyze market-wide liquidation ingress now materializes public windows into `market_liquidation_windows`, while optional Binance user-data diagnostics stay isolated by provider/venue |
-| #240 (W-0148 / W-0160) | post-merge plan refresh branch was kept mergeable on latest `main` by restoring `captures` benchmark-search route truth and re-syncing engine contract artifacts after upstream drift |
+| #249 (W-0159) | public liquidation ingress follow-up closed with Coinalyze credential handling, diagnostics, and refreshed raw-plane tests/docs |
 
 ---
 
@@ -67,8 +68,8 @@
 
 | ID | 상태 | 재개 조건 |
 |---|---|---|
-| W-0160 | 🟡 DEFERRED | legacy backfill 결정은 루프 완성 후 |
-| W-0148 | 🟡 DEFERRED | plane contract skeleton은 루프 완성 후 |
+| W-0160 | 🟡 DEFERRED | runtime capture/ledger scope policy, legacy backfill policy, durable definition namespace decision은 루프 완성 후 |
+| W-0148 | 🟡 DEFERRED | broader plane contract/governance owner 작업은 루프 완성 후 |
 | W-0122 | 🟡 DEFERRED | fact-plane canonical routes는 루프 완성 후 |
 | W-0145 | 🟡 DEFERRED | corpus/search store는 루프 완성 후 |
 | W-0150 | 🟡 DEFERRED | breakout production lane은 루프 완성 후 |
@@ -77,9 +78,9 @@
 | W-0156 | 🟡 DEFERRED | feature plane foundation은 루프 완성 후 |
 | W-0157 | 🟡 DEFERRED | similar-live feature ranking은 루프 완성 후 |
 | W-0158 | 🟡 DEFERRED | promotion feature diagnostics는 루프 완성 후 |
-| W-0159 | 🟡 DEFERRED | public liquidation source는 루프 완성 후 |
-| W-0149 | 🟡 DEFERRED | benchmark pack / search bridge truth is being restored via PR #240 and the remaining loop-proof scope is absorbed by W-0200 |
-| W-0142 | 🟡 DEFERRED | runtime state APIs는 루프 완성 후 |
+| W-0159 | 🟡 DEFERRED | next raw family 우선순위 결정은 루프 완성 후 |
+| W-0149 | 🟡 DEFERRED | benchmark pack / search bridge의 남은 loop-proof 범위는 W-0200에 흡수 |
+| W-0142 | 🟡 DEFERRED | runtime state API 확장은 루프 완성 후 |
 | W-0140 | 🟡 DEFERRED | bottom ANALYZE slimming은 루프 완성 후 |
 
 ## Reference / Assist

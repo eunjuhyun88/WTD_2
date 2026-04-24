@@ -71,6 +71,7 @@ Engine logic change
 7. current repository has canonical Cloud Run deploy paths for `engine-api` and `worker-control`, but `app-web` is still configured around `@sveltejs/adapter-vercel`, so the full three-runtime topology is not yet executable from the repo as one server-operable system.
 8. this branch now adds an `app-web` dual-target build (`vercel` default, `cloud-run` via `@sveltejs/adapter-node`), `cloudbuild.app.yaml`, and a Cloud Run app deploy runbook, so the three-runtime topology is executable from repository artifacts.
 9. Cloud Run smoke exposed two real server blockers on the app surface: `/api/confluence/current` had route-local helper leakage that broke Node builds, and `/healthz` / `/readyz` were incorrectly behind the auth redirect path.
+10. `origin/main` is now at `cf657e39` after PR #241 and PR #242, so this lane's remaining work is queue hygiene only; the next real execution lanes stay `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`.
 
 ## Assumptions
 
@@ -115,7 +116,8 @@ Engine logic change
 - production topology for this reset is `app-web`, `engine-api`, and `worker-control` on separate runtimes; `app-web` must support both current Vercel compatibility and a canonical Cloud Run node build so the repo can run as an all-server deployment without re-architecting the app later.
 - `app-web` on Cloud Run remains surface/orchestration only: it may proxy canonical `facts/search/runtime` contracts and own public auth/session/readiness, but it must not absorb engine compute or privileged worker secrets.
 - server health/readiness endpoints (`/healthz`, `/readyz`) are public operational surfaces and must remain outside page-auth redirects.
-- after PR #230 / #231 / #232, the post-merge execution queue is `W-0122 facts -> W-0145 search -> W-0142 runtime -> W-0160 contract follow-up -> W-0159 public liquidation source`, not another branch-extraction wave.
+- after PR #241 / #242 layered onto PR #236 / #238 / #239 and earlier PR #230 / #231 / #232, the post-merge execution queue is still `W-0122 facts -> W-0145 search -> W-0142 runtime -> W-0160 contract follow-up -> W-0159 public liquidation source`, not another branch-extraction wave.
+- branch split reason for this refresh: local `codex/w-0148-current-plan-refresh-20260424` carries unrelated engine WIP in another checkout, so post-merge plan updates must land as clean docs-only merge units from updated `main`.
 
 ## Current Layer Map
 
@@ -224,33 +226,35 @@ Engine logic change
 
 ## Execution Queue
 
-1. `PR0.1`: normalize work-item ownership / execution order / branch plan
-2. `PR0.2`: add plane contract skeleton plus plane-specific app proxies
-3. `W-0122`: finish engine-owned fact-plane slices and cut app consumers to `GET /ctx/fact` or follow-up fact routes
-4. `W-0145`: extract scheduler-built corpus so historical retrieval stops depending on broad live fan-out
-5. `W-0142`: expose authoritative runtime-state APIs before agent/surface coupling
-6. `W-0143`: add `AgentContextPack` loader and unify agent/search integration after A/B/C
-7. `W-0139`: keep as surface closeout only after upstream contracts are frozen
-8. `W-0141`: reduce to workspace/data-contract assist lane, not top-level architecture owner
+1. `W-0122`: fact-plane consumer mainline after PR #236 / #238 — retire remaining market-cap/confluence bridges, push more consumers onto engine-preferred `/facts/*`, and open confluence scoring runway.
+2. `W-0145`: search-plane promotion over the merged raw/search baseline — corpus accumulation, canonical `/search/*`, and read models that stop depending on broad live fan-out.
+3. `W-0142`: runtime-state read/write family expansion — authoritative `/runtime/*` repositories for captures, research context, ledger, and workspace state.
+4. `W-0160`: contract follow-up only — runtime capture/ledger scope policy, legacy backfill/sunset policy, durable definition namespace, and canonical key cleanup after PR #235 / #239 / #242.
+5. `W-0159`: raw follow-up only — public or market-wide liquidation source decision, liquidation fact promotion, and next raw-family expansion only if a concrete retrieval/product gap remains.
+6. `W-0156`: canonical `feature_windows` and reusable derived math promotion so cross-pattern feature truth stops living inside pattern families.
+7. `W-0140`: surface slimming only after upstream fact/search/runtime contracts above are stable.
+8. infra decisions: Cloud Run region choice plus production app-web env/secret wiring.
 
 ## Branch Plan
 
 - `codex/w-0148-data-engine-reset`
   - docs + blocking contract split only
 - `codex/w-0122-fact-plane-mainline`
-  - fact-plane only
-- `codex/w-0145-corpus-plane`
-  - fresh branch from `main` for corpus extraction only
-- `codex/w-0142-runtime-state-plane`
-  - fresh branch from `main` for runtime-state repositories and APIs only
-- `codex/w-0143-agent-search-integration`
-  - fresh branch from `main` for `AgentContextPack` and agent route unification only
-- `codex/w-0139-surface-closeout`
-  - only if surface follow-up is reopened after upstream cutover
+  - active clean fact-plane execution lane; prioritize remaining consumer cuts over new side-lanes
+- `codex/w-0145-*`
+  - next clean `main`-based merge unit for corpus/search read-model promotion only
+- `codex/w-0142-*`
+  - next clean `main`-based merge unit for runtime-state repository/route expansion only
+- `codex/w-0160-pattern-definition-plane`
+  - follow-up lane for definition-scope policy/backfill/namespace decisions only; avoid new DOUNI-specific forks
+- `codex/w-0159-*`
+  - raw follow-up branch only if liquidation-source/product gaps are explicit
+- docs-only queue refresh branches
+  - merge-only references; do not reuse as execution lanes for product or engine code
 
 ## Next Steps
 
-1. refresh the canonical queue after merged PR #230 / #231 / #232 so `W-0122`, `W-0145`, and `W-0142` are again the top execution lanes and `W-0159` is narrowed to public-liquidation follow-up only.
+1. keep `CURRENT.md` aligned with merged mainline so the canonical order remains `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`, and reject new branch-extraction work that bypasses that queue.
 2. W-0156/W-0122 implementation lanes should codify the raw retention split explicitly: canonical normalized tables for replay-critical data, TTL cache for provider-native blobs, and materialized `feature_windows` as the cross-pattern contract.
 3. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
 

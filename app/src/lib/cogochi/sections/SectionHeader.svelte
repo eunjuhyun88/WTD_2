@@ -14,7 +14,7 @@
   {#if hint}
     <span class="hint">{hint}</span>
   {/if}
-  <span class="spacer" />
+  <span class="spacer"></span>
   {#if action}
     <button class="action" onclick={onAction}>{action}</button>
   {/if}

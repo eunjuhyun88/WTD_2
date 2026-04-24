@@ -36,7 +36,50 @@ def _require_pattern(slug: str) -> None:
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
 
+def _outcome_definition_id(outcome) -> str | None:
+    value = getattr(outcome, "definition_id", None)
+    if isinstance(value, str) and value:
+        return value
+    definition_ref = getattr(outcome, "definition_ref", None)
+    if not isinstance(definition_ref, dict):
+        return None
+    nested = definition_ref.get("definition_id")
+    return nested if isinstance(nested, str) and nested else None
 
+
+def _list_outcomes_scoped(ledger: LedgerStore, slug: str, *, definition_id: str | None = None) -> list:
+    if definition_id is None:
+        return ledger.list_all(slug)
+    try:
+        return ledger.list_all(slug, definition_id=definition_id)
+    except TypeError:
+        return [
+            outcome
+            for outcome in ledger.list_all(slug)
+            if _outcome_definition_id(outcome) == definition_id
+            or (_outcome_definition_id(outcome) is None and current_definition_id(slug) == definition_id)
+        ]
+
+def _normalize_definition_scope(
+    *,
+    definition_id: str | None = None,
+    definition_scope: str = "current_definition",
+) -> str:
+    if definition_scope not in {"current_definition", "all_definitions"}:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "pattern_definition_scope_invalid", "definition_scope": definition_scope},
+        )
+    if definition_id is not None and definition_scope == "all_definitions":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "pattern_definition_scope_conflict",
+                "definition_scope": definition_scope,
+                "definition_id": definition_id,
+            },
+        )
+    return definition_scope
 def list_patterns_sync() -> dict:
     return {
         "patterns": [
@@ -198,19 +241,28 @@ def get_stats_sync(
     outcomes: list | None = None,
     *,
     definition_id: str | None = None,
+    definition_scope: str = "current_definition",
     record_store=None,
 ) -> dict:
     _require_pattern(slug)
-    definition_ref = (
-        _resolve_definition_ref_or_http(slug, definition_id=definition_id)
-        if definition_id is not None
-        else _resolve_definition_ref(slug)
+    resolved_scope = _normalize_definition_scope(
+        definition_id=definition_id,
+        definition_scope=definition_scope,
     )
-    resolved_definition_id = (
-        definition_ref.get("definition_id")
-        if isinstance(definition_ref, dict)
-        else None
-    )
+    if resolved_scope == "all_definitions":
+        definition_ref = None
+        resolved_definition_id = None
+    else:
+        definition_ref = (
+            _resolve_definition_ref_or_http(slug, definition_id=definition_id)
+            if definition_id is not None
+            else _resolve_definition_ref(slug)
+        )
+        resolved_definition_id = (
+            definition_ref.get("definition_id")
+            if isinstance(definition_ref, dict)
+            else None
+        )
     if outcomes is None:
         outcomes = list_outcomes_for_definition(
             ledger,
@@ -270,10 +322,11 @@ def get_stats_sync(
         "definition_ref": definition_ref,
         "scope": {
             "pattern_slug": slug,
+            "definition_scope": resolved_scope,
             "definition_id": resolved_definition_id,
-            "outcome_metrics": "definition_id" if resolved_definition_id is not None else "pattern_slug",
-            "record_family": "definition_id" if resolved_definition_id is not None else "pattern_slug",
-            "model_artifacts": "definition_id" if resolved_definition_id is not None else "pattern_slug",
+            "outcome_metrics": "definition_id" if resolved_definition_id is not None else "all_definitions",
+            "record_family": "definition_id" if resolved_definition_id is not None else "all_definitions",
+            "model_artifacts": "definition_id" if resolved_definition_id is not None else "all_definitions",
         },
         "total": stats.total_instances,
         "pending": stats.pending_count,
@@ -375,7 +428,11 @@ def _definition_artifact_summary(
     }
 
 
-def get_all_stats_sync(ledger: LedgerStore) -> dict:
+def get_all_stats_sync(
+    ledger: LedgerStore,
+    *,
+    definition_scope: str = "current_definition",
+) -> dict:
     """Return stats for all known patterns — batch-prefetch outcomes when possible.
 
     With SupabaseLedgerStore: 1 DB roundtrip (batch_list_all) vs 2N per-slug queries.
@@ -393,15 +450,20 @@ def get_all_stats_sync(ledger: LedgerStore) -> dict:
     for slug in PATTERN_LIBRARY:
         try:
             outcomes = prefetched.get(slug, []) if prefetched is not None else None
-            results[slug] = get_stats_sync(slug, ledger, outcomes=outcomes)
+            results[slug] = get_stats_sync(
+                slug,
+                ledger,
+                outcomes=outcomes,
+                definition_scope=definition_scope,
+            )
         except Exception:
             results[slug] = {"pattern_slug": slug, "error": "unavailable"}
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     import logging
     logging.getLogger("engine.patterns.stats").info(
-        "get_all_stats_sync: %d patterns in %dms (batch=%s)",
-        len(results), elapsed_ms, prefetched is not None,
+        "get_all_stats_sync: %d patterns in %dms (batch=%s scope=%s)",
+        len(results), elapsed_ms, prefetched is not None, definition_scope,
     )
     return {"patterns": results, "count": len(results)}
 
