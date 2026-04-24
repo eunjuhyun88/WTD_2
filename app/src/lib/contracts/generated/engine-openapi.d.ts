@@ -5667,7 +5667,9 @@ export interface operations {
     };
     get_all_stats_patterns_stats_all_get: {
         parameters: {
-            query?: never;
+            query?: {
+                definition_scope?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5683,6 +5685,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5724,6 +5735,7 @@ export interface operations {
         parameters: {
             query?: {
                 definition_id?: string | null;
+                definition_scope?: string;
             };
             header?: never;
             path: {
