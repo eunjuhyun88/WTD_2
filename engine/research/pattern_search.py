@@ -472,7 +472,6 @@ class PatternSearchRunArtifact:
     benchmark_pack_id: str
     winner_variant_slug: str | None
     variant_results: list[VariantSearchResult]
-    definition_ref: dict = field(default_factory=dict)
     search_query_spec: dict | None = None
     variant_specs: list[PatternVariantSpec] = field(default_factory=list)
     variant_deltas: list[VariantDeltaInsight] = field(default_factory=list)
