@@ -455,6 +455,7 @@ class PatternSearchRunArtifact:
     winner_variant_slug: str | None
     variant_results: list[VariantSearchResult]
     definition_ref: dict = field(default_factory=dict)
+    search_query_spec: dict | None = None
     variant_specs: list[PatternVariantSpec] = field(default_factory=list)
     variant_deltas: list[VariantDeltaInsight] = field(default_factory=list)
     branch_insights: list[MutationBranchInsight] = field(default_factory=list)
@@ -475,6 +476,7 @@ class PatternSearchRunArtifact:
             "definition_ref": dict(self.definition_ref),
             "benchmark_pack_id": self.benchmark_pack_id,
             "winner_variant_slug": self.winner_variant_slug,
+            "search_query_spec": self.search_query_spec,
             "variant_results": [result.to_dict() for result in self.variant_results],
             "variant_specs": [spec.to_dict() for spec in self.variant_specs],
             "variant_deltas": [delta.to_dict() for delta in self.variant_deltas],
@@ -533,6 +535,7 @@ class PatternBenchmarkSearchConfig:
     benchmark_pack_id: str | None = None
     objective_id: str | None = None
     variants: list[PatternVariantSpec] | None = None
+    search_query_spec: dict | None = None
     warmup_bars: int = 240
     min_reference_score: float = 0.55
     min_holdout_score: float = 0.35
@@ -2906,6 +2909,7 @@ def run_pattern_benchmark_search(
             definition_ref=run_definition_ref,
             benchmark_pack_id=pack.benchmark_pack_id,
             winner_variant_slug=winner.variant_slug if winner is not None else None,
+            search_query_spec=copy.deepcopy(config.search_query_spec),
             variant_results=variant_results,
             variant_specs=variants,
             variant_deltas=variant_deltas,

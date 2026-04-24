@@ -1,9 +1,10 @@
 <script lang="ts">
+  import type { SearchQuerySpec } from '$lib/contracts/search/querySpec';
   import type { TerminalAsset } from '$lib/types/terminal';
 
   type MatchCandidate = {
     symbol: string;
-    source: 'board' | 'scan';
+    source: 'engine';
     score: number;
     matchedSignals: string[];
     missingSignals: string[];
@@ -29,6 +30,20 @@
   let candidates = $state<MatchCandidate[]>([]);
   let snapshotFiles = $state<File[]>([]);
   let requestedSignals = $state<string[]>([]);
+  let searchQuerySpec = $state<SearchQuerySpec | null>(null);
+
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function isSearchQuerySpec(value: unknown): value is SearchQuerySpec {
+    return (
+      isRecord(value) &&
+      typeof value.pattern_family === 'string' &&
+      typeof value.reference_timeframe === 'string' &&
+      Array.isArray(value.phase_path)
+    );
+  }
 
   function handleSnapshotChange(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
@@ -45,16 +60,10 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           thesis,
+          activeSymbol,
+          timeframe,
           snapshotNames: snapshotFiles.map((file) => file.name),
-          assets: assets.map((asset) => ({
-            symbol: asset.symbol,
-            changePct15m: asset.changePct15m,
-            changePct1h: asset.changePct1h,
-            changePct4h: asset.changePct4h,
-            volumeRatio1h: asset.volumeRatio1h,
-            oiChangePct1h: asset.oiChangePct1h,
-            fundingRate: asset.fundingRate,
-          })),
+          boardSymbols: assets.map((asset) => asset.symbol),
         }),
       });
       const body = await res.json();
@@ -62,11 +71,13 @@
         throw new Error(body?.error ?? `HTTP ${res.status}`);
       }
       requestedSignals = Array.isArray(body.seed?.requestedSignals) ? body.seed.requestedSignals : [];
+      searchQuerySpec = isSearchQuerySpec(body.seed?.searchQuerySpec) ? body.seed.searchQuerySpec : null;
       candidates = Array.isArray(body.candidates) ? body.candidates : [];
     } catch (err) {
       error = String(err);
       candidates = [];
       requestedSignals = [];
+      searchQuerySpec = null;
     } finally {
       loading = false;
     }
@@ -120,6 +131,18 @@
             {#each requestedSignals as signal}
               <span class="chip signal">{signal}</span>
             {/each}
+          </div>
+        {/if}
+
+        {#if searchQuerySpec}
+          <div class="seed-spec">
+            <p class="seed-label">Engine Query Spec</p>
+            <div class="chip-row">
+              <span class="chip spec">{searchQuerySpec.reference_timeframe}</span>
+              {#each searchQuerySpec.phase_path as phase}
+                <span class="chip spec">{phase}</span>
+              {/each}
+            </div>
           </div>
         {/if}
 
@@ -259,6 +282,14 @@
   .chip.signal {
     border-color: rgba(74,222,128,0.22);
     color: rgba(167,243,208,0.95);
+  }
+  .chip.spec {
+    border-color: rgba(131,188,255,0.26);
+    color: rgba(214,231,255,0.9);
+  }
+  .seed-spec {
+    display: grid;
+    gap: 6px;
   }
   .seed-actions {
     display: flex;

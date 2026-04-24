@@ -118,7 +118,7 @@ function toEngineResearchContext(
           image_refs: value.source.imageRefs ?? [],
         }
       : undefined,
-    pattern_family: value.patternFamily,
+    pattern_family: value.patternFamily ?? value.patternDraft?.patternFamily,
     thesis: value.thesis ?? [],
     phase_annotations: (value.phaseAnnotations ?? []).map((phase) => ({
       phase_id: phase.phaseId,
@@ -147,6 +147,53 @@ function toEngineResearchContext(
         }
       : undefined,
     research_tags: value.researchTags ?? [],
+    pattern_draft: value.patternDraft
+      ? {
+          schema_version: value.patternDraft.schemaVersion,
+          pattern_family: value.patternDraft.patternFamily,
+          pattern_label: value.patternDraft.patternLabel,
+          source_type: value.patternDraft.sourceType,
+          source_text: value.patternDraft.sourceText,
+          symbol_candidates: value.patternDraft.symbolCandidates ?? [],
+          timeframe: value.patternDraft.timeframe,
+          thesis: value.patternDraft.thesis ?? [],
+          phases: (value.patternDraft.phases ?? []).map((phase) => ({
+            phase_id: phase.phaseId,
+            label: phase.label,
+            sequence_order: phase.sequenceOrder,
+            description: phase.description,
+            timeframe: phase.timeframe,
+            signals_required: phase.signalsRequired ?? [],
+            signals_preferred: phase.signalsPreferred ?? [],
+            signals_forbidden: phase.signalsForbidden ?? [],
+            directional_belief: phase.directionalBelief,
+            evidence_text: phase.evidenceText,
+            time_hint: phase.timeHint,
+            importance: phase.importance,
+          })),
+          trade_plan: value.patternDraft.tradePlan ?? {},
+          search_hints: {
+            must_have_signals: value.patternDraft.searchHints?.mustHaveSignals ?? [],
+            preferred_timeframes: value.patternDraft.searchHints?.preferredTimeframes ?? [],
+            exclude_patterns: value.patternDraft.searchHints?.excludePatterns ?? [],
+            similarity_focus: value.patternDraft.searchHints?.similarityFocus ?? [],
+            symbol_scope: value.patternDraft.searchHints?.symbolScope ?? [],
+          },
+          confidence: value.patternDraft.confidence,
+          ambiguities: value.patternDraft.ambiguities ?? [],
+        }
+      : undefined,
+    parser_meta: value.parserMeta
+      ? {
+          parser_role: value.parserMeta.parserRole,
+          parser_model: value.parserMeta.parserModel,
+          parser_prompt_version: value.parserMeta.parserPromptVersion,
+          pattern_draft_schema_version: value.parserMeta.patternDraftSchemaVersion,
+          signal_vocab_version: value.parserMeta.signalVocabVersion,
+          confidence: value.parserMeta.confidence,
+          ambiguity_count: value.parserMeta.ambiguityCount,
+        }
+      : undefined,
   };
 }
 
@@ -154,10 +201,18 @@ function fromEngineResearchContext(
   value: Record<string, unknown> | null | undefined
 ): PatternCaptureRecord['researchContext'] | undefined {
   if (!value || typeof value !== 'object') return undefined;
-  if (typeof value.pattern_family !== 'string' || value.pattern_family.length === 0) return undefined;
   const source = value.source as Record<string, unknown> | undefined;
   const entrySpec = value.entry_spec as Record<string, unknown> | undefined;
   const outcomeSpec = value.outcome_spec as Record<string, unknown> | undefined;
+  const patternDraft = value.pattern_draft as Record<string, unknown> | undefined;
+  const parserMeta = value.parser_meta as Record<string, unknown> | undefined;
+  const patternFamily =
+    typeof value.pattern_family === 'string' && value.pattern_family.length > 0
+      ? value.pattern_family
+      : typeof patternDraft?.pattern_family === 'string' && patternDraft.pattern_family.length > 0
+        ? patternDraft.pattern_family
+        : undefined;
+  if (!patternFamily) return undefined;
   const phaseAnnotations = Array.isArray(value.phase_annotations)
     ? value.phase_annotations
     : [];
@@ -177,7 +232,7 @@ function fromEngineResearchContext(
             : [],
         }
       : undefined,
-    patternFamily: String(value.pattern_family ?? ''),
+    patternFamily: String(patternFamily),
     thesis: Array.isArray(value.thesis) ? value.thesis.map((item) => String(item)) : [],
     phaseAnnotations: phaseAnnotations.map((phase) => {
       const row = phase as Record<string, unknown>;
@@ -218,6 +273,75 @@ function fromEngineResearchContext(
         }
       : undefined,
     researchTags: Array.isArray(value.research_tags) ? value.research_tags.map((item) => String(item)) : [],
+    patternDraft: patternDraft
+      ? {
+          schemaVersion: Number(patternDraft.schema_version ?? 1),
+          patternFamily: String(patternDraft.pattern_family ?? ''),
+          patternLabel: patternDraft.pattern_label ? String(patternDraft.pattern_label) : undefined,
+          sourceType: String(patternDraft.source_type ?? 'manual_note'),
+          sourceText: String(patternDraft.source_text ?? ''),
+          symbolCandidates: Array.isArray(patternDraft.symbol_candidates)
+            ? patternDraft.symbol_candidates.map((item) => String(item))
+            : [],
+          timeframe: patternDraft.timeframe ? String(patternDraft.timeframe) : undefined,
+          thesis: Array.isArray(patternDraft.thesis) ? patternDraft.thesis.map((item) => String(item)) : [],
+          phases: Array.isArray(patternDraft.phases)
+            ? patternDraft.phases.map((phase) => {
+                const row = phase as Record<string, unknown>;
+                return {
+                  phaseId: String(row.phase_id ?? ''),
+                  label: String(row.label ?? ''),
+                  sequenceOrder: Number(row.sequence_order ?? 0),
+                  description: row.description ? String(row.description) : '',
+                  timeframe: row.timeframe ? String(row.timeframe) : undefined,
+                  signalsRequired: Array.isArray(row.signals_required) ? row.signals_required.map((item) => String(item)) : [],
+                  signalsPreferred: Array.isArray(row.signals_preferred) ? row.signals_preferred.map((item) => String(item)) : [],
+                  signalsForbidden: Array.isArray(row.signals_forbidden) ? row.signals_forbidden.map((item) => String(item)) : [],
+                  directionalBelief: row.directional_belief ? String(row.directional_belief) : undefined,
+                  evidenceText: row.evidence_text ? String(row.evidence_text) : undefined,
+                  timeHint: row.time_hint ? String(row.time_hint) : undefined,
+                  importance: typeof row.importance === 'number' ? row.importance : undefined,
+                };
+              })
+            : [],
+          tradePlan:
+            patternDraft.trade_plan && typeof patternDraft.trade_plan === 'object'
+              ? (patternDraft.trade_plan as Record<string, unknown>)
+              : {},
+          searchHints: patternDraft.search_hints && typeof patternDraft.search_hints === 'object'
+            ? {
+                mustHaveSignals: Array.isArray((patternDraft.search_hints as Record<string, unknown>).must_have_signals)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).must_have_signals as unknown[]).map((item) => String(item))
+                  : [],
+                preferredTimeframes: Array.isArray((patternDraft.search_hints as Record<string, unknown>).preferred_timeframes)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).preferred_timeframes as unknown[]).map((item) => String(item))
+                  : [],
+                excludePatterns: Array.isArray((patternDraft.search_hints as Record<string, unknown>).exclude_patterns)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).exclude_patterns as unknown[]).map((item) => String(item))
+                  : [],
+                similarityFocus: Array.isArray((patternDraft.search_hints as Record<string, unknown>).similarity_focus)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).similarity_focus as unknown[]).map((item) => String(item))
+                  : [],
+                symbolScope: Array.isArray((patternDraft.search_hints as Record<string, unknown>).symbol_scope)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).symbol_scope as unknown[]).map((item) => String(item))
+                  : [],
+              }
+            : { mustHaveSignals: [], preferredTimeframes: [], excludePatterns: [], similarityFocus: [], symbolScope: [] },
+          confidence: typeof patternDraft.confidence === 'number' ? patternDraft.confidence : null,
+          ambiguities: Array.isArray(patternDraft.ambiguities) ? patternDraft.ambiguities.map((item) => String(item)) : [],
+        }
+      : undefined,
+    parserMeta: parserMeta
+      ? {
+          parserRole: String(parserMeta.parser_role ?? ''),
+          parserModel: String(parserMeta.parser_model ?? ''),
+          parserPromptVersion: String(parserMeta.parser_prompt_version ?? ''),
+          patternDraftSchemaVersion: Number(parserMeta.pattern_draft_schema_version ?? 1),
+          signalVocabVersion: String(parserMeta.signal_vocab_version ?? ''),
+          confidence: typeof parserMeta.confidence === 'number' ? parserMeta.confidence : null,
+          ambiguityCount: Number(parserMeta.ambiguity_count ?? 0),
+        }
+      : undefined,
   };
 }
 

@@ -45,7 +45,8 @@ def fetch_klines_max(symbol: str, timeframe: str = "1h") -> pd.DataFrame:
     """Fetch the maximum available history for (symbol, timeframe).
 
     Returns a DataFrame indexed by UTC timestamp with columns:
-        open, high, low, close, volume, taker_buy_base_volume
+        open, high, low, close, volume, quote_volume, trade_count,
+        taker_buy_base_volume, taker_buy_quote_volume
 
     Raises RuntimeError if the symbol is delisted / invalid / returns no data.
 
@@ -80,11 +81,21 @@ def fetch_klines_max(symbol: str, timeframe: str = "1h") -> pd.DataFrame:
             "taker_buy_base_volume", "taker_buy_quote_volume", "ignore",
         ],
     )
-    numeric = ["open", "high", "low", "close", "volume", "taker_buy_base_volume"]
+    numeric = [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_volume",
+        "taker_buy_base_volume",
+        "taker_buy_quote_volume",
+    ]
     for col in numeric:
         df[col] = df[col].astype(float)
+    df["trade_count"] = df["trades"].astype(int)
     df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
-    df = df[["timestamp"] + numeric].set_index("timestamp")
+    df = df[["timestamp"] + numeric + ["trade_count"]].set_index("timestamp")
     # Defensive dedupe: occasional batch overlap on the page boundary.
     df = df[~df.index.duplicated(keep="last")].sort_index()
     return df
