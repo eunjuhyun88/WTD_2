@@ -12,6 +12,9 @@ from api.schemas_search import (
     SearchCorpusWindowSummary,
     SeedSearchRequest,
     SeedSearchResponse,
+    SimilarCandidateOut,
+    SimilarSearchRequest,
+    SimilarSearchResponse,
 )
 from patterns.definitions import PatternDefinitionService
 from search.corpus import SearchCorpusStore
@@ -124,6 +127,60 @@ def _candidate(row: dict, *, request: dict[str, object]) -> SearchCandidate:
         score=float(row.get("score", 0.0)),
         definition_ref=definition_ref,
         payload=payload,
+    )
+
+
+@router.post("/similar", response_model=SimilarSearchResponse)
+async def search_similar(body: SimilarSearchRequest) -> SimilarSearchResponse:
+    """Pattern similarity search using feature_windows store.
+
+    Accepts a PatternDraft dict and runs the 3-layer hybrid search:
+    - Layer A (0.45): feature signal similarity
+    - Layer B (0.45): phase sequence alignment (LCS)
+    - Layer C (0.10): context (timeframe/symbol)
+
+    Returns top-k RankedCandidates sorted by final_score DESC.
+    The store must be populated via feature_windows_builder before results are meaningful.
+    """
+    from datetime import datetime, timezone
+    from research.candidate_search import search_from_pattern_draft
+
+    try:
+        result = search_from_pattern_draft(
+            body.pattern_draft,
+            top_k=body.top_k,
+            since_days=body.since_days,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "invalid_pattern_draft", "msg": str(exc)}) from exc
+
+    candidates = [
+        SimilarCandidateOut(
+            symbol=c.symbol,
+            timeframe=c.timeframe,
+            bar_ts_ms=c.bar_ts_ms,
+            bar_iso=c.bar_iso,
+            feature_score=round(c.feature_score, 4),
+            sequence_score=round(c.sequence_score, 4),
+            context_score=round(c.context_score, 4),
+            final_score=round(c.final_score, 4),
+            observed_phase_path=c.observed_phase_path,
+            matched_phase_path=c.matched_phase_path,
+            missing_phases=c.missing_phases,
+            phase_feature_scores=[p.to_dict() for p in c.phase_feature_scores],
+        )
+        for c in result.candidates
+    ]
+
+    return SimilarSearchResponse(
+        spec_pattern_family=result.spec_pattern_family,
+        spec_phase_path=result.spec_phase_path,
+        reference_timeframe=result.reference_timeframe,
+        total_candidates_found=result.total_candidates_found,
+        top_k=result.top_k,
+        candidates=candidates,
+        search_meta=result.search_meta,
+        generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
 

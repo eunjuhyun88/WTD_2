@@ -5,33 +5,126 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 TRANSFORMER_VERSION = "query-transformer-v1"
-SIGNAL_VOCAB_VERSION = "signal-vocab-v1"
-RULE_REGISTRY_VERSION = "signal-rule-registry-v1"
+SIGNAL_VOCAB_VERSION = "signal-vocab-v2"
+RULE_REGISTRY_VERSION = "signal-rule-registry-v2"
 
 _SIGNAL_RULES: dict[str, dict[str, dict[str, Any]]] = {
+    # ── A. OI signals ─────────────────────────────────────────────────────
     "oi_spike": {
         "required_numeric": {"oi_zscore": {"min": 1.5}},
+        "required_boolean": {"oi_spike_flag": True},
     },
-    "higher_lows_sequence": {
-        "required_boolean": {"higher_lows_sequence": True},
+    "oi_small_uptick": {
+        "required_boolean": {"oi_small_uptick_flag": True},
+        "required_numeric": {"oi_change_24h": {"min": 0.0, "max": 0.03}},
+    },
+    "oi_hold_after_spike": {
+        "required_boolean": {"oi_hold_flag": True},
+    },
+    "oi_reexpansion": {
+        "required_boolean": {"oi_reexpansion_flag": True},
+        "required_numeric": {"oi_zscore": {"min": 1.0}},
+    },
+    "oi_unwind": {
+        "required_boolean": {"oi_unwind_flag": True},
+        "required_numeric": {"oi_change_24h": {"max": -0.04}},
+    },
+    # ── B. Funding signals ────────────────────────────────────────────────
+    "funding_extreme_short": {
+        "required_boolean": {"funding_extreme_short_flag": True},
+        "required_numeric": {"funding_rate": {"max": -0.0003}},
+    },
+    "funding_extreme_long": {
+        "required_boolean": {"funding_extreme_long_flag": True},
+        "required_numeric": {"funding_rate": {"min": 0.0003}},
+    },
+    "funding_positive": {
+        "required_boolean": {"funding_positive_flag": True},
     },
     "funding_flip_negative_to_positive": {
         "required_boolean": {"funding_flip_negative_to_positive": True},
     },
-    "range_high_break": {
-        "required_boolean": {"range_high_break": True},
+    "funding_flip_positive_to_negative": {
+        "required_boolean": {"funding_flip_positive_to_negative": True},
     },
-    "dump_then_reclaim": {
-        "preferred_boolean": {"dump_then_reclaim": True},
-    },
-    "volume_breakout": {
-        "preferred_numeric": {"volume_percentile": {"min": 0.75}},
-    },
+    # Legacy alias kept for backward compat
     "short_funding_pressure": {
-        "required_numeric": {"funding_rate_zscore": {"max": -1.0}},
+        "required_numeric": {"funding_rate": {"max": -0.0002}},
     },
     "long_funding_pressure": {
-        "required_numeric": {"funding_rate_zscore": {"min": 1.0}},
+        "required_numeric": {"funding_rate": {"min": 0.0002}},
+    },
+    # ── C. Volume signals ─────────────────────────────────────────────────
+    "volume_spike": {
+        "required_boolean": {"volume_spike_flag": True},
+        "required_numeric": {"vol_zscore": {"min": 2.0}},
+    },
+    "low_volume": {
+        "required_boolean": {"low_volume_flag": True},
+        "required_numeric": {"vol_zscore": {"max": 0.5}},
+    },
+    "volume_dryup": {
+        "required_boolean": {"volume_dryup_flag": True},
+        "required_numeric": {"vol_zscore": {"max": -0.5}},
+    },
+    # Legacy alias
+    "volume_breakout": {
+        "required_boolean": {"volume_spike_flag": True},
+    },
+    # ── D. Price structure signals ────────────────────────────────────────
+    "price_dump": {
+        "required_boolean": {"price_dump_flag": True},
+        "required_numeric": {"price_change_4h": {"max": -0.04}},
+    },
+    "price_spike": {
+        "required_boolean": {"price_spike_flag": True},
+        "required_numeric": {"price_change_4h": {"min": 0.04}},
+    },
+    "fresh_low_break": {
+        "required_boolean": {"fresh_low_break_flag": True},
+        "required_numeric": {"price_change_1h": {"max": -0.02}},
+    },
+    "higher_lows_sequence": {
+        "required_boolean": {"higher_lows_sequence_flag": True},
+        "required_numeric": {"higher_low_count": {"min": 2.0}},
+    },
+    "higher_highs_sequence": {
+        "required_numeric": {"higher_high_count": {"min": 1.0}},
+    },
+    "sideways": {
+        "required_boolean": {"sideways_flag": True},
+        "required_numeric": {"range_width_pct": {"max": 0.06}},
+    },
+    "upward_sideways": {
+        "required_boolean": {"upward_sideways_flag": True},
+    },
+    "arch_zone": {
+        "required_boolean": {"arch_zone_flag": True},
+        "required_numeric": {"compression_ratio": {"min": 0.5}},
+    },
+    "breakout": {
+        "required_numeric": {"breakout_strength": {"min": 0.01}},
+    },
+    "range_high_break": {
+        "required_boolean": {"range_high_break": True},
+        "required_numeric": {"breakout_strength": {"min": 0.01}},
+    },
+    # Legacy alias
+    "dump_then_reclaim": {
+        "preferred_boolean": {"price_spike_flag": True},
+        "preferred_numeric": {"price_change_4h": {"min": 0.02}},
+    },
+    # ── E. Positioning signals ────────────────────────────────────────────
+    "short_build_up": {
+        "required_boolean": {"short_build_up_flag": True},
+        "required_numeric": {"long_short_ratio": {"max": 0.9}},
+    },
+    "long_build_up": {
+        "required_boolean": {"long_build_up_flag": True},
+        "required_numeric": {"long_short_ratio": {"min": 1.15}},
+    },
+    "short_to_long_switch": {
+        "required_boolean": {"short_to_long_switch_flag": True},
     },
 }
 
