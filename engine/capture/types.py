@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 import uuid
 
+from patterns.definition_refs import build_definition_ref, definition_id_from_ref
+
 CaptureKind = Literal[
     "pattern_candidate",
     "manual_hypothesis",
@@ -48,6 +50,18 @@ class CaptureRecord:
     verdict_id: str | None = None
     outcome_id: str | None = None
     status: CaptureStatus = "pending_outcome"
+
+    def __post_init__(self) -> None:
+        resolved_ref = build_definition_ref(
+            self.pattern_slug,
+            self.pattern_version,
+            existing=self.definition_ref,
+        )
+        resolved_id = self.definition_id or definition_id_from_ref(resolved_ref)
+        if resolved_id is not None:
+            object.__setattr__(self, "definition_id", resolved_id)
+        if resolved_ref:
+            object.__setattr__(self, "definition_ref", resolved_ref)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -14,6 +14,7 @@ from research.worker_control import ResearchWorkerController
 def _outcome(idx: int, *, outcome: str) -> PatternOutcome:
     return PatternOutcome(
         pattern_slug="tradoor-oi-reversal-v1",
+        pattern_version=1,
         symbol=f"SYM{idx}USDT",
         accumulation_at=datetime(2026, 4, 14, idx % 24, 0, tzinfo=timezone.utc),
         entry_price=100.0 + idx,

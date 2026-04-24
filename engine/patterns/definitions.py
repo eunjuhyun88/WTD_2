@@ -5,20 +5,18 @@ from typing import Any
 
 from capture.store import CaptureStore
 from capture.types import CaptureRecord
+from patterns.definition_refs import (
+    build_definition_id as _build_definition_id,
+    build_definition_ref as _build_definition_ref,
+    definition_id_from_ref,
+)
 from patterns.library import PATTERN_LIBRARY
 from patterns.registry import PATTERN_REGISTRY_STORE, PatternRegistryEntry, PatternRegistryStore
 from patterns.types import PatternObject
 
 
 def _definition_id(pattern: PatternObject) -> str:
-    return f"{pattern.slug}:v{pattern.version}"
-
-
-def definition_id_from_ref(definition_ref: dict[str, Any] | None) -> str | None:
-    if not isinstance(definition_ref, dict):
-        return None
-    value = definition_ref.get("definition_id")
-    return value if isinstance(value, str) and value else None
+    return _build_definition_id(pattern.slug, pattern.version) or pattern.slug
 
 
 def build_definition_ref(
@@ -29,15 +27,7 @@ def build_definition_ref(
     pattern = PATTERN_LIBRARY.get(pattern_slug)
     if pattern is None:
         return None
-    version = pattern_version or pattern.version
-    return {
-        "definition_id": f"{pattern.slug}:v{version}",
-        "pattern_slug": pattern.slug,
-        "pattern_version": version,
-        "pattern_family": pattern.slug.replace("-", "_"),
-        "timeframe": pattern.timeframe,
-        "direction": pattern.direction,
-    }
+    return _build_definition_ref(pattern_slug, pattern_version, existing=None)
 
 
 def current_definition_id(pattern_slug: str) -> str | None:

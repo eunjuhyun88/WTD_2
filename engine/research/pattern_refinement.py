@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
-from ledger.store import LedgerStore, get_ledger_store
+from ledger.store import LedgerStore, get_ledger_store, list_outcomes_for_definition
+from patterns.definition_refs import definition_id_from_ref
 from patterns.definitions import PatternDefinitionService, current_definition_id
 from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
@@ -96,7 +97,11 @@ def run_pattern_bounded_eval(
     )
 
     def _execute(run: ResearchRun) -> ResearchJobResult:
-        outcomes = ledger_store.list_all(config.pattern_slug)
+        outcomes = list_outcomes_for_definition(
+            ledger_store,
+            config.pattern_slug,
+            definition_id=definition_id_from_ref(run.definition_ref),
+        )
         summary = summarize_pattern_dataset(outcomes)
 
         if not summary.ready_to_train:
