@@ -26,6 +26,7 @@ import {
 } from '$lib/guardrails/runtime/toolPolicyConfig';
 import { recordGuardrailAudit } from '$lib/guardrails/core/audit';
 import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
+import { runPatternSeedMatch } from '$lib/server/patternSeed/match';
 import {
   buildBaseSignalSnapshotBundle,
   mapExtendedKlines,
@@ -133,6 +134,9 @@ export async function executeTool(
         break;
       case 'check_pattern_status':
         data = await executeCheckPatternStatus(args, events);
+        break;
+      case 'find_similar_patterns':
+        data = await executeFindSimilarPatterns(args, ctx, events);
         break;
       case 'chart_control':
         data = executeChartControl(args, events);
@@ -845,6 +849,40 @@ async function executeCheckPatternStatus(
     return result;
   } catch (err: any) {
     return { error: `Pattern engine unreachable: ${err.message}`, entry_candidates: [], n_entry_candidates: 0 };
+  }
+}
+
+async function executeFindSimilarPatterns(
+  args: Record<string, unknown>,
+  ctx: ToolExecutorContext,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const thesis = String(args.thesis ?? '').trim();
+  if (!thesis) return { error: 'thesis required' };
+  if (!ctx.userId) return { error: 'Authentication required for pattern search' };
+
+  const symbol = String(args.symbol ?? ctx.symbol ?? '').trim().toUpperCase() || undefined;
+  const timeframe = String(args.timeframe ?? ctx.timeframe ?? '').trim() || undefined;
+
+  events.push({ type: 'text_delta', text: 'Searching similar pattern cases...' });
+
+  try {
+    return await runPatternSeedMatch({
+      userId: ctx.userId,
+      thesis,
+      activeSymbol: symbol,
+      timeframe,
+      boardSymbols: symbol ? [symbol] : [],
+      snapshotNames: [],
+    });
+  } catch (err: any) {
+    return {
+      error: `Pattern search unavailable: ${err?.message ?? 'unknown error'}`,
+      thesis,
+      symbol,
+      timeframe,
+      candidates: [],
+    };
   }
 }
 

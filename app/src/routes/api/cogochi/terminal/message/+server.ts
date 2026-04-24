@@ -10,6 +10,7 @@
 import type { RequestHandler } from './$types';
 import { callLLMStreamWithTools, type LLMMessage } from '$lib/server/llmService';
 import { douniMessageLimiter } from '$lib/server/rateLimit';
+import { getAuthUserFromCookies } from '$lib/server/authGuard';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -187,7 +188,7 @@ const DEFAULT_PROFILE: DouniProfile = {
   stage: 'EGG',
 };
 
-export const POST: RequestHandler = async ({ request, getClientAddress, fetch: eventFetch }) => {
+export const POST: RequestHandler = async ({ request, cookies, getClientAddress, fetch: eventFetch }) => {
   if (!douniMessageLimiter.check(getClientAddress())) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
@@ -248,6 +249,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, fetch: e
   }
 
   const activeProfile: DouniProfile = { ...DEFAULT_PROFILE, ...profile };
+  const authUser = await getAuthUserFromCookies(cookies).catch(() => null);
 
   // ── Runtime mode routing ─────────────────────────────────────
   const runtimeMode = runtimeConfig?.mode;
@@ -356,6 +358,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, fetch: e
           symbol: snapshot?.symbol,
           timeframe: snapshot?.timeframe,
           cachedSnapshot: snapshot,
+          userId: authUser?.id,
         };
 
         // Tool call loop (max 3 rounds)

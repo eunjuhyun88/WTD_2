@@ -59,6 +59,7 @@ Contract change
 7. engine search/runtime/ledger already exists and phase truth remains rule-first, but the live DOUNI path still uses app-owned `analyze_market` / raw-provider fan-out instead of a canonical `PatternDraft -> SearchQuerySpec -> engine search` flow.
 8. app `createPatternCapture(...)` writes through `engine.createRuntimeCapture(...)`, so capture translation tests must model `/runtime/captures` echoing exact `pattern_draft` / `parser_meta` payloads instead of the legacy `/captures` client.
 9. the first executable slice from this contract is now merged on `origin/main` via PR #230 / #231, so the remaining work is follow-up propagation and cutover rather than first-landing uncertainty.
+10. current local follow-up extracts the `PatternSeedScout` engine bridge into a shared server helper and wires DOUNI to the same helper through a dedicated `find_similar_patterns` tool, so live pattern-search turns can hit `PatternDraft -> benchmark_search -> similar-live` without going through `analyze_market`.
 
 ## Assumptions
 
@@ -89,12 +90,15 @@ Contract change
 - this slice preserves the current panel response shape where practical so route truth changes land before broader surface redesign.
 - execution branch is `codex/w-0160-pattern-seed-engine-bridge`; unrelated `CURRENT.md` drift is treated as upstream lane movement and should not be folded into the W-0160 merge unit.
 - the next work for this contract belongs on top of current mainline or the broader `W-0160-pattern-definition-plane` lane; the seed-bridge extraction itself is already merged.
+- the next executable follow-up should cut DOUNI pattern-search turns over to the existing `PatternSeedScout` engine bridge before widening `SearchQuerySpec` propagation further, because removing app-owned raw analysis from live pattern-search turns has the highest product leverage.
+- branch split reason for the next follow-up: the merged seed-bridge PR is already closed, so the DOUNI cutover must land as a fresh main-based merge unit on its own execution branch.
+- DOUNI pattern-search turns should use a dedicated retrieval tool instead of overloading `check_pattern_status`; status and similar-case retrieval remain separate engine responsibilities even if both tools can be present in one turn.
 
 ## Next Steps
 
 1. extend the same `SearchQuerySpec` persistence path to seed-search / other benchmark consumers so they emit the canonical app contract instead of route-local dict payloads.
 2. tighten the signal-rule registry and query-spec schema from the current transitional numeric-bound maps into fully versioned shared engine/app contracts.
-3. remove remaining DOUNI raw-analysis fan-out by routing parse/search turns through `PatternDraft -> SearchQuerySpec -> engine search` only.
+3. remove the remaining DOUNI parser heuristic drift by replacing the app-side thesis parser with an engine-owned parser ingress when that contract lands.
 
 ## Exit Criteria
 
@@ -108,7 +112,7 @@ Contract change
 - active work item: `work/active/W-0160-pattern-draft-query-transformer-contract.md`
 - branch: `origin/main` baseline merged; follow-up should branch cleanly from current main or `codex/w-0160-pattern-definition-plane`
 - verification:
-  - `npm --prefix app run test -- src/routes/api/terminal/pattern-seed/match/match.test.ts`
+  - `npm --prefix app run test -- src/lib/server/douni/intentClassifier.test.ts src/lib/server/douni/contextBuilder.test.ts src/routes/api/terminal/pattern-seed/match/match.test.ts`
   - `npm --prefix app run test -- src/lib/contracts/terminalPersistence.test.ts src/lib/server/terminalPersistence.capture.test.ts`
   - `npm --prefix app run check`
   - `uv run --project . --group dev python -m pytest tests/test_capture_routes.py -q`

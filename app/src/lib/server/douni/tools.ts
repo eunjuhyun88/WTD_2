@@ -292,6 +292,43 @@ Returns: entry candidates (ACCUMULATION phase = act now), all tracked symbol sta
   },
 };
 
+// ─── find_similar_patterns ──────────────────────────────────
+// 자유형 패턴 메모를 PatternSeedScout bridge로 보내 유사 사례 검색
+
+export const TOOL_FIND_SIMILAR_PATTERNS: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'find_similar_patterns',
+    description: `Search for similar pattern cases using a free-form trader thesis. This turns a pattern note into a structured PatternDraft, runs engine benchmark search, and returns similar live cases plus requested signals.
+
+Use when:
+- User says "이 패턴이랑 비슷한 거 찾아줘", "유사 케이스 보여줘"
+- User describes a setup in prose ("OI 급등 후 저갱하고 횡보")
+- You need pattern retrieval, not raw market analysis
+
+Do not use this for generic coin analysis. Use it only when the user is describing a specific setup or wants similar cases.`,
+    parameters: {
+      type: 'object',
+      properties: {
+        thesis: {
+          type: 'string',
+          description: 'Free-form pattern description to search from',
+        },
+        symbol: {
+          type: 'string',
+          description: 'Optional active symbol hint (e.g. "BTCUSDT", "TRADOORUSDT")',
+        },
+        timeframe: {
+          type: 'string',
+          enum: ['5m', '15m', '30m', '1h', '4h', '1d'],
+          description: 'Optional timeframe hint for the pattern note',
+        },
+      },
+      required: ['thesis'],
+    },
+  },
+};
+
 // ─── Alpha Universe Tools (W-0116) ──────────────────────────
 
 export const TOOL_GET_ALPHA_WORLD_MODEL: ToolDefinition = {
@@ -438,6 +475,7 @@ export const DOUNI_TOOLS: ToolDefinition[] = [
   TOOL_CHECK_SOCIAL,
   TOOL_SCAN_MARKET,
   TOOL_CHECK_PATTERN_STATUS,
+  TOOL_FIND_SIMILAR_PATTERNS,
   TOOL_CHART_CONTROL,
   TOOL_SAVE_PATTERN,
   TOOL_SUBMIT_FEEDBACK,
@@ -457,6 +495,7 @@ export type DouniToolName =
   | 'check_social'
   | 'scan_market'
   | 'check_pattern_status'
+  | 'find_similar_patterns'
   | 'chart_control'
   | 'save_pattern'
   | 'submit_feedback'
@@ -471,6 +510,7 @@ export const VALID_TOOL_NAMES = new Set<string>([
   'check_social',
   'scan_market',
   'check_pattern_status',
+  'find_similar_patterns',
   'chart_control',
   'save_pattern',
   'submit_feedback',
