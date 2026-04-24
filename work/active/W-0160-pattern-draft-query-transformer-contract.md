@@ -55,8 +55,8 @@ Contract change
 3. benchmark-pack draft generation can now start from `pattern_draft` fallback fields as long as range bounds are available from phase timestamps or viewport metadata.
 4. engine `QueryTransformer` exists with deterministic `transform_pattern_draft(...)` output, and benchmark-search artifacts now persist optional `search_query_spec` payloads sourced from capture `pattern_draft`.
 5. app now has a canonical `SearchQuerySpec` TypeScript contract, and `SeedSearchResult` can carry the same additive `search_query_spec` shape instead of falling back to untyped dict payloads later.
-6. engine search/runtime/ledger already exists and phase truth remains rule-first, but the live DOUNI path still uses app-owned `analyze_market` / raw-provider fan-out instead of a canonical `PatternDraft -> SearchQuerySpec -> engine search` flow.
-7. `PatternSeedScout` still routes `Find Similar` through an app-local heuristic matcher, so the surface button does not yet persist engine search artifacts or consume canonical `similar-live` results.
+6. `PatternSeedScout` now bridges `Find Similar` through engine `/captures`, `/captures/{id}/benchmark_search`, and `/patterns/{slug}/similar-live`, and the surface response includes the emitted `searchQuerySpec`.
+7. engine search/runtime/ledger already exists and phase truth remains rule-first, but the live DOUNI path still uses app-owned `analyze_market` / raw-provider fan-out instead of a canonical `PatternDraft -> SearchQuerySpec -> engine search` flow.
 
 ## Assumptions
 
@@ -84,11 +84,11 @@ Contract change
 - the next executable slice persists engine-generated `search_query_spec` on benchmark-search artifacts by threading it through `PatternBenchmarkSearchConfig` instead of storing it only in capture-local compatibility projections.
 - the first live surface bridge stays app-orchestrated: `PatternSeedScout` may build a narrow heuristic `PatternDraft`, but it must persist that draft through engine `/captures`, trigger engine `/captures/{id}/benchmark_search`, and read candidates from engine `/patterns/{slug}/similar-live`.
 - this slice preserves the current panel response shape where practical so route truth changes land before broader surface redesign.
-- branch split note: implementation happened while the local checkout was on `codex/w-0159-liquidation-followup`, so the merge unit for W-0160 must be isolated onto a clean W-0160 branch via cherry-pick before PR/merge.
+- execution branch is `codex/w-0160-pattern-seed-engine-bridge`; unrelated `CURRENT.md` drift is treated as upstream lane movement and should not be folded into the W-0160 merge unit.
 
 ## Next Steps
 
-1. replace the `PatternSeedScout` mock matcher with an engine-backed bridge that emits `PatternDraft`, persists a manual-hypothesis capture, runs benchmark search, and returns `similar-live` candidates.
+1. replace the app-local heuristic parser inside `PatternSeedScout` with the canonical parser boundary once engine-owned parser ingress is available.
 2. extend the same `SearchQuerySpec` persistence path to seed-search / other benchmark consumers so they emit the canonical app contract instead of route-local dict payloads.
 3. tighten the signal-rule registry and query-spec schema from the current transitional numeric-bound maps into fully versioned shared engine/app contracts.
 
@@ -102,7 +102,7 @@ Contract change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0160-pattern-draft-query-transformer-contract.md`
-- branch: `codex/w-0160-pattern-draft-transformer-contract`
+- branch: `codex/w-0160-pattern-seed-engine-bridge`
 - verification:
   - `npm --prefix app run test -- src/routes/api/terminal/pattern-seed/match/match.test.ts`
   - `npm --prefix app run test -- src/lib/contracts/terminalPersistence.test.ts src/lib/server/terminalPersistence.capture.test.ts`
