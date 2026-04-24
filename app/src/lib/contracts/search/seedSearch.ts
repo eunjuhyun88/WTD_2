@@ -1,4 +1,5 @@
 import type { SearchCandidate, SearchPlaneState } from './scan';
+import type { SearchQuerySpec } from './querySpec';
 
 export interface SeedSearchRequest {
 	symbol?: string | null;
@@ -18,4 +19,5 @@ export interface SeedSearchResult {
 	run_id: string;
 	request: Record<string, unknown>;
 	candidates: SeedSearchCandidate[];
+	search_query_spec?: SearchQuerySpec | null;
 }

@@ -254,14 +254,86 @@ export const PatternResearchOutcomeSpecSchema = z.object({
 });
 export type PatternResearchOutcomeSpec = z.infer<typeof PatternResearchOutcomeSpecSchema>;
 
+export const PatternDraftPhaseSchema = z.object({
+  phaseId: z.string().min(1),
+  label: z.string().min(1),
+  sequenceOrder: z.number().int().min(0),
+  description: z.string().default(''),
+  timeframe: z.string().min(1).optional(),
+  signalsRequired: z.array(z.string().min(1)).max(24).default([]),
+  signalsPreferred: z.array(z.string().min(1)).max(24).default([]),
+  signalsForbidden: z.array(z.string().min(1)).max(24).default([]),
+  directionalBelief: z.string().min(1).optional(),
+  evidenceText: z.string().min(1).optional(),
+  timeHint: z.string().min(1).optional(),
+  importance: z.number().min(0).max(1).optional(),
+});
+export type PatternDraftPhase = z.infer<typeof PatternDraftPhaseSchema>;
+
+export const PatternDraftSearchHintsSchema = z.object({
+  mustHaveSignals: z.array(z.string().min(1)).max(24).default([]),
+  preferredTimeframes: z.array(z.string().min(1)).max(8).default([]),
+  excludePatterns: z.array(z.string().min(1)).max(24).default([]),
+  similarityFocus: z.array(z.string().min(1)).max(12).default([]),
+  symbolScope: z.array(z.string().min(1)).max(32).default([]),
+});
+export type PatternDraftSearchHints = z.infer<typeof PatternDraftSearchHintsSchema>;
+
+export const PatternDraftSchema = z.object({
+  schemaVersion: z.number().int().positive(),
+  patternFamily: z.string().min(1),
+  patternLabel: z.string().min(1).optional(),
+  sourceType: z.string().min(1),
+  sourceText: z.string().min(1),
+  symbolCandidates: z.array(z.string().min(1)).max(16).default([]),
+  timeframe: z.string().min(1).optional(),
+  thesis: z.array(z.string().min(1)).max(12).default([]),
+  phases: z.array(PatternDraftPhaseSchema).max(12).default([]),
+  tradePlan: z.record(z.string(), z.unknown()).default({}),
+  searchHints: PatternDraftSearchHintsSchema.default({}),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+  ambiguities: z.array(z.string().min(1)).max(16).default([]),
+});
+export type PatternDraft = z.infer<typeof PatternDraftSchema>;
+
+export const PatternDraftParserMetaSchema = z.object({
+  parserRole: z.string().min(1),
+  parserModel: z.string().min(1),
+  parserPromptVersion: z.string().min(1),
+  patternDraftSchemaVersion: z.number().int().positive(),
+  signalVocabVersion: z.string().min(1),
+  confidence: z.number().min(0).max(1).nullable().optional(),
+  ambiguityCount: z.number().int().nonnegative(),
+});
+export type PatternDraftParserMeta = z.infer<typeof PatternDraftParserMetaSchema>;
+
 export const PatternCaptureResearchContextSchema = z.object({
   source: PatternResearchSourceSchema.optional(),
-  patternFamily: z.string().min(1),
+  patternFamily: z.string().min(1).optional(),
   thesis: z.array(z.string().min(1)).max(12).default([]),
   phaseAnnotations: z.array(PatternResearchPhaseAnnotationSchema).max(12).default([]),
   entrySpec: PatternResearchEntrySpecSchema.optional(),
   outcomeSpec: PatternResearchOutcomeSpecSchema.optional(),
   researchTags: z.array(z.string().min(1)).max(24).default([]),
+  patternDraft: PatternDraftSchema.optional(),
+  parserMeta: PatternDraftParserMetaSchema.optional(),
+}).superRefine((value, ctx) => {
+  const topLevelFamily = value.patternFamily;
+  const draftFamily = value.patternDraft?.patternFamily;
+  if (!topLevelFamily && !draftFamily) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'researchContext requires patternFamily or patternDraft.patternFamily',
+      path: ['patternFamily'],
+    });
+  }
+  if (topLevelFamily && draftFamily && topLevelFamily !== draftFamily) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'researchContext patternFamily must match patternDraft.patternFamily',
+      path: ['patternDraft', 'patternFamily'],
+    });
+  }
 });
 export type PatternCaptureResearchContext = z.infer<typeof PatternCaptureResearchContextSchema>;
 export const PatternCaptureSnapshotSchema = z.object({
