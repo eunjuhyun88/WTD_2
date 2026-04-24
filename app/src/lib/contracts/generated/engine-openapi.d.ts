@@ -583,6 +583,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/universe/search/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market Search Status */
+        get: operations["market_search_status_universe_search_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/opportunity/run": {
         parameters: {
             query?: never;
@@ -1217,6 +1234,40 @@ export interface paths {
          *     ``status='verdict_ready'`` so it leaves the inbox.
          */
         post: operations["set_capture_verdict_captures__capture_id__verdict_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/benchmark_pack_draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Capture Benchmark Pack Draft */
+        post: operations["create_capture_benchmark_pack_draft_captures__capture_id__benchmark_pack_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/benchmark_search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Capture Benchmark Search */
+        post: operations["create_capture_benchmark_search_captures__capture_id__benchmark_search_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1983,6 +2034,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs/market_search_index_refresh/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Market Search Index Refresh
+         * @description Cloud Scheduler → rebuild the local market search index.
+         */
+        post: operations["run_market_search_index_refresh_jobs_market_search_index_refresh_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/db_cleanup/run": {
         parameters: {
             query?: never;
@@ -2247,6 +2318,26 @@ export interface components {
              * @description 보유 시간 (h)
              */
             hold_hours: number;
+        };
+        /** CaptureBenchmarkSearchBody */
+        CaptureBenchmarkSearchBody: {
+            /** Candidate Timeframes */
+            candidate_timeframes?: string[] | null;
+            /**
+             * Warmup Bars
+             * @default 240
+             */
+            warmup_bars: number;
+            /**
+             * Min Reference Score
+             * @default 0.55
+             */
+            min_reference_score: number;
+            /**
+             * Min Holdout Score
+             * @default 0.35
+             */
+            min_holdout_score: number;
         };
         /** CaptureCreateBody */
         CaptureCreateBody: {
@@ -2851,6 +2942,108 @@ export interface components {
             /** Alerts */
             alerts: string[];
         };
+        /** ParserMetaBody */
+        ParserMetaBody: {
+            /** Parser Role */
+            parser_role: string;
+            /** Parser Model */
+            parser_model: string;
+            /** Parser Prompt Version */
+            parser_prompt_version: string;
+            /**
+             * Pattern Draft Schema Version
+             * @default 1
+             */
+            pattern_draft_schema_version: number;
+            /** Signal Vocab Version */
+            signal_vocab_version: string;
+            /** Confidence */
+            confidence?: number | null;
+            /**
+             * Ambiguity Count
+             * @default 0
+             */
+            ambiguity_count: number;
+        };
+        /** PatternDraftBody */
+        PatternDraftBody: {
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Pattern Family */
+            pattern_family: string;
+            /** Pattern Label */
+            pattern_label?: string | null;
+            /** Source Type */
+            source_type: string;
+            /** Source Text */
+            source_text: string;
+            /** Symbol Candidates */
+            symbol_candidates?: string[];
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Thesis */
+            thesis?: string[];
+            /** Phases */
+            phases?: components["schemas"]["PatternDraftPhaseBody"][];
+            /** Trade Plan */
+            trade_plan?: {
+                [key: string]: unknown;
+            };
+            search_hints?: components["schemas"]["PatternDraftSearchHintsBody"];
+            /** Confidence */
+            confidence?: number | null;
+            /** Ambiguities */
+            ambiguities?: string[];
+        };
+        /** PatternDraftPhaseBody */
+        PatternDraftPhaseBody: {
+            /** Phase Id */
+            phase_id: string;
+            /** Label */
+            label: string;
+            /**
+             * Sequence Order
+             * @default 0
+             */
+            sequence_order: number;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Signals Required */
+            signals_required?: string[];
+            /** Signals Preferred */
+            signals_preferred?: string[];
+            /** Signals Forbidden */
+            signals_forbidden?: string[];
+            /** Directional Belief */
+            directional_belief?: string | null;
+            /** Evidence Text */
+            evidence_text?: string | null;
+            /** Time Hint */
+            time_hint?: string | null;
+            /** Importance */
+            importance?: number | null;
+        };
+        /** PatternDraftSearchHintsBody */
+        PatternDraftSearchHintsBody: {
+            /** Must Have Signals */
+            must_have_signals?: string[];
+            /** Preferred Timeframes */
+            preferred_timeframes?: string[];
+            /** Exclude Patterns */
+            exclude_patterns?: string[];
+            /** Similarity Focus */
+            similarity_focus?: string[];
+            /** Symbol Scope */
+            symbol_scope?: string[];
+        };
         /**
          * PerpSnapshot
          * @description Current-bar derivatives data with neutral-safe defaults.
@@ -2977,7 +3170,7 @@ export interface components {
         ResearchContextBody: {
             source?: components["schemas"]["ResearchSourceBody"] | null;
             /** Pattern Family */
-            pattern_family: string;
+            pattern_family?: string | null;
             /** Thesis */
             thesis?: string[];
             /** Phase Annotations */
@@ -2986,6 +3179,8 @@ export interface components {
             outcome_spec?: components["schemas"]["ResearchOutcomeSpecBody"] | null;
             /** Research Tags */
             research_tags?: string[];
+            pattern_draft?: components["schemas"]["PatternDraftBody"] | null;
+            parser_meta?: components["schemas"]["ParserMetaBody"] | null;
         };
         /** ResearchEntrySpecBody */
         ResearchEntrySpecBody: {
@@ -5022,6 +5217,10 @@ export interface operations {
                 sort?: string;
                 /** @description Force cache refresh */
                 refresh?: boolean;
+                /** @description Token symbol, name, or contract search */
+                q?: string;
+                /** @description Allow live provider fallback on local index miss */
+                live_fallback?: boolean;
             };
             header?: never;
             path?: never;
@@ -5050,6 +5249,28 @@ export interface operations {
         };
     };
     sectors_universe_sectors_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    market_search_status_universe_search_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -6117,6 +6338,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["api__routes__captures___VerdictBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_capture_benchmark_pack_draft_captures__capture_id__benchmark_pack_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CaptureBenchmarkSearchBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_capture_benchmark_search_captures__capture_id__benchmark_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CaptureBenchmarkSearchBody"] | null;
             };
         };
         responses: {
@@ -7282,6 +7577,26 @@ export interface operations {
         };
     };
     run_search_corpus_jobs_search_corpus_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_market_search_index_refresh_jobs_market_search_index_refresh_run_post: {
         parameters: {
             query?: never;
             header?: never;
