@@ -1268,6 +1268,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/captures/{capture_id}/benchmark_pack_draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Capture Benchmark Pack Draft */
+        post: operations["create_capture_benchmark_pack_draft_captures__capture_id__benchmark_pack_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/benchmark_search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Capture Benchmark Search */
+        post: operations["create_capture_benchmark_search_captures__capture_id__benchmark_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/captures/chart-annotations": {
         parameters: {
             query?: never;
@@ -1948,6 +1982,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features/window": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Feature Window
+         * @description Latest materialized feature_window for symbol/timeframe.
+         *
+         *     Computes and persists on-demand from local cache (offline=True) if not
+         *     yet materialized. Never fans out to providers.
+         */
+        get: operations["get_feature_window_features_window_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/pattern-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Events
+         * @description List persisted pattern_events for symbol/timeframe/pattern_family.
+         */
+        get: operations["get_pattern_events_features_pattern_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -2335,6 +2412,26 @@ export interface components {
              * @description 보유 시간 (h)
              */
             hold_hours: number;
+        };
+        /** CaptureBenchmarkSearchBody */
+        CaptureBenchmarkSearchBody: {
+            /** Candidate Timeframes */
+            candidate_timeframes?: string[] | null;
+            /**
+             * Warmup Bars
+             * @default 240
+             */
+            warmup_bars: number;
+            /**
+             * Min Reference Score
+             * @default 0.55
+             */
+            min_reference_score: number;
+            /**
+             * Min Holdout Score
+             * @default 0.35
+             */
+            min_holdout_score: number;
         };
         /** CaptureCreateBody */
         CaptureCreateBody: {
@@ -2939,6 +3036,108 @@ export interface components {
             /** Alerts */
             alerts: string[];
         };
+        /** ParserMetaBody */
+        ParserMetaBody: {
+            /** Parser Role */
+            parser_role: string;
+            /** Parser Model */
+            parser_model: string;
+            /** Parser Prompt Version */
+            parser_prompt_version: string;
+            /**
+             * Pattern Draft Schema Version
+             * @default 1
+             */
+            pattern_draft_schema_version: number;
+            /** Signal Vocab Version */
+            signal_vocab_version: string;
+            /** Confidence */
+            confidence?: number | null;
+            /**
+             * Ambiguity Count
+             * @default 0
+             */
+            ambiguity_count: number;
+        };
+        /** PatternDraftBody */
+        PatternDraftBody: {
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Pattern Family */
+            pattern_family: string;
+            /** Pattern Label */
+            pattern_label?: string | null;
+            /** Source Type */
+            source_type: string;
+            /** Source Text */
+            source_text: string;
+            /** Symbol Candidates */
+            symbol_candidates?: string[];
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Thesis */
+            thesis?: string[];
+            /** Phases */
+            phases?: components["schemas"]["PatternDraftPhaseBody"][];
+            /** Trade Plan */
+            trade_plan?: {
+                [key: string]: unknown;
+            };
+            search_hints?: components["schemas"]["PatternDraftSearchHintsBody"];
+            /** Confidence */
+            confidence?: number | null;
+            /** Ambiguities */
+            ambiguities?: string[];
+        };
+        /** PatternDraftPhaseBody */
+        PatternDraftPhaseBody: {
+            /** Phase Id */
+            phase_id: string;
+            /** Label */
+            label: string;
+            /**
+             * Sequence Order
+             * @default 0
+             */
+            sequence_order: number;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Signals Required */
+            signals_required?: string[];
+            /** Signals Preferred */
+            signals_preferred?: string[];
+            /** Signals Forbidden */
+            signals_forbidden?: string[];
+            /** Directional Belief */
+            directional_belief?: string | null;
+            /** Evidence Text */
+            evidence_text?: string | null;
+            /** Time Hint */
+            time_hint?: string | null;
+            /** Importance */
+            importance?: number | null;
+        };
+        /** PatternDraftSearchHintsBody */
+        PatternDraftSearchHintsBody: {
+            /** Must Have Signals */
+            must_have_signals?: string[];
+            /** Preferred Timeframes */
+            preferred_timeframes?: string[];
+            /** Exclude Patterns */
+            exclude_patterns?: string[];
+            /** Similarity Focus */
+            similarity_focus?: string[];
+            /** Symbol Scope */
+            symbol_scope?: string[];
+        };
         /**
          * PerpSnapshot
          * @description Current-bar derivatives data with neutral-safe defaults.
@@ -3065,7 +3264,7 @@ export interface components {
         ResearchContextBody: {
             source?: components["schemas"]["ResearchSourceBody"] | null;
             /** Pattern Family */
-            pattern_family: string;
+            pattern_family?: string | null;
             /** Thesis */
             thesis?: string[];
             /** Phase Annotations */
@@ -3074,6 +3273,8 @@ export interface components {
             outcome_spec?: components["schemas"]["ResearchOutcomeSpecBody"] | null;
             /** Research Tags */
             research_tags?: string[];
+            pattern_draft?: components["schemas"]["PatternDraftBody"] | null;
+            parser_meta?: components["schemas"]["ParserMetaBody"] | null;
         };
         /** ResearchEntrySpecBody */
         ResearchEntrySpecBody: {
@@ -6385,6 +6586,80 @@ export interface operations {
             };
         };
     };
+    create_capture_benchmark_pack_draft_captures__capture_id__benchmark_pack_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CaptureBenchmarkSearchBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_capture_benchmark_search_captures__capture_id__benchmark_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CaptureBenchmarkSearchBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_chart_annotations_captures_chart_annotations_get: {
         parameters: {
             query: {
@@ -7460,6 +7735,77 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    get_feature_window_features_window_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                venue?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_events_features_pattern_events_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                venue?: string;
+                pattern_family?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
