@@ -9,13 +9,19 @@ import { engineFetch } from '$lib/server/engineTransport';
 import { scanLimiter } from '$lib/server/rateLimit';
 import { adaptEngineStats } from '$lib/types/patternStats';
 
-export const GET: RequestHandler = async ({ getClientAddress }) => {
+export const GET: RequestHandler = async ({ getClientAddress, url }) => {
   if (!scanLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
   const t0 = performance.now();
   try {
-    const res = await engineFetch('/patterns/stats/all');
+    const params = new URLSearchParams();
+    const definitionScope = url.searchParams.get('definition_scope');
+    if (definitionScope) {
+      params.set('definition_scope', definitionScope);
+    }
+    const query = params.toString();
+    const res = await engineFetch(`/patterns/stats/all${query ? `?${query}` : ''}`);
     const engineMs = res.headers.get('x-process-time-ms');
     if (!res.ok) return json({ stats: [], ok: false });
 

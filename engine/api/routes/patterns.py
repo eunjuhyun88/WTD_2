@@ -128,9 +128,15 @@ async def trigger_pattern_scan(background_tasks: BackgroundTasks) -> dict:
 # ── Bulk read (static paths before parameterised routes) ────────────────────
 
 @router.get("/stats/all")
-async def get_all_stats() -> dict:
+async def get_all_stats(
+    definition_scope: str = Query(default="current_definition"),
+) -> dict:
     """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
-    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_all_stats_sync,
+        _ledger,
+        definition_scope=definition_scope,
+    )
 
 
 # ── Per-pattern endpoints ────────────────────────────────────────────────────
@@ -142,19 +148,30 @@ async def get_candidates(slug: str) -> dict:
 
 
 @router.get("/stats/all")
-async def get_all_stats() -> dict:
+async def get_all_stats(
+    definition_scope: str = Query(default="current_definition"),
+) -> dict:
     """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
-    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_all_stats_sync,
+        _ledger,
+        definition_scope=definition_scope,
+    )
 
 
 @router.get("/{slug}/stats")
-async def get_stats(slug: str, definition_id: str | None = None) -> dict:
+async def get_stats(
+    slug: str,
+    definition_id: str | None = None,
+    definition_scope: str = Query(default="current_definition"),
+) -> dict:
     """Ledger statistics for a pattern. v3: includes ML shadow readiness."""
     return await asyncio.to_thread(
         patterns_thread.get_stats_sync,
         slug,
         _ledger,
         definition_id=definition_id,
+        definition_scope=definition_scope,
     )
 
 

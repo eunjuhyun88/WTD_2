@@ -41,6 +41,7 @@
 | #237 (W-0148) | docs queue refresh landed on main so post-raw execution order and branch map were realigned to the canonical lane order |
 | #238 (W-0122) | `/api/confluence/current` fallback now reads analyze service directly instead of loopbacking through `/api/cogochi/analyze`; W-0122 conflict-marker drift was cleaned |
 | #239 (W-0160) | DOUNI pattern search now flows through `PatternSeedScout` / canonical `PatternDraft -> SearchQuerySpec` contracts instead of local route-specific wiring |
+| #242 (W-0160) | `/patterns/{slug}/stats` and `/patterns/stats/all` now expose explicit `definition_scope`, and app pattern-stats proxies pass through scoped queries |
 
 ---
 
@@ -51,7 +52,7 @@
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline after #236/#238: market-cap bridge retirement, remaining engine-preferred `/facts/*` consumer cuts, and confluence scoring runway |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
-| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | stored definition truth and DOUNI contract cuts landed; legacy backfill policy + durable definition namespace decision remain |
+| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | stored definition truth, DOUNI contract cuts, and explicit stats scope landed; runtime capture/ledger scope decision + legacy backfill policy + durable definition namespace remain |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | architecture/governance owner only; keep CURRENT + lane order aligned with merged plane reality |
 | **W-0150** | `W-0150-breakout-production-lane.md` | 🔴 IN-PROGRESS | TRADOOR/PTB final-phase miss correction: breakout redesign + benchmark replay validation |
 | **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
@@ -122,8 +123,8 @@
 ## Current Dirty Tree Snapshot
 
 - latest queue refresh is based on updated `origin/main` `2e58d5e0`; docs-only refresh branches are merge-only and should not be reused as execution lanes
-- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), and PR #239 (`W-0160` DOUNI pattern search)
-- `W-0160` now has two merged follow-up cuts on top of `PatternSeedScout`; the remaining work is backfill/sunset policy plus durable definition namespace choice, not another ad hoc DOUNI surface fork
+- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), PR #239 (`W-0160` DOUNI pattern search), and PR #242 (`W-0160` explicit pattern-stats scope)
+- `W-0160` now has three merged follow-up cuts on top of `PatternSeedScout`; the remaining work is runtime capture/ledger scope policy, legacy backfill/sunset policy, and durable definition namespace choice, not another ad hoc DOUNI surface fork
 - `W-0122` no longer has an active confluence cleanup branch; the next clean fact-plane slice must start from updated `main` and focus on bridge retirement plus engine scoring promotion
 - `W-0159` no longer needs extraction work; the remaining gap is a public or market-wide liquidation source plus any next raw-family expansion with concrete product pull
 
@@ -134,7 +135,7 @@
 1. **W-0122 / Lane A** — fact-plane consumer mainline after #236/#238: market-cap bridge retirement, remaining engine-preferred `/facts/*` consumer cuts, and confluence scoring runway
 2. **W-0145 / Lane B** — corpus/search read models and `/search/*` family promotion over the merged raw/search baseline
 3. **W-0142 / Lane C** — runtime repositories and `/runtime/*` read/write family expansion
-4. **W-0160 / Contract follow-up** — post-#235/#239 legacy backfill policy, durable definition namespace decision, and canonical-key cleanup only
+4. **W-0160 / Contract follow-up** — post-#235/#239/#242 runtime capture/ledger scope decision, legacy backfill policy, durable definition namespace decision, and canonical-key cleanup only
 5. **W-0159 / Raw follow-up** — public or market-wide liquidation source decision, liquidation fact promotion, and next raw-family expansion only if a concrete search gap remains
 6. **W-0156 / Feature promotion** — canonical `feature_windows` contract and reusable derived math promotion into consumers
 7. **W-0140 / Surface slimming** — bottom ANALYZE workspace must consume upstream workspace envelope/contracts only
