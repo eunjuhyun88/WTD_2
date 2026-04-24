@@ -17,6 +17,7 @@ import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { computeConfluence } from '$lib/confluence/score';
 import type { ConfluenceInput } from '$lib/confluence/score';
 import type { ConfluenceResult } from '$lib/confluence/types';
+import { getAnalyzePayload } from '$lib/server/analyze/service';
 import { pushConfluence, streakBack } from '$lib/server/confluenceHistory';
 import { adaptEngineFactConfluence } from '$lib/server/confluence/engineFactAdapter';
 import { fetchFactConfluenceProxy } from '$lib/server/enginePlanes/facts';
@@ -35,19 +36,6 @@ const VALID_TF = /^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/;
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<string, { at: number; payload: unknown }>();
 
-async function fetchSelf<T>(fetchFn: typeof fetch, origin: string, path: string): Promise<T | null> {
-  try {
-    const res = await fetchFn(`${origin}${path}`, {
-      signal: AbortSignal.timeout(8_000),
-      headers: { 'User-Agent': 'cogochi-terminal/confluence' },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
 // Minimal analyze payload shape we care about (pattern score + direction).
 interface AnalyzeMini {
   snapshot?: {
@@ -58,6 +46,35 @@ interface AnalyzeMini {
   };
   score?: number;
   direction?: string;
+}
+
+async function loadAnalyzeMini(symbol: string, tf: string): Promise<AnalyzeMini | null> {
+  try {
+    const { payload } = await getAnalyzePayload({
+      symbol,
+      tf,
+      requestId: `internal:confluence:${symbol}:${tf}`,
+    });
+    const analyze = payload as AnalyzeMini & { blocks_triggered?: unknown[] };
+    const activeBlockCount =
+      typeof analyze.snapshot?.active_block_count === 'number'
+        ? analyze.snapshot.active_block_count
+        : Array.isArray(analyze.blocks_triggered)
+          ? analyze.blocks_triggered.length
+          : undefined;
+    return {
+      snapshot: analyze.snapshot
+        ? {
+            ...analyze.snapshot,
+            active_block_count: activeBlockCount,
+          }
+        : undefined,
+      score: analyze.score,
+      direction: analyze.direction,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function enrichConfluenceResult(symbol: string, result: ConfluenceResult): ConfluenceResult {
@@ -161,11 +178,7 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
 
   // Parallel aggregate — any failure → null, composition still works.
   const [analyze, venueDiv, rvCone, ssr, flip, liq, options] = await Promise.all([
-    // analyze is auth-protected; we're server-side so we use fetchSelf but it will 401 unless
-    // we attach a cookie. For now: accept that pattern score may be missing when unauth'd — a
-    // separate read-only public analyze endpoint will be added in W-0122-Confluence-P2.
-    // This is explicitly documented so reviewers see the intentional limit.
-    fetchSelf<AnalyzeMini>(_kitFetch, url.origin, `/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+    loadAnalyzeMini(symbol, tf),
     safeLoad(() => loadVenueDivergence(symbol)),
     safeLoad(() => loadRvCone(symbol)),
     safeLoad(() => loadStablecoinSsr()),
