@@ -51,6 +51,7 @@ from research.pattern_search import (
     PatternSearchArtifactStore,
     run_pattern_benchmark_search,
 )
+from research.query_transformer import transform_pattern_draft
 
 log = logging.getLogger("engine.captures")
 
@@ -563,6 +564,23 @@ def _build_and_save_capture_benchmark_pack(
     saved_path = _benchmark_pack_store.save(pack)
     return pack, saved_path
 
+
+def _build_capture_search_query_spec(capture: CaptureRecord) -> dict[str, Any] | None:
+    research_context = capture.research_context or {}
+    pattern_draft = research_context.get("pattern_draft")
+    if not isinstance(pattern_draft, dict):
+        return None
+    try:
+        return transform_pattern_draft(pattern_draft).to_dict()
+    except ValueError as exc:
+        log.warning(
+            "capture benchmark_search skipped invalid pattern_draft search_query_spec "
+            "capture_id=%s reason=%s",
+            capture.capture_id,
+            exc,
+        )
+        return None
+
 @router.post("/{capture_id}/benchmark_pack_draft")
 async def create_capture_benchmark_pack_draft(
     capture_id: str,
@@ -608,6 +626,7 @@ async def create_capture_benchmark_search(
     config = PatternBenchmarkSearchConfig(
         pattern_slug=pack.pattern_slug,
         benchmark_pack_id=pack.benchmark_pack_id,
+        search_query_spec=_build_capture_search_query_spec(capture),
         warmup_bars=body.warmup_bars if body is not None else 240,
         min_reference_score=body.min_reference_score if body is not None else 0.55,
         min_holdout_score=body.min_holdout_score if body is not None else 0.35,
