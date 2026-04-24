@@ -16,6 +16,7 @@ Product surface change
 
 - `TradeMode.svelte` bottom `ANALYZE` 에서 local raw derivation 대신 `workspaceEnvelope` / `workspaceStudyMap` 우선 소비
 - thesis / evidence / execution board 를 workspace studies 로 재배선
+- `ANALYZE 자세히보기 → AI panel` handoff 추가
 - 관련 work item 문서와 app check 갱신
 
 ## Non-Goals
@@ -56,6 +57,8 @@ Product surface change
 - thesis / evidence / execution board 는 먼저 `workspaceEnvelope` / `workspaceStudyMap` 에서 읽는다.
 - 기존 markup 은 유지하고 raw local derivation 만 줄이는 strangler 방식으로 간다.
 - execution 관련 CTA는 하단 panel에서 `SCAN`/`JUDGE`로 점프 가능하게 둔다.
+- AI panel은 setup 변환기이면서 동시에 `current analyze interpreter` 역할을 갖도록 한다.
+- `자세히 보기 / AI 설명` 클릭 시 현재 symbol, confidence, thesis, evidence, proposal을 구조화된 메시지로 AI panel에 주입한다.
 
 ## Next Steps
 

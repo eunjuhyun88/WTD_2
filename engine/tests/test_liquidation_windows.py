@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from data_cache.liquidation_windows import build_liquidation_window_records
+import pandas as pd
+
+from data_cache.liquidation_windows import (
+    build_liquidation_window_records,
+    build_liquidation_window_records_from_history,
+)
 
 
 def test_build_liquidation_window_records_aggregates_1h_and_4h() -> None:
@@ -61,3 +66,38 @@ def test_build_liquidation_window_records_aggregates_1h_and_4h() -> None:
     assert aggregate.long_liq_usd == 300.0
     assert aggregate.total_liq_usd == 1000.0
     assert aggregate.dominant_side == "short_liq"
+
+
+def test_build_liquidation_window_records_from_history_materializes_public_windows() -> None:
+    ingested_at = datetime(2026, 4, 24, 2, 0, tzinfo=timezone.utc)
+    history = pd.DataFrame(
+        {
+            "long_liq_usd": [120.0, 95.0],
+            "short_liq_usd": [80.0, 140.0],
+        },
+        index=pd.to_datetime(
+            [
+                "2026-04-24T00:00:00Z",
+                "2026-04-24T01:00:00Z",
+            ],
+            utc=True,
+        ),
+    )
+
+    records = build_liquidation_window_records_from_history(
+        symbol="BTCUSDT",
+        timeframe="1h",
+        history=history,
+        ingested_at=ingested_at,
+    )
+
+    assert len(records) == 2
+    first = records[0]
+    assert first.provider == "coinalyze"
+    assert first.venue == "coinalyze_market_wide"
+    assert first.event_count == 0
+    assert first.long_liq_usd == 120.0
+    assert first.short_liq_usd == 80.0
+    assert first.total_liq_usd == 200.0
+    assert first.dominant_side == "long_liq"
+    assert first.largest_event_usd is None

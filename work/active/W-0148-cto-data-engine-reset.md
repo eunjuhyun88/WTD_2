@@ -37,6 +37,7 @@ Engine logic change
 - `work/active/W-0122-free-indicator-stack.md`
 - `work/active/W-0145-operational-seed-search-corpus.md`
 - `docs/domains/terminal-ai-scan-architecture.md`
+- `docs/domains/canonical-indicator-materialization.md`
 - `docs/decisions/0003-infra-chart-architecture-2026-04-21.md`
 - `engine/api/main.py`
 - `engine/api/routes/ctx.py`
@@ -72,6 +73,10 @@ Engine logic change
 8. this branch now adds an `app-web` dual-target build (`vercel` default, `cloud-run` via `@sveltejs/adapter-node`), `cloudbuild.app.yaml`, and a Cloud Run app deploy runbook, so the three-runtime topology is executable from repository artifacts.
 9. Cloud Run smoke exposed two real server blockers on the app surface: `/api/confluence/current` had route-local helper leakage that broke Node builds, and `/healthz` / `/readyz` were incorrectly behind the auth redirect path.
 10. `origin/main` is now at `cf657e39` after PR #241 and PR #242, so this lane's remaining work is queue hygiene only; the next real execution lanes stay `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`.
+11. common feature math and pattern-family interpretation are still too easy to conflate; the reset must explicitly separate `data engine feature production` from `pattern engine phase/replay logic`.
+12. the repo already has substantial pattern-runtime primitives in place: `PatternObject` / pattern registry, capture + research_context writes, durable pattern state, outcome ledger, verdict inbox, and refinement stats are implemented, but they are not yet normalized into one canonical runtime contract family.
+13. for the TRADOOR/PTB “Pattern Research OS” direction, the biggest missing layer is not a brand-new model or giant table family; it is a contract-first split between `pattern definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` planes.
+14. query-intent visualization and chart template selection are valid downstream consumers, but they are surface orchestration only; they must not redefine pattern truth, phase truth, or runtime ownership.
 
 ## Assumptions
 
@@ -98,6 +103,8 @@ Engine logic change
 - `WorkspaceBundle` 은 UI-neutral read model 인 경우에만 fact/read-model 로 인정하고, panel placement / pin / compare / presentation field 가 섞이면 `surface adapter` 로 본다.
 - `app` 의 ingress/fact/search adapter 들은 최종 ownership 이 아니라 migration bridge 로만 유지한다.
 - execution spec 은 `docs/domains/terminal-ai-scan-architecture.md` 의 plane contract table, owner routes, storage rules, cutover plan 을 canonical implementation guide 로 삼는다.
+- calculation-ready indicator definitions, materialized feature stores, and corpus signatures are fixed in `docs/domains/canonical-indicator-materialization.md`.
+- common feature production belongs to the data engine; pattern engines may only consume canonical features and define phase/family/replay rules on top.
 - 데이터 종류별 canonical `table / cache / route / job` 분해는 같은 문서의 `Data Domain Split` 표를 구현 기준으로 삼는다.
 - 새 데이터/패턴 lane 은 같은 문서의 `Canonical Lane Design Pattern` 과 `Lane Checklist` 를 먼저 채운 뒤 구현한다.
 - 첫 code slice 는 app-side raw provider fan-out 을 당장 다 없애는 대신, engine 에 bounded fact-context route 를 열어 이후 migration 의 landing zone 을 만든다.
@@ -118,6 +125,11 @@ Engine logic change
 - server health/readiness endpoints (`/healthz`, `/readyz`) are public operational surfaces and must remain outside page-auth redirects.
 - after PR #241 / #242 layered onto PR #236 / #238 / #239 and earlier PR #230 / #231 / #232, the post-merge execution queue is still `W-0122 facts -> W-0145 search -> W-0142 runtime -> W-0160 contract follow-up -> W-0159 public liquidation source`, not another branch-extraction wave.
 - branch split reason for this refresh: local `codex/w-0148-current-plan-refresh-20260424` carries unrelated engine WIP in another checkout, so post-merge plan updates must land as clean docs-only merge units from updated `main`.
+- pattern runtime decomposition is `contract-first`, not `DB-first`: first normalize read/write route families and ownership around existing primitives, then decide which durable stores to merge, rename, or replace.
+- pattern research OS follow-ups must treat `pattern definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` as separate merge units; reopening them as one giant runtime rewrite is forbidden.
+- the target engine is not “a scanner with more indicators”, “a backtest box”, or “one ML ranker”; the canonical framing is a human-in-the-loop pattern research operating system with the loop `observation -> feature -> pattern definition -> sequence/runtime -> research search -> ledger -> refinement/promotion`.
+- sequence truth beats point-in-time score truth: canonical features may rank and filter, but phase order, transitions, and judgment-backed outcome records own promotion decisions.
+- query-driven visualization is downstream of this engine: surface planners may choose templates/highlights, but they must consume `definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` contracts instead of inventing parallel semantics.
 
 ## Current Layer Map
 
@@ -256,7 +268,10 @@ Engine logic change
 
 1. keep `CURRENT.md` aligned with merged mainline so the canonical order remains `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`, and reject new branch-extraction work that bypasses that queue.
 2. W-0156/W-0122 implementation lanes should codify the raw retention split explicitly: canonical normalized tables for replay-critical data, TTL cache for provider-native blobs, and materialized `feature_windows` as the cross-pattern contract.
-3. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
+3. freeze the data-engine vs pattern-engine ownership boundary so `W-0122` computes canonical features once and `W-0145` consumes them without duplicating math inside replay/search logic.
+4. use the pattern-runtime decomposition note in `docs/domains/terminal-ai-scan-architecture.md` as the canonical checklist before opening the next runtime/search/promotion lanes.
+5. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
+6. when reopening the TRADOOR/PTB architecture discussion, cut follow-up lanes by contract family (`definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, `promotion`) rather than by chart surface or ad hoc table creation.
 
 ## Exit Criteria
 

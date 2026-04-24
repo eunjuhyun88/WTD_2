@@ -864,6 +864,30 @@ class CanonicalRawStore:
                 )
         return int(cursor.rowcount or 0)
 
+    def delete_liquidation_windows(
+        self,
+        *,
+        symbol: str,
+        timeframe: str | None = None,
+        venue: str | None = None,
+        provider: str | None = None,
+    ) -> int:
+        where = ["symbol = ?"]
+        params: list[object] = [symbol]
+        if timeframe is not None:
+            where.append("timeframe = ?")
+            params.append(timeframe)
+        if venue is not None:
+            where.append("venue = ?")
+            params.append(venue)
+        if provider is not None:
+            where.append("provider = ?")
+            params.append(provider)
+        sql = "DELETE FROM market_liquidation_windows WHERE " + " AND ".join(where)
+        with self._connect() as conn:
+            cursor = conn.execute(sql, params)
+        return int(cursor.rowcount or 0)
+
     def latest_timestamp(
         self,
         table: str,
