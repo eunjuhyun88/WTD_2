@@ -19,6 +19,7 @@ dependencies = [
     "twitter-plugin-gamesdk>=0.2.11",
     "pillow>=12.2.0",
     "supabase>=2.0",
+    "PyJWT[cryptography]>=2.8",
 ]
 
 [project.optional-dependencies]
