@@ -41,6 +41,7 @@ from security_runtime import (
     runtime_serves_worker_control,
     validate_internal_request,
 )
+from api.auth import extract_user_id_from_jwt, is_protected_route
 from universe.config import DEFAULT_SCAN_UNIVERSE
 from observability.health import health_payload, readiness_payload
 from observability.metrics import increment, observe_ms, snapshot as metrics_snapshot
@@ -201,6 +202,41 @@ async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
     _level = logging.WARNING if duration_ms > 500 else logging.INFO
     log.log(_level, "%s %s status=%s dur=%.0fms request_id=%s",
             request.method, request.url.path, response.status_code, duration_ms, request_id)
+    return response
+
+
+@app.middleware("http")
+async def jwt_auth_middleware(request: Request, call_next):  # noqa: ANN001
+    """JWT authentication middleware for protected routes.
+
+    - Extracts user_id from JWT token in Authorization header
+    - Injects request.state.user_id for downstream routes
+    - Skips health checks and internal job endpoints
+    """
+    if is_protected_route(request.url.path):
+        try:
+            user_id = await extract_user_id_from_jwt(request)
+            if user_id:
+                request.state.user_id = user_id
+                request.state.authenticated_at = time.time()
+            else:
+                # No JWT provided for protected route
+                return JSONResponse(
+                    {"detail": "Missing authorization token"},
+                    status_code=401,
+                )
+        except Exception as e:
+            # JWT validation error (handled by extract_user_id_from_jwt)
+            if isinstance(e, JSONResponse):
+                return e
+            # Unexpected error
+            log.error("JWT middleware error: %s", str(e))
+            return JSONResponse(
+                {"detail": "Authentication error"},
+                status_code=500,
+            )
+
+    response = await call_next(request)
     return response
 
 def _include_public_engine_routes(target: FastAPI) -> None:

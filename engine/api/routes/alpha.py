@@ -14,7 +14,7 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 log = logging.getLogger("engine.api.routes.alpha")
@@ -27,7 +27,6 @@ ALPHA_PATTERN_SLUG = "alpha-presurge-v1"
 # ── Request / Response Models ─────────────────────────────────────────────────
 
 class _WatchBody(BaseModel):
-    user_id: str
     symbol: str
     target_phase: str
     min_confidence: float = Field(default=0.70, ge=0.0, le=1.0)
@@ -243,11 +242,15 @@ async def get_alpha_anomalies(
 
 
 @router.post("/alpha/watch")
-async def post_alpha_watch(body: _WatchBody) -> dict:
+async def post_alpha_watch(request: Request, body: _WatchBody) -> dict:
     """Register a user watch on a symbol/phase combination."""
     import json
     import os
     from datetime import datetime, timedelta, timezone
+
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
 
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -260,7 +263,7 @@ async def post_alpha_watch(body: _WatchBody) -> dict:
     ).isoformat()
 
     row = {
-        "user_id": body.user_id,
+        "user_id": user_id,
         "symbol": body.symbol.upper(),
         "target_phase": body.target_phase,
         "min_confidence": body.min_confidence,

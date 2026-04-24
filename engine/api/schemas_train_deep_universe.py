@@ -10,7 +10,6 @@ from api.schemas_shared import KlineBar, TradeRecord
 
 class TrainRequest(BaseModel):
     records: list[TradeRecord] = Field(..., min_length=20)
-    user_id: Optional[str] = None
 
 
 class TrainResponse(BaseModel):

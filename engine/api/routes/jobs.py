@@ -39,6 +39,11 @@ _MIN_INTERVAL: dict[str, int] = {
     "market_search_index_refresh":  1200,   # 20 min minimum (scheduled every 30 by default)
     "search_corpus":                1800,   # 30 min minimum (scheduled hourly)
     "db_cleanup":                   82800,  # 23 hr minimum (scheduled daily)
+    "feature_windows_build":        21600,  # 6 hr minimum (scheduled every 6 hr)
+=======
+    "feature_windows_build":        21600,  # 6 hr minimum (scheduled every 6 hr)
+    "feature_materialization":      600,    # 10 min minimum (scheduled every 15)
+    "raw_ingest":                   3300,   # 55 min minimum (scheduled hourly)
 }
 
 # Redis lock TTL = max allowed job duration
@@ -49,6 +54,11 @@ _LOCK_TTL: dict[str, int] = {
     "market_search_index_refresh":  900,   # 15 min
     "search_corpus":                600,   # 10 min
     "db_cleanup":                   120,   # 2 min
+    "feature_windows_build":        1800,  # 30 min max
+=======
+    "feature_windows_build":        1800,  # 30 min max
+    "feature_materialization":      840,   # 14 min
+    "raw_ingest":                   3300,  # 55 min (full universe ingest)
 }
 
 # Circuit breaker: pause job after N consecutive failures
@@ -267,6 +277,89 @@ async def run_db_cleanup(
     return await _run_with_guard("db_cleanup", _job())
 
 
+
+@router.post("/feature_windows_build/run")
+async def run_feature_windows_build(
+    _: None = Depends(_require_scheduler),
+) -> JSONResponse:
+    """Cloud Scheduler → rebuild FeatureWindowStore from local CSV cache.
+
+    Runs every 6 hours (BINANCE_30 × [15m, 1h, 4h], 90 days history).
+    Idempotent: UPSERT only writes bars not already stored.
+    """
+    from workers.feature_windows_prefetcher import prefetch_feature_windows
+    return await _run_with_guard("feature_windows_build", prefetch_feature_windows())
+
+
+=======
+
+@router.post("/feature_windows_build/run")
+async def run_feature_windows_build(
+    _: None = Depends(_require_scheduler),
+) -> JSONResponse:
+    """Cloud Scheduler → rebuild FeatureWindowStore from local CSV cache.
+
+    Runs every 6 hours (BINANCE_30 × [15m, 1h, 4h], 90 days history).
+    Idempotent: UPSERT only writes bars not already stored.
+    """
+    from workers.feature_windows_prefetcher import prefetch_feature_windows
+    return await _run_with_guard("feature_windows_build", prefetch_feature_windows())
+
+@router.post("/feature_materialization/run")
+async def run_feature_materialization(
+    _: None = Depends(_require_scheduler),
+) -> JSONResponse:
+    """Cloud Scheduler → materialize canonical feature_windows for universe.
+
+    Reads from existing local cache (offline=True) — never fans out to providers.
+    Produces feature_windows, pattern_events, search_corpus_signatures in
+    engine/state/feature_materialization.sqlite.
+    """
+    from scanner.scheduler import _feature_materialization_refresh_job
+    return await _run_with_guard("feature_materialization", _feature_materialization_refresh_job())
+
+
+@router.post("/raw_ingest/run")
+async def run_raw_ingest(
+    _: None = Depends(_require_scheduler),
+) -> JSONResponse:
+    """Cloud Scheduler → ingest raw market data for universe into canonical raw store.
+
+    Fetches from Binance and writes raw_market_bars, raw_perp_metrics,
+    raw_orderflow_metrics into engine/state/canonical_raw.sqlite.
+    Also refreshes the legacy CSV cache so downstream jobs stay in sync.
+    """
+    async def _job() -> None:
+        import asyncio
+        from data_cache.raw_ingest import ingest_binance_symbol_raw
+        from data_cache.raw_store import CanonicalRawStore
+        from universe.config import DEFAULT_SCAN_UNIVERSE
+        from universe.loader import load_universe_async
+
+        store = CanonicalRawStore()
+        loaded = await load_universe_async(DEFAULT_SCAN_UNIVERSE)
+        symbols = list(loaded)[:30]  # cap to avoid rate-limit bursts
+        results = []
+        for symbol in symbols:
+            try:
+                result = await asyncio.to_thread(
+                    ingest_binance_symbol_raw,
+                    symbol,
+                    timeframe="1h",
+                    store=store,
+                    refresh_cache=True,
+                )
+                results.append({"symbol": symbol, "ok": True, "bars": result.market_bars_written})
+            except Exception as exc:
+                results.append({"symbol": symbol, "ok": False, "error": str(exc)})
+                log.warning("raw_ingest skip symbol=%s: %s", symbol, exc)
+        ok_count = sum(1 for r in results if r["ok"])
+        log.info("raw_ingest: symbols=%d ok=%d", len(symbols), ok_count)
+
+    return await _run_with_guard("raw_ingest", _job())
+
+
+
 @router.get("/status")
 async def jobs_status() -> JSONResponse:
     """Return resource guard state for all managed jobs."""
@@ -278,6 +371,11 @@ async def jobs_status() -> JSONResponse:
         "market_search_index_refresh",
         "search_corpus",
         "db_cleanup",
+        "feature_windows_build",
+=======
+        "feature_windows_build",
+        "feature_materialization",
+        "raw_ingest",
     ]
     result: dict[str, Any] = {}
 

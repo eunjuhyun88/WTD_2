@@ -32,8 +32,10 @@ import logging
 import time
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
+
+log = logging.getLogger("engine.captures")
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
@@ -181,7 +183,6 @@ class ResearchContextBody(BaseModel):
 
 class CaptureCreateBody(BaseModel):
     capture_kind: CaptureKind = "pattern_candidate"
-    user_id: str | None = None
     symbol: str
     pattern_slug: str = ""
     pattern_version: int = 1
@@ -335,8 +336,13 @@ def _normalize_research_context(
 
 
 @router.post("")
-async def create_capture(body: CaptureCreateBody) -> dict:
+async def create_capture(request: Request, body: CaptureCreateBody) -> dict:
     """Create a canonical capture record from Save Setup."""
+    # Extract user_id from JWT (injected by middleware)
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     if body.capture_kind != "pattern_candidate" and body.pattern_slug:
         try:
             body.pattern_slug = validate_pattern_slug(body.pattern_slug)
@@ -345,7 +351,7 @@ async def create_capture(body: CaptureCreateBody) -> dict:
     transition_snapshot, transition_defaults = _validate_transition(body)
     record = CaptureRecord(
         capture_kind=body.capture_kind,
-        user_id=body.user_id,
+        user_id=user_id,
         symbol=body.symbol,
         pattern_slug=body.pattern_slug,
         pattern_version=body.pattern_version,
@@ -389,18 +395,22 @@ class BulkImportRow(BaseModel):
 
 
 class BulkImportBody(BaseModel):
-    user_id: str
     rows: list[BulkImportRow] = Field(..., min_length=1, max_length=1000)
 
 
 @router.post("/bulk_import")
-async def bulk_import_captures(body: BulkImportBody) -> dict:
+async def bulk_import_captures(request: Request, body: BulkImportBody) -> dict:
     """Cold-start lane: ingest N founder hypotheses in one call.
 
     Every row becomes a ``manual_hypothesis`` CaptureRecord with
     ``status='pending_outcome'`` so outcome_resolver (scanner Job 3b)
     picks it up on the next window tick.
     """
+    # Extract user_id from JWT (injected by middleware)
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     stored: list[CaptureRecord] = []
     for row in body.rows:
         try:
@@ -412,7 +422,7 @@ async def bulk_import_captures(body: BulkImportBody) -> dict:
             chart_context["hypothetical_entry_price"] = row.entry_price
         record = CaptureRecord(
             capture_kind="manual_hypothesis",
-            user_id=body.user_id,
+            user_id=user_id,
             symbol=row.symbol,
             pattern_slug=row.pattern_slug,
             pattern_version=1,
