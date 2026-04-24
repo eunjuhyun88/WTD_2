@@ -345,6 +345,7 @@ def run_similar_search(
             "layer_c_score": round(lc, 6) if lc is not None else None,
             "candidate_phase_path": cand_path,
             "signature": w.signature,
+            "close_return_pct": w.signature.get("close_return_pct"),
         })
 
     candidates.sort(key=lambda c: c["final_score"], reverse=True)

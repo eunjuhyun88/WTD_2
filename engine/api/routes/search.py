@@ -139,6 +139,7 @@ def _similar_response(result: dict) -> SimilarSearchResponse:
             layer_c_score=row.get("layer_c_score"),
             candidate_phase_path=row.get("candidate_phase_path") or [],
             signature=row.get("signature") or {},
+            close_return_pct=row.get("close_return_pct"),
         )
         for row in candidates_raw
     ]

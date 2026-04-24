@@ -33,6 +33,7 @@ export type PatternSeedMatchCandidate = {
   windowId?: string;
   startTs?: string;
   endTs?: string;
+  closeReturnPct?: number | null;
 };
 
 export const PatternSeedMatchInputSchema = z.object({
@@ -651,6 +652,7 @@ export async function runPatternSeedMatch(
               windowId: typeof raw.window_id === 'string' ? raw.window_id : undefined,
               startTs: typeof raw.start_ts === 'string' ? raw.start_ts : undefined,
               endTs: typeof raw.end_ts === 'string' ? raw.end_ts : undefined,
+              closeReturnPct: typeof raw.close_return_pct === 'number' ? raw.close_return_pct : null,
             };
             return c;
           })

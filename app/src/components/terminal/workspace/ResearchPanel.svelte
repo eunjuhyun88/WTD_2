@@ -58,6 +58,8 @@
     matchedSignals: string[];
     summary: string;
     source: string;
+    startTs?: string;
+    closeReturnPct?: number | null;
   };
   let candidates = $state<Candidate[]>([]);
   let searchLoading = $state(false);
@@ -442,9 +444,17 @@
               <div class="candidate-card">
                 <div class="cand-top">
                   <strong class="cand-sym">{c.symbol.replace('USDT', '')}</strong>
+                  {#if c.startTs}
+                    <span class="cand-ts">{new Date(c.startTs).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
+                  {/if}
                   <span class="cand-score" class:high={c.score >= 70} class:mid={c.score >= 40 && c.score < 70}>
                     {c.score}점
                   </span>
+                  {#if c.closeReturnPct != null}
+                    <span class="cand-outcome" class:outcome-up={c.closeReturnPct > 0.5} class:outcome-down={c.closeReturnPct < -0.5}>
+                      {c.closeReturnPct > 0 ? '+' : ''}{c.closeReturnPct.toFixed(1)}%
+                    </span>
+                  {/if}
                 </div>
                 {#if c.summary}
                   <p class="cand-summary">{c.summary}</p>
@@ -828,6 +838,24 @@
   }
   .cand-score.mid {
     color: #fbbf24;
+  }
+  .cand-ts {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-left: 4px;
+  }
+  .cand-outcome {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-left: auto;
+  }
+  .cand-outcome.outcome-up {
+    color: rgba(74, 222, 128, 0.85);
+  }
+  .cand-outcome.outcome-down {
+    color: rgba(248, 113, 113, 0.85);
   }
   .cand-summary {
     margin: 0;

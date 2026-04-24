@@ -125,6 +125,10 @@ class SimilarCandidate(BaseModel):
         description="Actual observed phase sequence for this candidate symbol.",
     )
     signature: dict[str, Any] = Field(default_factory=dict)
+    close_return_pct: float | None = Field(
+        None,
+        description="Corpus window close-to-close return % (proxy outcome for display).",
+    )
 
 
 class SimilarSearchResponse(BaseModel):

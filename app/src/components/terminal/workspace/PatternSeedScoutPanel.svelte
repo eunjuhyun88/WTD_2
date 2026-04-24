@@ -189,7 +189,10 @@
             <p class="seed-empty">Run a thesis search to rank similar setups.</p>
           {:else}
             {#each candidates as candidate}
-              <button type="button" class="candidate-row" onclick={() => handlePick(candidate.symbol)}>
+              <!-- svelte-ignore a11y_interactive_supports_focus -->
+              <div role="button" class="candidate-row" tabindex="0"
+                onclick={() => handlePick(candidate.symbol)}
+                onkeydown={(e) => e.key === 'Enter' && handlePick(candidate.symbol)}>
                 <div class="candidate-main">
                   <strong>{candidate.symbol.replace('USDT', '')}</strong>
                   <span class="candidate-source" data-source={candidate.source}>{candidate.source}</span>
@@ -238,7 +241,7 @@
                     {/if}
                   </div>
                 {/if}
-              </button>
+              </div>
             {/each}
           {/if}
         </div>
