@@ -140,6 +140,17 @@ Parallel rule:
 - `Dedicated contract PR first` 가 blocking step 이다.
 - `W-0122`, `W-0145`, `W-0142` parallel lanes 는 `PR0.2` merge 후 updated `main` 에서만 시작한다.
 
+Implementation baseline as of `2026-04-24`:
+
+- `PR0.1` / `PR0.2` boundary is already landed on mainline via plane contracts, `enginePlaneProxy.ts`, and `/api/{facts,search,runtime}/[...path]` proxies.
+- merged downstream slices already exist on mainline:
+  - `W-0145` search store/routes/proxy: `#202`, `#203`, `#205`
+  - `W-0142` runtime routes/contracts: `#206`, `#207`
+  - `W-0143` agent context unification: `#208`, `#209`, `#210`
+  - `W-0139` surface client cutover: `#211`-`#216`
+  - `W-0140` bottom ANALYZE workspace-envelope cut: `#217`
+- therefore `W-0148` should not reopen plane-client/proxy implementation; the next highest-priority owner mismatch is the remaining fact-plane consumer cut in `W-0122`.
+
 ## Target Topology
 
 ### 1. Raw Provider Layer
