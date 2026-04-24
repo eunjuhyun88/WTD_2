@@ -4,11 +4,18 @@
 
   type MatchCandidate = {
     symbol: string;
-    source: 'engine';
+    source: 'engine' | 'similar';
     score: number;
     matchedSignals: string[];
     missingSignals: string[];
     summary: string;
+    layerAScore?: number;
+    layerBScore?: number | null;
+    layerCScore?: number | null;
+    candidatePhasePath?: string[];
+    windowId?: string;
+    startTs?: string;
+    endTs?: string;
   };
 
   type Props = {
@@ -161,15 +168,37 @@
                   <span class="candidate-source" data-source={candidate.source}>{candidate.source}</span>
                   <span class="candidate-score">{candidate.score}</span>
                 </div>
-                <p class="candidate-summary">{candidate.summary}</p>
-                <div class="candidate-signals">
-                  {#if candidate.matchedSignals.length > 0}
-                    <span class="candidate-match">match: {candidate.matchedSignals.join(', ')}</span>
-                  {/if}
-                  {#if candidate.missingSignals.length > 0}
-                    <span class="candidate-miss">missing: {candidate.missingSignals.join(', ')}</span>
-                  {/if}
-                </div>
+                {#if candidate.candidatePhasePath && candidate.candidatePhasePath.length > 0}
+                  <div class="phase-path">
+                    {#each candidate.candidatePhasePath as phase, i}
+                      <span class="phase-node">{phase}</span>{#if i < (candidate.candidatePhasePath?.length ?? 0) - 1}<span class="phase-arrow">→</span>{/if}
+                    {/each}
+                  </div>
+                {/if}
+                {#if candidate.layerAScore !== undefined}
+                  <div class="layer-scores">
+                    <span class="layer-badge" data-layer="a">A {(candidate.layerAScore * 100).toFixed(0)}</span>
+                    {#if candidate.layerBScore !== null && candidate.layerBScore !== undefined}
+                      <span class="layer-badge" data-layer="b">B {(candidate.layerBScore * 100).toFixed(0)}</span>
+                    {/if}
+                    {#if candidate.layerCScore !== null && candidate.layerCScore !== undefined}
+                      <span class="layer-badge" data-layer="c">C {(candidate.layerCScore * 100).toFixed(0)}</span>
+                    {/if}
+                    {#if candidate.startTs}
+                      <span class="candidate-window">{candidate.startTs.slice(0, 10)}</span>
+                    {/if}
+                  </div>
+                {:else}
+                  <p class="candidate-summary">{candidate.summary}</p>
+                  <div class="candidate-signals">
+                    {#if candidate.matchedSignals.length > 0}
+                      <span class="candidate-match">match: {candidate.matchedSignals.join(', ')}</span>
+                    {/if}
+                    {#if candidate.missingSignals.length > 0}
+                      <span class="candidate-miss">missing: {candidate.missingSignals.join(', ')}</span>
+                    {/if}
+                  </div>
+                {/if}
               </button>
             {/each}
           {/if}
@@ -375,5 +404,57 @@
   }
   .candidate-miss {
     color: rgba(253,186,116,0.95);
+  }
+  .phase-path {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(214,231,255,0.8);
+  }
+  .phase-node {
+    background: rgba(99,179,237,0.1);
+    border: 1px solid rgba(99,179,237,0.2);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+  .phase-arrow {
+    color: rgba(247,242,234,0.3);
+    padding: 0 1px;
+  }
+  .layer-scores {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-family: var(--sc-font-mono);
+  }
+  .layer-badge {
+    font-size: 9px;
+    border-radius: 3px;
+    padding: 2px 6px;
+    border: 1px solid;
+  }
+  .layer-badge[data-layer='a'] {
+    border-color: rgba(131,188,255,0.25);
+    color: rgba(190,220,255,0.9);
+    background: rgba(131,188,255,0.07);
+  }
+  .layer-badge[data-layer='b'] {
+    border-color: rgba(167,243,208,0.25);
+    color: rgba(167,243,208,0.9);
+    background: rgba(74,222,128,0.07);
+  }
+  .layer-badge[data-layer='c'] {
+    border-color: rgba(253,186,116,0.25);
+    color: rgba(253,186,116,0.9);
+    background: rgba(251,146,60,0.07);
+  }
+  .candidate-window {
+    font-size: 9px;
+    color: rgba(247,242,234,0.3);
+    margin-left: auto;
   }
 </style>

@@ -1,8 +1,17 @@
-"""Durable Pattern Runtime state store."""
+"""Durable Pattern Runtime state store.
+
+Write path: SQLite (sync, local-fast) + Supabase (async, background thread).
+Read path:  SQLite only during normal operation; Supabase on startup hydration.
+
+This dual-write design means:
+  - Pattern state transitions survive Cloud Run container restarts via Supabase.
+  - Normal scan performance is unaffected (Supabase writes are fire-and-forget).
+"""
 from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,6 +20,10 @@ from patterns.types import PatternObject, PatternStateRecord, PhaseTransition, P
 
 STATE_DIR = Path(__file__).resolve().parent.parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "pattern_runtime.sqlite"
+
+# Thread-local storage for SQLite connection reuse within a thread.
+# Each thread gets its own connection to avoid sqlite3 thread-safety issues.
+_tls = threading.local()
 
 
 def _dt_to_ms(value: datetime | None) -> int | None:
@@ -49,10 +62,26 @@ class PatternStateStore:
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        # Reuse the thread-local connection if it's still open and pointing at
+        # the same DB path. This avoids the overhead of creating a new connection
+        # (and cold SQLite page cache) on every read/write call.
+        key = f"conn_{self.db_path}"
+        existing: sqlite3.Connection | None = getattr(_tls, key, None)
+        if existing is not None:
+            try:
+                existing.execute("SELECT 1")
+                return existing
+            except sqlite3.ProgrammingError:
+                pass  # connection was closed; fall through to create a new one
+
+        conn = sqlite3.connect(str(self.db_path), timeout=10.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA cache_size=-4000")   # 4 MB page cache per connection
+        conn.execute("PRAGMA temp_store=MEMORY")
+        conn.execute("PRAGMA mmap_size=134217728")  # 128 MB memory-mapped I/O
+        setattr(_tls, key, conn)
         return conn
 
     def _init_db(self) -> None:
@@ -189,6 +218,29 @@ class PatternStateStore:
                     1, 0, _dt_to_ms(now),
                 ),
             )
+
+        # Async Supabase sync — fire-and-forget, never blocks the scan loop.
+        try:
+            from patterns.supabase_state_sync import push_state_async, push_transition_async
+            push_transition_async(record)
+            push_state_async(PatternStateRecord(
+                symbol=record.symbol,
+                pattern_slug=record.pattern_slug,
+                pattern_version=record.pattern_version,
+                timeframe=record.timeframe,
+                current_phase=record.to_phase,
+                current_phase_idx=record.to_phase_idx,
+                entered_at=entered_at,
+                bars_in_phase=0 if entered_at is None else 1,
+                last_eval_at=record.transitioned_at,
+                last_transition_id=record.transition_id,
+                active=True,
+                invalidated=False,
+                updated_at=now,
+            ))
+        except Exception:
+            pass  # sync is best-effort; SQLite write already succeeded
+
         return record
 
     def upsert_state(self, state: PatternStateRecord) -> PatternStateRecord:
@@ -224,6 +276,14 @@ class PatternStateStore:
                     _dt_to_ms(now),
                 ),
             )
+
+        # Async Supabase sync — best-effort, never blocks callers.
+        try:
+            from patterns.supabase_state_sync import push_state_async
+            push_state_async(state)
+        except Exception:
+            pass
+
         return state
 
     def list_states(self, pattern_slug: str | None = None) -> list[PatternStateRecord]:
@@ -260,6 +320,35 @@ class PatternStateStore:
         sql += " ORDER BY transitioned_at ASC"
         with self._connect() as conn:
             rows = conn.execute(sql, params).fetchall()
+        return [self._row_to_transition(row) for row in rows]
+
+    def list_transitions_for_symbol(
+        self,
+        symbol: str,
+        pattern_slug: str | None = None,
+        timeframe: str | None = None,
+        limit: int = 200,
+    ) -> list[PhaseTransitionRecord]:
+        """Fetch phase transitions for one symbol ordered oldest→newest.
+
+        Used by similar-search Layer B to reconstruct the observed phase path.
+        """
+        clauses = ["symbol = ?"]
+        params: list[Any] = [symbol]
+        if pattern_slug:
+            clauses.append("pattern_slug = ?")
+            params.append(pattern_slug)
+        if timeframe:
+            clauses.append("timeframe = ?")
+            params.append(timeframe)
+        sql = (
+            "SELECT * FROM phase_transitions WHERE "
+            + " AND ".join(clauses)
+            + " ORDER BY transitioned_at ASC"
+            + f" LIMIT {int(limit)}"
+        )
+        with self._connect() as conn:
+            rows = conn.execute(sql, tuple(params)).fetchall()
         return [self._row_to_transition(row) for row in rows]
 
     @staticmethod

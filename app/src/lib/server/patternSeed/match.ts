@@ -20,11 +20,19 @@ export type PatternSeedSignal =
 
 export type PatternSeedMatchCandidate = {
   symbol: string;
-  source: 'engine';
+  source: 'engine' | 'similar';
   score: number;
   matchedSignals: PatternSeedSignal[];
   missingSignals: PatternSeedSignal[];
   summary: string;
+  // 3-layer scoring detail (populated when source='similar')
+  layerAScore?: number;
+  layerBScore?: number | null;
+  layerCScore?: number | null;
+  candidatePhasePath?: string[];
+  windowId?: string;
+  startTs?: string;
+  endTs?: string;
 };
 
 export const PatternSeedMatchInputSchema = z.object({
@@ -572,21 +580,93 @@ export async function runPatternSeedMatch(
       ? String((benchmarkResult.benchmark_pack as Record<string, unknown>).pattern_slug)
       : DEFAULT_PATTERN_SLUG;
 
-  const similarLiveResult = await engineRequest(
-    `/patterns/${patternSlug}/similar-live?top_k=${DEFAULT_TOP_K}&min_similarity_score=0.2`,
-    {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-      },
-    },
-  );
-
-  const candidates = Array.isArray(similarLiveResult.results)
-    ? similarLiveResult.results
-        .map((result) => (isRecord(result) ? mapCandidate(result, requestedSignals) : null))
-        .filter((candidate): candidate is PatternSeedMatchCandidate => candidate !== null)
+  // Phase path from the search query spec drives Layer B scoring
+  const phasePath = Array.isArray(searchQuerySpec?.phase_path)
+    ? (searchQuerySpec.phase_path as unknown[]).filter((p): p is string => typeof p === 'string')
     : [];
+
+  // Run old similar-live and new /search/similar in parallel
+  const [similarLiveResult, similarSearchResult] = await Promise.allSettled([
+    engineRequest(
+      `/patterns/${patternSlug}/similar-live?top_k=${DEFAULT_TOP_K}&min_similarity_score=0.2`,
+      { method: 'GET', headers: { accept: 'application/json' } },
+    ),
+    engineRequest('/search/similar', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({
+        pattern_draft: toEnginePatternDraft(patternDraft),
+        observed_phase_paths: phasePath,
+        timeframe,
+        top_k: DEFAULT_TOP_K,
+      }),
+    }),
+  ]);
+
+  // Map legacy similar-live results
+  const legacyCandidates: PatternSeedMatchCandidate[] =
+    similarLiveResult.status === 'fulfilled' && Array.isArray(similarLiveResult.value.results)
+      ? similarLiveResult.value.results
+          .map((result) => (isRecord(result) ? mapCandidate(result, requestedSignals) : null))
+          .filter((c): c is PatternSeedMatchCandidate => c !== null)
+      : [];
+
+  // Map new /search/similar 3-layer results
+  const similarCandidates: PatternSeedMatchCandidate[] =
+    similarSearchResult.status === 'fulfilled' &&
+    Array.isArray(similarSearchResult.value.candidates)
+      ? (similarSearchResult.value.candidates as unknown[])
+          .map((raw) => {
+            if (!isRecord(raw)) return null;
+            const sym = typeof raw.symbol === 'string' ? raw.symbol : null;
+            if (!sym) return null;
+            const finalScore = getNumeric(raw.final_score) ?? 0;
+            const la = getNumeric(raw.layer_a_score) ?? 0;
+            const lb = typeof raw.layer_b_score === 'number' ? raw.layer_b_score : null;
+            const lc = typeof raw.layer_c_score === 'number' ? raw.layer_c_score : null;
+            const candPath = Array.isArray(raw.candidate_phase_path)
+              ? (raw.candidate_phase_path as unknown[]).filter((p): p is string => typeof p === 'string')
+              : [];
+
+            const layerParts = [
+              `A:${(la * 100).toFixed(0)}`,
+              lb !== null ? `B:${(lb * 100).toFixed(0)}` : null,
+              lc !== null ? `C:${(lc * 100).toFixed(0)}` : null,
+            ].filter(Boolean).join(' ');
+
+            const phaseSummary = candPath.length > 0 ? candPath.join('→') : '';
+            const summary = [phaseSummary, layerParts].filter(Boolean).join(' · ');
+
+            const c: PatternSeedMatchCandidate = {
+              symbol: sym,
+              source: 'similar',
+              score: clampScore(finalScore * 100),
+              matchedSignals: [],
+              missingSignals: requestedSignals,
+              summary,
+              layerAScore: la,
+              layerBScore: lb,
+              layerCScore: lc,
+              candidatePhasePath: candPath,
+              windowId: typeof raw.window_id === 'string' ? raw.window_id : undefined,
+              startTs: typeof raw.start_ts === 'string' ? raw.start_ts : undefined,
+              endTs: typeof raw.end_ts === 'string' ? raw.end_ts : undefined,
+            };
+            return c;
+          })
+          .filter((c): c is PatternSeedMatchCandidate => c !== null)
+      : [];
+
+  // Merge: similar-search candidates first (richer scoring), then legacy to fill gaps
+  const seenSymbols = new Set<string>();
+  const candidates: PatternSeedMatchCandidate[] = [];
+  for (const c of [...similarCandidates, ...legacyCandidates]) {
+    if (!seenSymbols.has(c.symbol)) {
+      seenSymbols.add(c.symbol);
+      candidates.push(c);
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
 
   return {
     ok: true,

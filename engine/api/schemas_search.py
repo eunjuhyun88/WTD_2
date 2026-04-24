@@ -71,3 +71,72 @@ class ScanResponse(BaseModel):
     scan_id: str
     request: dict[str, Any] = Field(default_factory=dict)
     candidates: list[SearchCandidate] = Field(default_factory=list)
+
+
+# ── /search/similar — 3-layer ranked search ──────────────────────────────────
+
+class SimilarSearchRequest(BaseModel):
+    pattern_draft: dict[str, Any] = Field(
+        default_factory=dict,
+        description="PatternDraft with phases and search_hints. "
+                    "search_hints.target_return_pct / volatility_range / "
+                    "volume_breakout_threshold are used for Layer A scoring.",
+    )
+    observed_phase_paths: list[str] = Field(
+        default_factory=list,
+        description="Ordered phase IDs the user has already observed "
+                    "(e.g. ['DUMP','ACCUMULATION']). Activates Layer B scoring.",
+        max_length=20,
+    )
+    symbol: str | None = Field(
+        None,
+        description="Optional corpus filter — restrict candidates to one symbol.",
+    )
+    timeframe: str = Field(
+        default="4h",
+        description="Target timeframe for corpus candidates.",
+    )
+    top_k: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Maximum candidates returned.",
+    )
+
+
+class SimilarCandidate(BaseModel):
+    candidate_id: str
+    window_id: str
+    symbol: str
+    timeframe: str
+    start_ts: str
+    end_ts: str
+    bars: int
+    final_score: float = Field(description="Blended 3-layer score ∈ [0, 1]")
+    layer_a_score: float = Field(description="Feature signature similarity")
+    layer_b_score: float | None = Field(
+        None, description="Phase path LCS similarity (None if no observed_phase_paths)"
+    )
+    layer_c_score: float | None = Field(
+        None, description="ML p_win from LightGBM (None if model not trained)"
+    )
+    candidate_phase_path: list[str] = Field(
+        default_factory=list,
+        description="Actual observed phase sequence for this candidate symbol.",
+    )
+    signature: dict[str, Any] = Field(default_factory=dict)
+
+
+class SimilarSearchResponse(BaseModel):
+    ok: bool = True
+    owner: Literal["engine"] = "engine"
+    plane: Literal["search"] = "search"
+    status: str
+    generated_at: str
+    run_id: str
+    request: dict[str, Any] = Field(default_factory=dict)
+    candidates: list[SimilarCandidate] = Field(default_factory=list)
+    scoring_layers: dict[str, bool] = Field(
+        default_factory=dict,
+        description="Which layers were active: {layer_a, layer_b, layer_c}",
+    )

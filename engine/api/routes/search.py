@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query
@@ -12,10 +13,14 @@ from api.schemas_search import (
     SearchCorpusWindowSummary,
     SeedSearchRequest,
     SeedSearchResponse,
+    SimilarCandidate,
+    SimilarSearchRequest,
+    SimilarSearchResponse,
 )
 from patterns.definitions import PatternDefinitionService
 from search.corpus import SearchCorpusStore
 from search.runtime import get_scan, get_seed_search, run_scan, run_seed_search
+from search.similar import get_similar_search, run_similar_search
 
 router = APIRouter()
 _definition_service: PatternDefinitionService | None = None
@@ -88,6 +93,62 @@ async def search_scan_result(scan_id: str) -> ScanResponse:
     if result is None:
         raise HTTPException(status_code=404, detail={"code": "scan_not_found", "scan_id": scan_id})
     return _scan_response(result)
+
+
+@router.post("/similar", response_model=SimilarSearchResponse)
+async def search_similar(body: SimilarSearchRequest) -> SimilarSearchResponse:
+    """3-layer pattern similarity search.
+
+    Layer A — feature signature distance (always active)
+    Layer B — phase path LCS similarity (active when observed_phase_paths provided)
+    Layer C — ML p_win from LightGBM (active when model is trained)
+    """
+    result = await asyncio.to_thread(run_similar_search, body.model_dump(mode="json"))
+    return _similar_response(result)
+
+
+@router.get("/similar/{run_id}", response_model=SimilarSearchResponse)
+async def search_similar_result(run_id: str) -> SimilarSearchResponse:
+    result = get_similar_search(run_id)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "similar_run_not_found", "run_id": run_id},
+        )
+    return _similar_response(result)
+
+
+def _similar_response(result: dict) -> SimilarSearchResponse:
+    candidates_raw = result.get("candidates", [])
+    candidates = [
+        SimilarCandidate(
+            candidate_id=row["candidate_id"],
+            window_id=row["window_id"],
+            symbol=row["symbol"],
+            timeframe=row["timeframe"],
+            start_ts=row["start_ts"],
+            end_ts=row["end_ts"],
+            bars=int(row.get("bars", 0)),
+            final_score=float(row.get("final_score", 0.0)),
+            layer_a_score=float(row.get("layer_a_score", 0.0)),
+            layer_b_score=row.get("layer_b_score"),
+            layer_c_score=row.get("layer_c_score"),
+            candidate_phase_path=row.get("candidate_phase_path") or [],
+            signature=row.get("signature") or {},
+        )
+        for row in candidates_raw
+    ]
+    # Report which layers were active in this run
+    any_b = any(c.layer_b_score is not None for c in candidates)
+    any_c = any(c.layer_c_score is not None for c in candidates)
+    return SimilarSearchResponse(
+        status=result["status"],
+        generated_at=result["updated_at"],
+        run_id=result["run_id"],
+        request=result.get("request", {}),
+        candidates=candidates,
+        scoring_layers={"layer_a": True, "layer_b": any_b, "layer_c": any_c},
+    )
 
 
 def _seed_response(result: dict) -> SeedSearchResponse:
