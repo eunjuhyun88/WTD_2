@@ -13,6 +13,10 @@ vi.mock('$lib/server/confluenceHistory', () => ({
   streakBack: vi.fn(() => 0),
 }));
 
+vi.mock('$lib/server/analyze/service', () => ({
+  getAnalyzePayload: vi.fn(),
+}));
+
 vi.mock('$lib/server/marketIndicatorFeeds', () => ({
   loadVenueDivergence: vi.fn(),
   loadRvCone: vi.fn(),
@@ -22,6 +26,7 @@ vi.mock('$lib/server/marketIndicatorFeeds', () => ({
   loadOptionsSnapshot: vi.fn(),
 }));
 
+import { getAnalyzePayload } from '$lib/server/analyze/service';
 import { pushConfluence } from '$lib/server/confluenceHistory';
 import {
   loadFundingFlip,
@@ -88,10 +93,18 @@ describe('/api/confluence/current', () => {
     expect(body.top).toHaveLength(3);
     expect(body.divergence).toBe(false);
     expect(vi.mocked(pushConfluence)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(getAnalyzePayload)).not.toHaveBeenCalled();
     expect(vi.mocked(loadVenueDivergence)).not.toHaveBeenCalled();
   });
 
   it('falls back to legacy compute when engine facts are unavailable', async () => {
+    vi.mocked(getAnalyzePayload).mockResolvedValue({
+      payload: {
+        snapshot: { ensemble_score: 95, direction: 'long' },
+        blocks_triggered: ['a', 'b', 'c', 'd'],
+      },
+      cacheStatus: 'miss',
+    });
     vi.mocked(loadVenueDivergence).mockResolvedValue({
       payload: {
         symbol: 'ETHUSDT',
@@ -180,11 +193,6 @@ describe('/api/confluence/current', () => {
       if (url.includes('/api/facts/confluence')) {
         return new Response(null, { status: 503 });
       }
-      if (url.includes('/api/cogochi/analyze')) {
-        return Response.json({
-          snapshot: { ensemble_score: 95, direction: 'long', active_block_count: 4 },
-        });
-      }
       return new Response(null, { status: 404 });
     });
 
@@ -205,7 +213,12 @@ describe('/api/confluence/current', () => {
     expect(body.score).toBeGreaterThan(0);
     expect(body.contributions.length).toBeGreaterThan(0);
     expect(vi.mocked(pushConfluence)).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(getAnalyzePayload)).toHaveBeenCalledWith({
+      symbol: 'ETHUSDT',
+      tf: '4h',
+      requestId: 'internal:confluence:ETHUSDT:4h',
+    });
     expect(vi.mocked(loadVenueDivergence)).toHaveBeenCalledWith('ETHUSDT');
     expect(vi.mocked(loadOptionsSnapshot)).toHaveBeenCalledWith('ETH');
   });

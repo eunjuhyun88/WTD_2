@@ -228,8 +228,7 @@ This follow-up keeps the existing engine-first confluence bridge but removes the
 4. make fallback composition call those helpers directly instead of `fetch(origin + /api/...)`
 5. keep legacy fallback semantics intact until engine fact confluence fully covers the needed evidence set
 6. lock the cut with targeted `confluence/current` route coverage plus helper tests where cache/reuse behavior changes materially
-||||||| 621ba181
-=======
+
 ### Current Lane Slice — Indicator Catalog Alias Cleanup
 
 This slice removes a stale duplicate engine entrypoint now that fact-plane consumers use the canonical `/facts/*` family.
@@ -288,7 +287,17 @@ This small follow-up removes an app-server self-call that remains on the termina
 3. make `intel-agent-shadow/execute` call that shared function directly instead of POSTing to `/api/quick-trades/open`
 4. preserve `/api/quick-trades/open` route behavior by making it a thin wrapper over the same shared function
 5. lock the cut with targeted `intel-agent-shadow/execute` coverage
->>>>>>> origin/main
+
+### Current Lane Slice — Confluence Analyze Direct Load
+
+This follow-up removes the last app-server loopback that remains on the confluence fallback path after `Confluence Direct Load` landed.
+
+1. keep `/api/confluence/current` public payload stable
+2. preserve engine `/api/facts/confluence` as the preferred upstream
+3. replace fallback `/api/cogochi/analyze` loopback with a direct bounded analyze service read
+4. keep legacy confluence scoring semantics intact; only the in-process load path changes
+5. fix the stale work-item conflict markers while touching the lane doc so `W-0122` is again a clean canonical source
+6. lock the cut with targeted `confluence/current` route coverage plus app check
 
 ## Goal
 
@@ -613,7 +622,8 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
 - **indicator catalog should not keep a duplicate `ctx` alias once plane proxies are live** — app fact consumers and plane clients already use `/facts/indicator-catalog`; keeping `/ctx/indicator-catalog` only preserves a second fact owner path and stale contract surface.
 - **terminal execution paths should share server helpers instead of HTTP loopbacks** — when `intel-policy`, `intel-agent-shadow/execute`, and `/api/quick-trades/open` live in the same app process, shared loaders/functions are the canonical surface and internal `fetch('/api/...')` should be removed before new orchestration grows around them.
-- **confluence fallback should read shared market loaders, not market HTTP routes** — `/api/confluence/current` may keep its legacy heuristic fallback for now, but venue divergence / RV cone / SSR / funding flip / liq clusters / options inputs should come from shared server loaders so confluence and standalone routes reuse one cache and one composition path. The auth-sensitive analyze lane stays on its explicit route contract until a public bounded analyze read model exists.
+- **confluence fallback should read shared market loaders, not market HTTP routes** — `/api/confluence/current` may keep its legacy heuristic fallback for now, but venue divergence / RV cone / SSR / funding flip / liq clusters / options inputs should come from shared server loaders so confluence and standalone routes reuse one cache and one composition path.
+- **confluence fallback should read analyze service directly when it stays in-process** — once the legacy market inputs moved to shared loaders, the remaining `/api/cogochi/analyze` self-call becomes duplicate app ingress. `/api/confluence/current` should consume the bounded analyze service directly and keep the public analyze route as a thin external contract.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -660,9 +670,9 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-confluence-direct-load`, active worktree at `/tmp/wtd-v2-w0122-confluence-direct-load`
-- verification status: confluence direct-load cleanup passes app targeted `vitest` (`confluence/current`) plus `npm --prefix app run check`; helper-backed market route wrappers compile on the same app check
-- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, auth-bounded analyze fallback still on explicit route contract, remaining app self-calls outside the current snapshot/intel-policy/confluence path
+- branch/worktree state: `codex/w-0122-confluence-analyze-direct-load`, active worktree at `/tmp/wtd-v2-w0122-confluence-analyze-direct-load`
+- verification status: confluence analyze direct-load cleanup passes targeted `vitest` (`src/routes/api/confluence/current/confluence-current.test.ts`) plus `npm --prefix app run check` (`0 errors`, existing warnings only)
+- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, remaining app self-calls outside the current snapshot/intel-policy/confluence path
 
 ## PR Trail
 
