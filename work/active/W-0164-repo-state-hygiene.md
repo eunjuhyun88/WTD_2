@@ -35,7 +35,7 @@ Contract change
 
 ## Facts
 
-1. `origin/main` moved from `a0656b9e` to `2092ac01`, then to `87f44b0b`, then to `cdefda4d` during setup; the dedicated worktree now tracks `cdefda4d`.
+1. `origin/main` moved through `2092ac01`, `87f44b0b`, `cdefda4d`, and `092a50de`; this branch resolves state hygiene against `092a50de`.
 2. The shared root worktree had unrelated dirty files: `engine/uv.lock` and `research/experiments/experiment_log.jsonl`.
 3. `work/active/W-app-ci-repair-checkpoint-20260426.md` does not satisfy the required `W-xxxx-slug` active work item naming rule.
 4. App baseline passed locally before this slice: `npm run check` had 0 errors and `npm test` had 250 passed.
@@ -58,8 +58,8 @@ Contract change
 
 ## Next Steps
 
-1. Validate active work item naming and MemKraft protocol.
-2. Review or merge this state-hygiene branch.
+1. Merge PR #305 after required checks pass.
+2. Keep W-0164 reference-only unless the state hygiene lane is reopened.
 3. Resume app warning burn-down in a separate app-owned lane.
 
 ## Exit Criteria

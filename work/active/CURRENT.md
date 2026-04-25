@@ -9,7 +9,6 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0164-repo-state-hygiene` | contract | 진행 중 — CURRENT sync + stale checkpoint archive |
 | `W-0132-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
 | `W-0145-operational-seed-search-corpus` | engine | 다음 — 40+차원 corpus 완성 |
 
@@ -17,7 +16,7 @@
 
 ## main SHA
 
-`cdefda4d` — origin/main (2026-04-26) — active variant promotion + pattern seed scoring + App CI/governance + W-0201/W-0202/W-0210/W-0211 + indicator defaults 포함
+`092a50de` — origin/main (2026-04-26) — memory sync #292 + active variant promotion + indicator defaults + CI governance 포함
 
 ---
 
@@ -42,6 +41,7 @@
 | **W-0204** captures.py active_variant_store 연결 | PR #292 main 머지 완료 |
 | **W-0203** pattern-seed route delegation | PR #292 main 머지 완료 |
 | **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
+| **W-0164** repo state hygiene | PR #305 main 머지 완료 |
 
 ---
 
@@ -56,7 +56,7 @@
 ## 다음 실행 순서 (우선순위 순)
 
 ### 즉시
-- **W-0164** repo state hygiene 마무리 — 전용 worktree 기준 CURRENT sync + stale checkpoint archive
+- 긴급 항목 없음 — 모든 CI 초록, GCP 정상 (cogotchi-00013-c7n)
 
 ### 중기 (설계 필요)
 4. **Layer A 검색 고도화** (40+차원 완성)
