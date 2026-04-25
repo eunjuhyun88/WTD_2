@@ -510,7 +510,7 @@
   const drawerTab = $derived(tabState.drawerTab);
   const peekHeight = $derived(tabState.peekHeight);
   const analyzeDetailOpen = $derived(peekOpen && drawerTab === 'analyze');
-  let sidebarAnalyzeDockCollapsed = $state(false);
+  let sidebarAnalyzeDockCollapsed = $state(true);
   let microstructureView = $state<'candle' | 'heatmap' | 'footprint'>('heatmap');
 
   // ── Scan core loop state ────────────────────────────────────────────────
@@ -4100,6 +4100,233 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     flex-shrink: 0;
+  }
+
+  /* Visual salvage pass: less card noise, more trading-terminal density. */
+  .trade-mode {
+    background:
+      radial-gradient(circle at 50% -18%, rgba(232,184,106,0.055), transparent 34%),
+      linear-gradient(180deg, #050608 0%, #030405 100%);
+  }
+  .layout-c {
+    background:
+      linear-gradient(90deg, rgba(232,184,106,0.04), transparent 18%, transparent 82%, rgba(122,162,224,0.025)),
+      #050608;
+  }
+  .layout-c .chart-section.lc-main {
+    margin: 4px 0 4px 4px;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+    background: #06080b;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 20px 60px rgba(0,0,0,0.28);
+  }
+  .lc-sidebar {
+    width: 232px;
+    margin: 4px 4px 4px 0;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-left: 1px solid rgba(255,255,255,0.045);
+    border-radius: 0 10px 10px 0;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(232,184,106,0.08), transparent 30%),
+      rgba(5,7,10,0.94);
+    box-shadow: inset 1px 0 0 rgba(255,255,255,0.02);
+  }
+  .chart-header {
+    min-height: 46px;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.055);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008)),
+      #07090d;
+  }
+  .symbol {
+    font-size: 15px;
+    letter-spacing: 0.005em;
+  }
+  .timeframe {
+    color: var(--g7);
+  }
+  .pattern,
+  .hd-chip,
+  .evidence-badge,
+  .micro-toggle {
+    border-color: rgba(255,255,255,0.065);
+    background: rgba(255,255,255,0.026);
+  }
+  .micro-toggle-btn {
+    color: var(--g5);
+  }
+  .micro-toggle-btn.active {
+    color: #f3d58d;
+    background: rgba(232,184,106,0.105);
+    box-shadow: inset 0 0 0 1px rgba(232,184,106,0.22);
+  }
+  .chart-body {
+    background:
+      linear-gradient(180deg, rgba(122,162,224,0.025), transparent 16%),
+      #080b11;
+  }
+  .microstructure-belt {
+    min-height: 38px;
+    grid-template-columns: 120px minmax(260px, 0.78fr) minmax(280px, 1fr);
+    gap: 7px;
+    padding: 5px 9px;
+    border-top: 1px solid rgba(255,255,255,0.052);
+    border-bottom: 1px solid rgba(255,255,255,0.052);
+    background:
+      linear-gradient(90deg, rgba(74,187,142,0.045), transparent 28%),
+      rgba(3,5,8,0.96);
+  }
+  .micro-belt-title,
+  .micro-stat,
+  .micro-heat-strip,
+  .micro-depth-strip {
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.018);
+    border-radius: 5px;
+  }
+  .micro-belt-title {
+    padding: 0 8px;
+  }
+  .micro-kicker {
+    color: #6f7a89;
+    letter-spacing: 0.14em;
+  }
+  .micro-belt-title strong {
+    font-size: 10px;
+    color: #dbe4ee;
+  }
+  .micro-belt-stats {
+    gap: 4px;
+  }
+  .micro-stat {
+    padding: 5px 7px;
+    font-size: 9px;
+    box-shadow: none;
+  }
+  .micro-stat b {
+    font-size: 6.5px;
+    color: #68717c;
+  }
+  .micro-heat-strip {
+    padding: 6px;
+  }
+  .micro-depth-strip {
+    display: none;
+  }
+  .peek-bar {
+    height: 28px;
+    border-top: 1px solid rgba(255,255,255,0.055);
+    background: #050608;
+  }
+  .pb-tab {
+    border-left-color: rgba(255,255,255,0.045);
+    border-bottom-width: 1px;
+  }
+  .pb-tab:hover,
+  .pb-tab.active {
+    background: rgba(255,255,255,0.028);
+  }
+  .peek-overlay {
+    bottom: 28px;
+    background:
+      linear-gradient(180deg, rgba(9,12,17,0.965), rgba(4,6,9,0.985)),
+      #050608;
+    border-top: 1px solid rgba(232,184,106,0.20);
+    box-shadow: 0 -30px 80px rgba(0,0,0,0.82);
+  }
+  .drawer-header {
+    height: 30px;
+    border-bottom-color: rgba(255,255,255,0.055);
+    background: rgba(4,5,7,0.95);
+  }
+  .dh-tab {
+    border-right-color: rgba(255,255,255,0.045);
+  }
+  .dh-tab:hover,
+  .dh-tab.active {
+    background: rgba(255,255,255,0.026);
+  }
+  .workspace-body {
+    padding: 8px;
+    gap: 8px;
+    background:
+      radial-gradient(circle at 12% -6%, rgba(232,184,106,0.045), transparent 28%),
+      #05070a;
+  }
+  .workspace-hero,
+  .workspace-panel {
+    border-color: rgba(255,255,255,0.065);
+    background: rgba(255,255,255,0.018);
+    box-shadow: none;
+  }
+  .workspace-hero {
+    grid-template-columns: minmax(190px, 0.58fr) minmax(420px, 1.42fr);
+    padding: 8px 10px;
+  }
+  .phase-node {
+    min-height: 34px;
+    padding: 6px 7px;
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.018);
+  }
+  .phase-node.active {
+    background: rgba(232,184,106,0.105);
+  }
+  .market-depth-grid {
+    grid-template-columns: minmax(190px, 0.84fr) minmax(230px, 1fr) minmax(230px, 1.02fr) minmax(250px, 1.1fr);
+    gap: 8px;
+  }
+  .workspace-panel {
+    padding: 8px;
+    border-radius: 7px;
+  }
+  .workspace-panel-head {
+    margin-bottom: 6px;
+  }
+  .depth-panel {
+    min-height: 178px;
+    background: rgba(3,5,8,0.70);
+    border-color: rgba(122,162,224,0.10);
+  }
+  .dom-row,
+  .tape-row,
+  .footprint-row {
+    min-height: 13px;
+  }
+  .hud-card {
+    margin: 0 8px;
+    padding: 8px;
+    border-color: rgba(255,255,255,0.065);
+    background: rgba(255,255,255,0.018);
+    border-radius: 7px;
+    box-shadow: none;
+  }
+  .hud-current-state {
+    border-color: rgba(232,184,106,0.24);
+    background:
+      radial-gradient(circle at 100% 0%, rgba(232,184,106,0.105), transparent 40%),
+      rgba(255,255,255,0.018);
+  }
+  .hud-evidence-item,
+  .hud-risk-item,
+  .hud-action {
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.22);
+  }
+  .hud-evidence-item.pos {
+    border-left: 2px solid rgba(74,187,142,0.65);
+  }
+  .hud-evidence-item.neg {
+    border-left: 2px solid rgba(226,91,91,0.65);
+  }
+  .hud-risk-item {
+    color: var(--g7);
+    border-left: 2px solid rgba(232,184,106,0.52);
+  }
+  .hud-action.primary {
+    background: rgba(74,187,142,0.09);
   }
   @media (max-width: 1120px) {
     .microstructure-belt {
