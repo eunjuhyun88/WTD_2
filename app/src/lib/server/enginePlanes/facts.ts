@@ -123,13 +123,17 @@ export const fetchFactPerpContextProxy = fetchPerpContextProxy;
 /** @deprecated Use EngineFactPerpContextPayload */
 export type PerpContextPayload = EngineFactPerpContextPayload;
 
-/** Placeholder for market-cap fact proxy — returns null until endpoint is implemented. */
 export async function fetchFactMarketCapProxy(
 	fetchFn: ServerFetch,
-	_args?: Record<string, unknown>,
-): Promise<null> {
-	void fetchFn;
-	return null;
+	args: { offline?: boolean } = {},
+): Promise<MarketCapSnapshot | null> {
+	return fetchEnginePlaneJson<MarketCapSnapshot>(fetchFn, 'facts', {
+		path: 'market-cap',
+		query: {
+			offline: args.offline ?? true,
+		},
+		timeoutMs: 8_000,
+	});
 }
 
 export async function fetchIndicatorCatalogProxy(

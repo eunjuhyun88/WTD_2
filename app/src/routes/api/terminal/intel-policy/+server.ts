@@ -37,54 +37,47 @@ function symbolFromPair(pair: string): string {
   return pair.replace('/', '').toUpperCase();
 }
 
-async function fetchJsonSafe(fetchFn: typeof fetch, url: string): Promise<any> {
-  try {
-    const r = await fetchFn(url);
-    return await r.json();
-  } catch {
-    return {};
-  }
-}
-
-async function loadMacroOverview(fetchFn: typeof fetch): Promise<any> {
-  return fetchJsonSafe(fetchFn, '/api/market/macro-overview');
-}
-
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
   const perpBridgePromise = loadPerpContextBridge(fetchFn, { pair, timeframe });
 
-  const [newsData, eventsResult, flowResult, macroRes, trendingData, picksData, agentContext, , , macroOverview] = await Promise.all([
-    fetchJsonSafe(
-      fetchFn,
-      `/api/market/news?limit=40&offset=0&token=${encodeURIComponent(token)}&sort=importance&interval=1m`,
+  const [newsData, eventsResult, flowResult, macroOverview, trendingData, picksData, agentContext] = await Promise.all([
+    loadMarketNews({
+      limit: 40,
+      offset: 0,
+      token,
+      interval: '1m',
+      sortBy: 'importance',
+    }),
+    perpBridgePromise.then((bridge) =>
+      loadMarketEvents(fetchFn, { pair, timeframe, perpBridge: bridge }),
     ),
-    fetchJsonSafe(fetchFn, `/api/market/events?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
-    fetchJsonSafe(fetchFn, `/api/market/flow?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
-    fetchJsonSafe(fetchFn, '/api/market/macro-overview'),
-    fetchJsonSafe(fetchFn, '/api/market/trending?section=all&limit=20'),
-    fetchJsonSafe(fetchFn, '/api/terminal/opportunity-scan?limit=15'),
+    perpBridgePromise.then((bridge) =>
+      loadMarketFlow(fetchFn, { pair, timeframe, perpBridge: bridge }),
+    ),
+    fetchFactMarketCapProxy(fetchFn, { offline: true }).then(async (snapshot) => {
+      const overview = adaptEngineMarketCapSnapshot(snapshot);
+      return overview ?? fetchMarketCapOverview();
+    }),
+    loadMarketTrending({
+      limit: 20,
+      section: 'all',
+    }),
+    getOrRunOpportunityScan(15),
     loadAgentContextPack({
       fetchFn,
       symbol: symbolFromPair(pair),
       timeframe,
       captureLimit: 3,
     }),
-    perpBridgePromise.then((bridge) =>
-      loadMarketFlow(fetchFn, { pair, timeframe, perpBridge: bridge }),
-    ),
-    perpBridgePromise.then((bridge) =>
-      loadMarketEvents(fetchFn, { pair, timeframe, perpBridge: bridge }),
-    ),
-    loadMacroOverview(fetchFn),
   ]);
 
-  const newsRecords = newsData.records;
-  const eventRecords = eventsResult.data?.records;
+  const newsRecords = newsData.records ?? [];
+  const eventRecords = eventsResult.data?.records ?? [];
   const flowSnapshot = flowResult.data?.snapshot ?? null;
-  const flowRecords = flowResult.data?.records;
-  const trendingCoins = trendingData.trending;
-  const pickCoins = picksData.payload?.result?.coins;
+  const flowRecords = flowResult.data?.records ?? [];
+  const trendingCoins = trendingData.trending ?? [];
+  const pickCoins = picksData.payload?.result?.coins ?? [];
 
   return buildIntelPolicyOutput({
     pair,

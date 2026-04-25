@@ -26,8 +26,32 @@ import { engineProxyLimiter } from '$lib/server/rateLimit';
 import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
 
 // PUT/DELETE are not currently permitted on the engine proxy
-function isBlockedPath(_path: string): boolean { return false; }
-function isAllowedPath(_path: string, _method: string): boolean { return false; }
+function isBlockedPath(path: string): boolean {
+  return path === 'patterns/states' || path.startsWith('patterns/states/') || path === 'captures' || path.startsWith('captures/');
+}
+
+function isAllowedPath(path: string, method: string): boolean {
+  if (isBlockedPath(path)) return false;
+  if (method === 'GET') {
+    return (
+      path === 'healthz' ||
+      path.startsWith('memory/') ||
+      path === 'scanner/status' ||
+      path === 'patterns/candidates' ||
+      path === 'universe' ||
+      path.startsWith('challenge/')
+    );
+  }
+  if (method === 'POST') {
+    const first = path.split('/')[0];
+    return (
+      ['score', 'deep', 'backtest', 'train', 'opportunity', 'verdict'].includes(first) ||
+      path.startsWith('memory/') ||
+      path.startsWith('challenge/')
+    );
+  }
+  return false;
+}
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -96,10 +120,17 @@ function isHeavyPath(path: string): boolean {
   return HEAVY_ENGINE_PATHS.has(first);
 }
 
-export const GET: RequestHandler = ({ request, params }) =>
-  proxy(request, params.path);
+export const GET: RequestHandler = ({ request, params }) => {
+  if (!isAllowedPath(params.path, 'GET')) {
+    return json({ error: 'Not found' }, { status: 404 });
+  }
+  return proxy(request, params.path);
+};
 
 export const POST: RequestHandler = ({ request, params, getClientAddress }) => {
+  if (!isAllowedPath(params.path, 'POST')) {
+    return json({ error: 'Not found' }, { status: 404 });
+  }
   if (isHeavyPath(params.path) && !engineProxyLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }

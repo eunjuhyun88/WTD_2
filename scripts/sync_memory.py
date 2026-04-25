@@ -21,13 +21,14 @@ ROOT = Path(__file__).resolve().parents[1]
 MEMORY_DIR = ROOT / "memory"
 CURRENT_MD = ROOT / "work" / "active" / "CURRENT.md"
 
-# engine .venv 우선 시도, 없으면 시스템 Python에서 import
-sys.path.insert(0, str(ROOT / "engine"))
+# 루트 memory.mk protocol import를 우선 사용한다.
+sys.path.insert(0, str(ROOT))
+sys.path.insert(1, str(ROOT / "engine"))
 try:
-    from memkraft import MemKraft
+    from memory.mk import mk
 except ImportError:
-    print("⚠️  memkraft not installed — skipping MemKraft write")
-    MemKraft = None
+    print("memkraft not installed or memory.mk unavailable - skipping MemKraft write")
+    mk = None
 
 
 # ──────────────────────────────────────────────
@@ -35,10 +36,8 @@ except ImportError:
 # ──────────────────────────────────────────────
 
 def record_pr_event(pr_number: int, pr_title: str, pr_body: str, sha: str, author: str) -> None:
-    if MemKraft is None:
+    if mk is None:
         return
-
-    mk = MemKraft(base_dir=str(MEMORY_DIR))
 
     # work item ID 추출 (W-XXXX 패턴)
     work_ids = re.findall(r"W-\d{4}", pr_title + " " + pr_body)
@@ -50,7 +49,7 @@ def record_pr_event(pr_number: int, pr_title: str, pr_body: str, sha: str, autho
         tags=tags,
         importance="high",
     )
-    print(f"✅ MemKraft: PR #{pr_number} 기록 완료 (tags: {tags})")
+    print(f"MemKraft: recorded PR #{pr_number} (tags: {tags})")
 
 
 # ──────────────────────────────────────────────
@@ -79,23 +78,12 @@ def sync_current_md(sha: str, pr_number: int, pr_title: str) -> bool:
         new_text,
     )
 
-    # 완료 테이블에 PR 추가 (중복 방지)
-    pr_entry = f"| #{pr_number} | {pr_title} |"
-    if f"#{pr_number}" not in new_text:
-        # "## 완료" 섹션 바로 아래 테이블에 삽입
-        new_text = re.sub(
-            r"(## 완료.*?\n\|[-| ]+\|\n)",
-            rf"\1{pr_entry}\n",
-            new_text,
-            flags=re.DOTALL,
-        )
-
     if new_text == text:
-        print("ℹ️  CURRENT.md 변경 없음 (이미 최신)")
+        print("CURRENT.md unchanged")
         return False
 
     CURRENT_MD.write_text(new_text, encoding="utf-8")
-    print(f"✅ CURRENT.md: main SHA → {sha[:8]}, PR #{pr_number} 추가")
+    print(f"CURRENT.md: main SHA -> {sha[:8]} after PR #{pr_number}")
     return True
 
 

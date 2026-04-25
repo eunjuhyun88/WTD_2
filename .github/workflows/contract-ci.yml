@@ -2,27 +2,9 @@ name: Contract CI
 
 on:
   pull_request:
-    paths:
-      - "engine/api/**"
-      - "engine/scripts/export_openapi.py"
-      - "engine/tests/test_contract_*.py"
-      - "app/scripts/contracts/**"
-      - "app/src/lib/contracts/**"
-      - "app/package.json"
-      - "app/package-lock.json"
-      - "scripts/contract-check.sh"
-      - ".github/workflows/contract-ci.yml"
   push:
-    paths:
-      - "engine/api/**"
-      - "engine/scripts/export_openapi.py"
-      - "engine/tests/test_contract_*.py"
-      - "app/scripts/contracts/**"
-      - "app/src/lib/contracts/**"
-      - "app/package.json"
-      - "app/package-lock.json"
-      - "scripts/contract-check.sh"
-      - ".github/workflows/contract-ci.yml"
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,7 +15,7 @@ concurrency:
 
 jobs:
   contract:
-    name: Contract Check
+    name: Contract CI
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -51,6 +33,14 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+
+      - name: Validate active agent state
+        run: |
+          if compgen -G "work/active/AGENT-HANDOFF-*.md" > /dev/null; then
+            echo "Archive AGENT-HANDOFF files outside work/active; CURRENT.md is the live index."
+            ls work/active/AGENT-HANDOFF-*.md
+            exit 1
+          fi
 
       - name: Run contract check
         run: ./scripts/contract-check.sh

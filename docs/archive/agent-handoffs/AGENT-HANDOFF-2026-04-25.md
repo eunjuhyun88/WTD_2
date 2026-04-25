@@ -1,3 +1,13 @@
+# Archived Agent Handoff — 2026-04-25
+
+Archived by W-0163 because `work/active/CURRENT.md` is the live index and
+`work/active/AGENT-HANDOFF-*` snapshots can override the current state for
+future agents.
+
+Original content follows.
+
+---
+
 # Agent Handoff — 2026-04-25
 
 다음 에이전트가 컨텍스트 없이 시작해도 이 파일 하나로 현황 파악 가능.
@@ -67,7 +77,7 @@ engine-api JWT 게이팅. 현재 `--allow-unauthenticated`. `/jobs/*` 제외 나
 
 ## 아키텍처 핵심 이해
 
-```
+```text
 raw_ingest (60분) → data_cache (CSV)
     ↓
 feature_materialization (15분) → FeatureWindowStore (SQLite, 40+ 신호)

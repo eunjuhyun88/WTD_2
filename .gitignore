@@ -58,6 +58,7 @@ engine/research/pattern_search/market_indices/*.json
 !engine/research/pattern_search/market_indices/.gitkeep
 engine/research/pattern_search/search_runs/*.json
 !engine/research/pattern_search/search_runs/.gitkeep
+engine/research/pattern_search/*.sqlite*
 
 # dev artifacts
 *.tar.gz

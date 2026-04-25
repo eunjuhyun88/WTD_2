@@ -244,9 +244,16 @@ describe('createPatternCapture', () => {
   });
 
   it('allows draft-only researchContext when parser output is present', async () => {
-    (engine.createCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (engine.createRuntimeCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      capture: { capture_id: 'cap-1' },
+      capture: {
+        capture_id: 'cap-1',
+        symbol: 'BTCUSDT',
+        timeframe: '4h',
+        captured_at_ms: 1_776_566_400_000,
+        chart_context: {},
+        block_scores: {},
+      },
     });
 
     const input: PatternCaptureCreateRequest = {
@@ -286,7 +293,7 @@ describe('createPatternCapture', () => {
 
     await createPatternCapture('user-1', input);
 
-    expect(engine.createCapture).toHaveBeenCalledWith(
+    expect(engine.createRuntimeCapture).toHaveBeenCalledWith(
       expect.objectContaining({
         research_context: expect.objectContaining({
           pattern_family: 'tradoor_ptb_oi_reversal',
