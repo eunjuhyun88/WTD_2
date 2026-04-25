@@ -9,8 +9,8 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0214-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
-| `W-0213-layer-a-search-upgrade` | engine | 다음 — 40+차원 feature_snapshot 완성 |
+| `W-0132-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
+| `W-0145-operational-seed-search-corpus` | engine | 다음 — 40+차원 corpus 완성 |
 
 ---
 
