@@ -19,6 +19,7 @@ Engine logic change
 - expose `/runtime/captures`, `/runtime/workspace/*`, `/runtime/setups/*`, `/runtime/research-contexts/*`, and `/runtime/ledger/*`
 - add runtime capture list/read/write contracts so app persistence can use `/runtime/captures` as the canonical product path
 - cut `terminalPersistence` capture create/list over to runtime plane while preserving degraded local fallback
+- route legacy app `/api/captures` compatibility reads/writes through `/runtime/captures`
 - keep local SQLite/file stores as fallback adapters behind engine APIs
 - add targeted engine route/store tests
 
@@ -51,6 +52,7 @@ Engine logic change
 2. app plane proxy already allows `/api/runtime/captures`, `/api/runtime/workspace/*`, `/api/runtime/setups/*`, `/api/runtime/research-contexts/*`, and `/api/runtime/ledger/*`, but product capture create/list still rely on legacy `/captures`.
 3. runtime state is authoritative workflow truth and must not be folded into fact or search payload ownership.
 4. legacy `/captures` remains live and must be treated as a compatibility surface until app consumers migrate.
+5. compatibility consumers such as `/api/captures` should hit runtime truth without reintroducing a second workflow owner.
 
 ## Assumptions
 
@@ -68,12 +70,13 @@ Engine logic change
 - Workspace pins, saved setups, research contexts, and runtime ledger projections start in a small SQLite-backed `RuntimeStateStore`.
 - Legacy `/captures` stays in place; new app/runtime traffic should prefer `/runtime/*`.
 - Product capture save/list flows should read and write through `/runtime/captures` first, with app DB fallback reserved for degraded engine conditions.
+- The public app compatibility route `/api/captures` should proxy to engine `/runtime/captures`, not back to legacy engine `/captures`.
 
 ## Next Steps
 
-1. land runtime capture list/read/write contract updates and repository tests.
-2. move terminal capture persistence behind `/runtime/captures`.
-3. keep pins/setups/research-context app cutover as the next runtime slice once capture path is stable.
+1. land runtime capture compatibility cutover so `/api/captures` and terminal persistence share runtime truth.
+2. keep pins/setups/research-context app cutover as the next runtime slice once capture path is stable.
+3. decide whether the legacy engine `/captures` surface should later become a thin runtime shim or remain a separate compatibility endpoint.
 
 ## Exit Criteria
 
@@ -85,7 +88,10 @@ Engine logic change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0142-manual-hypothesis-research-context.md`
-- branch: `codex/w-0142-runtime-routes`
-- worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- verification: `uv run --directory engine python -m pytest tests/test_runtime_routes.py -q` = `6 passed`; `npm --prefix app run test -- src/lib/server/enginePlanes/planeClients.test.ts src/lib/server/enginePlaneProxy.test.ts src/lib/server/terminalPersistence.capture.test.ts` = `12 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
-- remaining blockers: shared storage cutover and app surface migration are future slices
+- branch: `codex/w-0142-runtime-contracts`
+- worktree: `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0142-runtime-contracts`
+- verification:
+  - `uv run --directory engine python -m pytest tests/test_runtime_routes.py -q`
+  - `npm --prefix app run test -- src/routes/api/captures/captures.test.ts src/lib/server/enginePlanes/planeClients.test.ts src/lib/server/terminalPersistence.capture.test.ts`
+  - `npm --prefix app run check`
+- remaining blockers: shared storage cutover and app surface migration beyond captures are future slices

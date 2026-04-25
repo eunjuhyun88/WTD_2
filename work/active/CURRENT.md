@@ -174,6 +174,7 @@
 - `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
 - active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
 - `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, process-local + shared Redis query caching, bounded index refresh job, and `/universe?q=` local-search read path
+- `codex/w-0142-runtime-contracts`: runtime capture cutover; terminal persistence and `/api/captures` compatibility path both prefer `/runtime/captures`
 
 ---
 
@@ -217,8 +218,12 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
-| codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0145-corpus-plane | W-0145 | merged via PR #202 |
+| codex/w-0145-search-routes | W-0145 | merged via PR #203 |
+| codex/w-0145-search-proxy-client | W-0145 | merged via PR #205 |
+| codex/w-0142-runtime-routes | W-0142 | merged route skeleton baseline |
+| codex/w-0142-runtime-contracts | W-0142 | active runtime capture cutover lane |
+| codex/w-0142-runtime-state-plane | W-0142 | planned follow-up runtime bridge migration |
 | codex/w-0160-pattern-draft-transformer-contract | W-0160 | planned contract lane for parser/search boundary freeze before live agent cutover |
 | codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
