@@ -118,6 +118,12 @@ export const polymarketOrderLimiter = createRateLimiter({ windowMs: 60_000, max:
 /** Polymarket status polling: 30 per minute per IP */
 export const polymarketStatusLimiter = createRateLimiter({ windowMs: 60_000, max: 30 });
 
+/** Chart/feed endpoints: 60 per minute per IP */
+export const chartFeedLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
+
+/** Douni/AI message endpoints: 10 per minute per IP */
+export const douniMessageLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
+
 /** GMX order preparation: 10 per minute per IP */
 export const gmxOrderLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 

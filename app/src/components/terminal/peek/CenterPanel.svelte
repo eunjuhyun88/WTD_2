@@ -144,7 +144,7 @@
     {scanCount}
     {judgeCount}
     reviewCount={effectiveReviewCount}
-    openTab={peekOpenTab}
+    openTab={peekOpenTab ?? undefined}
     {analyze}
     {scan}
     {judge}

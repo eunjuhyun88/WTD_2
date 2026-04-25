@@ -1,4 +1,4 @@
-import type { SearchPlaneState } from './scan';
+import type { SearchPlaneState, SearchCandidate } from './scan';
 import type { SearchQuerySpec } from './querySpec';
 
 export interface SeedSearchRequest {

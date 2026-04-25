@@ -23,6 +23,7 @@ import { error, json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { engineProxyLimiter } from '$lib/server/rateLimit';
+import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -82,6 +83,19 @@ async function proxy(request: Request, path: string): Promise<Response> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+const BLOCKED_ENGINE_PATHS = new Set(['admin', 'internal', 'debug']);
+const ALLOWED_MUTATION_PATHS = new Set(['memory', 'outcome', 'feedback', 'verdict', 'captures', 'workspace', 'research-context', 'ledger']);
+
+function isBlockedPath(path: string): boolean {
+  const first = path.split('/')[0];
+  return BLOCKED_ENGINE_PATHS.has(first);
+}
+
+function isAllowedPath(path: string, _method: string): boolean {
+  const first = path.split('/')[0];
+  return ALLOWED_MUTATION_PATHS.has(first);
 }
 
 const HEAVY_ENGINE_PATHS = new Set(['score', 'deep', 'backtest', 'train', 'opportunity']);

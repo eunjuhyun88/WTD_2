@@ -673,7 +673,7 @@
             pattern: `Alpha presurge · ${p.phase}`,
             phase: _PHASE_NUM[p.phase] ?? 2,
             alpha: Math.min(99, (_PHASE_ALPHA[p.phase] ?? 50) + (p.grade === 'A' ? 5 : 0)),
-            age: _fmtAge(p.entered_at),
+            age: _fmtAge(p.entered_at ?? null),
             sim: _PHASE_SIM[p.phase] ?? 0.50,
             dir: 'long',
           }));

@@ -12,6 +12,9 @@ import {
 	fetchDexCommunityTakeoversLatest,
 	fetchDexTokenBoostsLatest,
 	fetchDexTokens,
+	type DexCommunityTakeover,
+	type DexAd,
+	type DexTokenProfile,
 } from '$lib/server/providers/dexscreener';
 import {
 	fetchFactPerpContextProxy,
@@ -155,9 +158,9 @@ export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
 		const symbol = pair.replace('/', '');
 		const [enginePerp, takeovers, boosts, ads] = await Promise.all([
 			fetchFactPerpContextProxy(fetch, { symbol, timeframe, offline: true }).catch(() => null),
-			fetchDexCommunityTakeoversLatest(4).catch(() => []),
-			fetchDexTokenBoostsLatest(4).catch(() => []),
-			fetchDexAdsLatest(4).catch(() => []),
+			fetchDexCommunityTakeoversLatest(4).catch((): DexCommunityTakeover[] => []),
+			fetchDexTokenBoostsLatest(4).catch((): DexTokenProfile[] => []),
+			fetchDexAdsLatest(4).catch((): DexAd[] => []),
 		]);
 
 		let deriv: EventDerivativesContext | null = enginePerp ? adaptEnginePerpContext(enginePerp) : null;

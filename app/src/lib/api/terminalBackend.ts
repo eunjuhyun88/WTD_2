@@ -15,6 +15,7 @@ import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
 import type { ConfluenceResult } from '$lib/confluence/types';
 import type {
   FundingFlipPayload,
+  FundingHistoryPayload,
   IndicatorContextPayload,
   LiqClusterPayload,
   OptionsSnapshotPayload,
@@ -22,6 +23,8 @@ import type {
   SsrPayload,
   VenueDivergencePayload,
 } from '$lib/indicators/adapter';
+import type { RuntimeCaptureListResponse, CaptureRecord } from '$lib/contracts/runtime/captures';
+import type { ConfluenceHistoryEntry } from '$lib/server/confluenceHistory';
 import {
   fromEngineMemoryQueryWire,
   toEngineMemoryDebugSessionWire,
@@ -35,6 +38,23 @@ async function readJson<T>(res: Response): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+// Re-exports for consumers importing from this module
+export type { ConfluenceHistoryEntry, RuntimeCaptureListResponse };
+export type RecentCaptureSummary = CaptureRecord;
+export interface TradeOutcomeResult {
+  saved?: boolean;
+  count?: number;
+  training_triggered?: boolean;
+}
+export interface AlphaWorldModelResponse {
+  phases?: Array<{
+    symbol: string;
+    phase: string;
+    grade?: string;
+    entered_at?: string;
+  }>;
 }
 
 export interface TerminalBundleResult {

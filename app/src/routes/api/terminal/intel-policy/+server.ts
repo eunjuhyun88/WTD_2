@@ -39,39 +39,29 @@ function symbolFromPair(pair: string): string {
 
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
-  const perpBridgePromise = loadPerpContextBridge(fetchFn, { pair, timeframe });
+  const perpBridge = await loadPerpContextBridge(fetchFn, { pair, timeframe });
 
-  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
-    fetchJsonSafe(
-      fetchFn,
-      `/api/market/news?limit=40&offset=0&token=${encodeURIComponent(token)}&sort=importance&interval=1m`,
-    ),
-    fetchJsonSafe(fetchFn, `/api/market/events?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
-    fetchJsonSafe(fetchFn, `/api/market/flow?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
-    fetchJsonSafe(fetchFn, '/api/market/macro-overview'),
-    fetchJsonSafe(fetchFn, '/api/market/trending?section=all&limit=20'),
-    fetchJsonSafe(fetchFn, '/api/terminal/opportunity-scan?limit=15'),
-    loadAgentContextPack({
-      fetchFn,
-      symbol: symbolFromPair(pair),
-      timeframe,
-      captureLimit: 3,
-    }),
-    perpBridgePromise.then((bridge) =>
-      loadMarketFlow(fetchFn, { pair, timeframe, perpBridge: bridge }),
-    ),
-    perpBridgePromise.then((bridge) =>
-      loadMarketEvents(fetchFn, { pair, timeframe, perpBridge: bridge }),
-    ),
-    loadMacroOverview(fetchFn),
-  ]);
+  const [newsResult, eventsResult, flowResult, trendingResult, picksResult, agentContext, macroCapSnapshot] =
+    await Promise.allSettled([
+      loadMarketNews({ limit: 40, offset: 0, token, interval: '1m', sortBy: 'importance' }),
+      loadMarketEvents(fetchFn, { pair, timeframe, perpBridge }),
+      loadMarketFlow(fetchFn, { pair, timeframe, perpBridge }),
+      loadMarketTrending({ limit: 20, section: 'all' }),
+      getOrRunOpportunityScan(15),
+      loadAgentContextPack({ fetchFn, symbol: symbolFromPair(pair), timeframe, captureLimit: 3 }),
+      fetchFactMarketCapProxy(fetchFn, { offline: true }),
+    ]);
 
-  const newsRecords = newsData.records;
-  const eventRecords = eventsResult.data.records;
-  const flowSnapshot = flowResult.data.snapshot ?? null;
-  const flowRecords = flowResult.data.records;
-  const trendingCoins = trendingData.trending;
-  const pickCoins = picksData.payload.result.coins;
+  const newsRecords = newsResult.status === 'fulfilled' ? newsResult.value.records : [];
+  const eventRecords = eventsResult.status === 'fulfilled' ? eventsResult.value.data.records : [];
+  const flowData = flowResult.status === 'fulfilled' ? flowResult.value.data : null;
+  const flowSnapshot = flowData?.snapshot ?? null;
+  const flowRecords = flowData?.records ?? [];
+  const trendingCoins = trendingResult.status === 'fulfilled' ? (trendingResult.value.trending ?? []) : [];
+  const pickCoins = picksResult.status === 'fulfilled' ? (picksResult.value?.payload?.result?.coins ?? []) : [];
+  const agentContextPack = agentContext.status === 'fulfilled' ? agentContext.value : null;
+  const capSnapshot = macroCapSnapshot.status === 'fulfilled' ? macroCapSnapshot.value : null;
+  const macroOverview = adaptEngineMarketCapSnapshot(capSnapshot);
 
   return buildIntelPolicyOutput({
     pair,
@@ -83,7 +73,7 @@ async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: st
     macroOverview,
     trendingCoins,
     pickCoins,
-    agentContext,
+    agentContext: agentContextPack,
   });
 }
 
