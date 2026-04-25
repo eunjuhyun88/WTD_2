@@ -60,7 +60,7 @@ _SIGNAL_RULES: dict[str, dict[str, dict[str, Any]]] = {
         "required_boolean": {"recent_rally": True},
     },
     "higher_lows_sequence": {
-        "required_boolean": {"higher_lows_sequence_flag": True},
+        "required_boolean": {"higher_lows_sequence": True},
     },
     "sideways": {
         "required_boolean": {"sideways_compression": True},
