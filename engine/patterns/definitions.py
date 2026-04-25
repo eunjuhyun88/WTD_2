@@ -5,6 +5,10 @@ from typing import Any
 
 from capture.store import CaptureStore
 from capture.types import CaptureRecord
+from patterns.definition_refs import (
+    build_definition_ref,
+    definition_id_from_ref,
+)
 from patterns.library import PATTERN_LIBRARY
 from patterns.registry import PATTERN_REGISTRY_STORE, PatternRegistryEntry, PatternRegistryStore
 from patterns.types import PatternObject
