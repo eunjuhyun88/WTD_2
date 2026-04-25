@@ -23,11 +23,14 @@ type SeedSignal =
 
 type MatchCandidate = {
   symbol: string;
-  source: 'engine';
+  source: 'engine' | 'similar';
   score: number;
   matchedSignals: SeedSignal[];
   missingSignals: SeedSignal[];
   summary: string;
+  windowId?: string;
+  layerAScore?: number;
+  layerBScore?: number;
 };
 
 const DEFAULT_PATTERN_FAMILY = 'tradoor_ptb_oi_reversal';
@@ -438,6 +441,35 @@ function mapCandidate(result: Record<string, unknown>, requestedSignals: SeedSig
   };
 }
 
+function mapSimilarCandidate(result: Record<string, unknown>, requestedSignals: SeedSignal[]): MatchCandidate | null {
+  const symbol = typeof result.symbol === 'string' ? result.symbol : null;
+  if (!symbol) return null;
+  const finalScore = getNumeric(result.final_score);
+  const layerAScore = getNumeric(result.layer_a_score);
+  const layerBScore = getNumeric(result.layer_b_score);
+  const phasePath = Array.isArray(result.candidate_phase_path)
+    ? result.candidate_phase_path.map((item) => String(item)).join('→')
+    : '';
+  const matchedSignals = requestedSignals.filter((signal) => {
+    if (signal === 'dump_then_reclaim') return phasePath.includes('REAL_DUMP') && phasePath.includes('ACCUMULATION');
+    if (signal === 'higher_lows_sequence') return phasePath.includes('ACCUMULATION');
+    return false;
+  });
+  return {
+    symbol,
+    source: 'similar',
+    score: clampScore((finalScore ?? layerAScore ?? layerBScore ?? 0) * 100),
+    matchedSignals,
+    missingSignals: requestedSignals.filter((signal) => !matchedSignals.includes(signal)),
+    summary: [phasePath, finalScore !== null ? `score ${(finalScore * 100).toFixed(0)}` : null]
+      .filter((value): value is string => Boolean(value))
+      .join(' · '),
+    windowId: typeof result.window_id === 'string' ? result.window_id : undefined,
+    layerAScore: layerAScore ?? undefined,
+    layerBScore: layerBScore ?? undefined,
+  };
+}
+
 async function parseEngineJson(response: Response): Promise<Record<string, unknown>> {
   const text = await response.text();
   if (!text) return {};
@@ -570,6 +602,26 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
           .filter((candidate): candidate is MatchCandidate => candidate !== null)
       : [];
 
+    const similarSearchResult = await engineRequest('/search/similar', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        capture_id: captureId,
+        pattern_slug: patternSlug,
+        top_k: DEFAULT_TOP_K,
+        min_similarity_score: 0.2,
+        search_query_spec: searchQuerySpec ?? undefined,
+      }),
+    });
+    const similarCandidates = Array.isArray(similarSearchResult.candidates)
+      ? similarSearchResult.candidates
+          .map((result) => (isRecord(result) ? mapSimilarCandidate(result, requestedSignals) : null))
+          .filter((candidate): candidate is MatchCandidate => candidate !== null)
+      : [];
+
     return json({
       ok: true,
       seed: {
@@ -577,6 +629,7 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
         patternFamily: patternDraft.patternFamily,
         patternSlug,
         captureId,
+        runId: typeof similarSearchResult.run_id === 'string' ? similarSearchResult.run_id : undefined,
         researchRunId:
           typeof benchmarkResult.research_run === 'object' &&
           benchmarkResult.research_run &&
@@ -588,10 +641,9 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
         detectedSignals,
         snapshotCount: body.snapshotNames.length,
       },
-      candidates,
+      candidates: similarCandidates.length > 0 ? similarCandidates : candidates,
       scannedAt: Date.now(),
     });
-    return json(payload);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return json({ ok: false, error: 'Invalid pattern seed payload' }, { status: 400 });

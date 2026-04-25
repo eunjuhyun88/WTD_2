@@ -143,12 +143,6 @@
     {analyzeCount}
     {scanCount}
     {judgeCount}
-    reviewCount={effectiveReviewCount}
-    openTab={peekOpenTab}
-    {analyze}
-    {scan}
-    {judge}
-    review={reviewContent}
   />
 </main>
 

@@ -1,17 +1,25 @@
-# CURRENT — 단일 진실 (2026-04-25 CLEAN)
+# CURRENT — 단일 진실 (2026-04-26 업데이트)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
 
 ---
 
+## 활성 Work Items
+
+| Work Item | Owner | 상태 |
+|---|---|---|
+| `App CI repair` | app | local check/test green — PR #293 업데이트 필요 |
+| `W-0163-ci-agent-governance` | contract | local gates green — commit/PR 필요 |
+| `W-0162 P1/P2` | security | RS256 + 블랙리스트 PR 오픈 — GCP 재배포 필요 |
+
+---
+
 ## main SHA
 
-`f98f7648` — origin/main (2026-04-25) — W-0203 terminal UI/UX overhaul
+`4c02cd0f` — origin/main (2026-04-26) — PR #291 머지 (W-0201/W-0202 포함)
 
-## 진행 중 브랜치
-
-`fix/loader-primary-cache-dir` (PR #291 OPEN) — W-0202 커밋 포함: `a135955f`
+> ⚠️ PR #293 (App CI fix) 머지 후 이 SHA가 변경됨. 머지 후 업데이트 필요.
 
 ---
 
@@ -19,37 +27,50 @@
 
 | 항목 | 근거 |
 |---|---|
-| **Ledger → Supabase** | `get_ledger_store()` 자동 선택 (`supabase_store.py` 존재, env 기반 fallback) |
-| **DB migration system** | `engine/db/migrate.py` + startup 자동 실행 (`main.py:89-90`) |
-| **W-0210** 4-layer viz | PR #38ce46a8 main 머지 완료 |
+| **Engine CI** 1448 passed | PR #291 머지 (fix/loader-primary-cache-dir) |
+| **Contract CI** PASS | PR #291 포함 |
+| **App CI** 0 TS errors | `fix/app-ci-ts-errors` 0575515d — PR #293 오픈 |
+| **W-0201** query_transformer fix | PR #291 main 머지 완료 |
+| **W-0202** canonical features + active registry | PR #291 main 머지 완료 |
+| **W-0210** 4-layer viz | main 머지 완료 |
 | **W-0203** terminal UX | PR #290 main 머지 완료 |
-| **W-0162** JWT security | PR #253 main 머지 완료 |
-| **W-0156** FeatureWindowStore | PR #259 main 머지 완료 |
-| **W-0200** Core loop proof | PR #256 main 머지 완료 |
-| **W-0159/158/153/160** | 각 PR #265-#270 main 머지 완료 |
+| **W-0162** JWT security P0 | PR #253 main 머지 완료 |
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
-| **W-0201** query transformer fix | `fix/loader-primary-cache-dir` 브랜치 커밋 `3d6d2e86` |
-| **W-0202** canonical features + active registry sync | `fix/loader-primary-cache-dir` 브랜치 커밋 `a135955f` |
 
 ---
 
-## ✅ 이번 세션 완료
+## 🔴 PR 머지 대기
 
-| 항목 | 결과 |
-|---|---|
-| W-0201 `query_transformer.py` `higher_lows_sequence` 키 fix | ✅ 1448 passed |
-| W-0201 `PatternSeedScoutPanel.svelte` state vars 추가 | ✅ |
-| W-0202 `PromotionReport` canonical feature 5필드 + `_mean`/`_rate` 요약 | ✅ |
-| W-0202 `active_variant_store` W-0151 sync (derive_watch_phases_from_pattern) | ✅ |
-| W-0202 `build_seed_variants` `intraday-dump-cluster` 추가 | ✅ |
-| 전체 엔진 테스트 | ✅ 1448 passed, 0 failed |
+| PR | 내용 | 선결조건 |
+|---|---|---|
+| **#293** `fix/app-ci-ts-errors` | App CI 127→0 TS 에러 수리 | — (즉시 머지 가능) |
+| **W-0162 P1/P2** `claude/w-0162-stability` | RS256 서명검증 + 토큰 블랙리스트 | GCP 재배포 |
 
 ---
 
-## 다음 실행 순서
+## 다음 실행 순서 (우선순위 순)
 
-1. **PR #291 머지**: `fix/loader-primary-cache-dir` → main (W-0201/W-0202 포함)
-2. **main SHA 업데이트**: 머지 후 이 파일 갱신
+### 즉시 (PR 머지)
+1. **PR #293 머지** → App CI 초록 확보 → CURRENT.md main SHA 업데이트
+
+### 단기 (다음 에이전트 세션)
+2. **W-0163** CI governance hardening
+   - required check names 설정
+   - always-present PR checks
+   - memory-sync PR flow
+   - stale handoff archive
+   - 로컬 검증 완료: App check/test, Contract gate, Engine pytest
+3. **W-0162 P1/P2** 머지 + GCP 재배포
+   - `claude/w-0162-stability` 브랜치 PR
+   - GCP cogotchi-worker 재배포
+
+### 중기 (설계 필요)
+4. **Layer A 검색 고도화** (40+차원 완성)
+   - feature_snapshot 우선순위 정제
+   - 패턴 매칭 정밀도 측정 지표 확립
+5. **카피트레이딩 Phase 1** 구현 시작
+   - PRD 완성됨: `docs/` 참조
+   - DB 스키마 먼저 (Supabase migration)
 
 ---
 
@@ -57,4 +78,11 @@
 
 - [ ] GCP cogotchi-worker Cloud Build trigger
 - [ ] Vercel `EXCHANGE_ENCRYPTION_KEY` (프로덕션)
-- [ ] Cloud Scheduler HTTP jobs (`docs/runbooks/cloud-scheduler-setup.md`)
+- [x] Cloud Scheduler HTTP jobs — 5 jobs 등록 완료 (2026-04-25): feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build
+- [x] `_primary_cache_dir` NameError 수정 — PR #291 main 머지 + GCP cogotchi-00013-c7n 배포 완료 (2026-04-26)
+
+---
+
+## 체크포인트 파일
+
+- `work/active/W-app-ci-repair-checkpoint-20260426.md` — 이번 세션 상세 기록

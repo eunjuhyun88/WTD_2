@@ -55,10 +55,8 @@ export type ChartSeriesResult = { payload: ChartPayload; cacheStatus: 'hit' | 'm
 
 type FetchLike = typeof fetch;
 
-import { alignHtfSeriesToLtfTimes, isStrictlyHigherTf } from '$lib/chart/mtfAlign';
-import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
-
 const CHART_CACHE_TTL_MS = 15_000;
+const FAPI = 'https://fapi.binance.com';
 const chartCache = new Map<string, { expiresAt: number; payload: ChartPayload }>();
 
 // ── Layer 1: Fetch ────────────────────────────────────────────────────────────
@@ -164,45 +162,8 @@ function normalizeRequest(args: {
   return { symbol, tf, limit, emaTf };
 }
 
-export async function getChartSeries(
-  args: {
-    symbol?: string;
-    tf?: string;
-    limit?: number;
-    emaTf?: string;
-    fetchImpl?: FetchLike;
-  },
-): Promise<ChartSeriesResult> {
-  const { symbol, tf, limit, emaTf } = normalizeRequest(args);
-  const fetchImpl = args.fetchImpl ?? fetch;
-  const interval = INTERVAL_MAP[tf] ?? '1h';
-  const cacheKey = `${symbol}:${tf}:${limit}:emaTf=${emaTf || 'chart'}`;
-  const now = Date.now();
-  const cached = chartCache.get(cacheKey);
-
-  if (cached && cached.expiresAt > now) {
-    return {
-      payload: cached.payload,
-      cacheStatus: 'hit',
-    };
-  }
-
-  // Check shared Redis cache (cross-instance, degrades gracefully if unavailable)
-  const shared = await getSharedCache<ChartPayload>('chart', cacheKey);
-  if (shared) {
-    chartCache.set(cacheKey, { expiresAt: now + CHART_CACHE_TTL_MS, payload: shared });
-    return { payload: shared, cacheStatus: 'hit' };
-  }
-
-  const [klinesResp, fundingResp] = await Promise.all([
-    fetchImpl(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`),
-    fetchImpl(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${symbol}&limit=${Math.min(limit, 500)}`),
-  ]);
-
-  if (!klinesResp.ok) throw new Error(`Binance futures klines ${klinesResp.status}`);
-  const rawKlines = (await klinesResp.json()) as number[][];
-
-  const klines: KlineBar[] = rawKlines.map((k) => ({
+function parseKlines(rawKlines: number[][]): KlineBar[] {
+  return rawKlines.map((k) => ({
     time: Math.floor(k[0] / 1000),
     open: parseFloat(k[1] as unknown as string),
     high: parseFloat(k[2] as unknown as string),
@@ -316,13 +277,6 @@ function computeIndicators(klines: KlineBar[], htfKlines?: KlineBar[], emaTf?: s
 
   return indicators;
 }
-
-  chartCache.set(cacheKey, {
-    expiresAt: now + CHART_CACHE_TTL_MS,
-    payload,
-  });
-  // Populate shared cache for other Vercel instances (fire-and-forget)
-  void setSharedCache('chart', cacheKey, payload, CHART_CACHE_TTL_MS);
 
 function normalise(args: {
   symbol?: string; tf?: string; limit?: number; emaTf?: string; startTime?: number;

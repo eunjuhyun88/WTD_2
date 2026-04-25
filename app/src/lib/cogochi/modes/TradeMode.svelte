@@ -663,10 +663,10 @@
     scanLoading = true;
     fetchAlphaWorldModel()
       .then((data) => {
-        const items = (data.phases ?? [])
-          .filter(p => p.phase !== 'IDLE')
-          .sort((a, b) => (_PHASE_ORDER[a.phase] ?? 9) - (_PHASE_ORDER[b.phase] ?? 9))
-          .map(p => ({
+        const items = ((data as any).phases ?? [])
+          .filter((p: any) => p.phase !== 'IDLE')
+          .sort((a: any, b: any) => (_PHASE_ORDER[a.phase] ?? 9) - (_PHASE_ORDER[b.phase] ?? 9))
+          .map((p: any) => ({
             id: p.symbol,
             symbol: p.symbol,
             tf: '1H',

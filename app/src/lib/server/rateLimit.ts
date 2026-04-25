@@ -192,3 +192,9 @@ export const chartKlinesLimiter = createRateLimiter({ windowMs: 60_000, max: 120
 
 /** Engine proxy (heavy CPU/LightGBM): 60 per minute per IP */
 export const engineProxyLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
+
+/** Chart feed + market data reads: 120 per minute per IP */
+export const chartFeedLimiter = createRateLimiter({ windowMs: 60_000, max: 120 });
+
+/** DOUNI terminal message: 20 per minute per IP */
+export const douniMessageLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
