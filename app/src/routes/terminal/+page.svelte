@@ -1593,6 +1593,7 @@
       quantRegime={boardModel.quantRegime}
       cvdDivergence={boardModel.cvdDivergence}
       change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+      analysisData={activeAnalysisData as any}
       {showLabCta}
       {labCtaSlug}
       analyzeCount={peekAnalyzeCount}
