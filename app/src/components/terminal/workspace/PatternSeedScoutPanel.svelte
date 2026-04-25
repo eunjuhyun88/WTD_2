@@ -4,7 +4,7 @@
 
   type MatchCandidate = {
     symbol: string;
-    source: 'engine' | 'similar';
+    source: 'engine';
     score: number;
     matchedSignals: string[];
     missingSignals: string[];

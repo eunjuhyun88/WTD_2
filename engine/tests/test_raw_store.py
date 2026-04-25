@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from data_cache.raw_store import (
     CanonicalRawStore,
     MarketSearchIndexRecord,
+    MarketLiquidationWindowRecord,
+    RawLiquidationEventRecord,
     RawMarketBarRecord,
     RawOrderflowMetricRecord,
     RawPerpMetricRecord,
@@ -91,6 +93,99 @@ def test_raw_store_upserts_and_counts_rows(tmp_path) -> None:
     assert store.count_rows("raw_orderflow_metrics", symbol="BTCUSDT", timeframe="1h") == 1
     assert store.count_rows("raw_perp_metrics", symbol="BTCUSDT", timeframe="1h") == 1
     assert store.latest_timestamp("raw_market_bars", symbol="BTCUSDT", timeframe="1h") == _dt(10)
+
+
+def test_raw_store_upserts_liquidation_events_and_tracks_latest(tmp_path) -> None:
+    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+    ingested_at = _dt(12)
+
+    rows = [
+        RawLiquidationEventRecord(
+            provider="binance",
+            venue="binance_futures",
+            symbol="BTCUSDT",
+            ts=_dt(9),
+            source_ts=_dt(9),
+            ingested_at=ingested_at,
+            freshness_ms=10_800_000,
+            quality_state="complete",
+            fallback_state="none",
+            event_id="liq-1",
+            side="BUY",
+            order_price=90_000.0,
+            average_price=89_950.0,
+            quantity=10.0,
+            executed_quantity=10.0,
+            quote_quantity=899_500.0,
+            notional_usd=899_500.0,
+            order_type="LIMIT",
+            time_in_force="IOC",
+            status="FILLED",
+        ),
+        RawLiquidationEventRecord(
+            provider="binance",
+            venue="binance_futures",
+            symbol="BTCUSDT",
+            ts=_dt(11),
+            source_ts=_dt(11),
+            ingested_at=ingested_at,
+            freshness_ms=3_600_000,
+            quality_state="complete",
+            fallback_state="none",
+            event_id="liq-2",
+            side="SELL",
+            order_price=88_000.0,
+            average_price=87_950.0,
+            quantity=12.0,
+            executed_quantity=12.0,
+            quote_quantity=1_055_400.0,
+            notional_usd=1_055_400.0,
+            order_type="MARKET",
+            time_in_force="IOC",
+            status="FILLED",
+        ),
+    ]
+
+    assert store.upsert_liquidation_events(rows) == 2
+    assert store.count_rows("raw_liquidation_events", symbol="BTCUSDT") == 2
+    assert store.latest_timestamp("raw_liquidation_events", symbol="BTCUSDT") == _dt(11)
+
+
+def test_raw_store_upserts_liquidation_windows(tmp_path) -> None:
+    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+    ingested_at = _dt(12)
+
+    windows = [
+        MarketLiquidationWindowRecord(
+            provider="binance",
+            venue="binance_futures",
+            symbol="BTCUSDT",
+            timeframe="1h",
+            window_start_ts=_dt(10),
+            window_end_ts=_dt(11),
+            source_start_ts=_dt(10),
+            source_end_ts=_dt(10),
+            ingested_at=ingested_at,
+            freshness_ms=7_200_000,
+            quality_state="complete",
+            fallback_state="none",
+            event_count=2,
+            short_event_count=1,
+            long_event_count=1,
+            short_liq_usd=500.0,
+            long_liq_usd=300.0,
+            total_liq_usd=800.0,
+            net_liq_usd=200.0,
+            dominant_side="short_liq",
+            dominance_share=0.625,
+            imbalance_ratio=0.25,
+            largest_event_usd=500.0,
+            largest_event_side="BUY",
+        )
+    ]
+
+    assert store.upsert_liquidation_windows(windows) == 1
+    assert store.count_rows("market_liquidation_windows", symbol="BTCUSDT", timeframe="1h") == 1
 
 
 def test_raw_store_upsert_replaces_existing_row(tmp_path) -> None:
