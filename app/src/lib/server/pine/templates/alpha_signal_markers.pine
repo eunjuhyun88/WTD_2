@@ -1,0 +1,26 @@
+//@version=6
+// WTD — Alpha Signal Markers
+// Up = long entry signal | Down = short entry signal | Cross = invalidation
+indicator("WTD Alpha Signals — {{symbol}}", overlay = true, max_labels_count = 100)
+
+// ─── Signal events (injected) ──────────────────────────────
+// Format: comma-separated "ts|side|score|note"
+var string SIGNALS = "{{signals}}"
+
+// ─── Render once ────────────────────────────────────────────
+var bool rendered = false
+
+if barstate.islastconfirmedhistory and not rendered
+    array<string> events = str.split(SIGNALS, ",")
+    for ev in events
+        parts = str.split(ev, "|")
+        if array.size(parts) >= 4
+            ts    = str.tonumber(array.get(parts, 0))
+            side  = array.get(parts, 1)
+            score = str.tonumber(array.get(parts, 2))
+            note  = array.get(parts, 3)
+            if not na(ts)
+                col = side == "long" ? color.lime : side == "short" ? color.red : color.yellow
+                shape = side == "long" ? label.style_arrowup : side == "short" ? label.style_arrowdown : label.style_xcross
+                label.new(x = int(ts), y = na, xloc = xloc.bar_time, yloc = yloc.belowbar, text = note + "\n" + str.tostring(score, "#.##"), style = shape, color = col, textcolor = color.white, size = size.small)
+    rendered := true

@@ -1,0 +1,30 @@
+//@version=6
+// WTD — Macro & News Event Markers
+// Vertical lines + labels at major event timestamps
+indicator("WTD News Events — {{symbol}}", overlay = true, max_lines_count = 50, max_labels_count = 50)
+
+// ─── Events (injected) ──────────────────────────────────────
+// Format: comma-separated "ts|category|impact|title"
+// category = fed | cpi | earnings | crypto | geo
+// impact   = high | medium | low
+var string EVENTS = "{{events}}"
+
+// ─── Render once ────────────────────────────────────────────
+var bool rendered = false
+
+if barstate.islastconfirmedhistory and not rendered
+    array<string> entries = str.split(EVENTS, ",")
+    for entry in entries
+        parts = str.split(entry, "|")
+        if array.size(parts) >= 4
+            ts       = str.tonumber(array.get(parts, 0))
+            category = array.get(parts, 1)
+            impact   = array.get(parts, 2)
+            title    = array.get(parts, 3)
+            if not na(ts)
+                catColor = category == "fed" ? color.aqua : category == "cpi" ? color.orange : category == "earnings" ? color.yellow : category == "crypto" ? color.fuchsia : color.gray
+                width = impact == "high" ? 2 : impact == "medium" ? 1 : 1
+                style = impact == "high" ? line.style_solid : line.style_dashed
+                line.new(x1 = int(ts), y1 = 0, x2 = int(ts), y2 = 1, xloc = xloc.bar_time, extend = extend.both, color = catColor, width = width, style = style)
+                label.new(x = int(ts), y = na, xloc = xloc.bar_time, yloc = yloc.abovebar, text = str.upper(category) + "\n" + title, style = label.style_label_down, color = catColor, textcolor = color.white, size = size.tiny)
+    rendered := true

@@ -1,0 +1,35 @@
+//@version=6
+// WTD — CVD Divergence
+// Detects divergence between cumulative volume delta and price
+indicator("WTD CVD Divergence — {{symbol}}", overlay = false, format = format.volume)
+
+// ─── Config ─────────────────────────────────────────────────
+lookback   = input.int({{lookback}}, "Lookback bars", minval = 10, maxval = 200)
+showLabels = input.bool(true, "Show divergence labels")
+
+// ─── CVD calculation ────────────────────────────────────────
+delta  = close > open ? volume : close < open ? -volume : 0.0
+cvd    = ta.cum(delta)
+cvdEMA = ta.ema(cvd, 21)
+
+// ─── Pivots ─────────────────────────────────────────────────
+ph_price = ta.pivothigh(high,  lookback / 4, lookback / 4)
+pl_price = ta.pivotlow(low,    lookback / 4, lookback / 4)
+ph_cvd   = ta.pivothigh(cvd,   lookback / 4, lookback / 4)
+pl_cvd   = ta.pivotlow(cvd,    lookback / 4, lookback / 4)
+
+// ─── Bearish divergence: higher price high, lower cvd high ──
+bearDiv = not na(ph_price) and not na(ph_cvd) and ph_price > ph_price[1] and ph_cvd < ph_cvd[1]
+// ─── Bullish divergence: lower price low, higher cvd low ────
+bullDiv = not na(pl_price) and not na(pl_cvd) and pl_price < pl_price[1] and pl_cvd > pl_cvd[1]
+
+// ─── Plot ──────────────────────────────────────────────────
+plot(cvd,    title = "CVD",     color = color.new(color.aqua, 0),   linewidth = 2)
+plot(cvdEMA, title = "CVD EMA", color = color.new(color.yellow, 0), linewidth = 1)
+hline(0, "Zero", color = color.new(color.gray, 50))
+
+plotshape(bearDiv and showLabels, title = "Bear Div", style = shape.triangledown, location = location.top,    color = color.red,  size = size.tiny)
+plotshape(bullDiv and showLabels, title = "Bull Div", style = shape.triangleup,   location = location.bottom, color = color.lime, size = size.tiny)
+
+alertcondition(bearDiv, title = "CVD Bearish Divergence", message = "Bearish CVD divergence on {{symbol}}")
+alertcondition(bullDiv, title = "CVD Bullish Divergence", message = "Bullish CVD divergence on {{symbol}}")
