@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`87f44b0b` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
+`cdefda4d` — origin/main (2026-04-26) — W-0203/W-0204/W-0205 머지 (PR #292)
 
 ---
 
