@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-26)
+# CURRENT — 단일 진실 (2026-04-25)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
+`d54980ee` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
 
 ## 진행 중 PR
 
