@@ -54,9 +54,9 @@ def test_replay_requests_only_pattern_referenced_blocks(monkeypatch) -> None:
     features = pd.DataFrame({"funding_rate": [0.0, 0.0, 0.0]}, index=idx)
     requested: set[str] | None = None
 
-    def fake_evaluate_block_masks(_features, _klines, _symbol, *, requested_blocks=None):
+    def fake_evaluate_block_masks(_features, _klines, _symbol, *, block_names=None, **kw):
         nonlocal requested
-        requested = requested_blocks
+        requested = block_names
         return {
             "recent_decline": pd.Series([True, False, False], index=idx),
             "funding_extreme": pd.Series([True, False, False], index=idx),
@@ -73,13 +73,13 @@ def test_replay_requests_only_pattern_referenced_blocks(monkeypatch) -> None:
     )
 
     assert requested is not None
-    assert "post_accumulation_range_breakout" in requested
+    assert "breakout_after_accumulation" in requested
     assert "cot_large_spec_short" not in requested
 
 
 def test_tradoor_breakout_uses_post_accumulation_trigger() -> None:
     breakout_phase = next(phase for phase in TRADOOR_OI_REVERSAL.phases if phase.phase_id == "BREAKOUT")
-    assert "post_accumulation_range_breakout" in breakout_phase.required_blocks
+    assert "breakout_after_accumulation" in breakout_phase.required_blocks
     assert "breakout_from_pullback_range" not in breakout_phase.required_blocks
 
 

@@ -13,7 +13,7 @@ from typing import Literal
 
 import pandas as pd
 
-from data_cache.loader import load_klines, load_perp
+from data_cache.loader import CacheMiss, load_klines, load_perp
 from data_cache.resample import tf_string_to_minutes
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore
 from ledger.types import PatternLedgerRecord
@@ -455,6 +455,7 @@ class PatternSearchRunArtifact:
     winner_variant_slug: str | None
     variant_results: list[VariantSearchResult]
     search_query_spec: dict | None = None
+    definition_ref: dict = field(default_factory=dict)
     variant_specs: list[PatternVariantSpec] = field(default_factory=list)
     variant_deltas: list[VariantDeltaInsight] = field(default_factory=list)
     branch_insights: list[MutationBranchInsight] = field(default_factory=list)
@@ -566,7 +567,7 @@ class BenchmarkPackStore:
         default_id = f"{pattern_slug}__ptb-tradoor-v1"
         existing = self.load(default_id)
         if existing is not None:
-            desired_timeframes = ["1h", "4h"]
+            desired_timeframes = ["15m", "1h", "4h"]
             if existing.candidate_timeframes != desired_timeframes:
                 existing = ReplayBenchmarkPack(
                     benchmark_pack_id=existing.benchmark_pack_id,
@@ -580,7 +581,7 @@ class BenchmarkPackStore:
         pack = ReplayBenchmarkPack(
             benchmark_pack_id=default_id,
             pattern_slug=pattern_slug,
-            candidate_timeframes=["1h", "4h"],
+            candidate_timeframes=["15m", "1h", "4h"],
             cases=[
                 BenchmarkCase(
                     symbol="PTBUSDT",
@@ -882,12 +883,8 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
 
 
 def _supported_candidate_timeframes(candidate_timeframes: list[str], *, base_timeframe: str) -> list[str]:
-    base_minutes = tf_string_to_minutes(base_timeframe)
     supported: list[str] = []
     for timeframe in candidate_timeframes:
-        tf_minutes = tf_string_to_minutes(timeframe)
-        if tf_minutes < base_minutes:
-            continue
         if timeframe not in supported:
             supported.append(timeframe)
     if base_timeframe not in supported:

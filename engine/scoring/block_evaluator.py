@@ -66,6 +66,7 @@ from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
 from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
+from building_blocks.confirmations.delta_flip_var import delta_flip_var
 from building_blocks.confirmations.volume_dryup import volume_dryup
 from building_blocks.confirmations.coinbase_premium_positive import coinbase_premium_positive
 from building_blocks.confirmations.smart_money_accumulation import smart_money_accumulation
@@ -178,6 +179,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("venue_funding_spread_extreme", venue_funding_spread_extreme),
     ("isolated_venue_pump",      isolated_venue_pump),
     ("delta_flip_positive",     delta_flip_positive),
+    ("delta_flip_var",          delta_flip_var),
     # CBR-specific lambdas (post-decline compression breakout, W-0104)
     ("sideways_compression_cbr",   lambda ctx: sideways_compression(ctx, max_range_pct=0.06, lookback=12)),
     ("consolidation_breakout_cbr", lambda ctx: consolidation_then_breakout(ctx, range_bars=12, range_pct=0.06)),

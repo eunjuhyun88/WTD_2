@@ -243,4 +243,4 @@
 - [x] Vercel preview branch env 정렬
 - [ ] GCP cogotchi-worker Cloud Build trigger 설정 확인
 - [ ] Vercel EXCHANGE_ENCRYPTION_KEY 환경변수 설정 (프로덕션)
-- [ ] Cloud Scheduler HTTP jobs 등록 (`docs/runbooks/cloud-scheduler-setup.md`)
+- [x] Cloud Scheduler HTTP jobs 등록 (2026-04-25: 5 jobs registered — feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build)

@@ -130,6 +130,21 @@ async def _corpus_bridge_sync_job() -> None:
         log.warning("corpus_bridge_sync failed (non-fatal): %s", exc)
 
 
+
+async def _search_corpus_refresh_job() -> None:
+    """Scheduler wrapper: refresh the feature-window search corpus."""
+    await search_corpus_refresh_job(universe_name=UNIVERSE_NAME)
+
+
+async def _market_search_index_refresh_job() -> None:
+    """Scheduler wrapper: refresh the flat market search index."""
+    result = refresh_market_search_index()
+    log.info(
+        "market_search_index refreshed: row_count=%d refreshed_at=%s",
+        result.row_count,
+        result.refreshed_at,
+    )
+
 async def _feature_windows_prefetch_job() -> None:
     """Build feature_windows.sqlite for all BINANCE_30 symbols.
 

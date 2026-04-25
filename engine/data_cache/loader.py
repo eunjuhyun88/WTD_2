@@ -39,27 +39,67 @@ _SUPPORTED_TIMEFRAMES = SUPPORTED_TF_STRINGS
 _CANONICAL_HOURLY_TIMEFRAME = "1h"
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _resolve_git_worktree_shared_cache_dir() -> Path | None:
+    git_meta = _repo_root() / ".git"
+    if not git_meta.is_file():
+        return None
+    try:
+        payload = git_meta.read_text().strip()
+    except OSError:
+        return None
+    prefix = "gitdir:"
+    if not payload.startswith(prefix):
+        return None
+    gitdir = Path(payload[len(prefix):].strip())
+    if not gitdir.is_absolute():
+        gitdir = (_repo_root() / gitdir).resolve()
+    if gitdir.parent.name != "worktrees":
+        return None
+    common_git_dir = gitdir.parent.parent
+    main_root = common_git_dir.parent
+    shared_cache_dir = main_root / "engine" / "data_cache" / "cache"
+    if shared_cache_dir == CACHE_DIR:
+        return None
+    return shared_cache_dir
+
+
+def _configured_shared_cache_dir() -> Path | None:
+    override = os.getenv("WTD_SHARED_CACHE_DIR")
+    if override:
+        return Path(override).expanduser()
+    if CACHE_DIR != Path(__file__).parent / "cache":
+        return None
+    return _resolve_git_worktree_shared_cache_dir()
+
+
+def _primary_cache_dir() -> Path:
+    return _configured_shared_cache_dir() or CACHE_DIR
+
+
+def _cache_search_dirs() -> list[Path]:
+    candidates = [_primary_cache_dir(), CACHE_DIR]
+    unique: list[Path] = []
+    for path in candidates:
+        if path not in unique:
+            unique.append(path)
+    return unique
+
+
+def _find_existing_cache_path(filename: str) -> Path | None:
+    for base_dir in _cache_search_dirs():
+        path = base_dir / filename
+        if path.exists():
+            return path
+    return None
+
+
 def cache_path(symbol: str, timeframe: str) -> Path:
     """Return the CSV path for (symbol, timeframe) — does NOT check existence."""
     return _primary_cache_dir() / f"{symbol}_{timeframe}.csv"
-
-
-def list_cached_symbols(*, require_perp: bool = False) -> list[str]:
-    """Return sorted list of symbols that have at least one cached 1h klines file.
-
-    Args:
-        require_perp: If True, only return symbols that also have a perp cache.
-    """
-    if not CACHE_DIR.exists():
-        return []
-    symbols = {
-        p.stem[: -len("_1h")]
-        for p in CACHE_DIR.glob("*_1h.csv")
-        if p.stem.endswith("_1h")
-    }
-    if require_perp:
-        symbols = {s for s in symbols if perp_cache_path(s).exists()}
-    return sorted(symbols)
 
 
 def perp_cache_path(symbol: str) -> Path:
@@ -91,7 +131,7 @@ def _read_klines_cache(path: Path) -> pd.DataFrame:
 
 
 def _fetch_and_cache_klines(symbol: str, timeframe: str, path: Path) -> pd.DataFrame:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     try:
         df = fetch_klines_max(symbol, timeframe)
     except RuntimeError as exc:
