@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`092a50de` — origin/main (2026-04-26) — memory sync #292 + active variant promotion + indicator defaults + CI governance 포함
+`092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
 
 ---
 
@@ -31,8 +31,8 @@
 | **W-0201** query_transformer fix | PR #291 main 머지 완료 |
 | **W-0202** canonical features + active registry | PR #291 main 머지 완료 |
 | **W-0210** 4-layer viz | main 머지 완료 |
-| **W-0211** multi-pane chart + Pine Script engine | PR #298 main 머지 완료 (74afaba3) |
-| **Indicator defaults** OI/Funding/Liq 기본 ON | main 머지 완료 (2092ac01) |
+| **W-0211** multi-pane chart + Pine Script engine | PR #298 + #302 main 머지 완료 (87f44b0b) |
+| **fix/indicator-defaults** OI/Funding/Liq 기본 ON | PR #302 main 머지 완료 (2026-04-26) |
 | **W-0203** terminal UX | PR #290 main 머지 완료 |
 | **W-0162** JWT security P0 | PR #253 main 머지 완료 |
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
@@ -41,7 +41,6 @@
 | **W-0204** captures.py active_variant_store 연결 | PR #292 main 머지 완료 |
 | **W-0203** pattern-seed route delegation | PR #292 main 머지 완료 |
 | **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
-| **W-0164** repo state hygiene | PR #305 main 머지 완료 |
 
 ---
 
@@ -49,7 +48,7 @@
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| (없음) | — | 모든 즉시 항목 완료 |
+| PR #308 | feat(W-0211): native multi-pane + Pine Script engine | 머지 대기 |
 
 ---
 
@@ -58,13 +57,13 @@
 ### 즉시
 - 긴급 항목 없음 — 모든 CI 초록, GCP 정상 (cogotchi-00013-c7n)
 
-### 중기 (설계 필요)
-4. **Layer A 검색 고도화** (40+차원 완성)
-   - feature_snapshot 우선순위 정제
-   - 패턴 매칭 정밀도 측정 지표 확립
-5. **카피트레이딩 Phase 1** 구현 시작
-   - PRD 완성됨: `docs/` 참조
-   - DB 스키마 먼저 (Supabase migration)
+### 중기 (설계 완료 → 구현 시작)
+1. **W-0145 Corpus 107 symbols 확장** (현재 29 symbols)
+   - data_cache 78 symbols 채우기 → feature_windows_builder 재실행
+   - 설계: `work/active/W-next-design-20260426.md`
+2. **W-0132 카피트레이딩 Phase 1** 구현 시작
+   - migration 019 → leaderboard API → UI panel
+   - 설계: `work/active/W-next-design-20260426.md`
 
 ---
 
@@ -74,3 +73,10 @@
 - [ ] Vercel `EXCHANGE_ENCRYPTION_KEY` (프로덕션)
 - [x] Cloud Scheduler HTTP jobs — 5 jobs 등록 완료 (2026-04-25): feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build
 - [x] `_primary_cache_dir` NameError 수정 — PR #291 main 머지 + GCP cogotchi-00013-c7n 배포 완료 (2026-04-26)
+
+---
+
+## 체크포인트 파일
+
+- `work/active/W-app-ci-repair-checkpoint-20260426.md` — App CI 수리 세션 기록
+- `work/active/W-next-design-20260426.md` — 다음 작업 설계 (W-0145 + W-0132)
