@@ -9,16 +9,42 @@ Execution rules for humans and coding agents.
 3. Contracts define app-engine coupling.
 4. Work continues via `work/active/*.md`, not chat history.
 
+## Bootstrap (Multi-Agent OS v2)
+
+Every session starts with:
+
+```bash
+./tools/start.sh
+```
+
+This auto-issues your Agent ID (A###), refreshes derived state, and shows
+active locks, P0/P1 priorities, and MemKraft signals in <50 seconds.
+
+When claiming a file-domain (engine/X, app/Y), run:
+```bash
+./tools/claim.sh "engine/X, app/Y"
+```
+Other agents on same domain get rejected → no parallel-merge collisions.
+
+When ending a session:
+```bash
+./tools/end.sh "PR #N" "next handoff command" [optional lesson]
+```
+
+Reference: `design/proposed/multi-agent-os-v2.md`
+
 ## Default Read Scope
 
 Read in this order:
 
 1. `AGENTS.md`
-2. `work/active/CURRENT.md`
-3. Relevant `work/active/*.md` listed in `CURRENT.md`
-4. Relevant `docs/domains/*.md`
-5. Relevant `docs/product/*.md`
-6. Minimal required code files
+2. `./tools/start.sh` output (Agent ID + state + priorities)
+3. `spec/PRIORITIES.md` for P0/P1 detail
+4. `work/active/CURRENT.md` (legacy — deprecating)
+5. Relevant `work/active/*.md` if listed in CURRENT.md
+6. Relevant `docs/domains/*.md`
+7. Relevant `docs/product/*.md`
+8. Minimal required code files
 
 ## Context Routing
 
