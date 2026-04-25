@@ -109,6 +109,73 @@ Every non-trivial task must have one active work item:
 - Saved context artifacts default to compact output unless full verbosity is explicitly requested.
 - Any future `file-back` automation must compact current state, not append history.
 
+## Agent Execution Protocol
+
+Every agent execution follows these checkpoints:
+
+### Before Starting Work
+
+```python
+mk.evidence_first("keyword")  # Search memory/docs for prior related work
+```
+
+Find and review:
+- Related work items (active or archived)
+- Prior decisions or rejected hypotheses
+- Domain context or product requirements
+- Blockers or escalations
+
+### After Merging PR
+
+```python
+mk.log_event(
+    title="W-xxxx feature landed",
+    details="commit abc1234, PR #nnn",
+    tags=["w-xxxx", "merged"]
+)
+# Update CURRENT.md: change main SHA, record completion
+```
+
+Update `work/active/CURRENT.md`:
+- New `main SHA` value
+- Move work item from active to completed
+- Record any new blockers or deferred work
+
+### When Making Architecture Decisions
+
+```python
+mk.decision_record(
+    what="use FeatureWindowStore for search corpus",
+    why="3→40+ dims, batch enrichment, OI/funding 2x weight",
+    how="Layer A upgrade: feature_snapshot first, then batch load"
+)
+# Create or update ADR in `docs/decisions/`
+```
+
+Record in `docs/decisions/NNNN-<slug>.md`:
+- What is the decision?
+- Why now? (constraints, alternatives, trade-offs)
+- How will we verify it worked?
+
+### During CI Failures or Production Incidents
+
+```python
+mk.incident_record(
+    title="main CI: 8 test failures (PR #256 collision)",
+    symptoms="multi-agent track collision, migration 021 state",
+    resolution="merge --ours, add worker concurrency guards"
+)
+# Create incident record in `docs/incidents/` + notify handoff
+```
+
+Record in `docs/incidents/YYYY-MM-DD-<slug>.md`:
+- When and what happened?
+- Root cause analysis
+- Remediation steps
+- Prevention for next time
+
+---
+
 ## Change Type Tags
 
 Each PR/change should be one primary type:
