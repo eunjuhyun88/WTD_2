@@ -40,7 +40,7 @@ describe('engine plane clients', () => {
 		expect(payload?.symbol).toBe('BTCUSDT');
 	});
 
-	it('routes fact confluence, perp context, and indicator catalog through plane-owned URLs', async () => {
+	it('routes fact confluence, reference-stack, chain-intel, perp context, market-cap, and indicator catalog through plane-owned URLs', async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
 			const url = String(input);
 			if (url.startsWith('/api/facts/confluence')) {
@@ -175,7 +175,10 @@ describe('engine plane clients', () => {
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
 		expect(confluence?.symbol).toBe('ETHUSDT');
-		expect(perp?.metrics?.funding_rate).toBe(-0.0012);
+		expect(referenceStack?.kind).toBe('reference_stack');
+		expect(chainIntel?.kind).toBe('chain_intel');
+		expect(perp?.kind).toBe('perp_context');
+		expect(marketCap?.kind).toBe('market_cap');
 		expect(catalog?.kind).toBe('indicator_catalog');
 	});
 

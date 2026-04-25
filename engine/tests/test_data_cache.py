@@ -4,10 +4,11 @@ No network I/O — we monkeypatch CACHE_DIR to a tmp_path and seed/read
 files directly. Covers:
   1. offline=True + missing file → CacheMiss
   2. offline=True + cached file  → returns DataFrame with expected shape
-  3. non-1h timeframe            → resample from 1h base (CacheMiss if 1h absent)
-  4. unknown timeframe string    → ValueError
-  5. cache_path filename shape
-  6. round-trip through load_klines preserves numeric columns
+  3. higher timeframe            → resample from 1h base (CacheMiss if 1h absent)
+  4. sub-hour timeframe          → requires native cache/fetch, no fake resample
+  5. unknown timeframe string    → ValueError
+  6. cache_path filename shape
+  7. round-trip through load_klines preserves numeric columns
 """
 from __future__ import annotations
 
@@ -18,8 +19,8 @@ from data_cache import CacheMiss, cache_path, load_klines
 from data_cache import loader as loader_mod
 
 
-def _make_fake_klines(n: int = 5) -> pd.DataFrame:
-    ts = pd.date_range("2025-01-01", periods=n, freq="1h", tz="UTC")
+def _make_fake_klines(n: int = 5, *, freq: str = "1h") -> pd.DataFrame:
+    ts = pd.date_range("2025-01-01", periods=n, freq=freq, tz="UTC")
     return pd.DataFrame(
         {
             "open": [1.0 + i * 0.1 for i in range(n)],
@@ -127,6 +128,50 @@ def test_non_1h_timeframe_resamples_from_1h_base(tmp_path, monkeypatch):
     df_4h = load_klines("BTCUSDT", "4h", offline=True)
     assert len(df_4h) == 3  # 12 / 4 = 3 bars
     assert list(df_4h.columns) == list(df_1h.columns)
+
+
+def test_subhour_timeframe_requires_native_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df_1h = _make_fake_klines(12)
+    df_1h.to_csv(tmp_path / "BTCUSDT_1h.csv")
+
+    with pytest.raises(CacheMiss):
+        load_klines("BTCUSDT", "15m", offline=True)
+
+
+def test_subhour_timeframe_reads_existing_native_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df_15m = _make_fake_klines(8, freq="15min")
+    df_15m.to_csv(tmp_path / "BTCUSDT_15m.csv")
+
+    out = load_klines("BTCUSDT", "15m", offline=True)
+
+    assert len(out) == 8
+    assert list(out.index.astype(str)[:2]) == list(df_15m.index.astype(str)[:2])
+
+
+def test_subhour_timeframe_fetches_and_caches_native_series(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df = _make_fake_klines(6, freq="15min")
+
+    calls: list[tuple[str, str, str]] = []
+
+    def fake_spot(symbol: str, timeframe: str):
+        calls.append(("spot", symbol, timeframe))
+        return df
+
+    def fake_futures(symbol: str, timeframe: str):
+        calls.append(("futures", symbol, timeframe))
+        raise AssertionError("futures fallback should not run when spot succeeds")
+
+    monkeypatch.setattr(loader_mod, "fetch_klines_max", fake_spot)
+    monkeypatch.setattr(loader_mod, "fetch_futures_klines_max", fake_futures)
+
+    out = load_klines("BTCUSDT", "15m", offline=False)
+
+    assert len(out) == 6
+    assert calls == [("spot", "BTCUSDT", "15m")]
+    assert (tmp_path / "BTCUSDT_15m.csv").exists()
 
 
 def test_unknown_timeframe_raises_value_error():
