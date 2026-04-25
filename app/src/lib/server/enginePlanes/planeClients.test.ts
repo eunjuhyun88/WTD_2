@@ -5,6 +5,8 @@ import {
 	fetchFactContextProxy,
 	fetchIndicatorCatalogProxy,
 	fetchFactPerpContextProxy,
+	fetchFactMarketCapProxy,
+	fetchFactReferenceStackProxy,
 } from './facts';
 import {
 	fetchSeedSearchRunProxy,
@@ -118,14 +120,14 @@ describe('engine plane clients', () => {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
+		const referenceStack = await fetchFactReferenceStackProxy(fetchMock as typeof fetch, {
+			symbol: 'ETHUSDT',
+			timeframe: '4h',
+		});
 		const chainIntel = await fetchFactChainIntelProxy(fetchMock as typeof fetch, {
 			symbol: 'ETHUSDT',
 			chain: 'base',
 			family: 'evm',
-			timeframe: '4h',
-		});
-		const perp = await fetchPerpContextProxy(fetchMock as typeof fetch, {
-			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
 		const marketCap = await fetchFactMarketCapProxy(fetchMock as typeof fetch);
@@ -144,6 +146,8 @@ describe('engine plane clients', () => {
 			'/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true',
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
+		const secondUrl = String(fetchMock.mock.calls[1]?.[0]);
+		const secondInit = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
 		const thirdUrl = String(fetchMock.mock.calls[2]?.[0]);
 		const thirdInit = fetchMock.mock.calls[2]?.[1] as RequestInit | undefined;
 		const fourthUrl = String(fetchMock.mock.calls[3]?.[0]);
@@ -154,11 +158,10 @@ describe('engine plane clients', () => {
 		const sixthInit = fetchMock.mock.calls[5]?.[1] as RequestInit | undefined;
 		expect(secondUrl).toBe('/api/facts/reference-stack?symbol=ETHUSDT&timeframe=4h&offline=true');
 		expect(thirdUrl).toBe('/api/facts/chain-intel?symbol=ETHUSDT&chain=base&family=evm&timeframe=4h&offline=true');
-		expect(fourthUrl).toBe('/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true');
-		expect(fifthUrl).toBe('/api/facts/market-cap?offline=true');
-		expect(sixthUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
-		expect(sixthUrl).toContain('family=technical');
-		expect(sixthUrl).toContain('stage=promoted');
+		expect(fourthUrl).toBe('/api/facts/market-cap?offline=true');
+		expect(fifthUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
+		expect(fifthUrl).toContain('family=technical');
+		expect(fifthUrl).toContain('stage=promoted');
 		expect(secondInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);

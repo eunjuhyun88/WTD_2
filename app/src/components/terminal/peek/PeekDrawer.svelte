@@ -15,11 +15,23 @@
     analyzeCount?: number;
     scanCount?: number;
     judgeCount?: number;
+    reviewCount?: number;
+    openTab?: string;
+    analyze?: import('svelte').Snippet;
+    scan?: import('svelte').Snippet;
+    judge?: import('svelte').Snippet;
+    review?: import('svelte').Snippet;
   }
   let {
     analyzeCount = 0,
     scanCount = 0,
     judgeCount = 0,
+    reviewCount = 0,
+    openTab,
+    analyze,
+    scan,
+    judge,
+    review,
   }: Props = $props();
 
   // ── State ───────────────────────────────────────────────────────────────

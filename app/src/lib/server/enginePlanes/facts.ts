@@ -117,6 +117,23 @@ export async function fetchPerpContextProxy(
 	});
 }
 
+/** Alias for backward compatibility with callers using the `fetchFact*` naming convention. */
+export const fetchFactPerpContextProxy = fetchPerpContextProxy;
+
+/** Alias for backward compatibility. */
+export type PerpContextPayload = EngineFactPerpContextPayload;
+
+export async function fetchFactMarketCapProxy(
+	fetchFn: ServerFetch,
+	args: { offline?: boolean } = {},
+): Promise<MarketCapSnapshot | null> {
+	return fetchEnginePlaneJson<MarketCapSnapshot>(fetchFn, 'facts', {
+		path: 'market-cap',
+		query: { offline: args.offline ?? true },
+		timeoutMs: 8_000,
+	});
+}
+
 export async function fetchIndicatorCatalogProxy(
 	fetchFn: ServerFetch,
 	filters: IndicatorCatalogFilterInput = {},

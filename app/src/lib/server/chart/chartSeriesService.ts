@@ -14,6 +14,19 @@ import {
 import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 import { fetchLiquidationHistoryServer } from '$lib/server/providers/coinalyze';
 
+const FAPI = 'https://fapi.binance.com';
+
+function parseKlines(raw: number[][]): KlineBar[] {
+  return raw.map((k) => ({
+    time:   Math.floor(k[0] / 1000),
+    open:   parseFloat(k[1] as unknown as string),
+    high:   parseFloat(k[2] as unknown as string),
+    low:    parseFloat(k[3] as unknown as string),
+    close:  parseFloat(k[4] as unknown as string),
+    volume: parseFloat(k[5] as unknown as string),
+  }));
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface KlineBar {
@@ -54,9 +67,6 @@ export interface ChartPayload {
 export type ChartSeriesResult = { payload: ChartPayload; cacheStatus: 'hit' | 'miss' };
 
 type FetchLike = typeof fetch;
-
-import { alignHtfSeriesToLtfTimes, isStrictlyHigherTf } from '$lib/chart/mtfAlign';
-import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 
 const CHART_CACHE_TTL_MS = 15_000;
 const chartCache = new Map<string, { expiresAt: number; payload: ChartPayload }>();
@@ -150,67 +160,6 @@ const OI_PERIOD_MAP: Record<string, string> = {
   '5m': '5m', '15m': '15m', '30m': '30m',
   '1h': '1h', '2h': '2h', '4h': '4h', '6h': '6h', '12h': '12h', '1d': '1d',
 };
-
-function normalizeRequest(args: {
-  symbol?: string;
-  tf?: string;
-  limit?: number;
-  emaTf?: string;
-}) {
-  const symbol = args.symbol?.trim().toUpperCase() || 'BTCUSDT';
-  const tf = args.tf?.trim().toLowerCase() || '1h';
-  const limit = Math.min(Math.max(args.limit ?? 500, 1), 1000);
-  const emaTf = args.emaTf?.trim() ?? '';
-  return { symbol, tf, limit, emaTf };
-}
-
-export async function getChartSeries(
-  args: {
-    symbol?: string;
-    tf?: string;
-    limit?: number;
-    emaTf?: string;
-    fetchImpl?: FetchLike;
-  },
-): Promise<ChartSeriesResult> {
-  const { symbol, tf, limit, emaTf } = normalizeRequest(args);
-  const fetchImpl = args.fetchImpl ?? fetch;
-  const interval = INTERVAL_MAP[tf] ?? '1h';
-  const cacheKey = `${symbol}:${tf}:${limit}:emaTf=${emaTf || 'chart'}`;
-  const now = Date.now();
-  const cached = chartCache.get(cacheKey);
-
-  if (cached && cached.expiresAt > now) {
-    return {
-      payload: cached.payload,
-      cacheStatus: 'hit',
-    };
-  }
-
-  // Check shared Redis cache (cross-instance, degrades gracefully if unavailable)
-  const shared = await getSharedCache<ChartPayload>('chart', cacheKey);
-  if (shared) {
-    chartCache.set(cacheKey, { expiresAt: now + CHART_CACHE_TTL_MS, payload: shared });
-    return { payload: shared, cacheStatus: 'hit' };
-  }
-
-  const [klinesResp, fundingResp] = await Promise.all([
-    fetchImpl(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`),
-    fetchImpl(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${symbol}&limit=${Math.min(limit, 500)}`),
-  ]);
-
-  if (!klinesResp.ok) throw new Error(`Binance futures klines ${klinesResp.status}`);
-  const rawKlines = (await klinesResp.json()) as number[][];
-
-  const klines: KlineBar[] = rawKlines.map((k) => ({
-    time: Math.floor(k[0] / 1000),
-    open: parseFloat(k[1] as unknown as string),
-    high: parseFloat(k[2] as unknown as string),
-    low: parseFloat(k[3] as unknown as string),
-    close: parseFloat(k[4] as unknown as string),
-    volume: parseFloat(k[5] as unknown as string),
-  }));
-}
 
 async function fetchKlines(
   symbol: string,
@@ -316,13 +265,6 @@ function computeIndicators(klines: KlineBar[], htfKlines?: KlineBar[], emaTf?: s
 
   return indicators;
 }
-
-  chartCache.set(cacheKey, {
-    expiresAt: now + CHART_CACHE_TTL_MS,
-    payload,
-  });
-  // Populate shared cache for other Vercel instances (fire-and-forget)
-  void setSharedCache('chart', cacheKey, payload, CHART_CACHE_TTL_MS);
 
 function normalise(args: {
   symbol?: string; tf?: string; limit?: number; emaTf?: string; startTime?: number;

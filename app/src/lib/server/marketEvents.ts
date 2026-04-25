@@ -128,12 +128,12 @@ function buildDerivativesView(
 	if (!enginePerp && !legacyDeriv) return null;
 
 	return {
-		funding: enginePerp?.metrics.funding_rate ?? legacyDeriv?.funding ?? null,
-		lsRatio: enginePerp?.metrics.long_short_ratio ?? legacyDeriv?.lsRatio ?? null,
+		funding: enginePerp?.metrics?.funding_rate ?? legacyDeriv?.funding ?? null,
+		lsRatio: enginePerp?.metrics?.long_short_ratio ?? legacyDeriv?.lsRatio ?? null,
 		liqLong24h: legacyDeriv?.liqLong24h ?? 0,
 		liqShort24h: legacyDeriv?.liqShort24h ?? 0,
 		updatedAt: legacyDeriv?.updatedAt ?? Date.now(),
-		crowding: enginePerp?.regime.crowding ?? null,
+		crowding: enginePerp?.regime?.crowding ?? null,
 	};
 }
 
