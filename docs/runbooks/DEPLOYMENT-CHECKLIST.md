@@ -10,115 +10,57 @@
 
 Before starting, you need:
 
-- [ ] GCP `gcloud` CLI installed and authenticated
-- [ ] Vercel CLI installed and authenticated (`npm i -g vercel && vercel login`)
-- [ ] GCP Project ID (e.g., `cogotchi-xxxx`)
-- [ ] Access to GitHub repo `eunjuhyun88/wtd-v2`
-- [ ] SCHEDULER_SECRET from Cloud Run `cogotchi` service (get from GCP console)
-- [ ] 32-byte hex encryption key (or generate new one below)
+- [ ] Python 3.11+ with uv or pip
+- [ ] `google-cloud-scheduler` library: `pip install google-cloud-scheduler`
+- [ ] `requests` library: `pip install requests`
+- [ ] GCP `gcloud` CLI authenticated
+- [ ] GCP Project ID
+- [ ] SCHEDULER_SECRET from Cloud Run `cogotchi` service (GCP Console → Cloud Run → cogotchi → Environment tab)
+- [ ] 32-byte hex encryption key (generate below)
+- [ ] Vercel API token (or `VERCEL_TOKEN` env var)
 
 ---
 
-## 🔐 Generate EXCHANGE_ENCRYPTION_KEY
-
-If you don't have a key, generate one:
+## 🔐 Prepare Credentials
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# Output: 64 hex characters (32 bytes)
+# Generate encryption key
+export ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+echo "Your key: $ENCRYPTION_KEY"
+
+# Get from GCP Console
+export GCP_PROJECT_ID="your-project-id"
+export SCHEDULER_SECRET="your-secret-from-gcp"
+
+# Get from Vercel Settings
+export VERCEL_TOKEN="your-vercel-api-token"
 ```
 
-Save this safely — you'll use it in **Step 3**.
-
 ---
 
-## ✅ Step 1: Setup Cloud Scheduler Jobs (Terraform)
+## ✅ One Command Setup
 
-**What:** Registers two recurring HTTP jobs (feature_materialization every 15min, raw_ingest every hour)
+All infrastructure (Cloud Scheduler + Vercel Env) via one Python script:
 
 ```bash
-# Navigate to project root
 cd /Users/ej/Projects/wtd-v2
 
-# Create terraform variables file
-cat > scripts/infra/terraform.tfvars <<EOF
-gcp_project_id    = "YOUR_GCP_PROJECT_ID"
-gcp_region        = "asia-southeast1"
-scheduler_secret  = "YOUR_SCHEDULER_SECRET"
-EOF
-
-# Initialize and apply
-cd scripts/infra
-terraform init
-terraform plan     # Review what will be created
-terraform apply    # Create the jobs
-cd ../../
+python scripts/setup_infra.py \
+  --gcp-project $GCP_PROJECT_ID \
+  --scheduler-secret $SCHEDULER_SECRET \
+  --encryption-key $ENCRYPTION_KEY \
+  --vercel-token $VERCEL_TOKEN
 ```
 
-**Verification:**
-```bash
-gcloud scheduler jobs list --location=asia-southeast1
-# Should see: feature-materialization-run, raw-ingest-run
-```
+**What it does:**
+- ✅ Creates `feature-materialization-run` Cloud Scheduler job (every 15 min)
+- ✅ Creates `raw-ingest-run` Cloud Scheduler job (every 60 min)
+- ✅ Sets `EXCHANGE_ENCRYPTION_KEY` in Vercel production
+- ✅ Verifies all 3 infrastructure pieces are live
 
 ---
 
-## ✅ Step 2: Setup Cloud Build Trigger
-
-**What:** Auto-deploys `cogotchi-worker` service when main branch changes
-
-```bash
-bash scripts/infra/gcp-cloudbuild-trigger-setup.sh YOUR_GCP_PROJECT_ID
-```
-
-**Verification:**
-```bash
-gcloud builds triggers list --filter="name:deploy-worker-on-main"
-# Should see: deploy-worker-on-main (GitHub, branch: main, config: cloudbuild.worker.yaml)
-```
-
----
-
-## ✅ Step 3: Setup Vercel Environment Variable
-
-**What:** Sets `EXCHANGE_ENCRYPTION_KEY` in Vercel production environment
-
-```bash
-bash scripts/infra/vercel-env-setup.sh YOUR_64_HEX_ENCRYPTION_KEY
-```
-
-**Verification:**
-```bash
-vercel env list --production | grep EXCHANGE_ENCRYPTION_KEY
-# Should show: EXCHANGE_ENCRYPTION_KEY (production)
-```
-
----
-
-## ✅ Step 4: Run Full Verification
-
-**What:** Confirms all 3 infrastructure components are in place
-
-```bash
-bash scripts/infra/verify-deployment-ready.sh YOUR_GCP_PROJECT_ID
-```
-
-**Expected output:**
-```
-✅ feature-materialization-run exists
-✅ raw-ingest-run exists
-✅ deploy-worker-on-main trigger exists
-✅ EXCHANGE_ENCRYPTION_KEY set in production
-✅ cogotchi service responding
-
-🎉 All checks passed! Ready for production deployment.
-```
-
-If any checks fail, the script will print which setup script to run.
-
----
-
-## 🧪 Step 5: Production Smoke Test
+## 🧪 Smoke Test
 
 Once all infrastructure is deployed, test the core loop:
 
