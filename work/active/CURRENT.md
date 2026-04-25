@@ -27,6 +27,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0155** | `W-0155-capture-market-search.md` | 🔴 IN-PROGRESS | capture -> benchmark-search -> market-search -> top-N explanation bridge |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
@@ -99,14 +100,15 @@
 
 ## 즉시 실행 순서
 
-1. **W-0148 / PR0.1** — docs/governance normalize
-2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
-3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
-4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
-5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
-7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
-8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+1. **W-0155** — capture -> benchmark-search -> market-search -> top-N explanation bridge
+2. **W-0148 / PR0.1** — docs/governance normalize
+3. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
+4. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
+5. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
+6. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
+7. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+8. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
@@ -118,6 +120,7 @@
 |---|---|---|
 | main | — | local `main` = `27952d95` |
 | origin/main | — | local remote-tracking ref = `e53c5f96` |
+| codex/w-0155-capture-market-search | W-0155 | active capture-to-market-search lane |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
