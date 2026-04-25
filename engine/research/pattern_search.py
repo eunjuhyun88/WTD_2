@@ -15,6 +15,7 @@ import pandas as pd
 
 from data_cache.loader import load_klines, load_perp
 from data_cache.resample import tf_string_to_minutes
+from exceptions import CacheMiss
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore
 from ledger.types import PatternLedgerRecord
 from patterns.active_variant_registry import (
@@ -572,7 +573,7 @@ class BenchmarkPackStore:
         default_id = f"{pattern_slug}__ptb-tradoor-v1"
         existing = self.load(default_id)
         if existing is not None:
-            desired_timeframes = ["15m", "30m", "1h", "4h"]
+            desired_timeframes = ["15m", "1h", "4h"]
             if existing.candidate_timeframes != desired_timeframes:
                 existing = ReplayBenchmarkPack(
                     benchmark_pack_id=existing.benchmark_pack_id,
@@ -586,7 +587,7 @@ class BenchmarkPackStore:
         pack = ReplayBenchmarkPack(
             benchmark_pack_id=default_id,
             pattern_slug=pattern_slug,
-            candidate_timeframes=["15m", "30m", "1h", "4h"],
+            candidate_timeframes=["15m", "1h", "4h"],
             cases=[
                 BenchmarkCase(
                     symbol="PTBUSDT",
@@ -779,6 +780,20 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
         ),
         PatternVariantSpec(
             pattern_slug=pattern_slug,
+            variant_slug=f"{pattern_slug}__breakout-range-soft",
+            timeframe=base.timeframe,
+            phase_overrides={
+                "BREAKOUT": {
+                    "required_blocks": ["post_accumulation_range_breakout"],
+                    "required_any_groups": [["oi_expansion_confirm", "oi_acceleration"]],
+                    "optional_blocks": ["breakout_volume_confirm"],
+                    "max_bars": 24,
+                }
+            },
+            hypotheses=["make breakout local to accumulation range", "allow OI acceleration as OI expansion proxy"],
+        ),
+        PatternVariantSpec(
+            pattern_slug=pattern_slug,
             variant_slug=f"{pattern_slug}__compression-emphasis",
             timeframe=base.timeframe,
             phase_overrides={
@@ -890,6 +905,7 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
 def _supported_candidate_timeframes(candidate_timeframes: list[str], *, base_timeframe: str) -> list[str]:
     supported: list[str] = []
     for timeframe in candidate_timeframes:
+        tf_string_to_minutes(timeframe)
         if timeframe not in supported:
             supported.append(timeframe)
     if base_timeframe not in supported:
@@ -2745,7 +2761,23 @@ def evaluate_variant_on_case(
         from_timeframe=case.timeframe,
         to_timeframe=timeframe,
     )
-    klines, features = _slice_case_frames(case, timeframe=timeframe, warmup_bars=scaled_warmup_bars)
+    try:
+        klines, features = _slice_case_frames(case, timeframe=timeframe, warmup_bars=scaled_warmup_bars)
+    except (CacheMiss, ValueError) as exc:
+        return VariantCaseResult(
+            case_id=case.case_id,
+            symbol=case.symbol,
+            role=case.role,
+            observed_phase_path=[],
+            current_phase="DATA_MISSING",
+            phase_fidelity=0.0,
+            phase_depth_progress=0.0,
+            entry_hit=False,
+            target_hit=False,
+            lead_bars=None,
+            score=0.0,
+            failed_reason_counts={type(exc).__name__: 1},
+        )
     attempts: list[PhaseAttemptRecord] = []
     machine = PatternStateMachine(pattern, on_phase_attempt=attempts.append)
     replay = replay_pattern_frames(

@@ -150,7 +150,7 @@ TRADOOR_OI_REVERSAL = PatternObject(
             #     here structurally excludes real crypto breakouts.
             #     Kept as an optional score boost rather than a hard gate.
             required_blocks=[
-                "breakout_after_accumulation",
+                "post_accumulation_range_breakout",
                 "oi_expansion_confirm",
             ],
             optional_blocks=["breakout_from_pullback_range", "breakout_volume_confirm"],
@@ -1238,6 +1238,554 @@ ALPHA_PRESURGE = PatternObject(
 )
 
 
+# ─── W-0147: HTML reference signal coverage ──────────────────────────────────
+# These are source-specific registrations for the Telegram HTML references in
+# tmp/telegram_refs. They intentionally reuse existing runtime blocks so the
+# signals are searchable by the engine before a later benchmark/eval slice
+# promotes or rejects them.
+def _html_pattern(
+    *,
+    slug: str,
+    name: str,
+    description: str,
+    required_blocks: list[str] | None = None,
+    required_any_groups: list[list[str]] | None = None,
+    optional_blocks: list[str] | None = None,
+    soft_blocks: list[str] | None = None,
+    disqualifier_blocks: list[str] | None = None,
+    direction: str = "long",
+    tags: list[str] | None = None,
+    phase_id: str = "SIGNAL",
+    label: str = "HTML reference signal",
+) -> PatternObject:
+    return PatternObject(
+        slug=slug,
+        name=name,
+        description=description,
+        phases=[
+            PhaseCondition(
+                phase_id=phase_id,
+                label=label,
+                required_blocks=required_blocks or [],
+                required_any_groups=required_any_groups or [],
+                optional_blocks=optional_blocks or [],
+                soft_blocks=soft_blocks or [],
+                disqualifier_blocks=disqualifier_blocks or [],
+                min_bars=1,
+                max_bars=12,
+                timeframe="1h",
+            )
+        ],
+        entry_phase=phase_id,
+        target_phase=phase_id,
+        timeframe="1h",
+        universe_scope="binance_dynamic",
+        direction=direction,  # type: ignore[arg-type]
+        tags=["html_ref", *(tags or [])],
+        version=1,
+        created_by="w-0147-html-reference",
+    )
+
+
+RADAR_CVD_BREAKOUT = _html_pattern(
+    slug="radar-cvd-breakout-v1",
+    name="Signal Radar CVD 자금 유입 돌파",
+    description="바이낸스 시그널 레이더의 일반 CVD 돌파 로그. CVD 순매수와 속도 가속을 함께 본다.",
+    required_any_groups=[["delta_flip_positive", "absorption_signal"]],
+    optional_blocks=["volume_surge_bull", "relative_velocity_bull", "recent_rally"],
+    tags=["signal_radar", "cvd", "money_flow"],
+)
+
+RADAR_WHALE_BLOCK_TRADE = _html_pattern(
+    slug="radar-whale-block-trade-v1",
+    name="Signal Radar 고래 블록 체결",
+    description="바이낸스 시그널 레이더의 WHALE BLOCK TRADE 이벤트. 대형 매수 체결을 볼륨/스마트머니 프록시로 등록한다.",
+    required_any_groups=[["volume_surge_bull", "smart_money_accumulation", "total_oi_spike"]],
+    optional_blocks=["recent_rally", "delta_flip_positive"],
+    tags=["signal_radar", "whale", "block_trade"],
+)
+
+RADAR_MICRO_SQUEEZE_BREAKOUT = PatternObject(
+    slug="radar-micro-squeeze-breakout-v1",
+    name="Signal Radar MICRO-SQUEEZE BREAKOUT",
+    description="Signal Radar의 바닥 압축 후 CVD 순매수 돌파 이벤트.",
+    phases=[
+        PhaseCondition(
+            phase_id="SQUEEZE_SETUP",
+            label="micro squeeze setup",
+            required_blocks=[],
+            required_any_groups=[["bollinger_squeeze", "liq_zone_squeeze_setup", "atr_ultra_low"]],
+            optional_blocks=["volume_dryup"],
+            disqualifier_blocks=["extreme_volatility"],
+            min_bars=2,
+            max_bars=18,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="CVD_BREAKOUT",
+            label="CVD breakout from squeeze",
+            required_any_groups=[
+                ["delta_flip_positive", "absorption_signal"],
+                ["breakout_above_high", "volume_surge_bull", "bollinger_expansion"],
+            ],
+            required_blocks=[],
+            optional_blocks=["orderbook_imbalance_ratio"],
+            min_bars=1,
+            max_bars=6,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="CVD_BREAKOUT",
+    target_phase="CVD_BREAKOUT",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["html_ref", "signal_radar", "micro_squeeze", "cvd"],
+    created_by="w-0147-html-reference",
+)
+
+RADAR_ORDERBOOK_IMBALANCE = _html_pattern(
+    slug="radar-orderbook-imbalance-v1",
+    name="Signal Radar ORDERBOOK IMBALANCE",
+    description="Signal Radar의 매수벽 우위 이벤트. bid/ask 불균형과 CVD/모멘텀을 함께 본다.",
+    required_blocks=["orderbook_imbalance_ratio"],
+    optional_blocks=["delta_flip_positive", "volume_surge_bull", "recent_rally"],
+    tags=["signal_radar", "orderbook", "imbalance"],
+)
+
+RADAR_HOT_TARGET_CLUSTER = _html_pattern(
+    slug="radar-hot-target-cluster-v1",
+    name="Signal Radar 핫 타겟 클러스터",
+    description="최근 30분 Signal Radar 이벤트 누적 랭킹을 패턴 엔진용 클러스터 신호로 등록한다.",
+    required_any_groups=[
+        ["volume_surge_bull", "delta_flip_positive", "orderbook_imbalance_ratio", "bollinger_squeeze"],
+    ],
+    optional_blocks=["relative_velocity_bull", "smart_money_accumulation"],
+    tags=["signal_radar", "hot_target", "cluster"],
+)
+
+ALPHA_TERMINAL_SHORT_SQUEEZE = PatternObject(
+    slug="alpha-terminal-short-squeeze-v1",
+    name="Alpha Terminal SHORT_SQUEEZE",
+    description="Alpha Terminal setupTag SHORT_SQUEEZE. 음펀비/숏 과밀, 압축, 상방 스퀴즈 트리거.",
+    phases=[
+        PhaseCondition(
+            phase_id="SHORT_CROWDING",
+            label="short crowding and compression",
+            required_blocks=["funding_extreme_short"],
+            optional_blocks=["negative_funding_bias", "bollinger_squeeze", "atr_ultra_low", "oi_change"],
+            min_bars=1,
+            max_bars=24,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SQUEEZE_TRIGGER",
+            label="squeeze trigger",
+            required_blocks=[],
+            required_any_groups=[
+                ["funding_flip", "ls_ratio_recovery", "positive_funding_bias"],
+                ["breakout_above_high", "oi_expansion_confirm", "volume_surge_bull"],
+            ],
+            optional_blocks=["bollinger_expansion", "vwap_break"],
+            min_bars=1,
+            max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="SQUEEZE_TRIGGER",
+    target_phase="SQUEEZE_TRIGGER",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["html_ref", "alpha_terminal", "short_squeeze"],
+    created_by="w-0147-html-reference",
+)
+
+ALPHA_TERMINAL_BOTTOM_ABSORPTION = PatternObject(
+    slug="alpha-terminal-bottom-absorption-v1",
+    name="Alpha Terminal BOTTOM_ABSORPTION",
+    description="Alpha Terminal setupTag BOTTOM_ABSORPTION. 와이코프 축적 + CVD 흡수.",
+    phases=[
+        PhaseCondition(
+            phase_id="BASE",
+            label="bottom base",
+            required_blocks=[],
+            required_any_groups=[["sideways_compression", "bollinger_squeeze", "volume_dryup"]],
+            optional_blocks=["recent_decline"],
+            disqualifier_blocks=["extreme_volatility"],
+            min_bars=2,
+            max_bars=36,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ABSORPTION_ENTRY",
+            label="CVD absorption entry",
+            required_blocks=[],
+            required_any_groups=[
+                ["absorption_signal", "delta_flip_positive"],
+                ["higher_lows_sequence", "reclaim_after_dump"],
+            ],
+            optional_blocks=["vwap_break", "smart_money_accumulation"],
+            min_bars=1,
+            max_bars=18,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="ABSORPTION_ENTRY",
+    target_phase="ABSORPTION_ENTRY",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["html_ref", "alpha_terminal", "bottom_absorption", "cvd"],
+    created_by="w-0147-html-reference",
+)
+
+ALPHA_TERMINAL_BREAKOUT_MOMENTUM = _html_pattern(
+    slug="alpha-terminal-breakout-momentum-v1",
+    name="Alpha Terminal BREAKOUT_MOMENTUM",
+    description="Alpha Terminal setupTag BREAKOUT_MOMENTUM. 고가 돌파, VWAP/MTF 확인, 볼륨 가속.",
+    required_blocks=["breakout_above_high"],
+    required_any_groups=[
+        ["volume_surge_bull", "breakout_volume_confirm", "oi_acceleration"],
+        ["vwap_break", "relative_strength_btc", "higher_lows_sequence"],
+    ],
+    optional_blocks=["relative_velocity_bull", "oi_expansion_confirm", "bollinger_expansion"],
+    tags=["alpha_terminal", "breakout_momentum", "vwap"],
+)
+
+ALPHA_TERMINAL_VWAP_BREAK = _html_pattern(
+    slug="alpha-terminal-vwap-break-v1",
+    name="Alpha Terminal VWAP_BREAK",
+    description="Alpha Terminal setupTag VWAP_BREAK. 단기 VWAP 돌파와 BTC 상대강도 우위.",
+    required_blocks=["vwap_break"],
+    required_any_groups=[["relative_strength_btc", "relative_velocity_bull", "oi_acceleration"]],
+    optional_blocks=["volume_surge_bull", "breakout_volume_confirm", "recent_rally"],
+    tags=["alpha_terminal", "vwap", "scalp"],
+)
+
+ALPHA_TERMINAL_STRONG_BULL_CONFLUENCE = _html_pattern(
+    slug="alpha-terminal-strong-bull-confluence-v1",
+    name="Alpha Terminal STRONG_BULL confluence",
+    description="Alpha Terminal alphaScore >= 60에 대응하는 강한 상승 컨플루언스.",
+    required_any_groups=[
+        ["delta_flip_positive", "absorption_signal", "positive_funding_bias"],
+        ["volume_surge_bull", "breakout_volume_confirm", "vwap_break"],
+        ["higher_lows_sequence", "relative_strength_btc", "bollinger_expansion"],
+    ],
+    optional_blocks=["funding_extreme_short", "oi_expansion_confirm", "orderbook_imbalance_ratio"],
+    tags=["alpha_terminal", "alpha_score", "strong_bull"],
+)
+
+ALPHA_TERMINAL_STRONG_BEAR_CONFLUENCE = _html_pattern(
+    slug="alpha-terminal-strong-bear-confluence-v1",
+    name="Alpha Terminal STRONG_BEAR confluence",
+    description="Alpha Terminal alphaScore <= -60에 대응하는 강한 하락/분배 컨플루언스.",
+    required_any_groups=[
+        ["recent_decline", "cvd_spot_price_divergence_bear"],
+        ["volume_surge_bear", "bearish_engulfing", "long_upper_wick"],
+    ],
+    optional_blocks=["negative_funding_bias", "extended_from_ma", "coinbase_premium_weak"],
+    direction="short",
+    tags=["alpha_terminal", "alpha_score", "strong_bear"],
+)
+
+ALPHA_FLOW_BULL_BIAS = _html_pattern(
+    slug="alpha-flow-bull-bias-v1",
+    name="Alpha Flow BULL/STRONG_BULL bias",
+    description="나혼자매매 Alpha Flow의 상승 편향 aggregate를 runtime 패턴으로 등록.",
+    required_any_groups=[
+        ["delta_flip_positive", "absorption_signal", "positive_funding_bias"],
+        ["higher_lows_sequence", "volume_surge_bull", "breakout_volume_confirm"],
+    ],
+    optional_blocks=["bollinger_squeeze", "atr_ultra_low", "relative_strength_btc"],
+    tags=["alpha_flow", "alpha_score", "bull_bias"],
+)
+
+ALPHA_FLOW_BEAR_BIAS = _html_pattern(
+    slug="alpha-flow-bear-bias-v1",
+    name="Alpha Flow BEAR/STRONG_BEAR bias",
+    description="나혼자매매 Alpha Flow의 하락/분산 편향 aggregate를 runtime 패턴으로 등록.",
+    required_any_groups=[
+        ["recent_decline", "cvd_spot_price_divergence_bear"],
+        ["volume_surge_bear", "bearish_engulfing", "long_upper_wick"],
+    ],
+    optional_blocks=["negative_funding_bias", "extended_from_ma"],
+    direction="short",
+    tags=["alpha_flow", "alpha_score", "bear_bias"],
+)
+
+ALPHA_FLOW_WYCKOFF_ACCUMULATION = _html_pattern(
+    slug="alpha-flow-wyckoff-accumulation-v1",
+    name="Alpha Flow WYCKOFF accumulation",
+    description="Alpha Flow WYCKOFF 필터. 횡보/스프링 후 흡수와 저점 상승.",
+    required_any_groups=[
+        ["sideways_compression", "sweep_below_low", "bollinger_squeeze"],
+        ["absorption_signal", "higher_lows_sequence", "delta_flip_positive"],
+    ],
+    optional_blocks=["volume_dryup", "reclaim_after_dump"],
+    tags=["alpha_flow", "wyckoff", "accumulation"],
+)
+
+ALPHA_FLOW_MTF_ACCUMULATION = _html_pattern(
+    slug="alpha-flow-mtf-accumulation-v1",
+    name="Alpha Flow MTF accumulation",
+    description="Alpha Flow MTF 필터. 여러 시간축의 축적을 단일 runtime 프록시로 등록.",
+    required_any_groups=[
+        ["higher_lows_sequence", "ema_pullback"],
+        ["relative_strength_btc", "relative_velocity_bull", "alt_btc_accel_ratio"],
+    ],
+    optional_blocks=["bollinger_squeeze", "volume_dryup"],
+    tags=["alpha_flow", "mtf", "accumulation"],
+)
+
+ALPHA_FLOW_LIQUIDITY_ZONE = _html_pattern(
+    slug="alpha-flow-liquidity-zone-v1",
+    name="Alpha Flow LIQ liquidity zone",
+    description="Alpha Flow 청산존/유동성존 필터. 압축된 유동성 구간과 호가 불균형을 본다.",
+    required_any_groups=[["liq_zone_squeeze_setup", "orderbook_imbalance_ratio"]],
+    optional_blocks=["bollinger_squeeze", "atr_ultra_low"],
+    tags=["alpha_flow", "liquidity", "orderbook"],
+)
+
+ALPHA_FLOW_EXTREME_FLOW = _html_pattern(
+    slug="alpha-flow-extreme-flow-v1",
+    name="Alpha Flow EXTREME funding/OI flow",
+    description="Alpha Flow EXTREME 필터. 극단 펀딩과 OI/볼륨 변화를 위험/기회 신호로 등록.",
+    required_any_groups=[
+        ["funding_extreme", "funding_extreme_short"],
+        ["oi_change", "oi_expansion_confirm", "volume_surge_bull", "volume_surge_bear"],
+    ],
+    optional_blocks=["venue_funding_spread_extreme"],
+    tags=["alpha_flow", "extreme", "funding", "oi"],
+)
+
+ALPHA_HUNTER_ACTIVITY_SURGE = _html_pattern(
+    slug="alpha-hunter-activity-surge-v1",
+    name="Alpha Hunter S1 activity surge",
+    description="Alpha Hunter S1 거래 활성도. 거래량/시총과 평균 체결 활성도를 볼륨 가속으로 등록.",
+    required_any_groups=[["volume_spike", "volume_surge_bull", "volume_surge_bear"]],
+    optional_blocks=["relative_velocity_bull"],
+    tags=["alpha_hunter", "s1", "activity"],
+)
+
+ALPHA_HUNTER_LIQUIDITY_HEALTH = _html_pattern(
+    slug="alpha-hunter-liquidity-health-v1",
+    name="Alpha Hunter S2 liquidity health",
+    description="Alpha Hunter S2 유동성/시총 건강도. DEX 활성과 홀더 구조 프록시.",
+    required_any_groups=[["dex_buy_pressure", "holder_concentration_ok", "volume_dryup"]],
+    optional_blocks=["liq_zone_squeeze_setup"],
+    tags=["alpha_hunter", "s2", "liquidity"],
+)
+
+ALPHA_HUNTER_TRADE_FLOW_ACCUMULATION = _html_pattern(
+    slug="alpha-hunter-trade-flow-accumulation-v1",
+    name="Alpha Hunter S3 trade-flow accumulation",
+    description="Alpha Hunter S3 체결 매수 우위. CVD/흡수 블록으로 등록.",
+    required_any_groups=[["delta_flip_positive", "absorption_signal", "cvd_buying"]],
+    optional_blocks=["volume_surge_bull"],
+    tags=["alpha_hunter", "s3", "trade_flow"],
+)
+
+ALPHA_HUNTER_MOMENTUM_BULL_DIVERGENCE = _html_pattern(
+    slug="alpha-hunter-momentum-bull-divergence-v1",
+    name="Alpha Hunter S4 bullish momentum divergence",
+    description="Alpha Hunter S4 RSI 강세 다이버전스/상승 모멘텀.",
+    required_any_groups=[["rsi_bullish_divergence", "rsi_threshold", "ema_pullback"]],
+    optional_blocks=["volume_surge_bull", "relative_strength_btc"],
+    tags=["alpha_hunter", "s4", "momentum", "bull_divergence"],
+)
+
+ALPHA_HUNTER_MOMENTUM_BEAR_DIVERGENCE = _html_pattern(
+    slug="alpha-hunter-momentum-bear-divergence-v1",
+    name="Alpha Hunter S4 bearish momentum divergence",
+    description="Alpha Hunter S4 RSI 약세 다이버전스/하락 모멘텀.",
+    required_any_groups=[["rsi_bearish_divergence", "recent_decline", "extended_from_ma"]],
+    optional_blocks=["volume_surge_bear"],
+    direction="short",
+    tags=["alpha_hunter", "s4", "momentum", "bear_divergence"],
+)
+
+ALPHA_HUNTER_HOLDER_QUALITY = _html_pattern(
+    slug="alpha-hunter-holder-quality-v1",
+    name="Alpha Hunter S5 holder quality",
+    description="Alpha Hunter S5 홀더/커뮤니티 품질. 홀더 집중도와 소셜 프록시.",
+    required_any_groups=[["holder_concentration_ok", "social_sentiment_spike", "kol_signal"]],
+    optional_blocks=["dex_buy_pressure"],
+    tags=["alpha_hunter", "s5", "holders"],
+)
+
+ALPHA_HUNTER_LISTING_STAGE_CATALYST = _html_pattern(
+    slug="alpha-hunter-listing-stage-catalyst-v1",
+    name="Alpha Hunter S6 listing-stage catalyst",
+    description="Alpha Hunter S6 상장 단계 촉매. Alpha/spot/futures 기대감을 소셜·상대속도·거래소 고립 펌프로 등록.",
+    required_any_groups=[["isolated_venue_pump", "relative_velocity_bull", "social_sentiment_spike"]],
+    optional_blocks=["kol_signal", "fear_greed_rising"],
+    tags=["alpha_hunter", "s6", "listing_stage"],
+)
+
+ALPHA_HUNTER_DEX_BUY_PRESSURE = _html_pattern(
+    slug="alpha-hunter-dex-buy-pressure-v1",
+    name="Alpha Hunter S7 DEX buy pressure",
+    description="Alpha Hunter S7 DexScreener 매수 우위/5분 선행 신호.",
+    required_blocks=["dex_buy_pressure"],
+    optional_blocks=["volume_surge_bull", "relative_velocity_bull"],
+    tags=["alpha_hunter", "s7", "dex"],
+)
+
+ALPHA_HUNTER_HOLDER_RATIO_QUALITY = _html_pattern(
+    slug="alpha-hunter-holder-ratio-quality-v1",
+    name="Alpha Hunter S8 holder ratio quality",
+    description="Alpha Hunter S8 홀더당 평균 보유/유통율/거래빈도 품질.",
+    required_blocks=["holder_concentration_ok"],
+    optional_blocks=["dex_buy_pressure", "volume_dryup"],
+    tags=["alpha_hunter", "s8", "holders"],
+)
+
+ALPHA_HUNTER_ACCUMULATION = _html_pattern(
+    slug="alpha-hunter-accumulation-v1",
+    name="Alpha Hunter S9 accumulation",
+    description="Alpha Hunter S9 매집 진행. 가격 횡보, 매수 우위, DEX 매수, RSI 회복.",
+    required_any_groups=[
+        ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
+        ["delta_flip_positive", "dex_buy_pressure", "absorption_signal"],
+    ],
+    optional_blocks=["rsi_threshold", "higher_lows_sequence"],
+    tags=["alpha_hunter", "s9", "accumulation"],
+)
+
+ALPHA_HUNTER_PRE_PUMP = _html_pattern(
+    slug="alpha-hunter-pre-pump-v1",
+    name="Alpha Hunter S10 PRE-PUMP",
+    description="Alpha Hunter S10 급등 전 신호. 5분 선행 돌파, 거래량 폭발, RSI 탈출, DEX 극단 매수.",
+    required_any_groups=[
+        ["dex_buy_pressure", "volume_surge_bull", "volume_spike"],
+        ["rsi_bullish_divergence", "rsi_threshold", "breakout_above_high"],
+    ],
+    optional_blocks=["higher_lows_sequence", "relative_velocity_bull"],
+    tags=["alpha_hunter", "s10", "pre_pump"],
+)
+
+ALPHA_HUNTER_PRE_DUMP = _html_pattern(
+    slug="alpha-hunter-pre-dump-v1",
+    name="Alpha Hunter S11 PRE-DUMP",
+    description="Alpha Hunter S11 급락 전 경고. 고점 매도, DEX 극단 매도, 약세 다이버전스, 유동성 위험.",
+    required_any_groups=[
+        ["rsi_bearish_divergence", "extended_from_ma", "recent_decline"],
+        ["volume_surge_bear", "cvd_spot_price_divergence_bear", "coinbase_premium_weak"],
+    ],
+    optional_blocks=["long_upper_wick", "bearish_engulfing"],
+    direction="short",
+    tags=["alpha_hunter", "s11", "pre_dump"],
+)
+
+ALPHA_HUNTER_SECTOR_ROTATION = _html_pattern(
+    slug="alpha-hunter-sector-rotation-v1",
+    name="Alpha Hunter S12 sector rotation",
+    description="Alpha Hunter S12 섹터 평균 점수. 섹터 강세를 BTC 상대강도/상대속도 프록시로 등록.",
+    required_any_groups=[["relative_strength_btc", "relative_velocity_bull", "alt_btc_accel_ratio"]],
+    optional_blocks=["recent_rally", "volume_surge_bull"],
+    tags=["alpha_hunter", "s12", "sector"],
+)
+
+ALPHA_HUNTER_MULTI_FUNDING_SKEW = _html_pattern(
+    slug="alpha-hunter-multi-funding-skew-v1",
+    name="Alpha Hunter S14 multi-exchange funding skew",
+    description="Alpha Hunter S14 거래소간 funding skew/평균 FR 극단.",
+    required_any_groups=[["venue_funding_spread_extreme", "funding_extreme", "funding_extreme_short"]],
+    optional_blocks=["negative_funding_bias", "positive_funding_bias"],
+    tags=["alpha_hunter", "s14", "funding"],
+)
+
+ALPHA_HUNTER_MULTI_EXCHANGE_LEAD = _html_pattern(
+    slug="alpha-hunter-multi-exchange-lead-v1",
+    name="Alpha Hunter S15 multi-exchange lead",
+    description="Alpha Hunter S15 MEXC/Bitget 선행 수급. 고립 거래소 펌프와 venue divergence.",
+    required_any_groups=[["isolated_venue_pump", "venue_oi_divergence_bull", "relative_velocity_bull"]],
+    optional_blocks=["volume_surge_bull"],
+    tags=["alpha_hunter", "s15", "exchange_lead"],
+)
+
+ALPHA_HUNTER_BB_SQUEEZE = _html_pattern(
+    slug="alpha-hunter-bb-squeeze-v1",
+    name="Alpha Hunter S16 BB squeeze",
+    description="Alpha Hunter S16 볼린저 밴드 스퀴즈.",
+    required_blocks=["bollinger_squeeze"],
+    optional_blocks=["atr_ultra_low", "volume_dryup"],
+    disqualifier_blocks=["extreme_volatility"],
+    tags=["alpha_hunter", "s16", "bb_squeeze"],
+)
+
+ALPHA_HUNTER_ORDERBOOK_WALL = _html_pattern(
+    slug="alpha-hunter-orderbook-wall-v1",
+    name="Alpha Hunter S17 orderbook wall",
+    description="Alpha Hunter S17 매수벽/매도벽 호가 불균형.",
+    required_blocks=["orderbook_imbalance_ratio"],
+    optional_blocks=["recent_rally", "recent_decline"],
+    tags=["alpha_hunter", "s17", "orderbook"],
+)
+
+ALPHA_HUNTER_WHALE_FLOW = _html_pattern(
+    slug="alpha-hunter-whale-flow-v1",
+    name="Alpha Hunter S18 whale flow",
+    description="Alpha Hunter S18 고래 체결 플로우.",
+    required_any_groups=[["smart_money_accumulation", "volume_surge_bull", "total_oi_spike"]],
+    optional_blocks=["delta_flip_positive", "dex_buy_pressure"],
+    tags=["alpha_hunter", "s18", "whale"],
+)
+
+ALPHA_HUNTER_HUNT_SCORE = _html_pattern(
+    slug="alpha-hunter-hunt-score-v1",
+    name="Alpha Hunter composite HUNT score",
+    description="Alpha Hunter computeHuntScore aggregate. pre-pump, accumulation, exchange lead를 합친 최종 사냥 점수.",
+    required_any_groups=[
+        ["dex_buy_pressure", "volume_surge_bull", "relative_velocity_bull"],
+        ["sideways_compression", "absorption_signal", "higher_lows_sequence"],
+        ["isolated_venue_pump", "venue_oi_divergence_bull", "social_sentiment_spike"],
+    ],
+    optional_blocks=["holder_concentration_ok", "bollinger_squeeze", "oi_expansion_confirm"],
+    tags=["alpha_hunter", "hunt_score", "composite"],
+)
+
+HTML_REFERENCE_PATTERNS = [
+    RADAR_CVD_BREAKOUT,
+    RADAR_WHALE_BLOCK_TRADE,
+    RADAR_MICRO_SQUEEZE_BREAKOUT,
+    RADAR_ORDERBOOK_IMBALANCE,
+    RADAR_HOT_TARGET_CLUSTER,
+    ALPHA_TERMINAL_SHORT_SQUEEZE,
+    ALPHA_TERMINAL_BOTTOM_ABSORPTION,
+    ALPHA_TERMINAL_BREAKOUT_MOMENTUM,
+    ALPHA_TERMINAL_VWAP_BREAK,
+    ALPHA_TERMINAL_STRONG_BULL_CONFLUENCE,
+    ALPHA_TERMINAL_STRONG_BEAR_CONFLUENCE,
+    ALPHA_FLOW_BULL_BIAS,
+    ALPHA_FLOW_BEAR_BIAS,
+    ALPHA_FLOW_WYCKOFF_ACCUMULATION,
+    ALPHA_FLOW_MTF_ACCUMULATION,
+    ALPHA_FLOW_LIQUIDITY_ZONE,
+    ALPHA_FLOW_EXTREME_FLOW,
+    ALPHA_HUNTER_ACTIVITY_SURGE,
+    ALPHA_HUNTER_LIQUIDITY_HEALTH,
+    ALPHA_HUNTER_TRADE_FLOW_ACCUMULATION,
+    ALPHA_HUNTER_MOMENTUM_BULL_DIVERGENCE,
+    ALPHA_HUNTER_MOMENTUM_BEAR_DIVERGENCE,
+    ALPHA_HUNTER_HOLDER_QUALITY,
+    ALPHA_HUNTER_LISTING_STAGE_CATALYST,
+    ALPHA_HUNTER_DEX_BUY_PRESSURE,
+    ALPHA_HUNTER_HOLDER_RATIO_QUALITY,
+    ALPHA_HUNTER_ACCUMULATION,
+    ALPHA_HUNTER_PRE_PUMP,
+    ALPHA_HUNTER_PRE_DUMP,
+    ALPHA_HUNTER_SECTOR_ROTATION,
+    ALPHA_HUNTER_MULTI_FUNDING_SKEW,
+    ALPHA_HUNTER_MULTI_EXCHANGE_LEAD,
+    ALPHA_HUNTER_BB_SQUEEZE,
+    ALPHA_HUNTER_ORDERBOOK_WALL,
+    ALPHA_HUNTER_WHALE_FLOW,
+    ALPHA_HUNTER_HUNT_SCORE,
+]
+
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
@@ -1255,6 +1803,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     FUNDING_FLIP_REVERSAL_SHORT.slug: FUNDING_FLIP_REVERSAL_SHORT,
     OI_PRESURGE_LONG.slug: OI_PRESURGE_LONG,  # W-0114 딸깍 전략
     ALPHA_PRESURGE.slug: ALPHA_PRESURGE,      # W-0115 Alpha Universe
+    **{pattern.slug: pattern for pattern in HTML_REFERENCE_PATTERNS},
 }
 
 # Patterns derived from HTML reference sources — tagged "html_ref".
