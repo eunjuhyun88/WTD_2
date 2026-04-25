@@ -5,6 +5,8 @@ import {
 	fetchFactContextProxy,
 	fetchIndicatorCatalogProxy,
 	fetchFactPerpContextProxy,
+	fetchFactReferenceStackProxy,
+	fetchFactMarketCapProxy,
 } from './facts';
 import {
 	fetchSeedSearchRunProxy,
@@ -124,7 +126,7 @@ describe('engine plane clients', () => {
 			family: 'evm',
 			timeframe: '4h',
 		});
-		const perp = await fetchPerpContextProxy(fetchMock as typeof fetch, {
+		const referenceStack = await fetchFactReferenceStackProxy(fetchMock as typeof fetch, {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
@@ -144,6 +146,8 @@ describe('engine plane clients', () => {
 			'/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true',
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
+		const secondUrl = String(fetchMock.mock.calls[1]?.[0]);
+		const secondInit = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
 		const thirdUrl = String(fetchMock.mock.calls[2]?.[0]);
 		const thirdInit = fetchMock.mock.calls[2]?.[1] as RequestInit | undefined;
 		const fourthUrl = String(fetchMock.mock.calls[3]?.[0]);
@@ -178,7 +182,7 @@ describe('engine plane clients', () => {
 		expect(referenceStack?.kind).toBe('reference_stack');
 		expect(chainIntel?.kind).toBe('chain_intel');
 		expect(perp?.kind).toBe('perp_context');
-		expect(marketCap?.kind).toBe('market_cap');
+		expect((marketCap as any)?.kind).toBe('market_cap');
 		expect(catalog?.kind).toBe('indicator_catalog');
 	});
 

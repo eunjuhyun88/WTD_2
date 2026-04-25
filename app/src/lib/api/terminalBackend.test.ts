@@ -222,6 +222,6 @@ describe('terminalBackend surface clients', () => {
     const worldModel = await fetchAlphaWorldModel();
 
     expect(fetchMock).toHaveBeenCalledWith('/api/cogochi/alpha/world-model');
-    expect(worldModel.phases?.[0]?.phase).toBe('HOT');
+    expect((worldModel as any).phases?.[0]?.phase).toBe('HOT');
   });
 });

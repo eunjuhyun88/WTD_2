@@ -117,6 +117,21 @@ export async function fetchPerpContextProxy(
 	});
 }
 
+/** Alias kept for callers that used the old name before refactor. */
+export const fetchFactPerpContextProxy = fetchPerpContextProxy;
+
+/** @deprecated Use EngineFactPerpContextPayload */
+export type PerpContextPayload = EngineFactPerpContextPayload;
+
+/** Placeholder for market-cap fact proxy — returns null until endpoint is implemented. */
+export async function fetchFactMarketCapProxy(
+	fetchFn: ServerFetch,
+	_args?: Record<string, unknown>,
+): Promise<null> {
+	void fetchFn;
+	return null;
+}
+
 export async function fetchIndicatorCatalogProxy(
 	fetchFn: ServerFetch,
 	filters: IndicatorCatalogFilterInput = {},

@@ -591,7 +591,6 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
       candidates,
       scannedAt: Date.now(),
     });
-    return json(payload);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return json({ ok: false, error: 'Invalid pattern seed payload' }, { status: 400 });

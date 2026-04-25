@@ -23,6 +23,11 @@ import { error, json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { engineProxyLimiter } from '$lib/server/rateLimit';
+import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
+
+// PUT/DELETE are not currently permitted on the engine proxy
+function isBlockedPath(_path: string): boolean { return false; }
+function isAllowedPath(_path: string, _method: string): boolean { return false; }
 
 export const config = {
   runtime: 'nodejs22.x',

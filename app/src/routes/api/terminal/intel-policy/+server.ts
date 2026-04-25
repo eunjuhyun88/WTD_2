@@ -37,11 +37,24 @@ function symbolFromPair(pair: string): string {
   return pair.replace('/', '').toUpperCase();
 }
 
+async function fetchJsonSafe(fetchFn: typeof fetch, url: string): Promise<any> {
+  try {
+    const r = await fetchFn(url);
+    return await r.json();
+  } catch {
+    return {};
+  }
+}
+
+async function loadMacroOverview(fetchFn: typeof fetch): Promise<any> {
+  return fetchJsonSafe(fetchFn, '/api/market/macro-overview');
+}
+
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
   const perpBridgePromise = loadPerpContextBridge(fetchFn, { pair, timeframe });
 
-  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
+  const [newsData, eventsResult, flowResult, macroRes, trendingData, picksData, agentContext, , , macroOverview] = await Promise.all([
     fetchJsonSafe(
       fetchFn,
       `/api/market/news?limit=40&offset=0&token=${encodeURIComponent(token)}&sort=importance&interval=1m`,
@@ -67,11 +80,11 @@ async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: st
   ]);
 
   const newsRecords = newsData.records;
-  const eventRecords = eventsResult.data.records;
-  const flowSnapshot = flowResult.data.snapshot ?? null;
-  const flowRecords = flowResult.data.records;
+  const eventRecords = eventsResult.data?.records;
+  const flowSnapshot = flowResult.data?.snapshot ?? null;
+  const flowRecords = flowResult.data?.records;
   const trendingCoins = trendingData.trending;
-  const pickCoins = picksData.payload.result.coins;
+  const pickCoins = picksData.payload?.result?.coins;
 
   return buildIntelPolicyOutput({
     pair,

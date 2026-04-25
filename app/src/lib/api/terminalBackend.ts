@@ -15,6 +15,7 @@ import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
 import type { ConfluenceResult } from '$lib/confluence/types';
 import type {
   FundingFlipPayload,
+  FundingHistoryPayload,
   IndicatorContextPayload,
   LiqClusterPayload,
   OptionsSnapshotPayload,
@@ -22,6 +23,26 @@ import type {
   SsrPayload,
   VenueDivergencePayload,
 } from '$lib/indicators/adapter';
+import type { CaptureRecord, RuntimeCaptureListResponse } from '$lib/contracts/runtime/captures';
+
+export type RecentCaptureSummary = CaptureRecord;
+export type { RuntimeCaptureListResponse, FundingHistoryPayload };
+
+export interface ConfluenceHistoryEntry {
+  at: number;
+  score: number;
+  confidence: number;
+  regime: string;
+  divergence: boolean;
+}
+
+export interface TradeOutcomeResult {
+  saved: boolean;
+  count: number;
+  training_triggered: boolean;
+}
+
+export type AlphaWorldModelResponse = Record<string, unknown>;
 import {
   fromEngineMemoryQueryWire,
   toEngineMemoryDebugSessionWire,
