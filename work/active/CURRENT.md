@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25 D)
+# CURRENT — 단일 진실 (2026-04-25 CLEAN)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -7,240 +7,82 @@
 
 ## main SHA
 
-`c5e606f9` — origin/main (2026-04-25) — CI repair + branch cleanup
+`f98f7648` — origin/main (2026-04-25) — W-0203 terminal UI/UX overhaul
 
-## W-0210 완료 (feat/agent-execution-protocol → PR #283 머지 진행 중)
+---
 
-| 레이어 | 내용 |
-|---|---|
-| Layer 1 | `AlphaOverlayLayer` — 엔진 분석 → 차트 price lines + markers |
-| Layer 2 | `WhaleWatchCard` + `/api/cogochi/whales` — Hyperliquid Top 10 |
-| Layer 3 | `comparisonStore` — BTC 100-base 정규화 오버레이 |
-| Layer 4 | `NewsFlashBar` + `newsStore` + `/api/cogochi/news` — CryptoPanic 뉴스 |
-| **비용** | **$0 net-new** |
+## 완료된 것 (main에 머지됨)
 
-## 완료 (이번 세션 C — 전체 데이터 아키텍처 설계)
-
-| 변경 | 내용 |
-|---|---|
-| `docs/design/10_COMPLETE_DATA_ARCHITECTURE.md` | 전체 데이터 아키텍처 완성 (v1.2, §1-18): User Activity + Wiki + Stats Engine + Notification + Social + LLM Wiki (Karpathy pattern) + Indicator Viz 연결 |
-| `docs/design/11_CTO_DATA_ARCHITECTURE_REALITY.md` | CTO 현실 검토: 설계 vs 실제 코드베이스 비교, 10개 CTO 결정, 구현 우선순위 P0/P1/P2/P3 |
-| `engine/wiki/COGOCHI.md` | LLM Agent schema 문서 (17 sections): 에이전트 권한 모델, wiki 구조, closed-loop, Korean support |
-| `docs/design/DESIGN_V3.2_KNOWLEDGE_ARCHITECTURE.md` | 4-layer knowledge architecture canonical patch |
-| `docs/design/00_MASTER_ARCHITECTURE.md` | 마스터 아키텍처 (v3.0) |
-| `docs/design/01~06, 09_*.md` | 패턴 모델, 엔진 런타임, 검색 엔진, AI 에이전트, 데이터 계약, reranker spec |
-| **PR #281** | feat(engine): P0-P2 infrastructure — migration runner, corpus bridge, stats engine, context assembler, wiki agent |
-
-## 이번 세션 핵심 결정 (CTO)
-
-| 결정 | 내용 |
-|---|---|
-| 검색 파이프라인 | 4-stage sequential 아님 — 3-layer blend (A/B/C) 유지 + LambdaRank는 Stage 4로 추가 |
-| LightGBM 2개 분리 | Binary P(win) classifier (기존) + LambdaRank reranker (신규, verdict 50+ 이후) |
-| engine/rag/ 이름 | 유지, docstring 추가 — 실제로는 deterministic 256-dim embedding (semantic RAG 아님) |
-| Semantic RAG | Phase 3까지 불필요. 뉴스 ingestion 시 추가. |
-| LLM Wiki | engine/wiki/ 신규 생성. COGOCHI.md = agent schema. §18 spec 참조. |
-| Context Assembly | engine/agents/context.py 신규 필요 — LLM 호출 규칙 없음이 현재 가장 큰 갭 |
-| Read/Display 분리 | Write/Storage와 완전히 다른 문제. WorkspacePayload BFF endpoint 필요 (P3) |
-
-## 이전 세션 완료 (2026-04-25 B)
-
-## 다음 P0 실행 순서 (코드)
-
-| 우선순위 | 작업 | 이유 |
+### 터미널 UI/UX
+| PR | Work Item | 내용 |
 |---|---|---|
-| P0-1 | Ledger → Supabase 이전 (`engine/ledger/supabase_store.py` 완성) | JSON files = Cloud Run 재시작 시 소실 위험 |
-| P0-2 | DB migration system (`engine/db/migrations/*.sql`) | embedded DDL로 schema 변경 불가 |
-| P1-1 | W-0156: feature_windows → search corpus 연결 완성 | Layer A 검색 재계산 없이 materialized 사용 |
-| P1-2 | Stats Engine (`engine/stats/engine.py`) | pattern_stats_cache 없으면 Wiki 불가 |
-| P2-1 | Context Assembly rules (`engine/agents/context.py`) | LLM call마다 어떤 context 주입할지 규칙 없음 |
-| P2-2 | WikiIngestAgent (`engine/wiki/ingest.py`) | §18 spec 구현 |
+| #290 | W-0203 | Terminal UI/UX overhaul (data-dense trading interface) |
+| `38ce46a8` | W-0210 | 4-layer 데이터 시각화: AlphaOverlay + WhaleWatch + BTC Comparison + NewsBar |
+| `4319766c`~`5dd144f3` | — | P0-P12 터미널 UX 리빌드 (pine script, scan cards, workspace wire 등) |
 
-## 이전 세션 완료 (2026-04-25 B)
+### 엔진/인프라
+| PR | Work Item | 내용 |
+|---|---|---|
+| #281 | — | P0-P2 engine infra: migration runner, corpus bridge, stats engine, wiki agent |
+| #280 | W-0280 | Agent execution protocol + evidence runbook |
+| #288 | W-0142 | App warning burndown + capture runtime plane refactor |
+| #286 | — | CI repair (3 engine import failures) |
+| #270 | W-0160 | Pattern draft query transformer contract |
+| #269 | W-0159 | Canonical raw plane ingestion (liquidation followup) |
+| #268 | W-0159 | Canonical raw plane ingestion |
+| #267 | W-0158 | Promotion feature diagnostics |
+| #266 | W-0153 | Persistent retrieval index |
 
-| PR/변경 | 내용 |
-|---|---|
-| #185 (W-0137) | C sidebar ANALYZE를 right-dock collapse + summary/detail 구조로 재분리 |
-| #186 (W-0126) | ledger record store boundary refactor를 최신 mainline에 통합 |
-| #188 (W-0136) | worker-control research CLI + W-0126 cutover preflight 보강 |
-| #189 (W-0140) | bottom ANALYZE tab 상세 workspace 재구성 |
-| #190 (W-0138) | `ENGINE_RUNTIME_ROLE` 기반 engine-api / worker-control split |
-| #201 (W-0122) | consumer fact routes attach to engine facts (`reference-stack`, `chain-intel`) |
-| #202 (W-0145) | search corpus store + worker-control corpus refresh + `/search/catalog` |
-| #203 (W-0145) | corpus-only `/search/seed` and `/search/scan` routes + persisted run candidates |
-| #205 (W-0145) | app search contracts aligned with canonical engine search payloads |
-| #206 (W-0142) | runtime state route skeleton for captures, workspace pins, setups, research contexts, and ledger |
-| #207 (W-0142) | app pattern captures routed through the runtime plane with degraded fallback |
-| #208 (W-0143) | canonical app-side `AgentContextPack` loader over fact/search/runtime plane clients |
-| #209 (W-0143) | DOUNI terminal message consumes bounded `AgentContextPack` through contextBuilder |
-| #210 (W-0143) | `intel-policy` consumes bounded `AgentContextPack` summary without changing scoring |
-| #211 (W-0139) | `TradeMode` recent saved captures read through runtime plane client |
-| #212 (W-0139) | `TradeMode` confluence current/history reads moved behind terminal client helpers |
-| #213 (W-0139) | `TradeMode` indicator side-fetch `/api/market/*` reads moved behind terminal client helpers |
-| #214 (W-0139) | `TradeMode` candle-close analyze refresh moved behind terminal client helper |
-| #215 (W-0139) | `TradeMode` outcome submit and alpha world-model reads moved behind terminal client helpers |
-| #216 (W-0139) | terminal page review inbox count moved behind terminal client helper; terminal surface direct-fetch audit clean |
-| #217 (W-0140) | bottom ANALYZE thesis/evidence/execution board aligned to `workspaceEnvelope` contract |
+### 보안
+| PR | Work Item | 내용 |
+|---|---|---|
+| #253 | W-0162 | JWT P0 hardening (JWKS cache + circuit breaker) |
+
+### 검색/패턴
+| PR | Work Item | 내용 |
+|---|---|---|
+| #259 | W-0156 | Feature materialization plane (FeatureWindowStore) |
+| #256 | W-0200 | Core loop proof (range→analyze→similar→save) |
 
 ---
 
-## 활성 Work Items (우선순위 순)
-
-| ID | 파일 | 상태 | 핵심 미완 |
-|---|---|---|---|
-| **W-0203** | `W-0203-terminal-uiux-action-overhaul.md` | 🟢 IMPLEMENTED | PR/merge review only |
-| **W-0201** | `W-0201-core-loop-contract-hardening.md` | 🟡 ACTIVE — 구현/타깃 검증 완료 | PR diff review + optional terminal smoke |
-| **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
-| **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
-| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
-| **W-0150** | `W-0150-breakout-production-lane.md` | 🔴 IN-PROGRESS | TRADOOR/PTB final-phase miss correction: breakout redesign + benchmark replay validation |
-| **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
-| **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
-| **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
-| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | canonical raw ingress + persisted market search index + L1/L2 query cache + scheduler refresh + universe query cutover |
-| **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
-| **W-0158** | `W-0158-promotion-feature-diagnostics.md` | 🔴 IN-PROGRESS | canonical feature score/snapshot truth를 promotion report와 refinement report diagnostics에 재사용 |
-| **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
-| **W-0142** | `W-0142-app-warning-burndown.md` | 🔴 IN-PROGRESS | app structural/a11y/dead-css warning burn-down lane 시작 |
-| **W-0160** | `W-0160-pattern-draft-query-transformer-contract.md` | 🔴 IN-PROGRESS | `PatternDraft -> SearchQuerySpec` contract + parser/transformer/agent boundary freeze |
-| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
-| **W-0200** | `W-0200-core-loop-proof.md` | 🟢 COMPLETE — 머지됨 | GCP 재배포 + 프로덕션 스모크 테스트 |
-
----
-
-## Deferred (루프 완성 이후 재개)
-
-1. **W-0153** — persistent cached-window retrieval index + query-time reuse for market search
-2. **W-0152** — cached corpus cheap retrieval + top-N replay rerank over recent history
-3. **W-0151** — cached symbol inventory + live monitor CLI over canonical shared cache
-4. **W-0150** — shared cache root discovery for benchmark/search/scanner lanes
-5. **W-0149** — TRADOOR/PTB anchored breakout + pattern-scoped replay + 15m benchmark axis
-6. **W-0147** — HTML-derived pattern runtime block coverage + targeted engine tests
-7. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
-8. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
-9. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
-
----
-
-## 브랜치 매핑
+## 진행 중 (브랜치 존재, 미완)
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| W-0162 | 🟢 PARTIAL — Layer A 업그레이드 완료 | search corpus → FeatureWindowStore 완전 전환 (W-0162 남은 slice) |
-| W-0160 | 🟡 DEFERRED | runtime capture/ledger scope policy, legacy backfill policy |
-| W-0148 | 🟡 DEFERRED | broader plane contract/governance owner 작업 |
-| W-0122 | 🟡 DEFERRED | fact-plane canonical routes |
-| W-0145 | 🟡 DEFERRED | corpus/search store |
-| W-0150 | 🟡 DEFERRED | breakout production lane |
-| W-0151 | 🟡 DEFERRED | active variant registry |
-| W-0152 | 🟡 DEFERRED | state/phase similarity search |
-| W-0156 | 🟡 DEFERRED | feature plane foundation |
-| W-0157 | 🟡 DEFERRED | similar-live feature ranking (core endpoints landed in PR #252) |
-| W-0158 | 🟡 DEFERRED | promotion feature diagnostics |
-| W-0159 | 🟡 DEFERRED | next raw family 우선순위 결정 |
-| W-0149 | 🟡 DEFERRED | W-0200에 흡수 완료 |
-| W-0142 | 🟡 DEFERRED | runtime state API 확장 |
-| W-0140 | 🟡 DEFERRED | bottom ANALYZE slimming |
-
-## Reference / Assist
-
-| ID | 파일 | 상태 | 역할 |
-|---|---|---|---|
-| **W-0146** | `W-0146-lane-cleanup-and-merge-governance.md` | 🟡 REFERENCE | merge governance / queue audit reference, not an execution lane |
-| **W-0141** | `W-0141-market-data-plane.md` | 🟡 ASSIST | workspace/data contract assist lane, not top-level architecture owner |
-| **W-0153** | `W-0153-protocol-doc-recovery.md` | 🟡 ASSIST | recovered protocol doc set for future protocol lane, not active execution |
-
-## Deferred / Blocked
-
-| ID | 파일 | 상태 | 핵심 미완 |
-|---|---|---|---|
-| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy + post-cutover stats hotfix 완료, canonical engine region 결정만 남음 |
-| **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
+| `codex/w-0201-core-loop-contract-hardening` | W-0201 | WIP 저장됨 (#289), 미완성 |
 
 ---
 
-## 현재 브랜치 상태
+## 다음 P0 (코드로 해야 할 것 — 우선순위 순)
 
-- `codex/w-0201-core-loop-contract-hardening`: core loop contract hardening (이번 세션 작업)
-- `codex/w-0203-terminal-uiux-overhaul`: `/cogochi` action-by-action UIUX overhaul implemented; review/PR pending
-- `claude/strange-proskuriakova`: architecture improvements (이번 세션 작업, PR 대기)
-- main: 18187dcf (모든 PR 머지 완료)
-
----
-
-## 즉시 실행 순서 (사람)
-
-- current doc lane `codex/w-0153-protocol-doc-recovery` was split and pushed clean at `44431562`
-- engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
-- `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
-- `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
-- `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
-- active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
-- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, process-local + shared Redis query caching, bounded index refresh job, and `/universe?q=` local-search read path
-- `codex/w-0142-runtime-contracts`: runtime capture cutover; terminal persistence and `/api/captures` compatibility path both prefer `/runtime/captures`
-
----
-
-## 즉시 실행 순서
-
-1. **W-0148 / PR0.1** — docs/governance normalize
-2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
-3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
-4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
-5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0160 / Contract lane** — `PatternDraft` / `SearchQuerySpec` + parser/transformer boundary for live agent/search turns
-7. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
-8. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
-9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
-
----
-
-## 브랜치 매핑
-
-### Active / Existing
-
-| 브랜치 | Work Item | 상태 |
+| 순위 | 작업 | 이유 |
 |---|---|---|
-| main | — | 최신 (`c5e606f9`) |
-| codex/w-0142-warning-burndown | W-0142 | ACTIVE |
-| codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
-| codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
-| codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
-| codex/w-0151-active-variant-runtime-registry | W-0149 / W-0150 / W-0151 / W-0152 | active stacked engine commercialization lane |
-| codex/w-0153-protocol-doc-recovery | W-0153 | protocol doc recovery reference lane; pushed clean |
-| codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
-| codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
-| codex/w-0158-promotion-feature-diagnostics | W-0158 | active engine lane for canonical feature diagnostics in promotion/report artifacts |
-| codex/w-0159-canonical-raw-plane-ingestion | W-0159 | active engine lane for canonical raw plane ingestion and query-driven symbol resolution |
-| codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
-| codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
-| codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
-| codex/w-0139-terminal-core-loop-capture-mainline | W-0139 | prior clean lane |
-
-### Planned After `PR0.2`
-
-| 브랜치 | Work Item | 상태 |
-|---|---|---|
-| codex/w-0145-corpus-plane | W-0145 | merged via PR #202 |
-| codex/w-0145-search-routes | W-0145 | merged via PR #203 |
-| codex/w-0145-search-proxy-client | W-0145 | merged via PR #205 |
-| codex/w-0142-runtime-routes | W-0142 | merged route skeleton baseline |
-| codex/w-0142-runtime-contracts | W-0142 | active runtime capture cutover lane |
-| codex/w-0142-runtime-state-plane | W-0142 | planned follow-up runtime bridge migration |
-| codex/w-0160-pattern-draft-transformer-contract | W-0160 | planned contract lane for parser/search boundary freeze before live agent cutover |
-| codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
-| codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
+| **P0** | Ledger → Supabase 이전 | Cloud Run 재시작 시 JSON 파일 소실 위험 |
+| **P0** | DB migration system | embedded DDL로 schema 변경 불가 |
+| **P1** | W-0202: FeatureWindowStore → search corpus 연결 | Layer A 검색에 materialized feature 반영 |
+| **P1** | W-0201: core loop contract hardening | 브랜치 WIP 있음, 이어서 완료 필요 |
+| **P2** | Context Assembly (`engine/agents/context.py`) | LLM 호출마다 어떤 context 주입할지 규칙 없음 |
 
 ---
 
-## 인프라 미완 (사람 직접 실행 필요)
+## 인프라 미완 (사람이 직접 실행해야 함)
 
-- [x] Supabase migration 018 (pattern_ledger_records)
-- [x] Supabase migration 019 (audit_log)
-- [x] Supabase migration 020 (capture_records definition columns)
-- [x] Vercel preview branch env 정렬
-- [ ] GCP cogotchi-worker Cloud Build trigger 설정 확인
-- [ ] Vercel EXCHANGE_ENCRYPTION_KEY 환경변수 설정 (프로덕션)
-- [x] Cloud Scheduler HTTP jobs 등록 (2026-04-25: 5 jobs registered — feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build)
+- [ ] GCP cogotchi-worker Cloud Build trigger 확인
+- [ ] Vercel `EXCHANGE_ENCRYPTION_KEY` 환경변수 (프로덕션)
+- [ ] Cloud Scheduler HTTP jobs 등록 (`docs/runbooks/cloud-scheduler-setup.md`)
+- [ ] Supabase migration 021 이후 적용 확인
+
+---
+
+## work/active/ 파일 정리 상태
+
+> 70개 이상의 파일이 있으나 대부분 이미 완료된 작업의 흔적.
+> 실제 참조 필요한 파일만 아래에 기록.
+
+| 파일 | 용도 |
+|---|---|
+| `W-0202-featurewindowstore-search-cutover.md` | P1 다음 구현 대상 |
+| `W-0201-core-loop-contract-hardening.md` | P1 WIP 브랜치 있음 |
+| `W-0210-terminal-data-visualization-layers.md` | 완료 — 아키텍처 레퍼런스용 |
+| `W-0146-lane-cleanup-and-merge-governance.md` | 거버넌스 레퍼런스 |
