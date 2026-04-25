@@ -43,6 +43,9 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/events',
   '/api/market/flow',
   '/api/market/derivatives',
+  '/api/market/depth-ladder',
+  '/api/market/liquidation-clusters',
+  '/api/market/microstructure',
   '/api/market/venue-divergence',  // W-0122-A: public read-only, 30s cached, rate limited
   '/api/market/liq-clusters',      // W-0122-B1: public read-only, derived from chart feed
   '/api/market/indicator-context', // W-0122 rolling percentile provider (30d distribution)

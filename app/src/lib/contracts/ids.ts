@@ -122,6 +122,7 @@ export const KnownRawId = {
 	LONG_SHORT_TOP_1H: 'raw.symbol.long_short.top_1h',
 	TAKER_BUY_SELL_RATIO: 'raw.symbol.taker_buy_sell_ratio',
 	DEPTH_L2_20: 'raw.symbol.depth.l2_20',
+	AGG_TRADES_RECENT: 'raw.symbol.agg_trades.recent',
 	FORCE_ORDERS_1H: 'raw.symbol.force_orders.1h',
 	FORCE_ORDERS_4H: 'raw.symbol.force_orders.4h',
 	AGG_TRADES_LIVE: 'raw.symbol.agg_trades.live',

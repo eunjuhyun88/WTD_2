@@ -56,6 +56,7 @@
 import { KnownRawId } from '$lib/contracts/ids';
 import {
 	fetchDepth,
+	fetchAggTradesRecent,
 	fetchOIHistory,
 	fetchTakerRatio,
 	fetchGlobalLS,
@@ -69,7 +70,8 @@ import {
 	type OIHistoryPoint,
 	type TakerRatioPoint,
 	type GlobalLSPoint,
-	type ForceOrder
+	type ForceOrder,
+	type AggTrade
 } from '$lib/server/marketDataService';
 import { fetchFearGreed } from '$lib/server/feargreed';
 import { fetchKlinesServer, fetch24hrServer } from './binance';
@@ -138,6 +140,7 @@ export interface RawSourceInputs {
 	[KnownRawId.INDEX_PRICE]: { symbol: string };
 	[KnownRawId.OPEN_INTEREST_POINT]: { symbol: string };
 	[KnownRawId.DEPTH_L2_20]: { symbol: string };
+	[KnownRawId.AGG_TRADES_RECENT]: { symbol: string; limit: number };
 	[KnownRawId.OI_HIST_5M]: { symbol: string };
 	[KnownRawId.OI_HIST_1H]: { symbol: string };
 	// B11: display-TF OI history — caller picks interval, adapter picks limit.
@@ -214,6 +217,7 @@ export interface RawSourceOutputs {
 	[KnownRawId.INDEX_PRICE]: number | null;
 	[KnownRawId.OPEN_INTEREST_POINT]: number | null;
 	[KnownRawId.DEPTH_L2_20]: OrderBookSnapshot;
+	[KnownRawId.AGG_TRADES_RECENT]: AggTrade[];
 	[KnownRawId.OI_HIST_5M]: OIHistoryPoint[];
 	[KnownRawId.OI_HIST_1H]: OIHistoryPoint[];
 	// B11: same point shape as the fixed-TF OI raws — compare windows
@@ -982,6 +986,8 @@ export const rawSources: RawSourceMap = {
 
 	[KnownRawId.DEPTH_L2_20]: async ({ symbol }) =>
 		binanceQuota.execute(() => fetchDepth(symbol, 20)),
+	[KnownRawId.AGG_TRADES_RECENT]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchAggTradesRecent(symbol, limit)),
 
 	// §10 Q1 — fixed timeframe authority, callers cannot override
 	[KnownRawId.OI_HIST_5M]: async ({ symbol }) =>
