@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-26)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`cdefda4d` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
+`092a50de` — origin/main (2026-04-26) — memory sync #292 + active variant promotion + indicator defaults + CI governance 포함
 
 ---
 
@@ -32,6 +32,7 @@
 | **W-0202** canonical features + active registry | PR #291 main 머지 완료 |
 | **W-0210** 4-layer viz | main 머지 완료 |
 | **W-0211** multi-pane chart + Pine Script engine | PR #298 main 머지 완료 (74afaba3) |
+| **Indicator defaults** OI/Funding/Liq 기본 ON | main 머지 완료 (2092ac01) |
 | **W-0203** terminal UX | PR #290 main 머지 완료 |
 | **W-0162** JWT security P0 | PR #253 main 머지 완료 |
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
@@ -40,6 +41,7 @@
 | **W-0204** captures.py active_variant_store 연결 | PR #292 main 머지 완료 |
 | **W-0203** pattern-seed route delegation | PR #292 main 머지 완료 |
 | **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
+| **W-0164** repo state hygiene | PR #305 main 머지 완료 |
 
 ---
 
@@ -72,9 +74,3 @@
 - [ ] Vercel `EXCHANGE_ENCRYPTION_KEY` (프로덕션)
 - [x] Cloud Scheduler HTTP jobs — 5 jobs 등록 완료 (2026-04-25): feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build
 - [x] `_primary_cache_dir` NameError 수정 — PR #291 main 머지 + GCP cogotchi-00013-c7n 배포 완료 (2026-04-26)
-
----
-
-## 체크포인트 파일
-
-- `work/active/W-app-ci-repair-checkpoint-20260426.md` — 이번 세션 상세 기록
