@@ -24,6 +24,9 @@
   import { get } from 'svelte/store';
   import { douniRuntimeStore } from '$lib/stores/douniRuntime';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
+  import { buildTerminalHeaderModel } from '$lib/terminal/terminalHeaderModel';
+  import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
+  import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
     fetchTerminalQueryPresets,
@@ -100,6 +103,9 @@
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
+  import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
+  import TerminalHeaderMeta from '../../components/terminal/workspace/TerminalHeaderMeta.svelte';
+  import TerminalRightRail from '../../components/terminal/workspace/TerminalRightRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
@@ -157,6 +163,7 @@
   let layerBarsMap = $state<Record<string, any[]>>({});
   let chartPayloadMap = $state<Record<string, ChartSeriesPayload>>({});
   let activeChartPayload = $state<ChartSeriesPayload | null>(null);
+  let selectionState = $state<TerminalSelectionState>(createSymbolSelection('BTCUSDT', '4h', 'system_default'));
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -769,15 +776,10 @@
     }
   }
 
-  async function loadLiveSignals() {
-    try {
-      const envelope = await fetchLiveSignals();
-      if (envelope) {
-        liveSignals = envelope.signals;
-        liveSignalsCached = envelope.cached;
-        liveSignalsScannedAt = envelope.scanned_at;
-      }
-    } catch {}
+  function focusPatternSymbol(item: { symbol: string }) {
+    const pair = item.symbol.replace('USDT', '/USDT');
+    selectionState = createSymbolSelection(item.symbol, symbolToTF(gTf), 'pattern_engine', item.symbol);
+    setActivePair(pair);
   }
 
   async function loadReviewInboxCount() {
@@ -986,7 +988,12 @@
 
   function handleQueryChip(query: string) { sendCommand(query); }
 
+  function handleLeftRailSelection(next: TerminalSelectionState) {
+    selectionState = next;
+  }
+
   function selectAsset(symbol: string) {
+    selectionState = createSymbolSelection(symbol, symbolToTF(gTf), 'left_watchlist');
     activeSymbol = symbol;
     activeAnalysisTab = 'summary';
     activeChartPayload = chartPayloadMap[symbol] ?? null;
@@ -1017,6 +1024,7 @@
     activeChartPayload = null;
     chartLevels = {};
     activeAnalysisTab = 'summary';
+    selectionState = createSymbolSelection(pairToSymbol(gPair), symbolToTF(gTf), 'system_default');
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -1210,6 +1218,8 @@
       prevPair = pair;
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      const selectionOrigin = untrack(() => selectionState.origin);
+      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeSymbol = symbol;
       activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
@@ -1234,6 +1244,8 @@
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      const selectionOrigin = untrack(() => selectionState.origin);
+      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeReadPathKey = '';
       memoryQueryIdMap = {};
       memoryTopEvidenceMap = {};
@@ -1326,189 +1338,33 @@
     readPathDepth,
     readPathLiq,
   }));
-  // ─── Mobile ModeRouter data ──────────────────────────────────
-
-  /**
-   * mobileMarketRows — top 30 items for ScanMode.
-   * Source priority: persistedWatchlist first (has live preview prices),
-   * then trendingData.trending to pad up to 30.
-   * Deduplication by symbol (watchlist wins).
-   */
-  const mobileMarketRows = $derived.by(() => {
-    type MobileMarketRow = {
-      symbol: string;
-      base: string;
-      price: number;
-      changePct: number;
-      volume24h?: number;
-      bias?: 'bullish' | 'bearish' | 'neutral';
-    };
-    const rows: MobileMarketRow[] = [];
-    const seen = new Set<string>();
-
-    // Watchlist items first — they carry persisted preview prices
-    for (const item of (persistedWatchlist ?? [])) {
-      if (seen.has(item.symbol)) continue;
-      seen.add(item.symbol);
-      rows.push({
-        symbol: item.symbol,
-        base: item.symbol.replace(/USDT$/, ''),
-        price: item.preview?.price ?? 0,
-        changePct: item.preview?.change24h ?? 0,
-        bias: item.preview?.bias,
-      });
-    }
-
-    // Pad with trending coins (trendingData.trending, then .gainers, then .losers)
-    const trendingSources: any[] = [
-      ...(trendingData?.trending ?? []),
-      ...(trendingData?.gainers ?? []),
-      ...(trendingData?.losers ?? []),
-    ];
-    for (const coin of trendingSources) {
-      const sym: string = coin?.symbol ?? '';
-      if (!sym || seen.has(sym)) continue;
-      seen.add(sym);
-      rows.push({
-        symbol: sym,
-        base: sym.replace(/USDT$/, ''),
-        price: coin?.price ?? 0,
-        changePct: coin?.change24h ?? coin?.percentChange24h ?? 0,
-        volume24h: coin?.volume24h ?? undefined,
-        // TODO: bias not available from trending feed — derive from changePct sign as approximation
-        bias: (coin?.change24h ?? coin?.percentChange24h ?? 0) >= 0 ? 'bullish' : 'bearish',
-      });
-    }
-
-    return rows.slice(0, 30);
-  });
-
-  /**
-   * mobileAlerts — scannerAlerts mapped to ModeRouter Alert shape for JudgeMode.
-   * scanner alerts do not carry a user judgment state, so status is always 'pending'.
-   */
-  const mobileAlerts = $derived.by(() => {
-    type MobileAlert = {
-      id: string;
-      symbol: string;
-      tf: string;
-      direction: 'bullish' | 'bearish' | 'neutral';
-      summary: string;
-      timestamp: number;
-      status: 'pending' | 'agreed' | 'disagreed';
-      reason?: 'valid' | 'late' | 'noisy' | 'invalid' | 'almost';
-    };
-    return (scannerAlerts ?? []).map((alert: any): MobileAlert => {
-      // TODO: direction is not a first-class field on engine_alerts rows;
-      // derive from blocks_triggered heuristic: if any block name contains 'bull'
-      // or 'long' treat as bullish; 'bear'/'short' as bearish; else neutral.
-      const blocks: string[] = alert?.blocks_triggered ?? [];
-      const blockStr = blocks.join(' ').toLowerCase();
-      let direction: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-      if (blockStr.includes('bull') || blockStr.includes('long') || blockStr.includes('reclaim')) {
-        direction = 'bullish';
-      } else if (blockStr.includes('bear') || blockStr.includes('short') || blockStr.includes('dump')) {
-        direction = 'bearish';
-      }
-
-      const summary =
-        blocks.length > 0
-          ? blocks.map((b: string) => b.replace(/_/g, ' ')).join(' · ')
-          : 'Signal alert';
-
-      return {
-        id: alert?.id ?? '',
-        symbol: alert?.symbol ?? '',
-        tf: alert?.timeframe ?? '1H',
-        direction,
-        summary,
-        timestamp: alert?.created_at ? new Date(alert.created_at).getTime() : Date.now(),
-        status: 'pending',
-      };
-    });
-  });
-
-  /**
-   * onAlertFeedback — optimistic state update only; no alert-feedback API exists yet.
-   * TODO: POST to /api/cogochi/alert-feedback once the endpoint is built.
-   */
-  function handleMobileAlertFeedback(id: string, agree: boolean, reason?: string) {
-    console.log('[mobile-judge] alert feedback', { id, agree, reason });
-    // Optimistic: move the alert out of the scannerAlerts list so JudgeMode
-    // shows it as resolved on next mobileAlerts derivation.
-    // Since scannerAlerts are any[], we mark it via a local agreed-ids set.
-    agreedAlertIds = new Set([...agreedAlertIds, id]);
-  }
-
-  /**
-   * Track IDs the user has already judged so mobileAlerts can reflect resolved status.
-   * Persisted only for the lifetime of this page session.
-   */
-  let agreedAlertIds = $state(new Set<string>());
-
-  /**
-   * mobileAlertsWithStatus — overlays local agree/disagree state onto mobileAlerts
-   * so JudgeMode rows switch from 'pending' to resolved without a round-trip.
-   */
-  const mobileAlertsWithStatus = $derived.by(() =>
-    mobileAlerts.map(alert =>
-      agreedAlertIds.has(alert.id) ? { ...alert, status: 'agreed' as const } : alert
-    )
-  );
-
-  /**
-   * refreshWatchlistForMobile — called by ScanMode pull-to-refresh.
-   * Reloads both the persisted watchlist (for preview prices) and the trending feed.
-   */
-  async function refreshWatchlistForMobile() {
-    await Promise.all([loadTerminalPersistenceState(), loadTrending()]);
-  }
-
-  // ── PEEK drawer derived + handlers ────────────────────────
-  const peekAnalyzeCount = $derived((analysisData as any)?.verdict ? 1 : 0);
-  const peekScanCount = $derived(scannerAlerts.length);
-  const peekJudgeCount = $derived(peekCaptures.filter((c: any) => {
-    const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
-    return !hasOutcome;
-  }).length);
-
-  const peekVerdict = $derived((analysisData as any)?.verdict ?? null);
-  const peekEntry = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
-  const peekStop = $derived((analysisData as any)?.verdict?.stop ?? (analysisData as any)?.deep?.stop ?? null);
-  const peekTarget = $derived((analysisData as any)?.verdict?.target ?? (analysisData as any)?.deep?.target ?? null);
-  const peekPWin = $derived((analysisData as any)?.p_win ?? null);
-  const peekLast = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
-
-  async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
-    const symbol = activeSymbol || pairToSymbol(gPair);
-    const timeframe = symbolToTF(gTf);
-    if (!symbol) return;
-    const data = analysisData;
-    await createPatternCapture({
-      symbol,
-      timeframe,
-      contextKind: 'symbol',
-      triggerOrigin: 'manual',
-      note: input.note || undefined,
-      snapshot: { freshness: 'live' },
-      decision: {
-        verdict: input.verdict,
-        confidence: (data as any)?.p_win ?? undefined,
-      },
-      sourceFreshness: { manual: new Date().toISOString() },
-    });
-    await loadPeekCaptures();
-  }
-
-  async function handlePeekRejudge(input: { captureId: string; outcome: 'correct' | 'wrong' | 'partial' | 'timeout'; note: string }) {
-    console.log('[peek] rejudge (UI stub)', input);
-    // TODO: PATCH /api/terminal/pattern-captures/[id] when backend route exists.
-    await loadPeekCaptures();
-  }
-
-  function handlePeekOpenCapture(record: any) {
-    setActivePair(record.symbol.replace(/USDT$/, '') + '/USDT');
-  }
+  let statusStripItems = $derived(surfaceSummary.statusStripItems);
+  let headerModel = $derived.by(() => buildTerminalHeaderModel({
+    selection: selectionState,
+    activeAsset,
+    activeVerdict,
+    regime: surfaceSummary.regime,
+    flowBias,
+  }));
+  let dockFeedItems = $derived.by(() => buildDockFeedItems({
+    activeFocusLabel,
+    activeAsset,
+    flowBias,
+    boardAssetsCount: boardAssets.length,
+    timeframeBadgeLabel,
+    runtimeModeLabel,
+    patternTransitionAlerts,
+    statusStripItems,
+    marketEvents,
+  }));
+  // Quick chips for mobile dock
+  const MOBILE_CHIPS = $derived([
+    { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
+    { id: 'alts',      label: 'Hot Alts',        action: 'Show hot altcoins with breakout signals' },
+    { id: 'long-bias', label: 'LONG setups',     action: 'Show best long setups with high confluence' },
+    { id: 'risk',      label: 'Risk check',      action: `What are the main risks for ${gPair.split('/')[0]}?` },
+    { id: 'compare',   label: 'BTC vs ETH',      action: 'Compare BTC and ETH side by side' },
+  ]);
 </script>
 
 <svelte:head>
@@ -1533,57 +1389,288 @@
 
   <div class="peek-body">
     {#if showLeftRail}
-    <aside class="peek-left-rail">
-      <TerminalLeftRail
-        {trendingData}
-        watchlistRows={persistedWatchlist}
-        alerts={scannerAlerts}
-        savedAlerts={savedAlertRules}
-        {patternPhases}
-        activeSymbol={activeSymbol || pairToSymbol(gPair)}
-        macroItems={macroCalendarItems}
-        {marketEvents}
-        queryPresets={terminalQueryPresets}
-        anomalies={terminalAnomalies}
-        onQuery={handleQueryChip}
-        onDeleteSavedAlert={handleDeleteSavedAlert}
-      />
-    </aside>
+      <aside class="left-rail">
+        <div class="workspace-panel-head">
+          <div class="workspace-panel-title">
+            <span class="workspace-panel-kicker">Market Rail</span>
+            <span class="workspace-panel-meta">{leftWidth}px · {terminalStatus?.anomalyCount ?? terminalAnomalies.length} anomalies</span>
+          </div>
+          <button class="panel-head-toggle" type="button" onclick={toggleLeftRail} aria-label="Hide market rail">
+            <span class="panel-head-toggle-glyph">◧</span>
+          </button>
+        </div>
+        <TerminalLeftRail
+          {trendingData}
+          alerts={scannerAlerts}
+          {patternPhases}
+          {activeSymbol}
+          newsItems={newsData?.records ?? []}
+          {marketEvents}
+          queryPresets={terminalQueryPresets}
+          anomalies={terminalAnomalies}
+          onQuery={handleQueryChip}
+          onSelect={handleLeftRailSelection}
+        />
+      </aside>
+
+      <!-- Left resize handle -->
+      <button
+        class="panel-resizer"
+        type="button"
+        onmousedown={startResize}
+        aria-label="Resize left panel"
+      ></button>
+    {:else}
+      <button class="collapsed-rail-tab left" type="button" onclick={toggleLeftRail} aria-label="Show market rail">
+        <span class="collapsed-rail-icon">◧</span>
+        <span class="collapsed-rail-copy">
+          <strong>Market</strong>
+          <small>Hidden</small>
+        </span>
+      </button>
     {/if}
 
-    <CenterPanel
-      symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-      tf={symbolToTF(gTf)}
-      verdictLevels={chartLevels as Record<string, number>}
-      {alphaMarkers}
-      initialData={activeChartPayload}
-      depthSnapshot={readPathDepth}
-      liqSnapshot={readPathLiq}
-      quantRegime={boardModel.quantRegime}
-      cvdDivergence={boardModel.cvdDivergence}
-      change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
-      {showLabCta}
-      {labCtaSlug}
-      analyzeCount={peekAnalyzeCount}
-      scanCount={peekScanCount}
-      judgeCount={peekJudgeCount}
-      reviewCount={reviewInboxCount}
-      onCaptureSaved={handleCaptureSaved}
-      onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
-      onDismissLabCta={() => showLabCta = false}
-    >
-      {#snippet analyze()}
-        <TerminalContextPanel
-          analysisData={activeAnalysisData}
-          {newsData}
-          activeTab={activeAnalysisTab}
-          onTabChange={handleAnalysisTabChange}
-          onAction={sendCommand}
-          onPinToggle={handlePinToggle}
-          onAlertToggle={handleAlertToggle}
-          onRetry={handleRetryAnalysis}
-          isPinned={isActivePinned}
-          hasSavedAlert={hasActiveSavedAlert}
+    <!-- Center Board -->
+    <main class="center-board">
+      <div class="workspace-panel-head center">
+        <span class="workspace-panel-kicker">Main Board</span>
+        <span class="workspace-panel-meta">{layout} layout</span>
+      </div>
+      <TerminalHeaderMeta
+        subjectLabel={headerModel.subjectLabel}
+        sourceLabel={headerModel.sourceLabel}
+        badges={headerModel.badges}
+      />
+      <!-- Desktop board (hidden on mobile via CSS) -->
+      <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
+
+        <!-- ── Chart area — hero, full height ── -->
+        <div class="chart-area">
+          <ChartBoard
+            symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+            tf={symbolToTF(gTf)}
+            verdictLevels={chartLevels}
+            initialData={activeChartPayload}
+            depthSnapshot={readPathDepth}
+            liqSnapshot={readPathLiq}
+            onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+          />
+          <PatternStatusBar
+            onSelect={focusPatternSymbol}
+            onTransition={pushPatternTransitions}
+          />
+          <EvidenceStrip
+            evidence={activeEvidence}
+            onExpand={() => {
+              showAnalysisRail = true;
+              activeAnalysisTab = 'metrics';
+            }}
+          />
+          {#if boardModel.orderbookDepth}
+            <div class="microstructure-row">
+              <section class="micro-card orderbook-card" data-tone={boardModel.orderbookTone}>
+                <div class="micro-card-header">
+                  <span class="micro-title">Orderbook</span>
+                  <span class="micro-meta">{boardModel.orderbookBiasLabel} · {boardModel.orderbookMeta.sourceLabel}</span>
+                </div>
+                <div class="micro-stat-row">
+                  <span>Spread {boardModel.orderbookMeta.spreadLabel}</span>
+                  <span>Imbalance {boardModel.orderbookMeta.imbalanceLabel}</span>
+                  <span>Taker {boardModel.orderbookMeta.takerLabel}</span>
+                </div>
+                <div class="depth-ladders">
+                  <div class="depth-side bids">
+                    {#each boardModel.orderbookDepth.bids.slice(0, 5) as level}
+                      <div class="depth-row">
+                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                        <div class="depth-bar-wrap">
+                          <div class="depth-bar bid" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                  <div class="depth-side asks">
+                    {#each boardModel.orderbookDepth.asks.slice(0, 5) as level}
+                      <div class="depth-row ask-row">
+                        <div class="depth-bar-wrap ask-wrap">
+                          <div class="depth-bar ask" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
+                        </div>
+                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              </section>
+
+              <section class="micro-card liquidity-card">
+                <div class="micro-card-header">
+                  <span class="micro-title">{boardModel.liquidityMeta.title}</span>
+                  <span class="micro-meta">{boardModel.liquidityMeta.metaLabel}</span>
+                </div>
+                <div class="micro-stat-row">
+                  <span>Short Liq {formatCompactUsd(boardModel.liquidityMeta.shortLiqUsd)}</span>
+                  <span>Long Liq {formatCompactUsd(boardModel.liquidityMeta.longLiqUsd)}</span>
+                </div>
+                <div class="liq-cluster-list">
+                  {#if boardModel.liquidityClusters.length > 0}
+                    {#each boardModel.liquidityClusters as cluster}
+                      <div class="liq-cluster-row">
+                        <span class="liq-side" data-side={cluster.side}>{cluster.side === 'BUY' ? 'Shorts' : 'Longs'}</span>
+                        <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                        <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
+                        <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
+                      </div>
+                    {/each}
+                  {:else}
+                    <p class="liq-empty">No forced liquidation spikes in the recent window.</p>
+                  {/if}
+                </div>
+              </section>
+            </div>
+          {/if}
+          {#if companionAssets.length > 0}
+            <div class="market-mini-grid">
+              {#each companionAssets as asset}
+                {@const verdict = verdictMap[asset.symbol]}
+                <button class="mini-asset-card" onclick={() => selectAsset(asset.symbol)}>
+                  <div class="mini-top">
+                    <span class="mini-symbol">{asset.symbol.replace('USDT','')}</span>
+                    <span class:mini-up={asset.changePct1h >= 0} class:mini-down={asset.changePct1h < 0}>
+                      {asset.changePct1h >= 0 ? '+' : ''}{asset.changePct1h.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div class="mini-meta-row">
+                    <span>{asset.volumeRatio1h.toFixed(1)}x vol</span>
+                    <span>OI {asset.oiChangePct1h >= 0 ? '+' : ''}{asset.oiChangePct1h.toFixed(1)}%</span>
+                  </div>
+                  {#if verdict}
+                    <p class="mini-reason">{verdict.reason.slice(0, 72)}{verdict.reason.length > 72 ? '…' : ''}</p>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <!-- ── Analysis rail — single verdict or scan list ── -->
+        {#if showAnalysisRail}
+        <button
+          class="panel-resizer right"
+          type="button"
+          onmousedown={startAnalysisResize}
+          aria-label="Resize analysis panel"
+        ></button>
+        <TerminalRightRail
+          {isStreaming}
+          {isScanMode}
+          resultCount={boardAssets.length}
+          activeLabel={activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay}
+          width={analysisWidth}
+          summaryCards={surfaceSummary.shellSummaryCards}
+          subtitle={surfaceSummary.terminalSubtitle}
+          statusItems={statusStripItems.slice(0, 6)}
+          onBack={clearBoard}
+          onToggle={toggleAnalysisRail}
+        >
+          <!-- MODE B — Scan results list -->
+          {#if isScanMode}
+            <div class="scan-list">
+              {#each scanAssets as { asset, verdict } (asset.symbol)}
+                {@const sym = asset.symbol.replace('USDT','')}
+                {@const dir = verdict?.direction ?? asset.bias}
+                {@const active = asset.symbol === activeSymbol}
+                <button
+                  class="scan-card"
+                  class:active
+                  class:bullish={dir === 'bullish'}
+                  class:bearish={dir === 'bearish'}
+                  onclick={() => selectAsset(asset.symbol)}
+                >
+                  <div class="sc-left">
+                    <span class="sc-sym">{sym}</span>
+                    <span class="sc-venue">USDT·PERP</span>
+                  </div>
+                  <div class="sc-right">
+                    <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
+                    {#if verdict?.reason}
+                      <span class="sc-reason">{verdict.reason.slice(0, 48)}{verdict.reason.length > 48 ? '…' : ''}</span>
+                    {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
+                      <span class="sc-loading">analyzing…</span>
+                    {/if}
+                  </div>
+                </button>
+              {/each}
+            </div>
+
+            <!-- Also show active symbol's VerdictCard below the list if loaded -->
+            {#if heroAsset && heroVerdict}
+              <div class="scan-detail">
+                <TerminalContextPanel
+                  analysisData={activeAnalysisData}
+                  newsData={newsData}
+                  activeTab={activeAnalysisTab}
+                    onTabChange={handleAnalysisTabChange}
+                onAction={sendCommand}
+                onCapture={() => showCaptureModal = true}
+                bars={ohlcvBars}
+                statusItems={statusStripItems.slice(0, 6)}
+                {layerBarsMap}
+              />
+            </div>
+            {/if}
+
+          <!-- MODE A — Single asset compact verdict -->
+          {:else if isLoadingActive && !heroVerdict}
+            <div class="board-loading">
+              <div class="loading-ring"></div>
+              <p class="loading-msg">Analyzing {activePairDisplay}…</p>
+            </div>
+          {:else if heroAsset && heroVerdict}
+            <TerminalContextPanel
+              analysisData={activeAnalysisData}
+              newsData={newsData}
+              activeTab={activeAnalysisTab}
+              onTabChange={handleAnalysisTabChange}
+              onAction={sendCommand}
+              onCapture={() => showCaptureModal = true}
+              bars={ohlcvBars}
+              statusItems={statusStripItems.slice(0, 6)}
+              {layerBarsMap}
+            />
+          {:else}
+            <div class="board-empty">
+              <p class="empty-icon">◈</p>
+              <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
+            </div>
+          {/if}
+        </TerminalRightRail>
+        {:else}
+          <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
+            <span class="collapsed-rail-icon">◨</span>
+            <span class="collapsed-rail-copy">
+              <strong>Analysis</strong>
+              <small>Hidden</small>
+            </span>
+          </button>
+        {/if}
+
+      </div>
+
+      <!-- Desktop bottom dock -->
+      <div class="desktop-dock">
+        <TerminalBottomDock
+          loading={isStreaming || isLoadingActive}
+          feedItems={dockFeedItems}
+          onSend={sendCommand}
+        />
+      </div>
+
+      <!-- Mobile board + dock -->
+      <div class="mobile-board-wrap">
+        <MobileActiveBoard
+          asset={activeAsset}
+          verdict={activeVerdict}
+          evidence={activeEvidence}
           bars={ohlcvBars}
           {layerBarsMap}
           {patternRecallMatches}
