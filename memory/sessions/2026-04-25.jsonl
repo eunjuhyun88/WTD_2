@@ -7,3 +7,4 @@
 {"ts": "2026-04-25T16:52:08.364848", "event": "PR #295 merged by eunjuhyun88: fix(ci): align memory sync uv install", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T17:16:27.689843", "event": "PR #297 merged by eunjuhyun88: chore(CURRENT.md): 전체 상태 동기화 — main c1a8072e, GCP cogotchi-00013-c7n", "tags": ["pr", "merge", "W-0162"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T17:20:42.740955", "event": "PR #298 merged by eunjuhyun88: feat(chart): native multi-pane indicators + KPI strip + Pine Script engine", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T17:31:16.590054", "event": "PR #302 merged by eunjuhyun88: fix(chart): OI/Funding/Liq default ON", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
