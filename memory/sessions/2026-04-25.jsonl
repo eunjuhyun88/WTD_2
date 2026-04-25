@@ -5,3 +5,4 @@
 {"ts": "2026-04-25T07:39:38.386929", "event": "PR #280 merged by eunjuhyun88: docs(agent-protocol): add execution checkpoints + evidence protocol", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T08:55:08.382729", "event": "PR #281 merged by eunjuhyun88: feat(engine): P0-P2 infrastructure — migration runner, corpus bridge, stats engine, context assembler, wiki agent", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T16:52:08.364848", "event": "PR #295 merged by eunjuhyun88: fix(ci): align memory sync uv install", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T17:20:42.740955", "event": "PR #298 merged by eunjuhyun88: feat(chart): native multi-pane indicators + KPI strip + Pine Script engine", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
