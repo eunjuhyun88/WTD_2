@@ -11,6 +11,7 @@ on:
     branches: [main]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -24,43 +25,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Detect memory sync token
-        id: memory_token
+      - name: Select automation token
+        id: automation_token
         env:
           MEMORY_SYNC_TOKEN: ${{ secrets.MEMORY_SYNC_TOKEN }}
         run: |
           if [ -z "$MEMORY_SYNC_TOKEN" ]; then
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::MEMORY_SYNC_TOKEN is not configured; skipping memory sync PR creation."
+            echo "using_memory_token=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::MEMORY_SYNC_TOKEN is not configured; using GITHUB_TOKEN and manual workflow_dispatch."
           else
-            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "using_memory_token=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Checkout main
-        if: steps.memory_token.outputs.available == 'true'
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.MEMORY_SYNC_TOKEN }}
+          token: ${{ secrets.MEMORY_SYNC_TOKEN || github.token }}
 
       - name: Setup Python
-        if: steps.memory_token.outputs.available == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install uv
-        if: steps.memory_token.outputs.available == 'true'
         uses: astral-sh/setup-uv@v5
 
       - name: Sync engine dependencies
-        if: steps.memory_token.outputs.available == 'true'
         run: uv sync --locked
         working-directory: engine
 
       - name: Run sync script
-        if: steps.memory_token.outputs.available == 'true'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -77,9 +73,9 @@ jobs:
             --author "$AUTHOR"
 
       - name: Create memory sync pull request
-        if: steps.memory_token.outputs.available == 'true'
         env:
-          GH_TOKEN: ${{ secrets.MEMORY_SYNC_TOKEN }}
+          GH_TOKEN: ${{ secrets.MEMORY_SYNC_TOKEN || github.token }}
+          MEMORY_SYNC_TOKEN: ${{ secrets.MEMORY_SYNC_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -106,4 +102,10 @@ jobs:
               --head "$branch" \
               --title "chore(memory): sync PR #${PR_NUMBER}" \
               --body "$body"
+          fi
+
+          if [ -z "$MEMORY_SYNC_TOKEN" ]; then
+            gh workflow run app-ci.yml --ref "$branch"
+            gh workflow run contract-ci.yml --ref "$branch"
+            gh workflow run engine-ci.yml --ref "$branch"
           fi

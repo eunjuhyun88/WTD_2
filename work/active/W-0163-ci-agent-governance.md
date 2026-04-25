@@ -52,7 +52,7 @@ Contract change
 
 ## Assumptions
 
-1. `MEMORY_SYNC_TOKEN` will be provided as a GitHub secret for memory-sync PR creation.
+1. `MEMORY_SYNC_TOKEN` is optional; when missing, Memory Sync falls back to `GITHUB_TOKEN` plus manual `workflow_dispatch`.
 2. App baseline repair remains a separate follow-up because current app check failures are real product-surface errors.
 
 ## Open Questions
@@ -64,7 +64,7 @@ Contract change
 - Required check contexts will be `App CI`, `Engine Tests`, and `Contract CI`.
 - App, engine, and contract workflows will run on every PR to avoid missing required checks.
 - Memory sync creates or updates an `automation/memory-sync-pr-*` branch and opens a PR instead of pushing to `main`.
-- If `MEMORY_SYNC_TOKEN` is missing, Memory Sync exits green with a notice instead of making `main` red.
+- If `MEMORY_SYNC_TOKEN` is missing, Memory Sync uses `GITHUB_TOKEN` and manually dispatches required workflows for the sync PR.
 - Stale handoff snapshots belong in archive, not `work/active/`.
 - `from memory.mk import mk` is backed by a repo-local wrapper and validated in the contract gate.
 - Memory sync uses the engine uv lock instead of an unpinned global `pip install memkraft`.
@@ -73,9 +73,9 @@ Contract change
 
 ## Next Steps
 
-1. Configure GitHub secret `MEMORY_SYNC_TOKEN`.
-2. Commit and push the local W-0163/App CI repair changes.
-3. Let required PR checks run and merge only after green.
+1. Merge PR #293 after user approval.
+2. Confirm Memory Sync opens or updates its follow-up PR after merge.
+3. Merge the memory sync PR after required checks pass.
 
 ## Exit Criteria
 
@@ -96,4 +96,4 @@ Contract change
   - branch protection check update via GitHub API: `enforce_admins=true`, required contexts present
   - `git check-ignore` for feature window SQLite: pass
 - remaining blockers:
-  - GitHub secret `MEMORY_SYNC_TOKEN` must exist for memory sync PR creation; without it, sync is skipped by design.
+  - none for CI enforcement; `MEMORY_SYNC_TOKEN` can still be added later to avoid manual workflow dispatch fallback.
