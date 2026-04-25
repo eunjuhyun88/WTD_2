@@ -132,11 +132,11 @@ TRADOOR_OI_REVERSAL = PatternObject(
             #   real dump -> OI hold -> accumulation structure -> local
             #   range breakout with renewed OI expansion.
             #
-            # `breakout_after_accumulation` approximates that phase
-            # anchor with recent dump + hold + higher-lows/reclaim/
-            # compression evidence before the breakout bar. Keep the
-            # older Wyckoff-style breakout trigger as an optional boost
-            # for cross-pattern compatibility and diagnostics.
+            # `breakout_after_accumulation` confirms the local range
+            # breakout with structure evidence: recent dump + OI hold +
+            # higher-lows/compression before the break bar. More precise
+            # than rolling-window breakouts which fire on the pre-dump
+            # final rally rather than the post-accumulation SOS.
             #   - oi_expansion_confirm: 5% OI rise over 24h
             #     (Bessembinder & Seguin 1993; Wang & Yau 2000) — a real
             #     breakout should carry directional positioning, not just

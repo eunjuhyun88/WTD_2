@@ -148,57 +148,6 @@ def _crowding_state(funding_rate: float, oi_change_24h: float) -> str:
     return "mixed"
 
 
-def _compact_confluence_summary(features: dict[str, Any]) -> dict[str, Any]:
-    score = 0
-    evidence_count = 0
-
-    ema_alignment = str(features.get("ema_alignment") or "")
-    if ema_alignment == "bullish":
-        score += 1
-        evidence_count += 1
-    elif ema_alignment == "bearish":
-        score -= 1
-        evidence_count += 1
-
-    htf_structure = str(features.get("htf_structure") or "")
-    if htf_structure == "uptrend":
-        score += 1
-        evidence_count += 1
-    elif htf_structure == "downtrend":
-        score -= 1
-        evidence_count += 1
-
-    funding_rate = float(features.get("funding_rate") or 0.0)
-    oi_change_24h = float(features.get("oi_change_24h") or 0.0)
-    crowding = _crowding_state(funding_rate, oi_change_24h)
-    if crowding == "crowded_shorts":
-        score += 1
-        evidence_count += 1
-    elif crowding == "crowded_longs":
-        score -= 1
-        evidence_count += 1
-
-    fear_greed = float(features.get("fear_greed") or 50.0)
-    if fear_greed < 25:
-        score += 1
-        evidence_count += 1
-    elif fear_greed > 75:
-        score -= 1
-        evidence_count += 1
-
-    verdict = "neutral"
-    if score > 0:
-        verdict = "bullish"
-    elif score < 0:
-        verdict = "bearish"
-
-    return {
-        "score": score,
-        "verdict": verdict,
-        "confidence": min(85, 35 + evidence_count * 8 + abs(score) * 6),
-        "regime": features.get("regime"),
-    }
-
 
 def _build_snapshot_perp_input(perp_df: pd.DataFrame | None) -> dict[str, float] | None:
     if perp_df is None or perp_df.empty:
@@ -441,7 +390,7 @@ def build_fact_context(
         },
         "snapshot": snapshot.model_dump(mode="json"),
         "feature_row": feature_row_json,
-        "confluence": _compact_confluence_summary(feature_row_json),
+        "confluence": _compact_confluence_summary(feature_row_json, snapshot.model_dump(mode="json")),
         "notes": [
             "engine-owned bounded fact context",
             "backed by existing engine cache/loaders; shared-state migration still pending",

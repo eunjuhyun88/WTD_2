@@ -38,6 +38,8 @@
   let snapshotFiles = $state<File[]>([]);
   let requestedSignals = $state<string[]>([]);
   let searchQuerySpec = $state<SearchQuerySpec | null>(null);
+  let currentRunId = $state<string | null>(null);
+  let judgedCandidates = $state<Set<string>>(new Set());
 
   function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);

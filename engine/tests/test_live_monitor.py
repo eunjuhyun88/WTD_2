@@ -180,6 +180,14 @@ class TestScanUniverseLive:
 
 
 class TestResolveLiveVariantSlug:
+    def _make_klines(self, n: int = 300) -> pd.DataFrame:
+        now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        idx = pd.date_range(end=now, periods=n, freq="1h", tz="UTC")
+        return pd.DataFrame(
+            {"open": 1.0, "high": 1.1, "low": 0.9, "close": 1.0, "volume": 1000.0},
+            index=idx,
+        )
+
     def test_prefers_requested_variant_over_artifacts(self):
         assert resolve_live_variant_slug("tradoor-oi-reversal-v1", "explicit-variant") == "explicit-variant"
 

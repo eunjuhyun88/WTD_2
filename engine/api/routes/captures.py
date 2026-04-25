@@ -32,7 +32,7 @@ import logging
 import time
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 
 from api.schemas_pattern_draft import ParserMetaBody, PatternDraftBody

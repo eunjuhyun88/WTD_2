@@ -73,7 +73,7 @@ def test_transform_pattern_draft_builds_deterministic_search_query_spec() -> Non
     assert phase_queries[0]["required_numeric"]["oi_zscore"] == {"min": 1.5}
     assert phase_queries[0]["required_numeric"]["funding_rate_zscore"] == {"max": -1.0}
     assert phase_queries[0]["preferred_numeric"]["volume_percentile"] == {"min": 0.75}
-    assert phase_queries[1]["required_boolean"] == {"higher_lows_sequence_flag": True}
+    assert phase_queries[1]["required_boolean"] == {"higher_lows_sequence": True}
     assert phase_queries[1]["forbidden_numeric"]["funding_rate_zscore"] == {"min": 1.0}
     assert phase_queries[1]["max_gap_bars"] == 18
     assert phase_queries[2]["required_boolean"] == {"range_high_break": True}

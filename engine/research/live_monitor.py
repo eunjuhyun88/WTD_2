@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from data_cache.loader import load_klines
+from data_cache.loader import list_cached_symbols, load_klines
 from features.canonical_pattern import score_canonical_feature_snapshot
 from patterns.active_variant_registry import (
     ACTIVE_PATTERN_VARIANT_STORE,
@@ -417,21 +417,6 @@ def scan_all_patterns_live(
     return all_results
 
 
-def resolve_live_variant_slug(pattern_slug: str, variant_slug: str | None = None) -> str:
-    """Return the canonical live variant slug for a pattern.
-
-    If *variant_slug* is given, return it as-is (caller override).
-    Otherwise look up the canonical variant in PROMOTED_PATTERNS.
-    Falls back to ``{pattern_slug}__canonical`` if not registered.
-    """
-    if variant_slug is not None:
-        return variant_slug
-    for slug, canonical, _ in PROMOTED_PATTERNS:
-        if slug == pattern_slug:
-            return canonical
-    return f"{pattern_slug}__canonical"
-
-
 def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SCAN") -> None:
     """Print a formatted scan report to stdout."""
     now = results[0].scanned_at if results else datetime.now(timezone.utc)
@@ -463,21 +448,6 @@ def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SC
             fwd  = f"{r.fwd_peak_pct:+.1f}%"  if r.fwd_peak_pct  is not None else "n/a"
             real = f"{r.realistic_pct:+.1f}%" if r.realistic_pct is not None else "n/a"
             print(f"    {r.symbol}  fwd_peak={fwd}  realistic={real}")
-
-
-def resolve_live_variant_slug(pattern_slug: str, variant_slug: str | None = None) -> str:
-    """Resolve a variant slug for a given pattern_slug.
-
-    If variant_slug is provided and non-empty, return it as-is.
-    Otherwise look up the first promoted variant for the pattern_slug.
-    Falls back to "{pattern_slug}__canonical" if none is registered.
-    """
-    if variant_slug:
-        return variant_slug
-    for pat_slug, var_slug, _ in PROMOTED_PATTERNS:
-        if pat_slug == pattern_slug:
-            return var_slug
-    return f"{pattern_slug}__canonical"
 
 
 if __name__ == "__main__":
