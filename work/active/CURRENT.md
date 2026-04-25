@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
+`87f44b0b` — origin/main (2026-04-26) — W-0211 multi-pane + KPI strip + Pine Script + OI/Funding/Liq 기본 ON
 
 ---
 
@@ -48,22 +48,23 @@
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| PR #308 | feat(W-0211): native multi-pane + Pine Script engine | 머지 대기 |
+| (없음) | — | 모든 PR 머지 완료 |
 
 ---
 
 ## 다음 실행 순서 (우선순위 순)
 
 ### 즉시
-- 긴급 항목 없음 — 모든 CI 초록, GCP 정상 (cogotchi-00013-c7n)
+1. **W-0212 차트 UX 마무리** — 패인 드래그 리사이즈 검증 + 크로스헤어 값 업데이트 + KPI 스파크라인 확인
+   - `feat/w-0212-chart-ux-polish`
 
-### 중기 (설계 완료 → 구현 시작)
-1. **W-0145 Corpus 107 symbols 확장** (현재 29 symbols)
-   - data_cache 78 symbols 채우기 → feature_windows_builder 재실행
-   - 설계: `work/active/W-next-design-20260426.md`
-2. **W-0132 카피트레이딩 Phase 1** 구현 시작
-   - migration 019 → leaderboard API → UI panel
-   - 설계: `work/active/W-next-design-20260426.md`
+### 중기
+2. **W-0132 카피트레이딩 Phase 1** — migration 022 + leaderboard API + UI panel
+   - `feat/w-0132-copy-trading-phase1`
+3. **W-0145 Search Corpus 40+차원** — corpus_builder 40차원 확장
+   - `feat/w-0145-search-corpus-40dim`
+
+설계: `work/active/W-next-design-20260426.md`
 
 ---
 
@@ -79,4 +80,4 @@
 ## 체크포인트 파일
 
 - `work/active/W-app-ci-repair-checkpoint-20260426.md` — App CI 수리 세션 기록
-- `work/active/W-next-design-20260426.md` — 다음 작업 설계 (W-0145 + W-0132)
+- `work/active/W-next-design-20260426.md` — 다음 작업 설계 (W-0212 → W-0132 → W-0145)
