@@ -109,11 +109,9 @@
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
+  import PeekDrawer from '../../components/terminal/peek/PeekDrawer.svelte';
   import ScanGrid from '../../components/terminal/peek/ScanGrid.svelte';
   import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
-  import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
-  import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
-  import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
@@ -187,7 +185,6 @@
   let peekCaptures = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let peekSimilar = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let peekLoadingSimilar = $state(false);
-  let reviewInboxCount = $state(0);
 
   // ── Capture modal ──────────────────────────────────────────
   // On desktop the persistent left rail is always shown; drawer is for tablet/mobile only
@@ -782,12 +779,6 @@
     setActivePair(pair);
   }
 
-  async function loadReviewInboxCount() {
-    try {
-      reviewInboxCount = await fetchReviewInboxCount(100);
-    } catch {}
-  }
-
   // ── PEEK drawer loaders ────────────────────────────────────
   async function loadPeekCaptures() {
     try {
@@ -1158,8 +1149,6 @@
     loadTerminalPersistenceState();
     loadEvents();
     loadPeekCaptures();
-    loadReviewInboxCount();
-    peekCapturesInterval = setInterval(() => runIfVisible(loadPeekCaptures), 120_000);
     for (const item of buildTerminalBootstrapTasks({
       loadTrending,
       loadNews,
@@ -1338,33 +1327,180 @@
     readPathDepth,
     readPathLiq,
   }));
-  let statusStripItems = $derived(surfaceSummary.statusStripItems);
-  let headerModel = $derived.by(() => buildTerminalHeaderModel({
-    selection: selectionState,
-    activeAsset,
-    activeVerdict,
-    regime: surfaceSummary.regime,
-    flowBias,
-  }));
-  let dockFeedItems = $derived.by(() => buildDockFeedItems({
-    activeFocusLabel,
-    activeAsset,
-    flowBias,
-    boardAssetsCount: boardAssets.length,
-    timeframeBadgeLabel,
-    runtimeModeLabel,
-    patternTransitionAlerts,
-    statusStripItems,
-    marketEvents,
-  }));
-  // Quick chips for mobile dock
-  const MOBILE_CHIPS = $derived([
-    { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
-    { id: 'alts',      label: 'Hot Alts',        action: 'Show hot altcoins with breakout signals' },
-    { id: 'long-bias', label: 'LONG setups',     action: 'Show best long setups with high confluence' },
-    { id: 'risk',      label: 'Risk check',      action: `What are the main risks for ${gPair.split('/')[0]}?` },
-    { id: 'compare',   label: 'BTC vs ETH',      action: 'Compare BTC and ETH side by side' },
-  ]);
+  // ─── Mobile ModeRouter data ──────────────────────────────────
+
+  /**
+   * mobileMarketRows — top 30 items for ScanMode.
+   * Source priority: persistedWatchlist first (has live preview prices),
+   * then trendingData.trending to pad up to 30.
+   * Deduplication by symbol (watchlist wins).
+   */
+  const mobileMarketRows = $derived.by(() => {
+    type MobileMarketRow = {
+      symbol: string;
+      base: string;
+      price: number;
+      changePct: number;
+      volume24h?: number;
+      bias?: 'bullish' | 'bearish' | 'neutral';
+    };
+    const rows: MobileMarketRow[] = [];
+    const seen = new Set<string>();
+
+    // Watchlist items first — they carry persisted preview prices
+    for (const item of (persistedWatchlist ?? [])) {
+      if (seen.has(item.symbol)) continue;
+      seen.add(item.symbol);
+      rows.push({
+        symbol: item.symbol,
+        base: item.symbol.replace(/USDT$/, ''),
+        price: item.preview?.price ?? 0,
+        changePct: item.preview?.change24h ?? 0,
+        bias: item.preview?.bias,
+      });
+    }
+
+    // Pad with trending coins (trendingData.trending, then .gainers, then .losers)
+    const trendingSources: any[] = [
+      ...(trendingData?.trending ?? []),
+      ...(trendingData?.gainers ?? []),
+      ...(trendingData?.losers ?? []),
+    ];
+    for (const coin of trendingSources) {
+      const sym: string = coin?.symbol ?? '';
+      if (!sym || seen.has(sym)) continue;
+      seen.add(sym);
+      rows.push({
+        symbol: sym,
+        base: sym.replace(/USDT$/, ''),
+        price: coin?.price ?? 0,
+        changePct: coin?.change24h ?? coin?.percentChange24h ?? 0,
+        volume24h: coin?.volume24h ?? undefined,
+        // TODO: bias not available from trending feed — derive from changePct sign as approximation
+        bias: (coin?.change24h ?? coin?.percentChange24h ?? 0) >= 0 ? 'bullish' : 'bearish',
+      });
+    }
+
+    return rows.slice(0, 30);
+  });
+
+  /**
+   * mobileAlerts — scannerAlerts mapped to ModeRouter Alert shape for JudgeMode.
+   * scanner alerts do not carry a user judgment state, so status is always 'pending'.
+   */
+  const mobileAlerts = $derived.by(() => {
+    type MobileAlert = {
+      id: string;
+      symbol: string;
+      tf: string;
+      direction: 'bullish' | 'bearish' | 'neutral';
+      summary: string;
+      timestamp: number;
+      status: 'pending' | 'agreed' | 'disagreed';
+      reason?: 'valid' | 'late' | 'noisy' | 'invalid' | 'almost';
+    };
+    return (scannerAlerts ?? []).map((alert: any): MobileAlert => {
+      // TODO: direction is not a first-class field on engine_alerts rows;
+      // derive from blocks_triggered heuristic: if any block name contains 'bull'
+      // or 'long' treat as bullish; 'bear'/'short' as bearish; else neutral.
+      const blocks: string[] = alert?.blocks_triggered ?? [];
+      const blockStr = blocks.join(' ').toLowerCase();
+      let direction: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      if (blockStr.includes('bull') || blockStr.includes('long') || blockStr.includes('reclaim')) {
+        direction = 'bullish';
+      } else if (blockStr.includes('bear') || blockStr.includes('short') || blockStr.includes('dump')) {
+        direction = 'bearish';
+      }
+
+      const summary =
+        blocks.length > 0
+          ? blocks.map((b: string) => b.replace(/_/g, ' ')).join(' · ')
+          : 'Signal alert';
+
+      return {
+        id: alert?.id ?? '',
+        symbol: alert?.symbol ?? '',
+        tf: alert?.timeframe ?? '1H',
+        direction,
+        summary,
+        timestamp: alert?.created_at ? new Date(alert.created_at).getTime() : Date.now(),
+        status: 'pending',
+      };
+    });
+  });
+
+  /**
+   * onAlertFeedback — optimistic state update only; no alert-feedback API exists yet.
+   * TODO: POST to /api/cogochi/alert-feedback once the endpoint is built.
+   */
+  function handleMobileAlertFeedback(id: string, agree: boolean, reason?: string) {
+    console.log('[mobile-judge] alert feedback', { id, agree, reason });
+    // Optimistic: move the alert out of the scannerAlerts list so JudgeMode
+    // shows it as resolved on next mobileAlerts derivation.
+    // Since scannerAlerts are any[], we mark it via a local agreed-ids set.
+    agreedAlertIds = new Set([...agreedAlertIds, id]);
+  }
+
+  /**
+   * Track IDs the user has already judged so mobileAlerts can reflect resolved status.
+   * Persisted only for the lifetime of this page session.
+   */
+  let agreedAlertIds = $state(new Set<string>());
+
+  /**
+   * mobileAlertsWithStatus — overlays local agree/disagree state onto mobileAlerts
+   * so JudgeMode rows switch from 'pending' to resolved without a round-trip.
+   */
+  const mobileAlertsWithStatus = $derived.by(() =>
+    mobileAlerts.map(alert =>
+      agreedAlertIds.has(alert.id) ? { ...alert, status: 'agreed' as const } : alert
+    )
+  );
+
+  /**
+   * refreshWatchlistForMobile — called by ScanMode pull-to-refresh.
+   * Reloads both the persisted watchlist (for preview prices) and the trending feed.
+   */
+  async function refreshWatchlistForMobile() {
+    await Promise.all([loadTerminalPersistenceState(), loadTrending()]);
+  }
+
+  // ── PEEK drawer derived + handlers ────────────────────────
+  const peekAnalyzeCount = $derived(analysisData?.verdict ? 1 : 0);
+  const peekScanCount = $derived(scannerAlerts.length);
+  const peekJudgeCount = $derived(peekCaptures.filter((c: any) => {
+    const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
+    return !hasOutcome;
+  }).length);
+
+  const peekVerdict = $derived(analysisData?.verdict ?? null);
+  const peekEntry = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
+  const peekStop = $derived((analysisData as any)?.verdict?.stop ?? (analysisData as any)?.deep?.stop ?? null);
+  const peekTarget = $derived((analysisData as any)?.verdict?.target ?? (analysisData as any)?.deep?.target ?? null);
+  const peekPWin = $derived(analysisData?.p_win ?? null);
+  const peekLast = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
+
+  async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
+    const symbol = activeSymbol || pairToSymbol(gPair);
+    const timeframe = symbolToTF(gTf);
+    console.log('[peek] saveJudgment (UI stub)', {
+      symbol,
+      timeframe,
+      ...input,
+    });
+    // TODO: POST /api/terminal/pattern-captures when backend is ready.
+    await loadPeekCaptures();
+  }
+
+  async function handlePeekRejudge(input: { captureId: string; outcome: 'correct' | 'wrong' | 'partial' | 'timeout'; note: string }) {
+    console.log('[peek] rejudge (UI stub)', input);
+    // TODO: PATCH /api/terminal/pattern-captures/[id] when backend route exists.
+    await loadPeekCaptures();
+  }
+
+  function handlePeekOpenCapture(record: any) {
+    setActivePair(record.symbol.replace(/USDT$/, '') + '/USDT');
+  }
 </script>
 
 <svelte:head>
@@ -1376,7 +1512,12 @@
   <link rel="canonical" href={buildCanonicalHref('/terminal')} />
 </svelte:head>
 
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- PEEK layout (chart-first + bottom drawer) -->
+<!-- ═══════════════════════════════════════════════════ -->
+
 <div class="surface-page terminal-page-peek">
+  <!-- Command bar -->
   <section class="terminal-shell-head">
     <TerminalCommandBar
       assetsCount={boardAssets.length}
@@ -1384,6 +1525,145 @@
       onToggleMarketRail={toggleLeftRail}
       price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
       change24h={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+    />
+  </section>
+
+  <!-- Chart + SaveStrip + PEEK drawer -->
+  <main class="peek-main">
+    <div class="chart-and-strip" bind:this={chartWorkspaceEl}>
+      <ChartBoard
+        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+        tf={symbolToTF(gTf)}
+        verdictLevels={chartLevels}
+        initialData={activeChartPayload}
+        depthSnapshot={readPathDepth}
+        liqSnapshot={readPathLiq}
+        quantRegime={boardModel.quantRegime}
+        cvdDivergence={boardModel.cvdDivergence}
+        change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+        contextMode="chart"
+        onCaptureSaved={handleCaptureSaved}
+        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+      />
+      <SaveStrip
+        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+        tf={symbolToTF(gTf)}
+        ohlcvBars={ohlcvBars}
+        onSaved={handleCaptureSaved}
+      />
+      {#if showLabCta}
+        <div class="lab-cta-banner">
+          <span class="lab-cta-check">✓</span>
+          <span class="lab-cta-text">Setup saved</span>
+          <div class="lab-cta-actions">
+            <a class="lab-cta-link lab-cta-link--dash" href="/dashboard">Dashboard →</a>
+            <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Lab →</a>
+          </div>
+          <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
+        </div>
+      {/if}
+    </div>
+
+    <!-- PEEK drawer — 3-tab bottom overlay -->
+    <PeekDrawer analyzeCount={peekAnalyzeCount} scanCount={peekScanCount} judgeCount={peekJudgeCount}>
+      <svelte:fragment slot="analyze">
+        <TerminalContextPanel
+          analysisData={activeAnalysisData}
+          newsData={newsData}
+          activeTab={activeAnalysisTab}
+          onTabChange={handleAnalysisTabChange}
+          onAction={sendCommand}
+          onPinToggle={handlePinToggle}
+          onAlertToggle={handleAlertToggle}
+          onRetry={handleRetryAnalysis}
+          isPinned={isActivePinned}
+          hasSavedAlert={hasActiveSavedAlert}
+          bars={ohlcvBars}
+          {layerBarsMap}
+          {patternRecallMatches}
+        />
+      </svelte:fragment>
+
+      <svelte:fragment slot="scan">
+        <ScanGrid
+          alerts={scannerAlerts}
+          similar={peekSimilar}
+          activeSymbol={activeSymbol || pairToSymbol(gPair)}
+          loadingSimilar={peekLoadingSimilar}
+          onOpenCapture={handlePeekOpenCapture}
+        />
+      </svelte:fragment>
+
+      <svelte:fragment slot="judge">
+        <JudgePanel
+          symbol={activeSymbol || pairToSymbol(gPair)}
+          timeframe={symbolToTF(gTf)}
+          verdict={peekVerdict}
+          entry={peekEntry}
+          stop={peekStop}
+          target={peekTarget}
+          pWin={peekPWin}
+          lastPrice={peekLast}
+          captures={peekCaptures}
+          saving={false}
+          onSaveJudgment={handlePeekSaveJudgment}
+          onRejudge={handlePeekRejudge}
+          onOpenCapture={handlePeekOpenCapture}
+        />
+      </svelte:fragment>
+    </PeekDrawer>
+  </main>
+</div>
+
+<!-- MOBILE: TerminalShell with mode routing (fallback, currently unused) -->
+{#if false}
+  <!-- Disabled until mobile support is added back -->
+  <!-- Market drawer — overlay for tablet/mobile only; desktop uses persistent left rail -->
+  <MarketDrawer
+    open={showLeftRail}
+    onClose={toggleLeftRail}
+    {trendingData}
+    watchlistRows={persistedWatchlist}
+    alerts={scannerAlerts}
+    savedAlerts={savedAlertRules}
+    {patternPhases}
+    activeSymbol={activeSymbol || pairToSymbol(gPair)}
+    macroItems={macroCalendarItems}
+    {marketEvents}
+    queryPresets={terminalQueryPresets}
+    anomalies={terminalAnomalies}
+    onQuery={handleQueryChip}
+    onDeleteSavedAlert={handleDeleteSavedAlert}
+  />
+
+  <div class="surface-page terminal-page">
+  <TerminalShell
+    showRail={true}
+    railWidth={330}
+    verdict={activeVerdict ?? null}
+    evidence={activeEvidence ?? []}
+    captureId={lastSavedCaptureId ?? null}
+    marketRows={mobileMarketRows}
+    alerts={mobileAlertsWithStatus}
+    marketLoading={loadingSymbols.size > 0}
+    alertsLoading={patternCaptureLoading}
+    onAlertFeedback={handleMobileAlertFeedback}
+    onMarketRefresh={refreshWatchlistForMobile}
+  >
+  {#snippet slotLeftRail()}
+    <TerminalLeftRail
+      {trendingData}
+      watchlistRows={persistedWatchlist}
+      alerts={scannerAlerts}
+      savedAlerts={savedAlertRules}
+      {patternPhases}
+      activeSymbol={activeSymbol || pairToSymbol(gPair)}
+      macroItems={macroCalendarItems}
+      {marketEvents}
+      queryPresets={terminalQueryPresets}
+      anomalies={terminalAnomalies}
+      onQuery={handleQueryChip}
+      onDeleteSavedAlert={handleDeleteSavedAlert}
     />
   </section>
 
@@ -1788,8 +2068,10 @@
       onSelectAsset={selectAsset}
       onClearBoard={clearBoard}
     />
+  {/snippet}
+  </TerminalShell>
   </div>
-</div>
+{/if}
 
 <!-- MarketDrawer: tablet/mobile overlay (left side) -->
 <MarketDrawer
@@ -1884,7 +2166,27 @@
     cursor: pointer;
   }
 
+  /* PEEK layout for desktop */
   .terminal-page-peek {
+    width: min(100%, calc(100% - 8px));
+    height: calc(100dvh - 8px);
+    display: flex;
+    flex-direction: column;
+    padding-top: 2px;
+    padding-bottom: max(4px, var(--sc-consent-reserved-h, 0px));
+    overflow: hidden;
+    background: var(--sc-bg-0, #0b0e14);
+    color: var(--sc-text-0, #f7f2ea);
+  }
+
+  .peek-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .terminal-page {
     width: min(100%, calc(100% - 8px));
     height: calc(100dvh - 8px);
     display: flex;

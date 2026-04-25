@@ -11,7 +11,6 @@
 import { writable, derived } from 'svelte/store';
 import type { CanonicalTimeframe } from '$lib/utils/timeframe';
 import { activePairState, setActivePair, setActiveTimeframe } from './activePairStore';
-import { browser } from '$app/environment';
 
 export interface TerminalState {
   activeSymbol: string;
@@ -19,42 +18,12 @@ export interface TerminalState {
   last24hChangePct: number | null;
 }
 
-const SESSION_STORAGE_KEY = 'wtd.terminal.state.v1';
-const DEFAULT_STATE: TerminalState = {
-  activeSymbol: 'BTCUSDT',
-  activeTimeframe: '1h',
-  last24hChangePct: null,
-};
-
-function loadSessionState(): TerminalState {
-  if (!browser) return { ...DEFAULT_STATE };
-  try {
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_STATE };
-    const parsed = JSON.parse(raw) as Partial<TerminalState>;
-    return { ...DEFAULT_STATE, ...parsed };
-  } catch {
-    return { ...DEFAULT_STATE };
-  }
-}
-
-function persistSessionState(state: TerminalState) {
-  if (!browser) return;
-  try {
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
-      activeSymbol: state.activeSymbol,
-      activeTimeframe: state.activeTimeframe,
-    }));
-  } catch {
-    // quota / access error — non-fatal
-  }
-}
-
 function createTerminalState() {
-  const { subscribe, set, update } = writable<TerminalState>(loadSessionState());
-
-  // Subscribe to all state changes and persist to sessionStorage (W-0114 Phase B)
-  subscribe(state => persistSessionState(state));
+  const { subscribe, set, update } = writable<TerminalState>({
+    activeSymbol: 'BTCUSDT',
+    activeTimeframe: '1h',
+    last24hChangePct: null,
+  });
 
   // Sync FROM activePairStore on init and when it changes
   if (typeof window !== 'undefined') {
