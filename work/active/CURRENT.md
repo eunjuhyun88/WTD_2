@@ -9,14 +9,20 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0132-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
-| `W-0145-operational-seed-search-corpus` | engine | 다음 — 40+차원 corpus 완성 |
+| `W-0132-copy-trading-phase1` | engine + app | PR #313 — CI 대기 중 |
+| `W-0145-operational-seed-search-corpus` | engine | ✅ 완료 — main에 이미 구현됨 (14 tests pass) |
 
 ---
 
 ## main SHA
 
 `092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
+
+## 진행 중 PR
+
+| PR | 내용 | 상태 |
+|---|---|---|
+| [#313](https://github.com/eunjuhyun88/WTD_2/pull/313) | W-0132 카피트레이딩 Phase 1 | CI 대기 |
 
 ---
 
