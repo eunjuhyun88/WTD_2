@@ -354,6 +354,15 @@ async def create_capture(request: Request, body: CaptureCreateBody) -> dict:
     )
     _capture_store.save(record)
     LEDGER_RECORD_STORE.append_capture_record(record)
+
+    # Trigger wiki page update for this pattern (debounced, best-effort).
+    if record.pattern_slug:
+        try:
+            from wiki.ingest import get_wiki_agent
+            get_wiki_agent().on_capture_created(record.pattern_slug, record.id)
+        except Exception:
+            pass
+
     return {"ok": True, "capture": record.to_dict()}
 
 
@@ -521,6 +530,20 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
         "verdict_ready",
         verdict_id=outcome.id,
     )
+
+    # Invalidate stats cache so next request reflects this verdict immediately.
+    try:
+        from stats.engine import get_stats_engine
+        get_stats_engine().invalidate()
+    except Exception:
+        pass  # stats cache is best-effort
+
+    # Trigger wiki page update for this pattern (debounced, best-effort).
+    try:
+        from wiki.ingest import get_wiki_agent
+        get_wiki_agent().on_verdict_submitted(capture.pattern_slug, outcome.id)
+    except Exception:
+        pass
 
     return {
         "ok": True,

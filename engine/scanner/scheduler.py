@@ -46,6 +46,7 @@ from scanner.jobs.alpha_observer import scan_alpha_observer_job
 from scanner.jobs.alpha_warm import scan_alpha_warm_job
 from scanner.jobs.pattern_scan import pattern_scan_job
 from scanner.jobs.search_corpus import search_corpus_refresh_job
+from workers.feature_windows_prefetcher import prefetch_feature_windows as _fw_prefetch
 from scanner.jobs.universe_scan import (
     push_alert,
     scan_universe_job,
@@ -112,6 +113,34 @@ def validate_scheduler_secrets() -> None:
 
 async def _push_alert(payload: dict[str, Any]) -> None:
     await push_alert(payload, SUPABASE_URL, SUPABASE_ROLE_KEY)
+
+
+async def _corpus_bridge_sync_job() -> None:
+    """Sync FeatureMaterializationStore → SearchCorpusStore (enriched 40+ field signatures).
+
+    Runs every 30 min — after _feature_materialization_refresh_job (15 min) so
+    the corpus always reflects the latest materialized features.
+    """
+    import asyncio
+    from features.corpus_bridge import sync_all_corpus
+    try:
+        result = await asyncio.to_thread(sync_all_corpus)
+        log.info("corpus_bridge_sync: %s", result)
+    except Exception as exc:
+        log.warning("corpus_bridge_sync failed (non-fatal): %s", exc)
+
+
+async def _feature_windows_prefetch_job() -> None:
+    """Build feature_windows.sqlite for all BINANCE_30 symbols.
+
+    Populates the FeatureWindowStore used by similar.py Layer A/C enrichment
+    (40+ dimensional signal vectors). Runs every 6 hours.
+    """
+    try:
+        result = await _fw_prefetch()
+        log.info("feature_windows_prefetch: %s", result)
+    except Exception as exc:
+        log.warning("feature_windows_prefetch failed (non-fatal): %s", exc)
 
 
 async def _feature_materialization_refresh_job() -> None:
@@ -342,6 +371,34 @@ def start_scheduler() -> None:
             coalesce=True,
             misfire_grace_time=120,
         )
+
+    # Job: Corpus bridge — FeatureMaterializationStore → SearchCorpusStore (every 30 min)
+    # Runs after feature_materialization (15 min) so corpus stays enriched.
+    # Always on — core search quality path.
+    _scheduler.add_job(
+        _corpus_bridge_sync_job,
+        trigger="interval",
+        seconds=1800,
+        id="corpus_bridge_sync",
+        name="Corpus bridge enrichment (40+ dims)",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
+    )
+
+    # Job: Feature windows prefetcher — builds feature_windows.sqlite (every 6 hours)
+    # Powers similar.py Layer A/C enrichment (3D → 40+D).
+    # Always on — core search quality path.
+    _scheduler.add_job(
+        _feature_windows_prefetch_job,
+        trigger="interval",
+        seconds=21600,
+        id="feature_windows_prefetch",
+        name="Feature windows store prefetcher",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=600,
+    )
 
     # Job: Alpha Universe COLD scanner — every 4 hours
     _scheduler.add_job(
