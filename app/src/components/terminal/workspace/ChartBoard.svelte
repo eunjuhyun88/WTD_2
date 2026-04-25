@@ -11,6 +11,7 @@
   import type { DepthLadderEnvelope, LiquidationClustersEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
+  import type { PanelAnalyzeData } from '$lib/terminal/panelAdapter';
   import { tfMinutes } from '$lib/chart/mtfAlign';
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
@@ -54,6 +55,7 @@
     symbol:         string;
     tf?:            string;       // controlled externally (gTf); falls back to internal state
     verdictLevels?: VerdictLevels;
+    analysisData?: PanelAnalyzeData | null;
     initialData?: ChartSeriesPayload | null;
     depthSnapshot?: DepthLadderEnvelope['data'] | null;
     liqSnapshot?: LiquidationClustersEnvelope['data'] | null;
@@ -100,6 +102,7 @@
     symbol,
     tf: externalTf,
     verdictLevels,
+    analysisData = null,
     initialData = null,
     depthSnapshot = null,
     liqSnapshot = null,
@@ -1547,6 +1550,7 @@
   // Update price lines when verdict changes (no reload)
   $effect(() => {
     void verdictLevels;
+    void analysisData;
     updateLevels();
   });
 

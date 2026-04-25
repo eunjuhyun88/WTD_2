@@ -1644,7 +1644,6 @@
           {symbol}
           tf={timeframe}
           initialData={chartPayload ?? undefined}
-          surfaceStyle="velo"
           verdictLevels={verdictLevels}
           change24hPct={analyzeData?.change24h ?? null}
           contextMode="chart"
