@@ -52,7 +52,6 @@
     anomalies = [],
     onSelect,
     onQuery,
-    onSelect,
   }: Props = $props();
 
   const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [

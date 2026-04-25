@@ -27,20 +27,23 @@ export type IndicatorKey =
   // display-mode flag: opt-in to render funding+CVD ON the main chart (overlay)
   // rather than the default sub-pane. false = sub-pane (TradingView standard).
   | 'derivativesOverlay'
-  // sub-pane indicators (compete for the 5 reserved slots)
+  // sub-pane indicators (compete for the reserved slots)
   | 'cvd'
   | 'macd'
   | 'rsi'
   | 'oi'
+  | 'funding'
+  | 'liq'
   | 'volume';
 
 /** Indicators that occupy a sub-pane slot (not a main-chart overlay). */
 export const PANE_INDICATORS: ReadonlyArray<IndicatorKey> = [
-  'volume', 'cvd', 'macd', 'rsi', 'oi',
+  'volume', 'cvd', 'macd', 'rsi', 'oi', 'funding', 'liq',
 ];
 
-/** Cap per W-0102 decision — reuses ChartBoard's 5 reserved pane DOM refs. */
-export const MAX_PANE_INDICATORS = 5;
+/** Cap raised for native multi-pane refactor (W-0211 follow-up).
+ *  Worst case visible at once: volume + RSI/MACD (mutex) + OI + CVD + Funding + Liq = 6. */
+export const MAX_PANE_INDICATORS = 6;
 
 export type ChartIndicatorState = Record<IndicatorKey, boolean>;
 
@@ -55,6 +58,8 @@ const DEFAULT_STATE: ChartIndicatorState = {
   macd: false,
   rsi: false,
   oi: false,
+  funding: false,
+  liq: false,
   volume: true,
 };
 
@@ -100,8 +105,12 @@ export function normalizeIndicatorKey(raw: string): IndicatorKey | null {
       return 'vwap';
     case 'atr': case 'atrbands': case 'atrband':
       return 'atr_bands';
-    case 'derivatives': case 'funding': case 'fundingbasis':
+    case 'derivatives':
       return 'derivatives';
+    case 'fundingoverlay': case 'fundingbasis':
+      return 'derivatives';
+    case 'funding': case 'fundingrate': case 'fundingpane':
+      return 'funding';
     case 'cvd': case 'delta': case 'cumulativedelta':
       return 'cvd';
     case 'macd':
@@ -110,6 +119,8 @@ export function normalizeIndicatorKey(raw: string): IndicatorKey | null {
       return 'rsi';
     case 'oi': case 'openinterest':
       return 'oi';
+    case 'liq': case 'liquidation': case 'liquidations':
+      return 'liq';
     case 'volume': case 'vol':
       return 'volume';
     default:
