@@ -67,7 +67,7 @@ Contract change
 - If `MEMORY_SYNC_TOKEN` is missing, Memory Sync uses `GITHUB_TOKEN` and manually dispatches required workflows for the sync PR.
 - Stale handoff snapshots belong in archive, not `work/active/`.
 - `from memory.mk import mk` is backed by a repo-local wrapper and validated in the contract gate.
-- Memory sync uses the engine uv lock instead of an unpinned global `pip install memkraft`.
+- Memory sync uses the engine uv environment instead of an unpinned global `pip install memkraft`; it intentionally matches Engine CI's non-locked `uv sync` because the current lock can drift during dependency repair work.
 - The protocol validator enforces canonical `W-xxxx-slug` entries and ignores temporary human-readable PR rows until CURRENT.md is fully normalized.
 - MemKraft `decision_record` tags must be passed as a list; comma strings are persisted as character lists in the current package.
 

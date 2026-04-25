@@ -53,7 +53,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Sync engine dependencies
-        run: uv sync --locked
+        run: uv sync
         working-directory: engine
 
       - name: Run sync script
