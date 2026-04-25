@@ -99,7 +99,7 @@
 | **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
 | **W-0158** | `W-0158-promotion-feature-diagnostics.md` | 🔴 IN-PROGRESS | canonical feature score/snapshot truth를 promotion report와 refinement report diagnostics에 재사용 |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
-| **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
+| **W-0142** | `W-0142-app-warning-burndown.md` | 🔴 IN-PROGRESS | app structural/a11y/dead-css warning burn-down lane 시작 |
 | **W-0160** | `W-0160-pattern-draft-query-transformer-contract.md` | 🔴 IN-PROGRESS | `PatternDraft -> SearchQuerySpec` contract + parser/transformer/agent boundary freeze |
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
@@ -197,8 +197,8 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `41a72eef` |
+| main | — | 최신 (`c5e606f9`) |
+| codex/w-0142-warning-burndown | W-0142 | ACTIVE |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
