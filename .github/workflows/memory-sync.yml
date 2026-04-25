@@ -124,8 +124,8 @@ jobs:
               --body "$body"
           fi
 
-          if [ -z "$MEMORY_SYNC_TOKEN" ]; then
-            gh workflow run app-ci.yml --ref "$branch"
-            gh workflow run contract-ci.yml --ref "$branch"
-            gh workflow run engine-ci.yml --ref "$branch"
-          fi
+          # Always dispatch required checks. Pull requests created by automation
+          # tokens do not reliably receive pull_request-triggered required checks.
+          gh workflow run app-ci.yml --ref "$branch"
+          gh workflow run contract-ci.yml --ref "$branch"
+          gh workflow run engine-ci.yml --ref "$branch"
