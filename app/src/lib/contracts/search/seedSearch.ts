@@ -1,6 +1,17 @@
 import type { SearchCandidate, SearchPlaneState } from './scan';
 import type { SearchQuerySpec } from './querySpec';
 
+export type PromotionGateResult = {
+  decision: 'promote_candidate' | 'reject' | string;
+  decisionPath: 'strict' | 'trading_edge' | 'rejected' | string;
+  canonicalFeatureScore: number | null;
+  referenceRecall: number;
+  phaseFidelity: number;
+  entryProfitableRate: number | null;
+  gateResults: Record<string, boolean>;
+  rejectionReasons: string[];
+};
+
 export interface SeedSearchRequest {
 	symbol?: string | null;
 	timeframe?: string | null;

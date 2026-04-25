@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-26)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`2092ac01` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
+`87f44b0b` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
 
 ---
 
@@ -37,6 +37,9 @@
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
 | **W-0162 P1/P2** JWT RS256 + 블랙리스트 | PR #277 main 머지 완료 (2026-04-25) |
 | **GCP cogotchi** 1024MiB + Cloud Scheduler 5 jobs | cogotchi-00013-c7n 서빙 중 (2026-04-26) |
+| **W-0204** captures.py active_variant_store 연결 | PR #292 main 머지 완료 |
+| **W-0203** pattern-seed route delegation | PR #292 main 머지 완료 |
+| **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
 
 ---
 

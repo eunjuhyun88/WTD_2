@@ -7,6 +7,7 @@ import {
   type PatternDraftPhase,
 } from '$lib/contracts/terminalPersistence';
 import { engineFetch } from '$lib/server/engineTransport';
+import type { PromotionGateResult } from '$lib/contracts/search/seedSearch';
 
 export type PatternSeedSignal =
   | 'oi_spike'
@@ -51,6 +52,8 @@ export const PatternSeedMatchInputSchema = z.object({
 
 export type PatternSeedMatchInput = z.infer<typeof PatternSeedMatchInputSchema>;
 
+export type { PromotionGateResult } from '$lib/contracts/search/seedSearch';
+
 export type PatternSeedMatchResponse = {
   ok: true;
   seed: {
@@ -66,6 +69,7 @@ export type PatternSeedMatchResponse = {
     snapshotCount: number;
   };
   candidates: PatternSeedMatchCandidate[];
+  promotionGate: PromotionGateResult | null;
   scannedAt: number;
 };
 
@@ -683,6 +687,31 @@ export async function runPatternSeedMatch(
   }
   candidates.sort((a, b) => b.score - a.score);
 
+  // Extract promotion gate result from artifact
+  const rawPromotion = isRecord(artifact.promotion_report) ? artifact.promotion_report : null;
+  const promotionGate: PromotionGateResult | null = rawPromotion
+    ? {
+        decision: typeof rawPromotion.decision === 'string' ? rawPromotion.decision : 'reject',
+        decisionPath:
+          typeof rawPromotion.decision_path === 'string' ? rawPromotion.decision_path : 'rejected',
+        canonicalFeatureScore: getNumeric(rawPromotion.canonical_feature_score),
+        referenceRecall: getNumeric(rawPromotion.reference_recall) ?? 0,
+        phaseFidelity: getNumeric(rawPromotion.phase_fidelity) ?? 0,
+        entryProfitableRate: getNumeric(rawPromotion.entry_profitable_rate),
+        gateResults:
+          isRecord(rawPromotion.gate_results)
+            ? Object.fromEntries(
+                Object.entries(rawPromotion.gate_results).map(([k, v]) => [k, Boolean(v)]),
+              )
+            : {},
+        rejectionReasons: Array.isArray(rawPromotion.rejection_reasons)
+          ? (rawPromotion.rejection_reasons as unknown[]).filter(
+              (r): r is string => typeof r === 'string',
+            )
+          : [],
+      }
+    : null;
+
   return {
     ok: true,
     seed: {
@@ -698,6 +727,7 @@ export async function runPatternSeedMatch(
       snapshotCount: input.snapshotNames.length,
     },
     candidates,
+    promotionGate,
     scannedAt: Date.now(),
   };
 }
