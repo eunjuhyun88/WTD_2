@@ -1642,6 +1642,7 @@
           {symbol}
           tf={timeframe}
           initialData={chartPayload ?? undefined}
+          surfaceStyle="velo"
           verdictLevels={verdictLevels}
           change24hPct={analyzeData?.change24h ?? null}
           contextMode="chart"
@@ -2612,6 +2613,116 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+  }
+  .indicator-lane-stack {
+    min-height: 66px;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 0.5px solid rgba(255,255,255,0.055);
+    border-bottom: 0.5px solid rgba(255,255,255,0.05);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.018), rgba(0,0,0,0.12)),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 48px),
+      #0b0f17;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .indicator-lane {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+    padding: 7px 10px 6px;
+    border-right: 0.5px solid rgba(255,255,255,0.07);
+    position: relative;
+    overflow: hidden;
+  }
+  .indicator-lane::before {
+    content: '';
+    position: absolute;
+    inset: auto 10px 50% 112px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+    opacity: 0.42;
+    pointer-events: none;
+  }
+  .indicator-lane[data-mode='heatmap']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 86% 45%, rgba(232,184,106,0.13), transparent 48%);
+    pointer-events: none;
+  }
+  .indicator-lane-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    position: relative;
+    z-index: 1;
+  }
+  .indicator-lane-meta span {
+    color: var(--g5);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+  .indicator-lane-meta strong {
+    color: var(--g9);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .indicator-lane-meta em {
+    color: var(--g5);
+    font-size: 7px;
+    font-style: normal;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .indicator-lane[data-tone='buy'] .indicator-lane-meta strong { color: #5bd2aa; }
+  .indicator-lane[data-tone='sell'] .indicator-lane-meta strong { color: #ff7373; }
+  .indicator-lane[data-tone='warn'] .indicator-lane-meta strong { color: #e8b86a; }
+  .indicator-lane[data-tone='info'] .indicator-lane-meta strong { color: #7aa2e0; }
+  .indicator-lane-plot {
+    min-width: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(2px, 1fr);
+    gap: 2px;
+    align-items: end;
+    position: relative;
+    z-index: 1;
+  }
+  .indicator-cell {
+    width: 100%;
+    min-height: 2px;
+    align-self: end;
+    border-radius: 2px 2px 0 0;
+    background: rgba(166,176,196,0.42);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.025) inset;
+  }
+  .indicator-cell[data-tone='buy'] {
+    background: linear-gradient(180deg, rgba(91,210,170,0.94), rgba(91,210,170,0.2));
+  }
+  .indicator-cell[data-tone='sell'] {
+    background: linear-gradient(180deg, rgba(255,115,115,0.94), rgba(255,115,115,0.18));
+  }
+  .indicator-cell[data-tone='warn'] {
+    background: linear-gradient(180deg, rgba(232,184,106,0.96), rgba(232,184,106,0.16));
+  }
+  .indicator-cell[data-tone='info'] {
+    background: linear-gradient(180deg, rgba(122,162,224,0.94), rgba(122,162,224,0.16));
+  }
+  .indicator-cell.active {
+    filter: saturate(1.25);
+    box-shadow: 0 0 10px rgba(255,255,255,0.14);
   }
   .microstructure-belt {
     min-height: 54px;
@@ -4393,6 +4504,36 @@
     background: #0f131d !important;
   }
 
+  .observe-mode .indicator-lane-stack {
+    min-height: 52px;
+  }
+
+  .observe-mode .indicator-lane {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 6px;
+    padding: 5px 8px;
+  }
+
+  .observe-mode .indicator-lane::before {
+    left: 94px;
+  }
+
+  .observe-mode .indicator-lane-meta span {
+    font-size: 7px;
+  }
+
+  .observe-mode .indicator-lane-meta strong {
+    font-size: 10px;
+  }
+
+  .observe-mode .indicator-lane-meta em {
+    display: none;
+  }
+
+  .observe-mode .indicator-lane-plot {
+    gap: 1.5px;
+  }
+
   .observe-mode .microstructure-belt {
     min-height: 32px;
     grid-template-columns: 126px minmax(300px, 0.72fr) minmax(360px, 1fr);
@@ -4438,6 +4579,13 @@
     font-size: 9px;
   }
   @media (max-width: 1120px) {
+    .indicator-lane-stack {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      min-height: 112px;
+    }
+    .indicator-lane:nth-child(2n) {
+      border-right: none;
+    }
     .microstructure-belt {
       grid-template-columns: 1fr;
       min-height: auto;

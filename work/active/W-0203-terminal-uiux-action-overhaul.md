@@ -87,6 +87,7 @@ Product surface change
 - Microstructure belt는 차트 하단의 얇은 live status strip으로 낮추고, 세부 DOM/Tape/Footprint/Heatmap은 bottom workspace에만 둔다.
 - 기본 work mode는 `observe`로 전환하고 right Decision HUD도 slim rail로 시작한다. 차트/가격축/레벨/체결흐름이 1순위이며 판단/검증은 사용자가 열 때만 확장한다.
 - Observe mode에서는 workspace pane header, layout strip, ChartBoard 내부 toolbar/header를 숨기고 TradeMode의 단일 chart control row만 남긴다.
+- TradingView식 보조 지표는 카드가 아니라 차트 직하단 indicator lane으로 렌더링한다: `OI FLOW`, `FUNDING`, `CVD DELTA`, `LIQ DENSITY`는 최근 시점 막대/방향색/강도로 읽히고 raw table은 계속 하단 workspace 책임으로 둔다.
 
 ## Behavior Contract
 
@@ -121,6 +122,7 @@ Product surface change
 - Symbol normalization smoke — `BTCUSDT`/`BTC/USDT` 모두 `BTC/USDT` API pair와 `btcusdt` stream key로 변환되는 코드 경로 확인.
 - Playwright visual smoke after clearing shell localStorage — default first screen is chart-first: left library closed, AI panel closed, right Decision HUD slim, bottom workspace closed, microstructure strip remains attached to chart.
 - Playwright interaction smoke — `ANALYZE`를 열면 차트가 상단에 계속 남고, DOM/Tape/Footprint/Liq Heatmap workspace가 하단 overlay로만 확장된다.
+- Playwright visual smoke — observe 화면에서 `OI FLOW`, `FUNDING`, `CVD DELTA`, `LIQ DENSITY` indicator lane이 차트 직하단에 노출되고 `BINANCE WS LIVE` microstructure belt와 함께 갱신된다.
 - Local dev degraded notes — `DATABASE_URL` 없음으로 capture API 401와 engine fallback 로그가 있었으나 UIUX 변경과 무관한 dev env 제약이다.
 
 ## Exit Criteria
@@ -130,6 +132,7 @@ Product surface change
 - `Explain`, `Judge`, `Compare`, `Open Workspace` 버튼의 클릭 결과가 명확하다.
 - chart-first 비율이 유지되고 `Save Setup` range flow가 깨지지 않는다.
 - flowsurface식 chart-adjacent microstructure belt와 하단 market-depth workspace가 실제 화면에 노출된다.
+- 차트 하단에 OI/Funding/CVD/Liq가 보조 지표 레인으로 붙어, 사용자가 카드 대신 차트 시계열 맥락에서 지표를 읽을 수 있다.
 - `/api/market/microstructure`가 실제 Binance futures REST snapshot을 반환하고 `/cogochi`가 이를 우선 소비한다.
 - `npm --prefix app run check`가 통과한다.
 
