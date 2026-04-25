@@ -873,6 +873,8 @@
     workspaceEnvelope.aiContext.thesis ?? '분석 완료'
   );
   const analyzeDetailWarnings = $derived(workspaceEnvelope.aiContext.warnings ?? []);
+  const narrativeDir = $derived(analyzeDetailDirection);
+  const narrativeBias = $derived(workspaceEnvelope.aiContext.thesis ?? null);
   const analyzeEvidenceItems = $derived.by(() => {
     const evidenceIds = workspaceEnvelope.sections.find((section) => section.id === 'evidence-log')?.studyIds ?? [];
     const items = evidenceIds
