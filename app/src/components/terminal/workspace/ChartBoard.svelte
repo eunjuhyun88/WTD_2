@@ -36,6 +36,7 @@
   import { AlphaOverlayLayer } from '../chart/AlphaOverlayLayer';
   import type { PanelAnalyzeData } from '$lib/terminal/panelAdapter';
   import { comparisonStore } from '$lib/stores/comparisonStore';
+  import { whaleStore } from '$lib/stores/whaleStore';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -597,6 +598,8 @@
   let stopLine:   ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   /** Liquidation / cluster levels on main chart (CryptoQuant-style price rails). */
   let liqPriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
+  /** W-0210 Layer 2: Whale liq price lines — separate set for easy clear/rebuild. */
+  let whalePriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
 
   // ── Timeframes ────────────────────────────────────────────────────────────
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
@@ -1348,6 +1351,38 @@
     liqPriceLines = [];
   }
 
+  // W-0210 Layer 2: Whale liquidation price lines
+  function clearWhalePriceLines() {
+    if (!priceSeries) return;
+    for (const pl of whalePriceLines) {
+      try { priceSeries.removePriceLine(pl); } catch { /* removed with chart */ }
+    }
+    whalePriceLines = [];
+  }
+
+  function applyWhalePriceLines() {
+    clearWhalePriceLines();
+    if (!priceSeries) return;
+    const positions = $whaleStore.positions;
+    // Only show whales with known liquidation prices
+    const withLiq = positions.filter(p => p.liquidationPrice != null && Number.isFinite(p.liquidationPrice!));
+    // Show top 3 by sizeUsd
+    const top3 = [...withLiq].sort((a, b) => b.sizeUsd - a.sizeUsd).slice(0, 3);
+    for (const pos of top3) {
+      const liqPrice = pos.liquidationPrice!;
+      const col = pos.netPosition === 'long' ? 'rgba(248,113,113,0.5)' : 'rgba(52,211,153,0.5)';
+      const pl = priceSeries.createPriceLine({
+        price: liqPrice,
+        color: col,
+        lineWidth: 1,
+        lineStyle: 3, // dotted
+        axisLabelVisible: false,
+        title: `🐋 ${pos.address}`,
+      });
+      whalePriceLines.push(pl);
+    }
+  }
+
   /** Nearest long/short liq + strongest cluster prices — same time axis as candles. */
   function applyLiqPriceLines() {
     clearLiqPriceLines();
@@ -1457,6 +1492,7 @@
 
   function destroyCharts() {
     clearLiqPriceLines();
+    clearWhalePriceLines();
     // W-0210: destroy alpha overlay before removing series
     _alphaOverlay?.destroy();
     _alphaOverlay = null;
@@ -1674,6 +1710,14 @@
     void analysisData;
     if (priceSeries && !loading) {
       syncAlphaOverlay();
+    }
+  });
+
+  // W-0210 Layer 2: Apply whale liq price lines when data changes
+  $effect(() => {
+    void $whaleStore.positions;
+    if (priceSeries && !loading) {
+      applyWhalePriceLines();
     }
   });
 

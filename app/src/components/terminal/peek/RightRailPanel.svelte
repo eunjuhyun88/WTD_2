@@ -1,6 +1,7 @@
 <script lang="ts">
   import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
   import DecisionHUD from '../workspace/DecisionHUD.svelte';
+  import WhaleWatchCard from '../workspace/WhaleWatchCard.svelte';
   import type { TerminalAnalyzeData } from '$lib/terminal/terminalDataOrchestrator';
   import type { LiveSignal } from '$lib/terminal/terminalDataOrchestrator';
   import type { TerminalAsset, TerminalVerdict } from '$lib/types/terminal';
@@ -174,6 +175,10 @@
       onAction={onAction}
       onWorkspaceToggle={onWorkspaceToggle}
     />
+    <!-- W-0210 Layer 2: Whale Watch — Hyperliquid top traders -->
+    <div class="whale-wrap">
+      <WhaleWatchCard symbol={activeSymbol} />
+    </div>
   {:else}
     <div class="board-empty">
       <p class="empty-icon">◈</p>
@@ -357,4 +362,10 @@
   }
   .loading-msg { font-family: var(--sc-font-mono); font-size: 13px; color: var(--sc-text-2); margin: 0; }
   @keyframes sc-spin { to { transform: rotate(360deg); } }
+
+  /* W-0210 Layer 2: Whale Watch wrapper */
+  .whale-wrap {
+    padding: 8px 8px 0;
+    flex-shrink: 0;
+  }
 </style>
