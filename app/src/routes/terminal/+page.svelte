@@ -98,6 +98,9 @@
     TerminalWatchlistItem,
   } from '$lib/contracts/terminalPersistence';
 
+  import { fetchThermoData, EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
+  import { alphaBuckets } from '$lib/stores/alphaBuckets';
+  import AlphaMarketBar from '../../components/cogochi/AlphaMarketBar.svelte';
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
@@ -194,6 +197,9 @@
   // ANALYZE: full layout with verdict HUD + evidence workspace
   // EXECUTE: future trade sizing (stub)
   let terminalMode = $state<'observe' | 'analyze' | 'execute'>('analyze');
+
+  // ── Global market pulse (thermo) ──────────────────────────
+  let thermoData = $state<ThermoData>(EMPTY_THERMO_DATA);
 
   // ── Workspace panel ────────────────────────────────────────
   let workspaceOpen = $state(false);
@@ -1167,6 +1173,8 @@
     loadTerminalReadPath();
     loadTerminalPersistenceState();
     loadEvents();
+    // Load global market pulse (thermo) — low priority, fire-and-forget
+    fetchThermoData().then((d) => { if (d) thermoData = d; });
     loadPeekCaptures();
     loadReviewInboxCount();
     peekCapturesInterval = setInterval(() => runIfVisible(loadPeekCaptures), 120_000);
@@ -1551,6 +1559,11 @@
     />
   </section>
 
+  <!-- Market Pulse bar: global context traders check first (F&G, Kimchi, BTC.D, buckets) -->
+  <div class="market-pulse-bar" aria-label="Global market pulse">
+    <AlphaMarketBar thermo={thermoData} buckets={$alphaBuckets} />
+  </div>
+
   <div class="peek-body">
     {#if showLeftRail}
     <aside class="peek-left-rail">
@@ -1733,6 +1746,7 @@
       onRetry={handleRetryAnalysis}
       onSelectAsset={selectAsset}
       onClearBoard={clearBoard}
+      onWorkspaceToggle={() => { workspaceOpen = !workspaceOpen; }}
     />
     {/if}
   </div>
@@ -1850,6 +1864,19 @@
     top: 0;
     z-index: 25;
   }
+
+  .market-pulse-bar {
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background: rgba(7, 10, 16, 0.96);
+    border-bottom: 1px solid rgba(255,255,255,0.045);
+    overflow: hidden;
+  }
+
+  @media (max-width: 767px) { .market-pulse-bar { display: none; } }
 
   .peek-body {
     display: flex;

@@ -37,6 +37,7 @@
     onRetry: () => void;
     onSelectAsset: (symbol: string) => void;
     onClearBoard: () => void;
+    onWorkspaceToggle?: () => void;
   }
 
   let {
@@ -69,6 +70,7 @@
     onRetry,
     onSelectAsset,
     onClearBoard,
+    onWorkspaceToggle,
   }: Props = $props();
 </script>
 
@@ -146,6 +148,7 @@
       isLoading={isLoadingActive && !heroVerdict}
       symbol={activeSymbol}
       onAction={onAction}
+      onWorkspaceToggle={onWorkspaceToggle}
     />
   {:else}
     <div class="board-empty">
