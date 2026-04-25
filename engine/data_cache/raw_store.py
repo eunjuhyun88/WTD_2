@@ -88,6 +88,34 @@ class RawPerpMetricRecord:
 
 
 @dataclass(frozen=True)
+class MarketLiquidationWindowRecord:
+    provider: str
+    venue: str
+    symbol: str
+    timeframe: str
+    window_start_ts: datetime
+    window_end_ts: datetime
+    source_start_ts: datetime
+    source_end_ts: datetime
+    ingested_at: datetime
+    freshness_ms: int
+    quality_state: str
+    fallback_state: str
+    event_count: int
+    short_event_count: int
+    long_event_count: int
+    short_liq_usd: float
+    long_liq_usd: float
+    total_liq_usd: float
+    net_liq_usd: float
+    dominant_side: str
+    dominance_share: float
+    imbalance_ratio: float
+    largest_event_usd: float
+    largest_event_side: str
+
+
+@dataclass(frozen=True)
 class MarketSearchIndexRecord:
     provider: str
     source: str
