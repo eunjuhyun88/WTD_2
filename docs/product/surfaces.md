@@ -33,6 +33,12 @@ Do not begin from route/component files first.
 - `/passport`
 - `/agent`, `/agent/[id]` (redirects to `/lab`)
 
+## Auxiliary Surfaces
+
+- ChatOps / CUI pattern review is defined in `docs/domains/chatops-pattern-review-surface.md`.
+- ChatOps may reduce friction for candidate review, outcome verdicts, benchmark decisions, and promotion decisions.
+- ChatOps does not replace `/terminal`, `/lab`, or `/dashboard`, and it must not own engine truth.
+
 ## Supporting APIs
 
 - `app/src/routes/api/cogochi/*`: analysis and terminal orchestration
@@ -45,3 +51,4 @@ Do not begin from route/component files first.
 - Surface code must not duplicate engine feature/block logic.
 - UI-specific state lives in `app`; domain logic remains in `engine`.
 - Use Day-1 vocabulary consistently: `capture`, `challenge`, `AutoResearch`, `instance`, `evaluate`, `watching`.
+- ChatOps actions must write canonical engine/app records; chat history is audit context, not source of truth.

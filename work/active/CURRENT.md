@@ -35,6 +35,10 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0204** | `W-0204-chatops-pattern-review-surface.md` | 🟡 DESIGN | CUI ChatOps as pattern review/verdict surface, not order bot |
+| **W-0203** | `W-0203-engine-performance-benchmark-lab.md` | 🟡 DESIGN | Baseline/candidate benchmark recording protocol |
+| **W-0202** | `W-0202-engine-strengthening-methodology.md` | 🟡 DESIGN | Turn 5 engine-strengthening pillars into implementation slices |
+| **W-0201** | `W-0201-pattern-wiki-compiler.md` | 🟡 DESIGN | Pattern Wiki skeleton + TRADOOR/PTB first compiled artifacts |
 | **W-0200** | `W-0200-core-loop-proof.md` | 🟢 COMPLETE — 머지됨 | GCP 재배포 + 프로덕션 스모크 테스트 |
 
 ---
