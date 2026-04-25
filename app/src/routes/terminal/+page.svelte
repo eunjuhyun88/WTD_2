@@ -101,6 +101,7 @@
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
+  import WorkspacePanel from '../../components/terminal/workspace/WorkspacePanel.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
   import ScanGrid from '../../components/terminal/peek/ScanGrid.svelte';
@@ -187,6 +188,23 @@
   const isDesktop = $derived($viewportTier.tier === 'DESKTOP');
   let showLeftRail = $state(true);
   let activeAnalysisTab = $state<'summary' | 'entry' | 'risk' | 'catalysts' | 'metrics'>('summary');
+
+  // ── Terminal mode ──────────────────────────────────────────
+  // OBSERVE: chart-focused (right rail + workspace hidden)
+  // ANALYZE: full layout with verdict HUD + evidence workspace
+  // EXECUTE: future trade sizing (stub)
+  let terminalMode = $state<'observe' | 'analyze' | 'execute'>('analyze');
+
+  // ── Workspace panel ────────────────────────────────────────
+  let workspaceOpen = $state(false);
+
+  function handleWorkspaceJudge(verdict: string, note?: string) {
+    if (activeSymbol) {
+      trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
+    }
+    // TODO: POST /api/cogochi/judgment once endpoint is built
+    console.log('[workspace-judge]', { symbol: activeSymbol, verdict, note });
+  }
   let chartWorkspaceEl = $state<HTMLElement | undefined>(undefined);
 
   // ── Chart price-level overlays (entry / target / stop) ───────
@@ -1528,6 +1546,8 @@
       onToggleMarketRail={toggleLeftRail}
       price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
       change24h={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+      mode={terminalMode}
+      onModeChange={(m) => { terminalMode = m as typeof terminalMode; }}
     />
   </section>
 
@@ -1551,6 +1571,7 @@
     </aside>
     {/if}
 
+    <div class="center-col">
     <CenterPanel
       symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
       tf={symbolToTF(gTf)}
@@ -1669,7 +1690,19 @@
         />
       {/snippet}
     </CenterPanel>
+    {#if terminalMode === 'analyze'}
+      <WorkspacePanel
+        analysisData={activeAnalysisData as any}
+        symbol={activeSymbol || pairToSymbol(gPair)}
+        tf={symbolToTF(gTf)}
+        open={workspaceOpen}
+        onToggle={() => workspaceOpen = !workspaceOpen}
+        onJudge={handleWorkspaceJudge}
+      />
+    {/if}
+    </div>
 
+    {#if terminalMode !== 'observe'}
     <RightRailPanel
       {isStreaming}
       {isScanMode}
@@ -1701,6 +1734,7 @@
       onSelectAsset={selectAsset}
       onClearBoard={clearBoard}
     />
+    {/if}
   </div>
 </div>
 
@@ -1821,6 +1855,15 @@
     display: flex;
     flex-direction: row;
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .center-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     overflow: hidden;
   }

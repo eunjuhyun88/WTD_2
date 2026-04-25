@@ -17,6 +17,7 @@
   import SaveStrip from './SaveStrip.svelte';
   import ResearchPanel from './ResearchPanel.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
+  import ChartMetricStrip from './ChartMetricStrip.svelte';
   import IndicatorPaneStack from './IndicatorPaneStack.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
@@ -179,6 +180,70 @@
         tone: quantRegime.tone === 'bull' ? 'bull' : quantRegime.tone === 'bear' ? 'bear' : quantRegime.tone === 'warn' ? 'warn' : 'neutral',
       });
     }
+    return items;
+  });
+
+  // ── Permanent derivatives metric strip ────────────────────────────────────
+  // Always-visible bar showing funding / OI / CVD / regime — core data for crypto traders
+  let metricStripItems = $derived.by(() => {
+    const items: Array<{ label: string; value: string; tone: 'bull' | 'bear' | 'warn' | 'neutral' | 'info' }> = [];
+
+    // Funding rate — most important derivative signal
+    if (quantRegime?.fundingPct != null) {
+      const fr = quantRegime.fundingPct;
+      const sign = fr >= 0 ? '+' : '';
+      items.push({
+        label: 'Funding',
+        value: `${sign}${fr.toFixed(4)}%`,
+        tone: fr > 0.05 ? 'bear' : fr < -0.02 ? 'bull' : 'neutral',
+      });
+    }
+
+    // OI Δ% — open interest momentum
+    if (quantRegime?.oiDeltaPct != null) {
+      const oi = quantRegime.oiDeltaPct;
+      const sign = oi >= 0 ? '+' : '';
+      items.push({
+        label: 'OI Δ',
+        value: `${sign}${oi.toFixed(2)}%`,
+        tone: oi > 3 ? 'warn' : oi > 0 ? 'bull' : 'bear',
+      });
+    }
+
+    // CVD divergence
+    if (cvdDivergence?.label) {
+      items.push({
+        label: 'CVD',
+        value: cvdDivergence.label,
+        tone: cvdDivergence.state === 'bullish_divergence' ? 'bull'
+          : cvdDivergence.state === 'bearish_divergence' ? 'bear'
+          : 'neutral',
+      });
+    }
+
+    // Regime
+    if (quantRegime?.label) {
+      items.push({
+        label: 'Regime',
+        value: quantRegime.label,
+        tone: quantRegime.tone,
+      });
+    }
+
+    // Bid/Ask book pressure
+    if (bidPct && askPct) {
+      items.push({
+        label: 'Book',
+        value: `${bidPct}/${askPct}`,
+        tone: bidPct >= askPct ? 'bull' : 'bear',
+      });
+    }
+
+    // Spread
+    if (depthData?.spreadBps != null) {
+      items.push({ label: 'Spread', value: `${depthData.spreadBps.toFixed(1)} bps`, tone: 'neutral' });
+    }
+
     return items;
   });
 
@@ -1691,6 +1756,9 @@
         <PhaseBadge phase={null} />
       </div>
     </div>
+    {#if metricStripItems.length > 0}
+      <ChartMetricStrip items={metricStripItems} />
+    {/if}
     <div class="pane-main"  bind:this={mainEl}></div>
 
     <!-- Indicator panes (Vol, MACD/RSI, OI, CVD) ────────────────────────────── -->

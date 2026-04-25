@@ -1,6 +1,6 @@
 <script lang="ts">
   import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
-  import TerminalContextPanel from '../workspace/TerminalContextPanel.svelte';
+  import DecisionHUD from '../workspace/DecisionHUD.svelte';
   import type { TerminalAnalyzeData } from '$lib/terminal/terminalDataOrchestrator';
   import type { LiveSignal } from '$lib/terminal/terminalDataOrchestrator';
   import type { TerminalAsset, TerminalVerdict } from '$lib/types/terminal';
@@ -126,20 +126,11 @@
     </div>
     {#if heroAsset && heroVerdict}
       <div class="scan-detail">
-        <TerminalContextPanel
-          {analysisData}
-          {newsData}
-          activeTab={activeAnalysisTab}
-          onTabChange={onTabChange}
+        <DecisionHUD
+          analysisData={analysisData as any}
+          isStreaming={isStreaming}
+          symbol={activeSymbol}
           onAction={onAction}
-          onPinToggle={onPinToggle}
-          onAlertToggle={onAlertToggle}
-          onRetry={onRetry}
-          isPinned={isActivePinned}
-          hasSavedAlert={hasActiveSavedAlert}
-          bars={ohlcvBars}
-          {layerBarsMap}
-          {patternRecallMatches}
         />
       </div>
     {/if}
@@ -149,20 +140,12 @@
       <p class="loading-msg">Analyzing {activePairDisplay}…</p>
     </div>
   {:else if heroAsset && heroVerdict}
-    <TerminalContextPanel
-      {analysisData}
-      {newsData}
-      activeTab={activeAnalysisTab}
-      onTabChange={onTabChange}
+    <DecisionHUD
+      analysisData={analysisData as any}
+      isStreaming={isStreaming}
+      isLoading={isLoadingActive && !heroVerdict}
+      symbol={activeSymbol}
       onAction={onAction}
-      onPinToggle={onPinToggle}
-      onAlertToggle={onAlertToggle}
-      onRetry={onRetry}
-      isPinned={isActivePinned}
-      hasSavedAlert={hasActiveSavedAlert}
-      bars={ohlcvBars}
-      {layerBarsMap}
-      {patternRecallMatches}
     />
   {:else}
     <div class="board-empty">
