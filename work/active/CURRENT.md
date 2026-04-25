@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`7aa03160` — origin/main (2026-04-26) — memory sync #292 + active variant promotion + indicator defaults + CI governance 포함
+`b942f346` — origin/main (2026-04-26) — memory sync #292 + active variant promotion + indicator defaults + CI governance 포함
 
 ---
 
