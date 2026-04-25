@@ -4,9 +4,7 @@ import {
 	fetchFactConfluenceProxy,
 	fetchFactContextProxy,
 	fetchIndicatorCatalogProxy,
-	fetchFactMarketCapProxy,
-	fetchFactReferenceStackProxy,
-	fetchPerpContextProxy,
+	fetchFactPerpContextProxy,
 } from './facts';
 import {
 	fetchSeedSearchRunProxy,
@@ -87,34 +85,12 @@ describe('engine plane clients', () => {
 			if (url.startsWith('/api/facts/perp-context')) {
 				return Response.json({
 					ok: true,
-					owner: 'engine',
-					plane: 'fact',
-					kind: 'perp_context',
-					status: 'transitional',
-					generated_at: '2026-04-23T00:00:00Z',
 					symbol: 'ETHUSDT',
 					timeframe: '4h',
-					source: { id: 'perp', state: 'live', rows: 600, summary: '600 rows' },
 					metrics: {
 						funding_rate: -0.0012,
-						oi_change_1h: 0.02,
-						oi_change_24h: 0.05,
-						long_short_ratio: 0.88,
-						taker_buy_ratio_1h: 0.61,
+						long_short_ratio: 0.91,
 					},
-					regime: { crowding: 'crowded_shorts', cvd_state: 'buying' },
-					notes: [],
-				});
-			}
-			if (url.startsWith('/api/facts/market-cap')) {
-				return Response.json({
-					ok: true,
-					owner: 'engine',
-					plane: 'fact',
-					kind: 'market_cap',
-					status: 'transitional',
-					generated_at: '2026-04-23T00:00:00Z',
-					btc_dominance: 61.2,
 				});
 			}
 			return Response.json({
@@ -138,7 +114,7 @@ describe('engine plane clients', () => {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
-		const referenceStack = await fetchFactReferenceStackProxy(fetchMock as typeof fetch, {
+		const perp = await fetchFactPerpContextProxy(fetchMock as typeof fetch, {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
@@ -163,8 +139,11 @@ describe('engine plane clients', () => {
 			'/api/facts/confluence?symbol=ETHUSDT&timeframe=4h&offline=true',
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
-		const secondUrl = String(fetchMock.mock.calls[1]?.[0]);
-		const secondInit = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			2,
+			'/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true',
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
 		const thirdUrl = String(fetchMock.mock.calls[2]?.[0]);
 		const thirdInit = fetchMock.mock.calls[2]?.[1] as RequestInit | undefined;
 		const fourthUrl = String(fetchMock.mock.calls[3]?.[0]);

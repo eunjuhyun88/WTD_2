@@ -1,26 +1,12 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import {
-    fetchAnalyze,
-    fetchAnalyzeAndChart,
-    fetchAlphaWorldModel,
-    fetchConfluenceCurrent,
-    fetchConfluenceHistory,
-    fetchFundingFlip,
-    fetchFundingHistory,
-    fetchIndicatorContext,
-    fetchLiqClusters,
-    fetchOptionsSnapshot,
-    fetchRecentCaptures,
-    fetchRvCone,
-    fetchSsr,
-    fetchVenueDivergence,
-    submitTradeOutcome,
-    type ConfluenceHistoryEntry,
-    type RecentCaptureSummary,
-    type TradeOutcomeResult,
-  } from '$lib/api/terminalBackend';
+  import { fetchCogochiWorkspaceBundle } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
+  import type {
+    CogochiWorkspaceEnvelope,
+    DexOverviewPayload,
+    OnchainBackdropPayload,
+  } from '$lib/contracts/cogochiDataPlane';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
@@ -46,6 +32,19 @@
   } from '$lib/indicators/adapter';
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
+  import {
+    getAnalyzePanelsByZone,
+    isAnalyzeComparePinned,
+    isAnalyzePanelCollapsed,
+    moveAnalyzeComparePanel,
+    moveAnalyzePanel as moveAnalyzePanelLayout,
+    normalizeAnalyzeCompareIds,
+    normalizeAnalyzePanelLayout,
+    setAnalyzePanelZone,
+    toggleAnalyzeComparePanel,
+    toggleAnalyzePanelCollapsed,
+    type AnalyzePanelId,
+  } from '$lib/contracts/cogochiPanelLayout';
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -75,25 +74,42 @@
   // analyzeData is refreshed on candle close via ChartBoard's onCandleClose callback.
   let chartPayload = $state<ChartSeriesPayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
+  let workspaceEnvelopeState = $state<CogochiWorkspaceEnvelope | null>(null);
   let chartLoading = $state(false);
   let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
 
-  // Fetch initial bundle (one-shot per symbol/tf)
+  async function refreshWorkspaceBundleFor(sym: string, tf: string, includeChart = false) {
+    const bundle = await fetchCogochiWorkspaceBundle({ symbol: sym, tf, includeChart });
+    if (symbol !== sym || timeframe !== tf) return;
+    analyzeData = bundle.analyze ?? null;
+    confluence = bundle.confluence ?? null;
+    venueDivergence = bundle.venueDivergence ?? null;
+    liqClusters = bundle.liqClusters ?? null;
+    optionsSnapshot = bundle.optionsSnapshot ?? null;
+    if (bundle.indicatorContext) indicatorContext = bundle.indicatorContext;
+    if (bundle.ssr) ssr = bundle.ssr;
+    if (bundle.rvCone) rvCone = bundle.rvCone;
+    if (bundle.fundingFlip) fundingFlip = bundle.fundingFlip;
+    onchainBackdrop = bundle.onchainBackdrop ?? null;
+    dexOverview = bundle.dexOverview ?? null;
+    workspaceEnvelopeState = bundle.workspaceEnvelope ?? null;
+    if (includeChart) {
+      chartPayload = bundle.chartPayload ?? null;
+      if (bundle.chartPayload?.klines?.length) {
+        lastCandleTime = bundle.chartPayload.klines[bundle.chartPayload.klines.length - 1].time;
+      }
+    }
+  }
+
+  // Fetch initial workspace bundle (single route for analyze/chart/summary studies)
   $effect(() => {
     const sym = symbol;
     const tf = timeframe;
     chartLoading = true;
     lastCandleTime = null;
-    fetchAnalyzeAndChart({ symbol: sym, tf })
-      .then(result => {
-        chartPayload = result.chartPayload ?? null;
-        analyzeData = result.analyze ?? null;
-        chartLoading = false;
-        if (result.chartPayload?.klines?.length) {
-          lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
-        }
-      })
-      .catch(() => { chartLoading = false; });
+    void refreshWorkspaceBundleFor(sym, tf, true).finally(() => {
+      if (symbol === sym && timeframe === tf) chartLoading = false;
+    });
   });
 
   // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
@@ -101,34 +117,14 @@
   async function handleCandleClose(bar: { time: number }) {
     if (lastCandleTime === bar.time) return; // dedup duplicate fires
     lastCandleTime = bar.time;
-    try {
-      const nextAnalyze = await fetchAnalyze(symbol, timeframe);
-      if (nextAnalyze) analyzeData = nextAnalyze;
-    } catch { /* retry on next candle */ }
-    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
-    // in lock-step with analyze on candle close.
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
-    void refreshConfluence();
+    await refreshWorkspaceBundleFor(symbol, timeframe, false);
   }
 
   // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
   let venueDivergence = $state<VenueDivergencePayload | null>(null);
 
-  async function refreshVenueDivergence() {
-    try {
-      venueDivergence = await fetchVenueDivergence(symbol);
-    } catch { /* tolerate: next refresh will retry */ }
-  }
-
   // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
   let liqClusters = $state<LiqClusterPayload | null>(null);
-
-  async function refreshLiqClusters() {
-    try {
-      liqClusters = await fetchLiqClusters(symbol, '4h');
-    } catch { /* tolerate */ }
-  }
 
   // ── Rolling Percentile Context (W-0122 rolling percentile) ───────────
   // 30d distribution data: OI deltas + funding history → real percentiles.
@@ -145,6 +141,8 @@
   let ssr = $state<SsrPayload | null>(null);
   let rvCone = $state<RvConePayload | null>(null);
   let fundingFlip = $state<FundingFlipPayload | null>(null);
+  let onchainBackdrop = $state<OnchainBackdropPayload | null>(null);
+  let dexOverview = $state<DexOverviewPayload | null>(null);
 
   async function refreshSsr() {
     try {
@@ -185,24 +183,9 @@
   // ── Pillar 2: Options snapshot (W-0122-C1) ───────────────────────────
   let optionsSnapshot = $state<OptionsSnapshotPayload | null>(null);
 
-  async function refreshOptionsSnapshot() {
-    // Deribit supports BTC and ETH currencies.
-    const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
-    if (!currency) { optionsSnapshot = null; return; }
-    try {
-      optionsSnapshot = await fetchOptionsSnapshot(currency);
-    } catch { /* tolerate */ }
-  }
-
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
   let confluence = $state<ConfluenceResult | null>(null);
   let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
-
-  async function refreshConfluence() {
-    try {
-      confluence = await fetchConfluenceCurrent(symbol, timeframe);
-    } catch { /* tolerate */ }
-  }
 
   async function refreshConfluenceHistory() {
     try {
@@ -215,46 +198,42 @@
   // every 5m since its server cache TTL is 10m. SSR/RV/flip are slower still.
   $effect(() => {
     void symbol;
+    void timeframe;
     venueDivergence = null;
     liqClusters = null;
     indicatorContext = null;
     ssr = null;
     rvCone = null;
     fundingFlip = null;
+    onchainBackdrop = null;
+    dexOverview = null;
     fundingHistory = null;
     optionsSnapshot = null;
     confluence = null;
     confluenceHistory = [];
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
+    workspaceEnvelopeState = null;
     void refreshIndicatorContext();
     void refreshSsr();
     void refreshRvCone();
     void refreshFundingFlip();
     void refreshFundingHistory();
-    void refreshOptionsSnapshot();
-    void refreshConfluence();
     void refreshConfluenceHistory();
     void refreshPastCaptures();
     const fastIv = setInterval(() => {
-      void refreshVenueDivergence();
-      void refreshLiqClusters();
-      void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
+      void refreshWorkspaceBundleFor(symbol, timeframe, false);
       void refreshConfluenceHistory(); // pull updated sparkline entries
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
-    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
+    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min.
     const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
     const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
     const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
-    const optIv = setInterval(() => void refreshOptionsSnapshot(), 5 * 60_000);
     return () => {
       clearInterval(fastIv);
       clearInterval(slowIv);
       clearInterval(flipIv);
       clearInterval(ssrIv);
       clearInterval(rvIv);
-      clearInterval(optIv);
     };
   });
 
@@ -271,16 +250,24 @@
     optionsSnapshot,
   }));
 
-  const workspaceEnvelope = $derived(buildCogochiWorkspaceEnvelope({
-    symbol,
-    timeframe,
-    analyze: analyzeData,
-    chartPayload,
-    confluence,
-    venueDivergence,
-    liqClusters,
-    optionsSnapshot,
-  }));
+  const workspaceEnvelope = $derived(
+    workspaceEnvelopeState ?? buildCogochiWorkspaceEnvelope({
+      symbol,
+      timeframe,
+      analyze: analyzeData,
+      chartPayload,
+      confluence,
+      venueDivergence,
+      liqClusters,
+      optionsSnapshot,
+      indicatorContext,
+      ssr,
+      rvCone,
+      fundingFlip,
+      onchainBackdrop,
+      dexOverview,
+    })
+  );
 
   const workspaceStudyMap = $derived.by(() => buildStudyMap(workspaceEnvelope.studies));
   const workspaceSummaryCards = $derived.by(() => {
@@ -288,6 +275,7 @@
     return summaryIds
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study))
+      .sort((a, b) => a.displayPriority - b.displayPriority)
       .slice(0, 4)
       .map((study) => {
         const primary = study.summary[0];
@@ -304,6 +292,227 @@
         };
       });
   });
+
+  const workspaceBackdropStudies = $derived.by(() => {
+    const detailIds = workspaceEnvelope.sections.find((section) => section.id === 'detail-workspace')?.studyIds ?? [];
+    const target = new Set([
+      'stablecoin-liquidity',
+      'realized-volatility',
+      'funding-regime',
+      'onchain-cycle',
+      'dex-liquidity',
+      'dex-whale-flow',
+    ]);
+    return detailIds
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study) && target.has(study.id))
+      .sort((a, b) => a.displayPriority - b.displayPriority);
+  });
+
+  function formatFreshness(ms: number | null | undefined): string {
+    if (ms == null || !Number.isFinite(ms)) return 'live';
+    if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+    return `${Math.round(ms / 3_600_000)}h`;
+  }
+
+  function formatSourceRefs(refs: Array<{ provider: string }>): string {
+    return refs.map((ref) => ref.provider.toUpperCase()).join(' · ');
+  }
+
+  function formatUsdCompact(v: number | null | undefined): string {
+    if (v == null || !Number.isFinite(v)) return '—';
+    const abs = Math.abs(v);
+    if (abs >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
+    if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
+    return `$${v.toFixed(0)}`;
+  }
+
+  function formatPctCompact(v: number | null | undefined, digits = 1): string {
+    if (v == null || !Number.isFinite(v)) return '—';
+    return `${v >= 0 ? '+' : ''}${v.toFixed(digits)}%`;
+  }
+
+  function formatCountCompact(v: number | null | undefined): string {
+    if (v == null || !Number.isFinite(v)) return '—';
+    return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : String(Math.round(v));
+  }
+
+  function isDexOverviewPayload(payload: unknown): payload is DexOverviewPayload {
+    return Boolean(
+      payload &&
+      typeof payload === 'object' &&
+      'pairCount' in payload &&
+      'topPairs' in payload &&
+      Array.isArray((payload as DexOverviewPayload).topPairs)
+    );
+  }
+
+  function isOnchainBackdropPayload(payload: unknown): payload is OnchainBackdropPayload {
+    return Boolean(
+      payload &&
+      typeof payload === 'object' &&
+      'asset' in payload &&
+      'source' in payload &&
+      'metrics' in payload
+    );
+  }
+
+  const dexDetailPayload = $derived.by(() => {
+    const payload = workspaceStudyMap['dex-liquidity']?.payload;
+    return isDexOverviewPayload(payload) ? payload : null;
+  });
+
+  const onchainDetailPayload = $derived.by(() => {
+    const payload = workspaceStudyMap['onchain-cycle']?.payload;
+    return isOnchainBackdropPayload(payload) ? payload : null;
+  });
+
+  function buildStudyAIDetailLines(study: NonNullable<(typeof workspaceBackdropStudies)[number]>): string[] {
+    const summary = study.summary
+      .filter((row) => row.value != null && row.value !== '')
+      .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`);
+    const lines = [`- ${study.title}: ${summary.join(' / ') || '—'}`];
+
+    if (study.id === 'dex-liquidity' && isDexOverviewPayload(study.payload)) {
+      const dex = study.payload;
+      if (dex.chainBreakdown.length) {
+        lines.push(`  - Chains: ${dex.chainBreakdown.slice(0, 3).map((chain) => `${chain.chainLabel} liq ${formatUsdCompact(chain.liquidityUsd)} / TVL ${formatUsdCompact(chain.chainTvlUsd)} / vol share ${formatPctCompact(chain.volumeSharePct)}`).join(' | ')}`);
+      }
+      if (dex.topPairs.length) {
+        lines.push(`  - Top pairs: ${dex.topPairs.slice(0, 3).map((pair) => `${pair.label} on ${pair.dexId} (${pair.chainId}) vol ${formatUsdCompact(pair.volume24hUsd)} liq ${formatUsdCompact(pair.liquidityUsd)}`).join(' | ')}`);
+      }
+    }
+
+    if (study.id === 'onchain-cycle' && isOnchainBackdropPayload(study.payload)) {
+      const onchain = study.payload;
+      lines.push(
+        `  - Cycle detail: MVRV ${onchain.metrics?.mvrv?.toFixed(2) ?? '—'} / NUPL ${onchain.metrics?.nupl?.toFixed(3) ?? '—'} / SOPR ${onchain.metrics?.sopr?.toFixed(3) ?? '—'} / netflow ${formatUsdCompact(onchain.exchangeReserve?.netflow24h)}`,
+      );
+    }
+
+    lines.push(`  - Trust: ${study.trust.tier} · Sources: ${formatSourceRefs(study.sourceRefs)}${study.methodology ? ` · ${study.methodology.label}` : ''}`);
+    return lines;
+  }
+
+  const ANALYZE_PANEL_META: Record<AnalyzePanelId, { kicker: string; copy: string }> = {
+    thesis: {
+      kicker: 'THESIS',
+      copy: '오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널',
+    },
+    'live-stack': {
+      kicker: 'LIVE STACK',
+      copy: '펀딩·OI·볼륨의 현재값과 스택 해석',
+    },
+    options: {
+      kicker: 'OPTIONS',
+      copy: 'Deribit 스냅샷 기반 감마/스큐 컨텍스트',
+    },
+    'venue-divergence': {
+      kicker: 'VENUE DIVERGENCE',
+      copy: '거래소 간 흐름 차이와 포지션 비대칭',
+    },
+    'verified-backdrop': {
+      kicker: 'ON-CHAIN / DEX / VOL',
+      copy: '실데이터 기반 backdrop 지표와 source/trust/methodology',
+    },
+    'dex-market-structure': {
+      kicker: 'DEX MARKET STRUCTURE',
+      copy: '실제 top pairs, 체인 집중도, TVL backdrop 을 같은 payload로 본다',
+    },
+    'onchain-cycle-detail': {
+      kicker: 'ON-CHAIN CYCLE DETAIL',
+      copy: 'cycle proxy 의 raw metrics 를 직접 확인한다',
+    },
+    'evidence-log': {
+      kicker: 'EVIDENCE LOG',
+      copy: '판단에 사용한 근거 항목을 빠르게 확인',
+    },
+    'execution-board': {
+      kicker: 'EXECUTION BOARD',
+      copy: '청산 밀도와 주문 계획을 같이 본다',
+    },
+  };
+
+  const ANALYZE_PANEL_STUDIES: Record<AnalyzePanelId, string[]> = {
+    thesis: ['confluence', 'price-structure'],
+    'live-stack': ['funding', 'open-interest', 'cvd'],
+    options: ['options'],
+    'venue-divergence': ['venue-divergence'],
+    'verified-backdrop': ['stablecoin-liquidity', 'realized-volatility', 'funding-regime', 'onchain-cycle', 'dex-liquidity', 'dex-whale-flow'],
+    'dex-market-structure': ['dex-liquidity', 'dex-whale-flow'],
+    'onchain-cycle-detail': ['onchain-cycle'],
+    'evidence-log': ['confluence', 'funding', 'open-interest', 'onchain-cycle', 'dex-liquidity', 'venue-divergence'],
+    'execution-board': ['execution', 'liquidity'],
+  };
+
+  const analyzePanelLayout = $derived(normalizeAnalyzePanelLayout(tabState.analyzeLayout));
+
+  function updateAnalyzePanelLayout(
+    updater: (layout: ReturnType<typeof normalizeAnalyzePanelLayout>) => ReturnType<typeof normalizeAnalyzePanelLayout>,
+  ) {
+    updateTabState((state) => ({
+      ...state,
+      analyzeLayout: updater(normalizeAnalyzePanelLayout(state.analyzeLayout)),
+    }));
+  }
+
+  function moveAnalyzePanel(id: AnalyzePanelId, direction: 'backward' | 'forward') {
+    updateAnalyzePanelLayout((layout) => moveAnalyzePanelLayout(layout, id, direction));
+  }
+
+  function toggleAnalyzePanelDock(id: AnalyzePanelId) {
+    const currentZone = analyzePanelLayout.items.find((item) => item.id === id)?.zone ?? 'main';
+    updateAnalyzePanelLayout((layout) => setAnalyzePanelZone(layout, id, currentZone === 'main' ? 'side' : 'main'));
+  }
+
+  function toggleAnalyzePanelSection(id: AnalyzePanelId) {
+    updateAnalyzePanelLayout((layout) => toggleAnalyzePanelCollapsed(layout, id));
+  }
+
+  function analyzePanelIsCollapsed(id: AnalyzePanelId): boolean {
+    return isAnalyzePanelCollapsed(analyzePanelLayout, id);
+  }
+
+  function analyzePanelVisible(id: AnalyzePanelId): boolean {
+    switch (id) {
+      case 'options':
+        return Boolean(indicatorValues.put_call_ratio || indicatorValues.options_skew_25d);
+      case 'verified-backdrop':
+        return workspaceBackdropStudies.length > 0;
+      case 'dex-market-structure':
+        return Boolean(dexDetailPayload);
+      case 'onchain-cycle-detail':
+        return Boolean(onchainDetailPayload);
+      default:
+        return true;
+    }
+  }
+
+  const analyzeMainPanelIds = $derived(
+    getAnalyzePanelsByZone(analyzePanelLayout, 'main').filter((id) => analyzePanelVisible(id))
+  );
+
+  const analyzeSidePanelIds = $derived(
+    getAnalyzePanelsByZone(analyzePanelLayout, 'side').filter((id) => analyzePanelVisible(id))
+  );
+
+  const analyzeComparePanelIds = $derived(
+    normalizeAnalyzeCompareIds(analyzePanelLayout).filter((id) => analyzePanelVisible(id))
+  );
+
+  function toggleAnalyzeCompare(id: AnalyzePanelId) {
+    updateAnalyzePanelLayout((layout) => toggleAnalyzeComparePanel(layout, id));
+  }
+
+  function moveComparePanel(id: AnalyzePanelId, direction: 'backward' | 'forward') {
+    updateAnalyzePanelLayout((layout) => moveAnalyzeComparePanel(layout, id, direction));
+  }
+
+  function analyzePanelPinned(id: AnalyzePanelId): boolean {
+    return isAnalyzeComparePinned(analyzePanelLayout, id);
+  }
 
   // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
   // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
@@ -345,32 +554,98 @@
     updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'analyze' }));
   }
 
-  function openAnalyzeAIDetail() {
-    const selectedStudies = workspaceEnvelope.aiContext.selectedStudyIds
+  function openAnalyzeAIDetail(panelId?: AnalyzePanelId) {
+    const selectedIds = panelId
+      ? ANALYZE_PANEL_STUDIES[panelId].filter((id) => workspaceStudyMap[id])
+      : workspaceEnvelope.aiContext.selectedStudyIds;
+
+    const selectedStudies = selectedIds
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study));
 
-    const userText = `${symbol} ${timeframe} analyze detail 설명해줘`;
+    const panelMeta = panelId ? ANALYZE_PANEL_META[panelId] : null;
+    const userText = panelMeta
+      ? `${symbol} ${timeframe} ${panelMeta.kicker} detail 설명해줘`
+      : `${symbol} ${timeframe} analyze detail 설명해줘`;
+    const extraLines =
+      panelId === 'evidence-log'
+        ? evidenceItems.map((item) => `- Evidence: ${item.k} ${item.v}${item.note ? ` · ${item.note}` : ''}`)
+        : panelId === 'execution-board'
+          ? proposal.map((item) => `- ${item.label}: ${item.val}${item.hint ? ` · ${item.hint}` : ''}`)
+          : [];
     const assistantText = [
-      `**${symbol} · ${timeframe} ANALYZE DETAIL**`,
+      `**${symbol} · ${timeframe} ${panelMeta?.kicker ?? 'ANALYZE DETAIL'}**`,
       workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
       `- Selected studies: ${selectedStudies.map((study) => study.title).join(', ') || '—'}`,
       ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
       '',
       '**Study Summary**',
-      ...selectedStudies.map((study) => {
-        const parts = study.summary
-          .filter((row) => row.value != null && row.value !== '')
-          .slice(0, 3)
-          .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`);
-        return `- ${study.title}: ${parts.join(' / ') || '—'}`;
-      }),
+      ...selectedStudies.flatMap((study) => buildStudyAIDetailLines(study)),
+      ...extraLines,
     ]
       .filter((line): line is string => Boolean(line))
       .join('\n');
 
     window.dispatchEvent(new CustomEvent('cogochi:cmd', {
       detail: { id: 'open_ai_detail', userText, assistantText },
+    }));
+  }
+
+  function collectPanelStudies(panelId: AnalyzePanelId) {
+    return ANALYZE_PANEL_STUDIES[panelId]
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study));
+  }
+
+  const compareShelfPanels = $derived.by(() =>
+    analyzeComparePanelIds.map((panelId) => {
+      const studies = collectPanelStudies(panelId);
+      const summary = studies
+        .flatMap((study) =>
+          study.summary
+            .slice(0, 2)
+            .filter((row) => row.value != null && row.value !== '')
+            .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`),
+        )
+        .slice(0, 3);
+      return {
+        id: panelId,
+        kicker: ANALYZE_PANEL_META[panelId].kicker,
+        copy: ANALYZE_PANEL_META[panelId].copy,
+        studies,
+        summary,
+      };
+    }),
+  );
+
+  function openAnalyzeCompareDetail() {
+    const comparePanels = compareShelfPanels;
+    const compareStudies = comparePanels.flatMap((panel) => panel.studies);
+    const dedupedStudies = compareStudies.filter(
+      (study, index) => compareStudies.findIndex((candidate) => candidate.id === study.id) === index,
+    );
+    const assistantText = [
+      `**${symbol} · ${timeframe} ANALYZE COMPARE SHELF**`,
+      workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
+      `- Pinned panels: ${comparePanels.map((panel) => panel.kicker).join(', ') || '—'}`,
+      ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
+      '',
+      '**Panel Compare**',
+      ...comparePanels.flatMap((panel) => [
+        `- ${panel.kicker}: ${panel.summary.join(' / ') || '—'}`,
+        ...panel.studies.flatMap((study) => buildStudyAIDetailLines(study).map((line) => `  ${line}`)),
+      ]),
+    ]
+      .filter((line): line is string => Boolean(line))
+      .join('\n');
+
+    window.dispatchEvent(new CustomEvent('cogochi:cmd', {
+      detail: {
+        id: 'open_ai_detail',
+        userText: `${symbol} ${timeframe} pinned analyze panels 비교 설명해줘`,
+        assistantText,
+        compareStudyIds: dedupedStudies.map((study) => study.id),
+      },
     }));
   }
 
@@ -1056,87 +1331,364 @@
                   </div>
                 {/each}
               </div>
+              <div class="compare-shelf">
+                <div class="compare-shelf-head">
+                  <div class="compare-shelf-copy">
+                    <span class="compare-shelf-kicker">COMPARE SHELF</span>
+                    <span class="compare-shelf-sub">Claude-style pinned panels · 추가 fetch 없이 같은 workspace payload 재사용</span>
+                  </div>
+                  <div class="compare-shelf-actions">
+                    <button class="analyze-panel-btn" type="button" onclick={openAnalyzeCompareDetail} disabled={compareShelfPanels.length === 0}>
+                      AI COMPARE
+                    </button>
+                  </div>
+                </div>
+                <div class="compare-shelf-grid">
+                  {#if compareShelfPanels.length === 0}
+                    <div class="compare-shelf-empty">
+                      패널 헤더의 <code>PIN</code> 으로 비교 shelf 에 올릴 수 있습니다.
+                    </div>
+                  {:else}
+                    {#each compareShelfPanels as panel, compareIndex}
+                      <div class="compare-card">
+                        <div class="compare-card-head">
+                          <div>
+                            <div class="compare-card-title">{panel.kicker}</div>
+                            <div class="compare-card-copy">{panel.copy}</div>
+                          </div>
+                          <div class="compare-card-actions">
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveComparePanel(panel.id, 'backward')} disabled={compareIndex === 0}>↑</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveComparePanel(panel.id, 'forward')} disabled={compareIndex === compareShelfPanels.length - 1}>↓</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panel.id)}>AI</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panel.id)}>UNPIN</button>
+                          </div>
+                        </div>
+                        <div class="compare-card-lines">
+                          {#each panel.summary as line}
+                            <div class="compare-card-line">{line}</div>
+                          {/each}
+                        </div>
+                      </div>
+                    {/each}
+                  {/if}
+                </div>
+              </div>
               <div class="analyze-columns">
                 <!-- Left: detailed reading workspace -->
                 <div class="analyze-left">
                   {#if confluence}
                     <ConfluenceBanner value={confluence} history={confluenceHistory} />
                   {/if}
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">THESIS</span>
-                      <span class="analyze-section-copy">오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널</span>
-                    </div>
-                    <div class="narrative">
-                      <span class="bull">{analyzeDetailDirection} 진입 권장 ·</span>
-                      {' '}{analyzeDetailThesis}
-                      {#if analyzeDetailWarnings.length > 0}
-                        <div class="analyze-warning-list">
-                          {#each analyzeDetailWarnings as warning}
-                            <span class="warn">{warning}</span>
-                          {/each}
-                        </div>
-                      {/if}
-                    </div>
-                  </div>
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">LIVE STACK</span>
-                      <span class="analyze-section-copy">펀딩·OI·볼륨의 현재값과 스택 해석</span>
-                    </div>
-                    <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-                  </div>
-                  {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+                  {#each analyzeMainPanelIds as panelId, panelIndex}
                     <div class="analyze-section">
                       <div class="analyze-section-head">
-                        <span class="analyze-kicker">OPTIONS</span>
-                        <span class="analyze-section-copy">Deribit 스냅샷 기반 감마/스큐 컨텍스트</span>
-                      </div>
-                      <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-                    </div>
-                  {/if}
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">VENUE DIVERGENCE</span>
-                      <span class="analyze-section-copy">거래소 간 흐름 차이와 포지션 비대칭</span>
-                    </div>
-                    <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-                  </div>
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">EVIDENCE LOG</span>
-                      <span class="analyze-section-copy">판단에 사용한 근거 항목을 빠르게 확인</span>
-                    </div>
-                    <div class="evidence-grid">
-                      {#each analyzeEvidenceItems as item}
-                        <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
-                          <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
-                          <span class="ev-key">{item.k}</span>
-                          <span class="ev-val">{item.v}</span>
-                          <span class="ev-note">{item.note}</span>
+                        <div class="analyze-head-copy">
+                          <span class="analyze-kicker">{ANALYZE_PANEL_META[panelId].kicker}</span>
+                          <span class="analyze-section-copy">{ANALYZE_PANEL_META[panelId].copy}</span>
                         </div>
-                      {/each}
+                        <div class="analyze-panel-actions">
+                          <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeMainPanelIds.length - 1}>↓</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>DOCK</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panelId)}>
+                              {analyzePanelPinned(panelId) ? 'UNPIN' : 'PIN'}
+                            </button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
+                              {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
+                            </button>
+                        </div>
+                      </div>
+                      {#if !analyzePanelIsCollapsed(panelId)}
+                        {#if panelId === 'thesis'}
+                          <div class="narrative">
+                            <span class="bull">{narrativeDir} 진입 권장 ·</span>
+                            {' '}{narrativeBias ?? '분석 완료'}
+                            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+                              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+                            {/if}
+                          </div>
+                        {:else if panelId === 'live-stack'}
+                          <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+                        {:else if panelId === 'options'}
+                          <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+                        {:else if panelId === 'venue-divergence'}
+                          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+                        {:else if panelId === 'verified-backdrop'}
+                          <div class="study-grid">
+                            {#each workspaceBackdropStudies as study}
+                              <div class="study-card">
+                                <div class="study-card-head">
+                                  <div>
+                                    <div class="study-card-title">{study.title}</div>
+                                    <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
+                                  </div>
+                                  <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
+                                </div>
+                                <div class="study-card-metrics">
+                                  {#each study.summary as row}
+                                    <div class="study-metric">
+                                      <span class="study-metric-label">{row.label}</span>
+                                      <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
+                                        {row.value ?? '—'}
+                                      </span>
+                                      {#if row.note}
+                                        <span class="study-metric-note">{row.note}</span>
+                                      {/if}
+                                    </div>
+                                  {/each}
+                                </div>
+                                {#if study.methodology}
+                                  <div class="study-card-method">{study.methodology.label}</div>
+                                {/if}
+                              </div>
+                            {/each}
+                          </div>
+                        {:else if panelId === 'dex-market-structure' && dexDetailPayload}
+                          <div class="dex-strip">
+                            <div class="dex-strip-item">
+                              <span class="dex-strip-label">TOTAL DEFI TVL</span>
+                              <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.totalDefiTvlUsd)}</span>
+                              <span class="dex-strip-note">{formatPctCompact(dexDetailPayload.totalDefiTvlChange24hPct)}</span>
+                            </div>
+                            <div class="dex-strip-item">
+                              <span class="dex-strip-label">DEX SHARE</span>
+                              <span class="dex-strip-value">{formatPctCompact(dexDetailPayload.topDexSharePct)}</span>
+                              <span class="dex-strip-note">{dexDetailPayload.coverage.mode} coverage</span>
+                            </div>
+                            <div class="dex-strip-item">
+                              <span class="dex-strip-label">AVG TRADE</span>
+                              <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.avgTradeSizeUsd)}</span>
+                              <span class="dex-strip-note">{formatCountCompact(dexDetailPayload.txns24h)} txns / 24h</span>
+                            </div>
+                          </div>
+                          {#if dexDetailPayload.chainBreakdown.length}
+                            <div class="dex-chain-grid">
+                              {#each dexDetailPayload.chainBreakdown as chain}
+                                <div class="dex-chain-card">
+                                  <div class="dex-chain-head">
+                                    <span class="dex-chain-name">{chain.chainLabel}</span>
+                                    <span class="dex-chain-share">{formatPctCompact(chain.liquiditySharePct)}</span>
+                                  </div>
+                                  <div class="dex-chain-meta">
+                                    <span>TVL {formatUsdCompact(chain.chainTvlUsd)}</span>
+                                    <span>{formatPctCompact(chain.chainTvlChange1dPct)}</span>
+                                  </div>
+                                  <div class="dex-chain-meta">
+                                    <span>Vol {formatUsdCompact(chain.volume24hUsd)}</span>
+                                    <span>Liq {formatUsdCompact(chain.liquidityUsd)}</span>
+                                  </div>
+                                </div>
+                              {/each}
+                            </div>
+                          {/if}
+                          <div class="dex-table-wrap">
+                            <table class="dex-table">
+                              <thead>
+                                <tr>
+                                  <th>Pair</th>
+                                  <th>DEX</th>
+                                  <th>Chain</th>
+                                  <th>24H Vol</th>
+                                  <th>Liq</th>
+                                  <th>Txns</th>
+                                  <th>Δ24H</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {#each dexDetailPayload.topPairs.slice(0, 6) as pair}
+                                  <tr>
+                                    <td>{pair.label}</td>
+                                    <td>{pair.dexId}</td>
+                                    <td>{pair.chainId}</td>
+                                    <td>{formatUsdCompact(pair.volume24hUsd)}</td>
+                                    <td>{formatUsdCompact(pair.liquidityUsd)}</td>
+                                    <td>{formatCountCompact(pair.txns24h)}</td>
+                                    <td class:tone-bull={(pair.priceChange24hPct ?? 0) >= 0} class:tone-bear={(pair.priceChange24hPct ?? 0) < 0}>
+                                      {formatPctCompact(pair.priceChange24hPct)}
+                                    </td>
+                                  </tr>
+                                {/each}
+                              </tbody>
+                            </table>
+                          </div>
+                        {:else if panelId === 'onchain-cycle-detail' && onchainDetailPayload}
+                          <div class="dex-chain-grid onchain-metric-grid">
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">NETFLOW 24H</span>
+                                <span class:tone-bull={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) < 0} class:tone-bear={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) > 0}>
+                                  {formatUsdCompact(onchainDetailPayload.exchangeReserve?.netflow24h)}
+                                </span>
+                              </div>
+                              <div class="dex-chain-meta"><span>7D change</span><span>{formatPctCompact(onchainDetailPayload.exchangeReserve?.change7dPct)}</span></div>
+                            </div>
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">MVRV</span>
+                                <span>{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
+                              </div>
+                              <div class="dex-chain-meta"><span>NUPL</span><span>{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span></div>
+                            </div>
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">SOPR</span>
+                                <span>{onchainDetailPayload.metrics?.sopr != null ? onchainDetailPayload.metrics.sopr.toFixed(3) : '—'}</span>
+                              </div>
+                              <div class="dex-chain-meta"><span>Puell</span><span>{onchainDetailPayload.metrics?.puellMultiple != null ? onchainDetailPayload.metrics.puellMultiple.toFixed(2) : '—'}</span></div>
+                            </div>
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">WHALE</span>
+                                <span>{formatCountCompact(onchainDetailPayload.whale?.whaleCount)}</span>
+                              </div>
+                              <div class="dex-chain-meta"><span>ratio</span><span>{onchainDetailPayload.whale?.exchangeWhaleRatio != null ? formatPctCompact(onchainDetailPayload.whale.exchangeWhaleRatio * 100) : '—'}</span></div>
+                            </div>
+                          </div>
+                        {:else if panelId === 'evidence-log'}
+                          <div class="evidence-grid">
+                            {#each evidenceItems as item}
+                              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                                <span class="ev-key">{item.k}</span>
+                                <span class="ev-val">{item.v}</span>
+                                <span class="ev-note">{item.note}</span>
+                              </div>
+                            {/each}
+                          </div>
+                        {:else if panelId === 'execution-board'}
+                          {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+                            <div style="margin-bottom: 8px;">
+                              <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                            </div>
+                          {/if}
+                          <div class="proposal-label">PROPOSAL</div>
+                          {#each proposal as p}
+                            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                              <span class="prop-l">{p.label}</span>
+                              <span class="prop-v">{p.val}</span>
+                              <span class="prop-h">{p.hint}</span>
+                            </div>
+                          {/each}
+                        {/if}
+                      {/if}
                     </div>
-                  </div>
+                  {/each}
                 </div>
                 <!-- Right: execution board -->
                 <div class="analyze-right">
-                  <div class="analyze-sidebox">
-                    <div class="analyze-section-head compact">
-                      <span class="analyze-kicker">EXECUTION BOARD</span>
-                      <span class="analyze-section-copy">청산 밀도와 주문 계획을 같이 본다</span>
-                    </div>
-                    {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
-                      <div style="margin-bottom: 8px;">
-                        <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                  <div class="analyze-side-stack">
+                    {#if analyzeSidePanelIds.length === 0}
+                      <div class="analyze-side-empty">
+                        상세 패널을 `DOCK` 하면 이 inspector rail 에 배치됩니다.
                       </div>
                     {/if}
-                    <div class="proposal-label">PROPOSAL</div>
-                    {#each analyzeExecutionProposal as p}
-                      <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                        <span class="prop-l">{p.label}</span>
-                        <span class="prop-v">{p.val}</span>
-                        <span class="prop-h">{p.hint}</span>
+                    {#each analyzeSidePanelIds as panelId, panelIndex}
+                      <div class="analyze-sidebox">
+                        <div class="analyze-section-head compact">
+                          <div class="analyze-head-copy">
+                            <span class="analyze-kicker">{ANALYZE_PANEL_META[panelId].kicker}</span>
+                            <span class="analyze-section-copy">{ANALYZE_PANEL_META[panelId].copy}</span>
+                          </div>
+                          <div class="analyze-panel-actions">
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeSidePanelIds.length - 1}>↓</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>MAIN</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panelId)}>
+                              {analyzePanelPinned(panelId) ? 'UNPIN' : 'PIN'}
+                            </button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
+                              {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
+                            </button>
+                          </div>
+                        </div>
+                        {#if !analyzePanelIsCollapsed(panelId)}
+                          {#if panelId === 'execution-board'}
+                            {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+                              <div style="margin-bottom: 8px;">
+                                <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                              </div>
+                            {/if}
+                            <div class="proposal-label">PROPOSAL</div>
+                            {#each proposal as p}
+                              <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                                <span class="prop-l">{p.label}</span>
+                                <span class="prop-v">{p.val}</span>
+                                <span class="prop-h">{p.hint}</span>
+                              </div>
+                            {/each}
+                          {:else if panelId === 'verified-backdrop'}
+                            <div class="study-grid side-grid">
+                              {#each workspaceBackdropStudies as study}
+                                <div class="study-card">
+                                  <div class="study-card-head">
+                                    <div>
+                                      <div class="study-card-title">{study.title}</div>
+                                      <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
+                                    </div>
+                                    <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
+                                  </div>
+                                  <div class="study-card-metrics">
+                                    {#each study.summary.slice(0, 2) as row}
+                                      <div class="study-metric">
+                                        <span class="study-metric-label">{row.label}</span>
+                                        <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
+                                          {row.value ?? '—'}
+                                        </span>
+                                      </div>
+                                    {/each}
+                                  </div>
+                                </div>
+                              {/each}
+                            </div>
+                          {:else if panelId === 'live-stack'}
+                            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+                          {:else if panelId === 'options'}
+                            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+                          {:else if panelId === 'venue-divergence'}
+                            <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+                          {:else if panelId === 'thesis'}
+                            <div class="narrative compact">
+                              <span class="bull">{narrativeDir} ·</span>
+                              {' '}{narrativeBias ?? '분석 완료'}
+                            </div>
+                          {:else if panelId === 'evidence-log'}
+                            <div class="evidence-grid compact-grid">
+                              {#each evidenceItems.slice(0, 4) as item}
+                                <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                                  <span class="ev-key">{item.k}</span>
+                                  <span class="ev-val">{item.v}</span>
+                                </div>
+                              {/each}
+                            </div>
+                          {:else if panelId === 'dex-market-structure' && dexDetailPayload}
+                            <div class="dex-strip compact-strip">
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">24H Vol</span>
+                                <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.volume24hUsd)}</span>
+                              </div>
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">Liq</span>
+                                <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.liquidityUsd)}</span>
+                              </div>
+                            </div>
+                            {#if dexDetailPayload.topPairs[0]}
+                              <div class="dex-side-pair">{dexDetailPayload.topPairs[0].label} · {dexDetailPayload.topPairs[0].dexId} · {formatUsdCompact(dexDetailPayload.topPairs[0].volume24hUsd)}</div>
+                            {/if}
+                          {:else if panelId === 'onchain-cycle-detail' && onchainDetailPayload}
+                            <div class="dex-strip compact-strip">
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">MVRV</span>
+                                <span class="dex-strip-value">{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
+                              </div>
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">NUPL</span>
+                                <span class="dex-strip-value">{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span>
+                              </div>
+                            </div>
+                          {/if}
+                        {/if}
                       </div>
                     {/each}
                   </div>
@@ -1958,6 +2510,109 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .compare-shelf {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.12));
+    flex-shrink: 0;
+  }
+  .compare-shelf-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .compare-shelf-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .compare-shelf-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--amb);
+    letter-spacing: 0.18em;
+    font-weight: 700;
+  }
+  .compare-shelf-sub {
+    font-size: 10px;
+    color: var(--g6);
+    line-height: 1.5;
+  }
+  .compare-shelf-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .compare-shelf-empty {
+    grid-column: 1 / -1;
+    padding: 12px;
+    border: 0.5px dashed var(--g4);
+    border-radius: 5px;
+    background: rgba(255,255,255,0.01);
+    color: var(--g5);
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .compare-shelf-empty code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g9);
+  }
+  .compare-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
+  }
+  .compare-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .compare-card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g9);
+    letter-spacing: 0.08em;
+  }
+  .compare-card-copy {
+    margin-top: 2px;
+    font-size: 9px;
+    color: var(--g6);
+    line-height: 1.45;
+  }
+  .compare-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .compare-card-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .compare-card-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g7);
+    line-height: 1.45;
+  }
+  @media (max-width: 1180px) {
+    .compare-shelf-grid {
+      grid-template-columns: 1fr;
+    }
+  }
   .analyze-columns {
     flex: 1;
     min-height: 0;
@@ -1987,8 +2642,42 @@
     gap: 10px;
     flex-wrap: wrap;
   }
+  .analyze-head-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
   .analyze-section-head.compact {
     margin-bottom: 6px;
+  }
+  .analyze-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .analyze-panel-btn {
+    padding: 4px 6px;
+    border-radius: 3px;
+    border: 0.5px solid var(--g4);
+    background: var(--g1);
+    color: var(--g6);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+  }
+  .analyze-panel-btn:hover:not(:disabled) {
+    border-color: var(--tc);
+    color: var(--g9);
+    background: color-mix(in srgb, var(--tc) 6%, var(--g1));
+  }
+  .analyze-panel-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
   .analyze-kicker {
     font-family: 'JetBrains Mono', monospace;
@@ -2024,6 +2713,210 @@
     border: 0.5px solid var(--amb-d);
     font-size: 11px;
   }
+  .study-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .study-grid.side-grid {
+    grid-template-columns: 1fr;
+  }
+  .study-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
+  }
+  .study-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .study-card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g9);
+    letter-spacing: 0.08em;
+  }
+  .study-card-sub {
+    margin-top: 2px;
+    font-size: 9px;
+    color: var(--g6);
+    line-height: 1.4;
+  }
+  .study-card-trust {
+    flex-shrink: 0;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 0.5px solid var(--g4);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g7);
+    text-transform: uppercase;
+  }
+  .study-card-trust[data-tier='core'],
+  .study-card-trust[data-tier='verified'] {
+    border-color: color-mix(in srgb, var(--pos) 35%, var(--g4));
+    color: var(--pos);
+    background: color-mix(in srgb, var(--pos) 12%, transparent);
+  }
+  .study-card-trust[data-tier='experimental'] {
+    border-color: color-mix(in srgb, var(--amb) 35%, var(--g4));
+    color: var(--amb);
+    background: color-mix(in srgb, var(--amb) 12%, transparent);
+  }
+  .study-card-trust[data-tier='deferred'] {
+    color: var(--g5);
+    background: var(--g1);
+  }
+  .study-card-metrics {
+    display: grid;
+    gap: 6px;
+  }
+  .study-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .study-metric-label {
+    min-width: 58px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g6);
+  }
+  .study-metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--g9);
+    font-weight: 600;
+  }
+  .study-metric-value.tone-bull { color: var(--pos); }
+  .study-metric-value.tone-bear { color: var(--neg); }
+  .study-metric-value.tone-warn { color: var(--amb); }
+  .study-metric-note {
+    font-size: 9px;
+    color: var(--g6);
+  }
+  .study-card-method {
+    font-size: 9px;
+    color: var(--g5);
+    line-height: 1.4;
+  }
+  .dex-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .dex-strip.compact-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dex-strip-item,
+  .dex-chain-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: 10px;
+    border-radius: 5px;
+    border: 0.5px solid var(--g4);
+    background: var(--g1);
+  }
+  .dex-strip-label,
+  .dex-chain-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g5);
+    letter-spacing: 0.12em;
+  }
+  .dex-strip-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--g9);
+  }
+  .dex-strip-note,
+  .dex-chain-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 9px;
+    color: var(--g6);
+  }
+  .dex-chain-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .onchain-metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .dex-chain-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--g9);
+  }
+  .dex-chain-share {
+    color: var(--amb);
+    font-size: 10px;
+  }
+  .dex-table-wrap {
+    border: 0.5px solid var(--g4);
+    border-radius: 5px;
+    overflow: auto;
+    background: var(--bg);
+  }
+  .dex-table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .dex-table th,
+  .dex-table td {
+    padding: 8px 9px;
+    border-bottom: 0.5px solid var(--g3);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .dex-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--g1);
+    color: var(--g5);
+    font-size: 8px;
+    letter-spacing: 0.14em;
+  }
+  .dex-table td {
+    color: var(--g8);
+  }
+  .dex-table tbody tr:hover td {
+    background: rgba(255,255,255,0.02);
+  }
+  .dex-side-pair {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g7);
+    line-height: 1.5;
+  }
+  @media (max-width: 1100px) {
+    .dex-strip,
+    .dex-chain-grid,
+    .onchain-metric-grid {
+      grid-template-columns: 1fr;
+    }
+  }
   .evidence-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2045,6 +2938,9 @@
   .ev-key { font-size: 10px; color: var(--g7); width: 80px; }
   .ev-val { font-size: 11px; color: var(--g9); font-weight: 600; }
   .ev-note { font-size: 10px; color: var(--g6); margin-left: auto; font-family: 'Geist', sans-serif; }
+  .evidence-grid.compact-grid {
+    grid-template-columns: 1fr;
+  }
 
   .analyze-right {
     width: 240px;
@@ -2054,6 +2950,20 @@
     gap: 10px;
     padding: 12px 14px;
     overflow: auto;
+  }
+  .analyze-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .analyze-side-empty {
+    padding: 12px;
+    border: 0.5px dashed var(--g4);
+    border-radius: 4px;
+    color: var(--g5);
+    font-size: 10px;
+    line-height: 1.6;
+    background: rgba(255,255,255,0.01);
   }
   .analyze-sidebox {
     display: flex;

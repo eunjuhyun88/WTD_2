@@ -18,7 +18,7 @@ def test_fetch_perp_max_forward_fills_recent_funding_into_hourly_grid(monkeypatc
     oi_index = pd.date_range("2026-04-14T07:00:00Z", periods=4, freq="1h", tz="UTC")
     oi = pd.DataFrame(
         {
-            "oi": [100.0, 101.0, 102.0, 103.0],
+            "oi_raw": [100.0, 112.0, 116.0, 118.0],
             "oi_change_1h": [0.01, 0.12, 0.04, 0.02],
             "oi_change_24h": [0.05, 0.18, 0.11, 0.08],
         },
@@ -36,6 +36,7 @@ def test_fetch_perp_max_forward_fills_recent_funding_into_hourly_grid(monkeypatc
 
     merged = perp_mod.fetch_perp_max("PTBUSDT")
 
+    assert merged.loc[pd.Timestamp("2026-04-14T08:00:00Z"), "oi_raw"] == 112.0
     assert merged.loc[pd.Timestamp("2026-04-14T08:00:00Z"), "funding_rate"] == 0.002
     assert merged.loc[pd.Timestamp("2026-04-14T09:00:00Z"), "funding_rate"] == 0.002
     assert merged.loc[pd.Timestamp("2026-04-14T10:00:00Z"), "funding_rate"] == 0.002

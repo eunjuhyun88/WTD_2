@@ -170,10 +170,6 @@ def fetch_perp_raw(symbol: str) -> pd.DataFrame:
     time.sleep(_SLEEP_BETWEEN)
     ls = fetch_ls_ratio(symbol)
 
-    if "oi_raw" not in oi.columns:
-        oi = oi.copy()
-        oi["oi_raw"] = 0.0
-
     merged = oi[["oi_raw", "oi_change_1h", "oi_change_24h"]].join(
         ls[["long_short_ratio"]], how="outer"
     )

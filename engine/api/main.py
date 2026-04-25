@@ -16,7 +16,7 @@ import time
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler  # type: ignore[import]
@@ -24,7 +24,7 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
-from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime
+from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes
 from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
@@ -225,11 +225,9 @@ async def jwt_auth_middleware(request: Request, call_next):  # noqa: ANN001
                     {"detail": "Missing authorization token"},
                     status_code=401,
                 )
+        except HTTPException as e:
+            return JSONResponse({"detail": e.detail}, status_code=e.status_code)
         except Exception as e:
-            # JWT validation error (handled by extract_user_id_from_jwt)
-            if isinstance(e, JSONResponse):
-                return e
-            # Unexpected error
             log.error("JWT middleware error: %s", str(e))
             return JSONResponse(
                 {"detail": "Authentication error"},
@@ -265,6 +263,7 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(alpha.router, tags=["alpha"])
     target.include_router(refinement.router, prefix="/refinement", tags=["refinement"])
     target.include_router(features.router, prefix="/features", tags=["features"])
+    target.include_router(auth_routes.router, tags=["auth"])
 
 
 def _include_worker_control_routes(target: FastAPI) -> None:

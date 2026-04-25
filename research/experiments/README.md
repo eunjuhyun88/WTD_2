@@ -14,3 +14,13 @@ Each record should include:
 - implementation paths
 - expected generated outputs
 - current interpretation status
+
+Engine performance benchmark records should follow
+`docs/domains/engine-performance-benchmark-lab.md`:
+
+- baseline run
+- candidate run
+- quality metrics
+- systems metrics
+- guardrail result
+- written decision

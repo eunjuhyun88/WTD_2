@@ -184,15 +184,8 @@ export const passportTrainJobCreateLimiter = createRateLimiter({ windowMs: 60_00
 // War Room
 export const emergencyMeetingLimiter = createRateLimiter({ windowMs: 60_000, max: 5 });
 
-// ── W-0098: 500-user safety ───────────────────────────────────────────────────
-/** Chart klines poll: 120 per minute per IP (15s interval × 4 tabs + burst headroom) */
+/** Chart klines: 120 per minute per IP — client polls ~every 15s, burst for tab switches */
 export const chartKlinesLimiter = createRateLimiter({ windowMs: 60_000, max: 120 });
 
-/** Unified chart feed (klines + OI + liq + funding in one call): same budget as klines */
-export const chartFeedLimiter = createRateLimiter({ windowMs: 60_000, max: 120 });
-
-/** Heavy engine paths (score, deep, backtest, train): 60 per minute per IP */
+/** Engine proxy (heavy CPU/LightGBM): 60 per minute per IP */
 export const engineProxyLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
-
-/** DOUNI terminal message (server-side LLM key): 15 per minute per IP */
-export const douniMessageLimiter = createRateLimiter({ windowMs: 60_000, max: 15 });

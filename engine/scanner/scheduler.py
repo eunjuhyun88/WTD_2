@@ -203,10 +203,6 @@ async def _refinement_trigger_job() -> None:
     await refinement_trigger_job()
 
 
-async def _search_corpus_refresh_job() -> None:
-    await search_corpus_refresh_job(universe_name=UNIVERSE_NAME)
-
-
 async def _fetch_okx_signals_job() -> None:
     """Fetch and cache recent OKX smart money signals (every 6 hours).
 
@@ -226,15 +222,6 @@ async def _fetch_okx_signals_job() -> None:
             log.info(f"  {symbol}: {result['signals_appended']} signals cached")
     total_appended = sum(r.get("signals_appended", 0) for r in results)
     log.info(f"✓ OKX signals job complete: {total_appended} total signals cached")
-
-
-async def _market_search_index_refresh_job() -> None:
-    result = await asyncio.to_thread(refresh_market_search_index)
-    log.info(
-        "✓ market search index refresh complete: rows=%s updated_at=%s",
-        result.row_count,
-        result.refreshed_at,
-    )
 
 
 def start_scheduler() -> None:
@@ -320,18 +307,6 @@ def start_scheduler() -> None:
         misfire_grace_time=300,
     )
 
-    # Job 4b: Market search index refresh — every 30 minutes by default
-    _scheduler.add_job(
-        _market_search_index_refresh_job,
-        trigger="interval",
-        seconds=MARKET_SEARCH_INDEX_REFRESH_INTERVAL,
-        id="market_search_index_refresh",
-        name="Market search index refresh",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=300,
-    )
-
     if PATTERN_REFINEMENT_ENABLED:
         _scheduler.add_job(
             _pattern_refinement_job,
@@ -394,7 +369,7 @@ def start_scheduler() -> None:
 
     _scheduler.start()
     log.info(
-        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s search_index=%ds refinement=%s search_corpus=%s feature_mat=%s universe=%s",
+        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s search_index=%ds refinement=%s universe=%s",
         SCAN_INTERVAL,
         SCAN_INTERVAL,
         MARKET_SEARCH_INDEX_REFRESH_INTERVAL,

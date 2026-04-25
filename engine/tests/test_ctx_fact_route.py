@@ -47,6 +47,7 @@ def test_ctx_fact_returns_engine_owned_bounded_context(monkeypatch) -> None:
     assert payload["ok"] is True
     assert payload["owner"] == "engine"
     assert payload["plane"] == "fact"
+    assert payload["fact_id"].startswith("fact:BTCUSDT:1h:")
     assert payload["symbol"] == "BTCUSDT"
     assert payload["fact_id"].startswith("BTCUSDT:1h:")
     assert payload["bars"]["count"] == 600
@@ -54,13 +55,14 @@ def test_ctx_fact_returns_engine_owned_bounded_context(monkeypatch) -> None:
     assert payload["sources"]["perp"]["status"] == "missing"
     assert payload["provider_state"]["klines"]["status"] == "live"
     assert payload["provider_state"]["perp"]["status"] == "blocked"
-    assert payload["provider_state"]["klines"]["summary"].startswith("600 rows")
     assert payload["reference_health"] == {
         "live": 1,
         "blocked": 5,
         "reference_only": 0,
         "stale": 0,
     }
+    assert payload["confluence"]["verdict"] in {"bullish", "neutral", "bearish"}
+    assert payload["confluence"]["regime"] is not None
     assert payload["snapshot"]["symbol"] == "BTCUSDT"
     assert payload["confluence"]["verdict"] == "bullish"
     assert payload["confluence"]["regime"] == payload["snapshot"]["regime"]

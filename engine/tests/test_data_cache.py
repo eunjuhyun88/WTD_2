@@ -4,22 +4,23 @@ No network I/O — we monkeypatch CACHE_DIR to a tmp_path and seed/read
 files directly. Covers:
   1. offline=True + missing file → CacheMiss
   2. offline=True + cached file  → returns DataFrame with expected shape
-  3. non-1h timeframe            → resample from 1h base (CacheMiss if 1h absent)
-  4. unknown timeframe string    → ValueError
-  5. cache_path filename shape
-  6. round-trip through load_klines preserves numeric columns
+  3. higher timeframe            → resample from 1h base (CacheMiss if 1h absent)
+  4. sub-hour timeframe          → requires native cache/fetch, no fake resample
+  5. unknown timeframe string    → ValueError
+  6. cache_path filename shape
+  7. round-trip through load_klines preserves numeric columns
 """
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-from data_cache import CacheMiss, cache_path, load_klines
+from data_cache import CacheMiss, cache_path, list_cached_symbols, load_klines
 from data_cache import loader as loader_mod
 
 
-def _make_fake_klines(n: int = 5) -> pd.DataFrame:
-    ts = pd.date_range("2025-01-01", periods=n, freq="1h", tz="UTC")
+def _make_fake_klines(n: int = 5, *, freq: str = "1h") -> pd.DataFrame:
+    ts = pd.date_range("2025-01-01", periods=n, freq=freq, tz="UTC")
     return pd.DataFrame(
         {
             "open": [1.0 + i * 0.1 for i in range(n)],
@@ -58,6 +59,33 @@ def test_offline_reads_existing_cache(tmp_path, monkeypatch):
     assert out["taker_buy_base_volume"].iloc[0] == pytest.approx(50.0)
 
 
+def test_offline_reads_from_shared_cache_override(tmp_path, monkeypatch):
+    local_cache = tmp_path / "local"
+    shared_cache = tmp_path / "shared"
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", local_cache)
+    monkeypatch.setenv("WTD_SHARED_CACHE_DIR", str(shared_cache))
+
+    df = _make_fake_klines(5)
+    shared_cache.mkdir(parents=True)
+    df.to_csv(shared_cache / "SHAREDUSDT_1h.csv")
+
+    out = load_klines("SHAREDUSDT", "1h", offline=True)
+
+    assert len(out) == 5
+    assert out["close"].iloc[-1] == pytest.approx(df["close"].iloc[-1])
+
+
+def test_cache_path_prefers_shared_cache_override(tmp_path, monkeypatch):
+    local_cache = tmp_path / "local"
+    shared_cache = tmp_path / "shared"
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", local_cache)
+    monkeypatch.setenv("WTD_SHARED_CACHE_DIR", str(shared_cache))
+
+    p = cache_path("BTCUSDT", "1h")
+
+    assert p.parent == shared_cache
+
+
 def test_online_fetch_uses_spot_when_available(tmp_path, monkeypatch):
     monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
     df = _make_fake_klines(6)
@@ -80,6 +108,27 @@ def test_online_fetch_uses_spot_when_available(tmp_path, monkeypatch):
     assert len(out) == 6
     assert calls == [("spot", "BTCUSDT")]
     assert (tmp_path / "BTCUSDT_1h.csv").exists()
+
+
+def test_online_fetch_writes_to_shared_cache_override(tmp_path, monkeypatch):
+    local_cache = tmp_path / "local"
+    shared_cache = tmp_path / "shared"
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", local_cache)
+    monkeypatch.setenv("WTD_SHARED_CACHE_DIR", str(shared_cache))
+    df = _make_fake_klines(4)
+
+    monkeypatch.setattr(loader_mod, "fetch_klines_max", lambda symbol, timeframe: df)
+    monkeypatch.setattr(
+        loader_mod,
+        "fetch_futures_klines_max",
+        lambda symbol, timeframe: (_ for _ in ()).throw(AssertionError("futures fallback should not run")),
+    )
+
+    out = load_klines("WRITEUSDT", "1h", offline=False)
+
+    assert len(out) == 4
+    assert (shared_cache / "WRITEUSDT_1h.csv").exists()
+    assert not (local_cache / "WRITEUSDT_1h.csv").exists()
 
 
 def test_online_fetch_falls_back_to_futures_for_invalid_spot_symbol(tmp_path, monkeypatch):
@@ -129,6 +178,50 @@ def test_non_1h_timeframe_resamples_from_1h_base(tmp_path, monkeypatch):
     assert list(df_4h.columns) == list(df_1h.columns)
 
 
+def test_subhour_timeframe_requires_native_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df_1h = _make_fake_klines(12)
+    df_1h.to_csv(tmp_path / "BTCUSDT_1h.csv")
+
+    with pytest.raises(CacheMiss):
+        load_klines("BTCUSDT", "15m", offline=True)
+
+
+def test_subhour_timeframe_reads_existing_native_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df_15m = _make_fake_klines(8, freq="15min")
+    df_15m.to_csv(tmp_path / "BTCUSDT_15m.csv")
+
+    out = load_klines("BTCUSDT", "15m", offline=True)
+
+    assert len(out) == 8
+    assert list(out.index.astype(str)[:2]) == list(df_15m.index.astype(str)[:2])
+
+
+def test_subhour_timeframe_fetches_and_caches_native_series(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df = _make_fake_klines(6, freq="15min")
+
+    calls: list[tuple[str, str, str]] = []
+
+    def fake_spot(symbol: str, timeframe: str):
+        calls.append(("spot", symbol, timeframe))
+        return df
+
+    def fake_futures(symbol: str, timeframe: str):
+        calls.append(("futures", symbol, timeframe))
+        raise AssertionError("futures fallback should not run when spot succeeds")
+
+    monkeypatch.setattr(loader_mod, "fetch_klines_max", fake_spot)
+    monkeypatch.setattr(loader_mod, "fetch_futures_klines_max", fake_futures)
+
+    out = load_klines("BTCUSDT", "15m", offline=False)
+
+    assert len(out) == 6
+    assert calls == [("spot", "BTCUSDT", "15m")]
+    assert (tmp_path / "BTCUSDT_15m.csv").exists()
+
+
 def test_unknown_timeframe_raises_value_error():
     """Completely unknown TF strings raise ValueError from tf_string_to_minutes."""
     with pytest.raises(ValueError):
@@ -149,6 +242,7 @@ def test_load_perp_parses_timestamp_index(tmp_path, monkeypatch):
     perp = pd.DataFrame(
         {
             "funding_rate": [0.001, 0.002],
+            "oi_raw": [1000.0, 1200.0],
             "oi_change_1h": [0.1, 0.2],
             "oi_change_24h": [0.3, 0.4],
             "long_short_ratio": [1.1, 1.2],
@@ -162,3 +256,4 @@ def test_load_perp_parses_timestamp_index(tmp_path, monkeypatch):
     assert out is not None
     assert str(out.index.dtype).startswith("datetime64")
     assert out.index.tz is not None
+    assert "oi_raw" in out.columns

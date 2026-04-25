@@ -21,7 +21,7 @@ from research.pattern_search import (
     build_variant_pattern,
     evaluate_variant_on_case,
 )
-from scanner.feature_calc import MIN_HISTORY_BARS, compute_features_table
+from scanner.feature_calc import compute_features_table
 
 _DEFAULT_HISTORY_BARS = 24 * 30
 _DEFAULT_STRIDE_BARS = 6
@@ -75,50 +75,11 @@ def _pick_reference_case(pattern_slug: str, benchmark_pack_id: str | None = None
     return pack.cases[0]
 
 
-def _trim_klines(
-    klines: pd.DataFrame,
-    *,
-    start_at: datetime | None = None,
-    end_at: datetime | None = None,
-    max_bars: int | None = None,
-    pad_bars: int = MIN_HISTORY_BARS,
-) -> pd.DataFrame:
-    trimmed = klines
-    if start_at is not None and end_at is not None:
-        within_end = trimmed.index <= end_at
-        within_start = trimmed.index >= start_at
-        if within_end.any() and within_start.any():
-            end_pos = int(within_end.nonzero()[0][-1])
-            start_pos = int(within_start.nonzero()[0][0])
-            padded_start = max(0, start_pos - max(0, pad_bars))
-            trimmed = trimmed.iloc[padded_start : end_pos + 1].copy()
-    elif max_bars is not None and max_bars > 0 and len(trimmed) > max_bars:
-        trimmed = trimmed.iloc[-max_bars:].copy()
-    return trimmed
-
-
-def _load_symbol_frames(
-    symbol: str,
-    timeframe: str,
-    *,
-    start_at: datetime | None = None,
-    end_at: datetime | None = None,
-    max_bars: int | None = None,
-    pad_bars: int = MIN_HISTORY_BARS,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _load_symbol_frames(symbol: str, timeframe: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     klines = load_klines(symbol, timeframe, offline=True)
     if klines is None or klines.empty:
         raise ValueError(f"Missing klines for {symbol} {timeframe}")
-    klines = _trim_klines(
-        klines,
-        start_at=start_at,
-        end_at=end_at,
-        max_bars=max_bars,
-        pad_bars=pad_bars,
-    )
     perp = load_perp(symbol, offline=True)
-    if perp is not None and not perp.empty:
-        perp = perp.loc[(perp.index >= klines.index[0]) & (perp.index <= klines.index[-1])].copy()
     features = compute_features_table(klines, symbol, perp=perp)
     common_index = klines.index.intersection(features.index)
     if common_index.empty:
@@ -512,14 +473,7 @@ def run_pattern_market_search(
         raise ValueError("W-0152 market retrieval currently supports timeframe='1h' only")
 
     reference_case = _pick_reference_case(pattern_slug, benchmark_pack_id=benchmark_pack_id)
-    feature_pad_bars = max(warmup_bars, MIN_HISTORY_BARS)
-    reference_klines, reference_features = _load_symbol_frames(
-        reference_case.symbol,
-        timeframe,
-        start_at=reference_case.start_at,
-        end_at=reference_case.end_at,
-        pad_bars=feature_pad_bars,
-    )
+    reference_klines, reference_features = _load_symbol_frames(reference_case.symbol, timeframe)
     ref_k_window, ref_f_window = _slice_window(
         reference_klines,
         reference_features,
@@ -530,7 +484,6 @@ def run_pattern_market_search(
     reference_window_bars = len(ref_k_window)
     if reference_window_bars <= 1:
         raise ValueError("Reference window must contain at least two bars")
-    candidate_max_bars = history_bars + reference_window_bars + feature_pad_bars
 
     variant_slug = resolve_live_variant_slug(pattern_slug, variant_slug)
     variant = PatternVariantSpec(pattern_slug=pattern_slug, variant_slug=variant_slug, timeframe=timeframe)

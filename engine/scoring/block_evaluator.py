@@ -32,10 +32,13 @@ from building_blocks.triggers.recent_decline import recent_decline
 from building_blocks.triggers.gap_up import gap_up
 from building_blocks.triggers.gap_down import gap_down
 from building_blocks.triggers.breakout_above_high import breakout_above_high
+from building_blocks.triggers.breakout_after_accumulation import breakout_after_accumulation
 from building_blocks.triggers.breakout_from_pullback_range import breakout_from_pullback_range
+from building_blocks.triggers.post_accumulation_range_breakout import post_accumulation_range_breakout
 from building_blocks.triggers.breakout_volume_confirm import breakout_volume_confirm
 from building_blocks.triggers.consolidation_then_breakout import consolidation_then_breakout
 from building_blocks.triggers.volume_spike import volume_spike
+from building_blocks.triggers.volume_spike_cluster import volume_spike_cluster
 from building_blocks.triggers.sweep_below_low import sweep_below_low
 from building_blocks.triggers.volume_spike_down import volume_spike_down
 
@@ -55,7 +58,9 @@ from building_blocks.confirmations.oi_change import oi_change
 from building_blocks.confirmations.oi_expansion_confirm import oi_expansion_confirm
 from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
 from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
+from building_blocks.confirmations.oi_contraction_confirm import oi_contraction_confirm
 from building_blocks.confirmations.positive_funding_bias import positive_funding_bias
+from building_blocks.confirmations.negative_funding_bias import negative_funding_bias
 from building_blocks.confirmations.post_dump_compression import post_dump_compression
 from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
@@ -75,6 +80,10 @@ from building_blocks.confirmations.relative_velocity_bull import relative_veloci
 from building_blocks.confirmations.cvd_price_divergence import cvd_price_divergence
 from building_blocks.confirmations.orderbook_imbalance_ratio import orderbook_imbalance_ratio
 from building_blocks.confirmations.oi_price_lag_detect import oi_price_lag_detect
+from building_blocks.confirmations.atr_ultra_low import atr_ultra_low
+from building_blocks.confirmations.liq_zone_squeeze_setup import liq_zone_squeeze_setup
+from building_blocks.confirmations.volume_surge_bull import volume_surge_bull
+from building_blocks.confirmations.volume_surge_bear import volume_surge_bear
 from social.blocks import (
     social_sentiment_spike,
     kol_signal,
@@ -99,6 +108,13 @@ from building_blocks.confirmations.holder_concentration_ok import holder_concent
 from building_blocks.confirmations.vwap_break import vwap_break
 from building_blocks.confirmations.relative_strength_btc import relative_strength_btc
 from building_blocks.confirmations.oi_acceleration import oi_acceleration
+# HTML reference pattern blocks (volatility-squeeze, alpha-confluence, radar-golden, etc.)
+from building_blocks.confirmations.atr_ultra_low import atr_ultra_low
+from building_blocks.confirmations.liq_zone_squeeze_setup import liq_zone_squeeze_setup
+from building_blocks.confirmations.volume_surge_bull import volume_surge_bull
+from building_blocks.confirmations.volume_surge_bear import volume_surge_bear
+from building_blocks.confirmations.negative_funding_bias import negative_funding_bias
+from building_blocks.confirmations.oi_contraction_confirm import oi_contraction_confirm
 
 log = logging.getLogger("engine.blocks")
 
@@ -119,11 +135,14 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("gap_up",                    gap_up),
     ("gap_down",                  gap_down),
     ("breakout_above_high",       breakout_above_high),
+    ("breakout_after_accumulation", breakout_after_accumulation),
     ("breakout_from_pullback_range", breakout_from_pullback_range),
+    ("post_accumulation_range_breakout", post_accumulation_range_breakout),
     ("breakout_volume_confirm",   breakout_volume_confirm),
     ("consolidation_then_breakout", consolidation_then_breakout),
     ("sweep_below_low",           sweep_below_low),
     ("volume_spike",              volume_spike),
+    ("volume_spike_cluster",      volume_spike_cluster),
     ("volume_spike_down",         volume_spike_down),
     # confirmations
     ("golden_cross",       golden_cross),
@@ -140,20 +159,14 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("oi_expansion_confirm", oi_expansion_confirm),
     ("oi_hold_after_spike", oi_hold_after_spike),
     ("oi_spike_with_dump", oi_spike_with_dump),
+    ("oi_contraction_confirm", oi_contraction_confirm),
     ("positive_funding_bias", positive_funding_bias),
+    ("negative_funding_bias", negative_funding_bias),
     ("post_dump_compression", post_dump_compression),
     ("reclaim_after_dump", reclaim_after_dump),
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
-    ("absorption_signal",  absorption_signal),
-    ("delta_flip_positive", delta_flip_positive),
-    # VAR-tuned variant: shorter window + looser thresholds for post-climax recovery.
-    # After a selling climax the 6-bar rolling sum is dominated by the high-volume
-    # climax bar (≈0.48 tbv_ratio), pushing the ratio below 0.55. w=3 + lower
-    # to_at_least=0.52 captures the CVD transition in the 12-36h absorption window.
-    ("delta_flip_var",      lambda ctx: delta_flip_positive(ctx, window=3, flip_from_below=0.48, flip_to_at_least=0.52)),
-    ("alt_btc_accel_ratio", alt_btc_accel_ratio),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),
     ("smart_money_accumulation", smart_money_accumulation),
@@ -172,6 +185,10 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("relative_velocity_bull",     relative_velocity_bull),
     ("cvd_price_divergence",       cvd_price_divergence),
     ("orderbook_imbalance_ratio",  orderbook_imbalance_ratio),
+    ("atr_ultra_low",              atr_ultra_low),
+    ("liq_zone_squeeze_setup",     liq_zone_squeeze_setup),
+    ("volume_surge_bull",          volume_surge_bull),
+    ("volume_surge_bear",          volume_surge_bear),
     # 딸깍 전략 blocks (W-0114)
     ("oi_price_lag_detect",        oi_price_lag_detect),
     ("oi_price_lag_detect_strong", lambda ctx: oi_price_lag_detect(ctx, oi_threshold=0.15, price_threshold=0.015)),
@@ -192,6 +209,13 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("vwap_break",                      vwap_break),
     ("relative_strength_btc",           relative_strength_btc),
     ("oi_acceleration",                 oi_acceleration),
+    # HTML reference pattern blocks (volatility-squeeze, alpha-confluence, radar-golden, etc.)
+    ("atr_ultra_low",                   atr_ultra_low),
+    ("liq_zone_squeeze_setup",          liq_zone_squeeze_setup),
+    ("volume_surge_bull",               volume_surge_bull),
+    ("volume_surge_bear",               volume_surge_bear),
+    ("negative_funding_bias",           negative_funding_bias),
+    ("oi_contraction_confirm",          oi_contraction_confirm),
     # disqualifiers
     ("volume_below_average",            volume_below_average),
     ("extreme_volatility",              extreme_volatility),
@@ -228,12 +252,16 @@ def evaluate_block_masks(
     features_df: pd.DataFrame,
     klines_df: pd.DataFrame,
     symbol: str,
+    *,
+    block_names: set[str] | None = None,
 ) -> dict[str, pd.Series]:
-    """Return boolean Series masks for every block over the full features frame."""
+    """Return boolean Series masks for requested blocks over the full features frame."""
     ctx = Context(klines=klines_df, features=features_df, symbol=symbol)
     masks: dict[str, pd.Series] = {}
 
     for name, fn in _BLOCKS:
+        if block_names is not None and name not in block_names:
+            continue
         try:
             result = fn(ctx)
             if isinstance(result, pd.Series):
