@@ -101,6 +101,8 @@
   import { fetchThermoData, EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
   import { alphaBuckets } from '$lib/stores/alphaBuckets';
   import AlphaMarketBar from '../../components/cogochi/AlphaMarketBar.svelte';
+  import NewsFlashBar from '../../components/terminal/workspace/NewsFlashBar.svelte';
+  import { newsStore, newsEventsToAlphaMarkers } from '$lib/stores/newsStore';
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
@@ -143,6 +145,13 @@
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
   let alphaMarkers = $state<Array<{ timestamp: number; phase: string; label: string; color?: string }>>([]);
+
+  // W-0210 Layer 4: merge news events into alphaMarkers for chart rendering
+  const alphaMarkersWithNews = $derived.by(() => [
+    ...alphaMarkers.filter(m => m.phase !== 'news'),
+    ...newsEventsToAlphaMarkers($newsStore.events),
+  ]);
+
   let alphaUniverse = $state<'ALL' | 'ALPHA' | 'SHORT'>('ALL');
   let alphaWorldData = $state<{ phases: any[]; phase_counts: Record<string, number>; n_symbols: number } | null>(null);
   let alphaWorldLoading = $state(false);
@@ -1330,6 +1339,12 @@
     }
   });
 
+  // W-0210 Layer 4: fetch news when active symbol changes
+  $effect(() => {
+    const sym = activeSymbol;
+    if (sym) void newsStore.fetchNews(sym);
+  });
+
   // ── Analysis rail mode ────────────────────────────────────────
   // SINGLE: ≤1 asset or active symbol has a verdict → show full detail rail
   // SCAN:   >1 assets returned (multi-asset prompt) → show compact scan list
@@ -1561,6 +1576,9 @@
     <AlphaMarketBar thermo={thermoData} buckets={$alphaBuckets} />
   </div>
 
+  <!-- W-0210 Layer 4: scrolling news ticker — auto-hides when empty -->
+  <NewsFlashBar symbol={activeSymbol || 'BTCUSDT'} />
+
   <div class="peek-body">
     {#if showLeftRail}
     <aside class="peek-left-rail">
@@ -1586,7 +1604,7 @@
       symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
       tf={symbolToTF(gTf)}
       verdictLevels={chartLevels as Record<string, number>}
-      {alphaMarkers}
+      alphaMarkers={alphaMarkersWithNews}
       initialData={activeChartPayload}
       depthSnapshot={readPathDepth}
       liqSnapshot={readPathLiq}

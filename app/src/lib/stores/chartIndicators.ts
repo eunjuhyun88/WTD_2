@@ -33,7 +33,7 @@ export type IndicatorKey =
   | 'rsi'
   | 'oi'
   | 'volume'
-  // W-0210 Layer 3: normalized comparison overlay (BTC or user-selected symbol)
+  // W-0210 Layer 3: normalized comparison overlay
   | 'comparison';
 
 /** Indicators that occupy a sub-pane slot (not a main-chart overlay). */
@@ -58,7 +58,7 @@ const DEFAULT_STATE: ChartIndicatorState = {
   rsi: false,
   oi: false,
   volume: true,
-  comparison: false,          // W-0210 Layer 3: off by default
+  comparison: false,
 };
 
 const STORAGE_KEY = 'wtd.chart.indicators.v1';
