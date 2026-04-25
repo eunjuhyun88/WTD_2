@@ -85,30 +85,73 @@ def _init_db(db_path: Path) -> None:
                 request     TEXT NOT NULL,
                 candidates  TEXT NOT NULL,
                 status      TEXT NOT NULL,
+                metadata    TEXT NOT NULL DEFAULT '{}',
                 created_at  TEXT NOT NULL,
                 updated_at  TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_similar_runs_updated
                 ON similar_runs(updated_at DESC);
         """)
+        _ensure_column(conn, "similar_runs", "metadata", "TEXT NOT NULL DEFAULT '{}'")
 
 
-def _save_run(db_path: Path, run_id: str, request: dict, candidates: list[dict], status: str) -> dict:
+def _ensure_column(
+    conn: sqlite3.Connection,
+    table_name: str,
+    column_name: str,
+    column_definition: str,
+) -> None:
+    columns = {
+        str(row["name"])
+        for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name in columns:
+        return
+    conn.execute(
+        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+    )
+
+
+def _save_run(
+    db_path: Path,
+    run_id: str,
+    request: dict,
+    candidates: list[dict],
+    status: str,
+    *,
+    active_layers: dict[str, bool] | None = None,
+    stage_counts: dict[str, int] | None = None,
+    degraded_reason: str | None = None,
+) -> dict:
     now = _utcnow()
+    metadata = {
+        "active_layers": active_layers or {},
+        "stage_counts": stage_counts or {},
+        "degraded_reason": degraded_reason,
+    }
     _init_db(db_path)
     with _db_connect(db_path) as conn:
         conn.execute(
             """
-            INSERT INTO similar_runs (run_id, request, candidates, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO similar_runs (run_id, request, candidates, status, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
                 candidates=excluded.candidates, status=excluded.status,
+                metadata=excluded.metadata,
                 updated_at=excluded.updated_at
             """,
-            (run_id, _jdumps(request), _jdumps(candidates), status, now, now),
+            (run_id, _jdumps(request), _jdumps(candidates), status, _jdumps(metadata), now, now),
         )
-    return {"run_id": run_id, "request": request, "candidates": candidates,
-            "status": status, "updated_at": now}
+    return {
+        "run_id": run_id,
+        "request": request,
+        "candidates": candidates,
+        "status": status,
+        "updated_at": now,
+        "active_layers": metadata["active_layers"],
+        "stage_counts": metadata["stage_counts"],
+        "degraded_reason": metadata["degraded_reason"],
+    }
 
 
 def _load_run(db_path: Path, run_id: str) -> dict | None:
@@ -120,12 +163,16 @@ def _load_run(db_path: Path, run_id: str) -> dict | None:
         ).fetchone()
     if row is None:
         return None
+    metadata = _jloads(row["metadata"], {})
     return {
         "run_id": row["run_id"],
         "request": _jloads(row["request"], {}),
         "candidates": _jloads(row["candidates"], []),
         "status": row["status"],
         "updated_at": row["updated_at"],
+        "active_layers": metadata.get("active_layers", {}) if isinstance(metadata, dict) else {},
+        "stage_counts": metadata.get("stage_counts", {}) if isinstance(metadata, dict) else {},
+        "degraded_reason": metadata.get("degraded_reason") if isinstance(metadata, dict) else None,
     }
 
 
@@ -496,14 +543,29 @@ def run_similar_search(
         })
 
     candidates.sort(key=lambda c: c["final_score"], reverse=True)
+    returned_candidates = candidates[:top_k]
+    active_layers = {
+        "layer_a": True,
+        "layer_b": has_query_path,
+        "layer_c": any(candidate.get("layer_c_score") is not None for candidate in candidates),
+    }
+    stage_counts = {
+        "corpus_windows": len(windows),
+        "ranked_candidates": len(candidates),
+        "returned_candidates": len(returned_candidates),
+    }
+    degraded_reason = None if returned_candidates else "search_corpus_empty"
     run_id = uuid.uuid4().hex[:24]
-    status = "live" if candidates else "degraded"
+    status = "live" if returned_candidates else "degraded"
     return _save_run(
         db_path,
         run_id=run_id,
         request={**request, "mode": "3layer"},
-        candidates=candidates[:top_k],
+        candidates=returned_candidates,
         status=status,
+        active_layers=active_layers,
+        stage_counts=stage_counts,
+        degraded_reason=degraded_reason,
     )
 
 

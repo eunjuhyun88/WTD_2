@@ -5,6 +5,10 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query
 
+from api.schemas_pattern_draft import (
+    PatternDraftTransformRequest,
+    PatternDraftTransformResponse,
+)
 from api.schemas_search import (
     QualityJudgementRequest,
     QualityJudgementResponse,
@@ -21,6 +25,7 @@ from api.schemas_search import (
     SimilarSearchResponse,
 )
 from patterns.definitions import PatternDefinitionService
+from research.query_transformer import transform_pattern_draft
 from search.corpus import SearchCorpusStore
 from search.runtime import get_scan, get_seed_search, run_scan, run_seed_search
 from search.quality_ledger import append_judgement, compute_weights, layer_stats
@@ -99,6 +104,27 @@ async def search_scan_result(scan_id: str) -> ScanResponse:
     return _scan_response(result)
 
 
+@router.post("/query-spec/transform", response_model=PatternDraftTransformResponse)
+async def search_query_spec_transform(body: PatternDraftTransformRequest) -> PatternDraftTransformResponse:
+    try:
+        search_query_spec = transform_pattern_draft(
+            body.pattern_draft.model_dump(mode="python", exclude_none=True)
+        ).to_dict()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "pattern_draft_invalid", "message": str(exc)},
+        ) from exc
+
+    transformer_meta = search_query_spec.get("transformer_meta")
+    return PatternDraftTransformResponse(
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        search_query_spec=search_query_spec,
+        transformer_meta=transformer_meta if isinstance(transformer_meta, dict) else {},
+        parser_meta=body.parser_meta.model_dump(mode="json") if body.parser_meta is not None else None,
+    )
+
+
 @router.post("/similar", response_model=SimilarSearchResponse)
 async def search_similar(body: SimilarSearchRequest) -> SimilarSearchResponse:
     """3-layer pattern similarity search.
@@ -146,13 +172,29 @@ def _similar_response(result: dict) -> SimilarSearchResponse:
     # Report which layers were active in this run
     any_b = any(c.layer_b_score is not None for c in candidates)
     any_c = any(c.layer_c_score is not None for c in candidates)
+    active_layers_raw = result.get("active_layers")
+    active_layers = (
+        active_layers_raw
+        if isinstance(active_layers_raw, dict)
+        else {"layer_a": True, "layer_b": any_b, "layer_c": any_c}
+    )
+    stage_counts_raw = result.get("stage_counts")
+    stage_counts = (
+        stage_counts_raw
+        if isinstance(stage_counts_raw, dict)
+        else {"returned_candidates": len(candidates)}
+    )
+    degraded_reason = result.get("degraded_reason")
     return SimilarSearchResponse(
         status=result["status"],
         generated_at=result["updated_at"],
         run_id=result["run_id"],
         request=result.get("request", {}),
         candidates=candidates,
-        scoring_layers={"layer_a": True, "layer_b": any_b, "layer_c": any_c},
+        scoring_layers=active_layers,
+        active_layers=active_layers,
+        stage_counts=stage_counts,
+        degraded_reason=degraded_reason if isinstance(degraded_reason, str) else None,
     )
 
 

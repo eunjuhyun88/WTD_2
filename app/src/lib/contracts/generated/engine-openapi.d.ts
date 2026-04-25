@@ -326,6 +326,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/query-spec/transform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Query Spec Transform */
+        post: operations["search_query_spec_transform_search_query_spec_transform_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search/similar": {
         parameters: {
             query?: never;
@@ -3239,6 +3256,51 @@ export interface components {
             /** Symbol Scope */
             symbol_scope?: string[];
         };
+        /** PatternDraftTransformRequest */
+        PatternDraftTransformRequest: {
+            pattern_draft: components["schemas"]["PatternDraftBody"];
+            parser_meta?: components["schemas"]["ParserMetaBody"] | null;
+        };
+        /** PatternDraftTransformResponse */
+        PatternDraftTransformResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /**
+             * Status
+             * @default transformed
+             * @constant
+             */
+            status: "transformed";
+            /** Generated At */
+            generated_at: string;
+            /** Search Query Spec */
+            search_query_spec: {
+                [key: string]: unknown;
+            };
+            /** Transformer Meta */
+            transformer_meta?: {
+                [key: string]: unknown;
+            };
+            /** Parser Meta */
+            parser_meta?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /**
          * PerpSnapshot
          * @description Current-bar derivatives data with neutral-safe defaults.
@@ -4136,6 +4198,22 @@ export interface components {
             scoring_layers?: {
                 [key: string]: boolean;
             };
+            /**
+             * Active Layers
+             * @description Canonical layer visibility alias for scoring_layers.
+             */
+            active_layers?: {
+                [key: string]: boolean;
+            };
+            /**
+             * Stage Counts
+             * @description Search pipeline visibility counts for corpus/ranking/return stages.
+             */
+            stage_counts?: {
+                [key: string]: number;
+            };
+            /** Degraded Reason */
+            degraded_reason?: string | null;
         };
         /** SnapInput */
         SnapInput: {
@@ -5148,6 +5226,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_query_spec_transform_search_query_spec_transform_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatternDraftTransformRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternDraftTransformResponse"];
                 };
             };
             /** @description Validation Error */

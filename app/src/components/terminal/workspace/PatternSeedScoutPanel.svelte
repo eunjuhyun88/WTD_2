@@ -80,7 +80,7 @@
       requestedSignals = Array.isArray(body.seed?.requestedSignals) ? body.seed.requestedSignals : [];
       searchQuerySpec = isSearchQuerySpec(body.seed?.searchQuerySpec) ? body.seed.searchQuerySpec : null;
       candidates = Array.isArray(body.candidates) ? body.candidates : [];
-      currentRunId = body.seed?.runId ?? null;
+      currentRunId = body.seed?.runId ?? body.seed?.researchRunId ?? null;
       judgedCandidates = new Set();
     } catch (err) {
       error = String(err);

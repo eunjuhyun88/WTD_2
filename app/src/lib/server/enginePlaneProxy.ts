@@ -62,6 +62,31 @@ const SEARCH_RULES: PlaneRule[] = [
 		toUpstream: (path) => `search/${path}`,
 		timeoutMs: 10_000,
 	},
+	{
+		pattern: /^similar$/,
+		methods: new Set(['POST']),
+		toUpstream: (path) => `search/${path}`,
+		heavy: true,
+		timeoutMs: 30_000,
+	},
+	{
+		pattern: /^similar\/[^/]+$/,
+		methods: new Set(['GET']),
+		toUpstream: (path) => `search/${path}`,
+		timeoutMs: 10_000,
+	},
+	{
+		pattern: /^quality\/judge$/,
+		methods: new Set(['POST']),
+		toUpstream: (path) => `search/${path}`,
+		timeoutMs: 10_000,
+	},
+	{
+		pattern: /^quality\/stats$/,
+		methods: new Set(['GET']),
+		toUpstream: (path) => `search/${path}`,
+		timeoutMs: 10_000,
+	},
 ];
 
 const RUNTIME_RULES: PlaneRule[] = [

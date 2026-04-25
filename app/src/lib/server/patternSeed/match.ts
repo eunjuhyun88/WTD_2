@@ -58,6 +58,7 @@ export type PatternSeedMatchResponse = {
     patternFamily: string;
     patternSlug: string;
     captureId: string;
+    runId?: string;
     researchRunId?: string;
     searchQuerySpec: Record<string, unknown> | null;
     requestedSignals: PatternSeedSignal[];
@@ -659,6 +660,18 @@ export async function runPatternSeedMatch(
           .filter((c): c is PatternSeedMatchCandidate => c !== null)
       : [];
 
+  const similarRunId =
+    similarSearchResult.status === 'fulfilled' &&
+    typeof similarSearchResult.value.run_id === 'string'
+      ? similarSearchResult.value.run_id
+      : undefined;
+  const researchRunId =
+    typeof benchmarkResult.research_run === 'object' &&
+    benchmarkResult.research_run &&
+    typeof (benchmarkResult.research_run as Record<string, unknown>).research_run_id === 'string'
+      ? String((benchmarkResult.research_run as Record<string, unknown>).research_run_id)
+      : undefined;
+
   // Merge: similar-search candidates first (richer scoring), then legacy to fill gaps
   const seenSymbols = new Set<string>();
   const candidates: PatternSeedMatchCandidate[] = [];
@@ -677,12 +690,8 @@ export async function runPatternSeedMatch(
       patternFamily: patternDraft.patternFamily,
       patternSlug,
       captureId,
-      researchRunId:
-        typeof benchmarkResult.research_run === 'object' &&
-        benchmarkResult.research_run &&
-        typeof (benchmarkResult.research_run as Record<string, unknown>).research_run_id === 'string'
-          ? String((benchmarkResult.research_run as Record<string, unknown>).research_run_id)
-          : undefined,
+      runId: similarRunId ?? researchRunId,
+      researchRunId,
       searchQuerySpec,
       requestedSignals,
       detectedSignals,
