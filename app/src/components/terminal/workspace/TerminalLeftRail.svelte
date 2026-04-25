@@ -1,5 +1,6 @@
 <script lang="ts">
   import { setActivePair } from '$lib/stores/activePairStore';
+  import { priceStore } from '$lib/stores/priceStore';
   import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
   import type {
     MacroCalendarItem,
@@ -204,17 +205,21 @@
     </h3>
     <div class="watchlist">
       {#each watchlist as coin}
+        {@const base = coin.symbol.replace(/USDT$/,'')}
         {@const chg = coin.preview?.change24h ?? 0}
         {@const isActive = activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT' || coin.active}
+        {@const liveEntry = $priceStore[base]}
+        {@const displayPrice = liveEntry?.price ?? coin.preview?.price ?? 0}
+        {@const liveChg = liveEntry?.change24h ?? chg}
         <button
           class="watch-item"
           class:active={isActive}
-          onclick={() => setActivePair(coin.symbol.replace(/USDT$/,'') + '/USDT')}
+          onclick={() => setActivePair(base + '/USDT')}
         >
-          <span class="watch-sym">{coin.symbol.replace(/USDT$/, '')}</span>
+          <span class="watch-sym">{base}</span>
           <div class="watch-right">
-            <span class="watch-price">{formatPrice(coin.preview?.price ?? 0)}</span>
-            <span class="watch-chg" style="color:{pctColor(chg)}">{formatPct(chg)}</span>
+            <span class="watch-price">{formatPrice(displayPrice)}</span>
+            <span class="watch-chg" style="color:{pctColor(liveChg)}">{formatPct(liveChg)}</span>
           </div>
         </button>
       {/each}
