@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-26)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`8d1f1929` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210 포함
+`abb8fd21` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
 
 ---
 
@@ -31,6 +31,7 @@
 | **W-0201** query_transformer fix | PR #291 main 머지 완료 |
 | **W-0202** canonical features + active registry | PR #291 main 머지 완료 |
 | **W-0210** 4-layer viz | main 머지 완료 |
+| **W-0211** multi-pane chart + Pine Script engine | PR #298 main 머지 완료 (74afaba3) |
 | **W-0203** terminal UX | PR #290 main 머지 완료 |
 | **W-0162** JWT security P0 | PR #253 main 머지 완료 |
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
