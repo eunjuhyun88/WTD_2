@@ -7,11 +7,7 @@
 
 ## main SHA
 
-`f98f7648` — origin/main (2026-04-25) — W-0203 terminal UI/UX overhaul
-
-## 진행 중 브랜치
-
-`fix/loader-primary-cache-dir` (PR #291 OPEN) — W-0202 커밋 포함: `a135955f`
+`4c02cd0f` — origin/main (2026-04-25) — PR #291 머지 (W-0201/W-0202 포함)
 
 ---
 
@@ -48,8 +44,7 @@
 
 ## 다음 실행 순서
 
-1. **PR #291 머지**: `fix/loader-primary-cache-dir` → main (W-0201/W-0202 포함)
-2. **main SHA 업데이트**: 머지 후 이 파일 갱신
+- 인프라 미완 항목 (사람이 직접): GCP Cloud Build trigger, Vercel EXCHANGE_ENCRYPTION_KEY, Cloud Scheduler
 
 ---
 
