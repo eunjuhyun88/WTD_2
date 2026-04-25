@@ -17,7 +17,7 @@
 
 ## main SHA
 
-`e9014e5c` — origin/main (2026-04-26) — W-0132 copy trading Phase 1 + agent session records 포함
+`9e09b53f` — origin/main (2026-04-26) — W-0132 copy trading + agent session index 포함
 
 ## 진행 중 PR
 
@@ -55,6 +55,8 @@
 | **Session checkpoint** worktree/PR 큐 상태 정리 | PR #314 main 머지 완료 |
 | **Agent session records** Agent 1-6 기록 저장 | PR #318 + PR #320 main 머지 완료 |
 | **W-0132** copy trading Phase 1 | PR #313 main 머지 완료 |
+| **Agent 3 handoff** Cloud Scheduler/GCP/App CI 기록 | PR #323 main 머지 완료 |
+| **Agent session index** 가변 번호 체계 | PR #325 main 머지 완료 |
 
 ---
 
@@ -62,7 +64,7 @@
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| PR #312/#315/#319/#321 | 오래된 개별 memory sync PR | PR #322에 이벤트 통합 후 close |
+| PR #312/#315/#319/#321/#324/#326 | 오래된 개별 memory sync PR | PR #322에 이벤트 통합 후 close |
 | PR #317 | 오래된 agent session docs PR | PR #318/#320에 흡수되어 close |
 
 ---
@@ -71,7 +73,7 @@
 
 ### 즉시
 1. **PR #322 검증/머지** — memory sync 큐 통합, KST 날짜, 중복 이벤트 방지
-2. **stale PR close** — #312/#315/#319/#321/#317
+2. **stale PR close** — #312/#315/#317/#319/#321/#324/#326
 3. **PR #285 triage** — 오래된 research compare PR 유지/종료 판단
 
 ### 중기
