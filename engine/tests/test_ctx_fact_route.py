@@ -49,7 +49,6 @@ def test_ctx_fact_returns_engine_owned_bounded_context(monkeypatch) -> None:
     assert payload["plane"] == "fact"
     assert payload["fact_id"].startswith("fact:BTCUSDT:1h:")
     assert payload["symbol"] == "BTCUSDT"
-    assert payload["fact_id"].startswith("BTCUSDT:1h:")
     assert payload["bars"]["count"] == 600
     assert payload["sources"]["klines"]["status"] == "ok"
     assert payload["sources"]["perp"]["status"] == "missing"

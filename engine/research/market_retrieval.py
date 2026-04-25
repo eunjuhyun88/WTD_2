@@ -27,6 +27,7 @@ _DEFAULT_HISTORY_BARS = 24 * 30
 _DEFAULT_STRIDE_BARS = 6
 _DEFAULT_TOP_K = 20
 _DEFAULT_REPLAY_TOP_K = 8
+MIN_HISTORY_BARS = 240
 SEARCH_DIR = Path(__file__).resolve().parent / "pattern_search"
 MARKET_INDEX_DIR = SEARCH_DIR / "market_indices"
 
@@ -75,10 +76,12 @@ def _pick_reference_case(pattern_slug: str, benchmark_pack_id: str | None = None
     return pack.cases[0]
 
 
-def _load_symbol_frames(symbol: str, timeframe: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _load_symbol_frames(symbol: str, timeframe: str, max_bars: int | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     klines = load_klines(symbol, timeframe, offline=True)
     if klines is None or klines.empty:
         raise ValueError(f"Missing klines for {symbol} {timeframe}")
+    if max_bars is not None:
+        klines = klines.iloc[-max_bars:]
     perp = load_perp(symbol, offline=True)
     features = compute_features_table(klines, symbol, perp=perp)
     common_index = klines.index.intersection(features.index)
@@ -528,6 +531,8 @@ def run_pattern_market_search(
                 candidate_by_symbol[entry.symbol] = candidate
         raw_candidates = list(candidate_by_symbol.values())
     else:
+        feature_pad_bars = max(warmup_bars, MIN_HISTORY_BARS)
+        candidate_max_bars = history_bars + reference_window_bars + feature_pad_bars
         raw_candidates = []
         for symbol in universe:
             if symbol == reference_case.symbol:

@@ -218,6 +218,9 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("volume_surge_bear",               volume_surge_bear),
     ("negative_funding_bias",           negative_funding_bias),
     ("oi_contraction_confirm",          oi_contraction_confirm),
+    # absorption + cross-asset blocks (alpha-hunter, radar-golden, alpha-flow)
+    ("absorption_signal",               absorption_signal),
+    ("alt_btc_accel_ratio",             alt_btc_accel_ratio),
     # disqualifiers
     ("volume_below_average",            volume_below_average),
     ("extreme_volatility",              extreme_volatility),

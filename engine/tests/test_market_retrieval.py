@@ -93,7 +93,7 @@ def test_market_search_prefers_similar_window_and_reranks_top_n(monkeypatch) -> 
     from research import market_retrieval
 
     monkeypatch.setattr(market_retrieval, "_pick_reference_case", lambda pattern_slug, benchmark_pack_id=None: reference_case)
-    monkeypatch.setattr(market_retrieval, "_load_symbol_frames", lambda symbol, timeframe: frames[symbol])
+    monkeypatch.setattr(market_retrieval, "_load_symbol_frames", lambda symbol, timeframe, max_bars=None: frames[symbol])
     monkeypatch.setattr(market_retrieval, "list_cached_symbols", lambda require_perp=False: ["REFUSDT", "SIMUSDT", "DIFFUSDT"])
     monkeypatch.setattr(market_retrieval, "resolve_live_variant_slug", lambda pattern_slug, variant_slug=None: "resolved-variant")
     monkeypatch.setattr(
