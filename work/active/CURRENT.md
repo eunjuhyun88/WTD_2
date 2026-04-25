@@ -7,7 +7,20 @@
 
 ## main SHA
 
-`61e7ce11` — current local `origin/main` ref after PR #217
+`4de28dd0` — origin/main after PR #284 (scanner.py import hotfix)
+
+## 완료 (이번 세션 D — 검색 파이프라인 + GCP 배포)
+
+| 변경 | 내용 |
+|---|---|
+| **PR #282** | feat: search pipeline 3D→40+D + 10× refinement cache TTL + flywheel wiring (stats invalidate + wiki trigger on verdict/capture) |
+| **PR #284** | fix: scanner.py import hotfix (`patterns.definitions` → `patterns.definition_refs`) |
+| **GCP cogotchi-00009-wht** | 최종 배포 성공. image=4de28dd0. healthcheck `{"status":"ready","version":"0.2.0","runtime_role":"hybrid"}` |
+| `engine/scanner/scheduler.py` | corpus_bridge_sync (30min) + feature_windows_prefetch (6h) APScheduler jobs 추가 |
+| `engine/api/main.py` | lifespan: migration runner + feature_windows warm-up 추가 |
+| `engine/api/routes/refinement.py` | `_REFINEMENT_CACHE_TTL` 30s → 300s (10× 비용 절감) |
+| `engine/api/routes/captures.py` | verdict save 후 stats invalidate + wiki trigger; capture save 후 wiki trigger |
+| `engine/db/migrations/0001_agent_sessions.sql` | episodic memory table DDL (30-day rolling window) |
 
 ## 완료 (이번 세션 C — 전체 데이터 아키텍처 설계)
 
