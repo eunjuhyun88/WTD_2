@@ -7,12 +7,13 @@
 
 ## main SHA
 
-`2a2995db` — current local `origin/main` ref after PR #217
+`b48b7d17` — current local `origin/main` ref after PR #217
 
 ## 완료 (이번 세션 — 아키텍처 개선)
 
 | 변경 | 내용 |
 |---|---|
+| #280 | docs(agent-protocol): add execution checkpoints + evidence protocol |
 | #279 | feat(ci): PR 머지 시 MemKraft + CURRENT.md 자동 동기화 |
 | `cloudbuild.yaml` | `--min-instances 1` 추가 — API cold start 제거 |
 | `cloudbuild.worker.yaml` | `--concurrency 1` + `--timeout 900` 추가 — job 중복 방지 |
