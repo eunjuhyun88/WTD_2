@@ -5,8 +5,8 @@ import {
 	fetchFactContextProxy,
 	fetchIndicatorCatalogProxy,
 	fetchFactPerpContextProxy,
-	fetchFactMarketCapProxy,
 	fetchFactReferenceStackProxy,
+	fetchFactMarketCapProxy,
 } from './facts';
 import {
 	fetchSeedSearchRunProxy,
@@ -87,12 +87,28 @@ describe('engine plane clients', () => {
 			if (url.startsWith('/api/facts/perp-context')) {
 				return Response.json({
 					ok: true,
+					owner: 'engine',
+					plane: 'fact',
+					kind: 'perp_context',
 					symbol: 'ETHUSDT',
 					timeframe: '4h',
 					metrics: {
 						funding_rate: -0.0012,
 						long_short_ratio: 0.91,
 					},
+				});
+			}
+			if (url.startsWith('/api/facts/market-cap')) {
+				return Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'fact',
+					kind: 'market_cap',
+					status: 'transitional',
+					generated_at: '2026-04-23T00:00:00Z',
+					total_market_cap: 1_000_000_000_000,
+					btc_dominance: 63.4,
+					stablecoin_market_cap: 150_000_000_000,
 				});
 			}
 			return Response.json({
@@ -120,14 +136,14 @@ describe('engine plane clients', () => {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
-		const referenceStack = await fetchFactReferenceStackProxy(fetchMock as typeof fetch, {
-			symbol: 'ETHUSDT',
-			timeframe: '4h',
-		});
 		const chainIntel = await fetchFactChainIntelProxy(fetchMock as typeof fetch, {
 			symbol: 'ETHUSDT',
 			chain: 'base',
 			family: 'evm',
+			timeframe: '4h',
+		});
+		const referenceStack = await fetchFactReferenceStackProxy(fetchMock as typeof fetch, {
+			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
 		const marketCap = await fetchFactMarketCapProxy(fetchMock as typeof fetch);
@@ -156,12 +172,13 @@ describe('engine plane clients', () => {
 		const fifthInit = fetchMock.mock.calls[4]?.[1] as RequestInit | undefined;
 		const sixthUrl = String(fetchMock.mock.calls[5]?.[0]);
 		const sixthInit = fetchMock.mock.calls[5]?.[1] as RequestInit | undefined;
-		expect(secondUrl).toBe('/api/facts/reference-stack?symbol=ETHUSDT&timeframe=4h&offline=true');
+		expect(secondUrl).toBe('/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true');
 		expect(thirdUrl).toBe('/api/facts/chain-intel?symbol=ETHUSDT&chain=base&family=evm&timeframe=4h&offline=true');
-		expect(fourthUrl).toBe('/api/facts/market-cap?offline=true');
-		expect(fifthUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
-		expect(fifthUrl).toContain('family=technical');
-		expect(fifthUrl).toContain('stage=promoted');
+		expect(fourthUrl).toBe('/api/facts/reference-stack?symbol=ETHUSDT&timeframe=4h&offline=true');
+		expect(fifthUrl).toBe('/api/facts/market-cap?offline=true');
+		expect(sixthUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
+		expect(sixthUrl).toContain('family=technical');
+		expect(sixthUrl).toContain('stage=promoted');
 		expect(secondInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
@@ -181,7 +198,7 @@ describe('engine plane clients', () => {
 		expect(referenceStack?.kind).toBe('reference_stack');
 		expect(chainIntel?.kind).toBe('chain_intel');
 		expect(perp?.kind).toBe('perp_context');
-		expect(marketCap?.kind).toBe('market_cap');
+		expect((marketCap as any)?.kind).toBe('market_cap');
 		expect(catalog?.kind).toBe('indicator_catalog');
 	});
 
