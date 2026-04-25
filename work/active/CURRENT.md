@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-26 업데이트)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -9,17 +9,14 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `App CI repair` | app | local check/test green — PR #293 업데이트 필요 |
-| `W-0163-ci-agent-governance` | contract | local gates green — commit/PR 필요 |
-| `W-0162 P1/P2` | security | RS256 + 블랙리스트 PR 오픈 — GCP 재배포 필요 |
+| `W-0132-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
+| `W-0145-operational-seed-search-corpus` | engine | 다음 — 40+차원 corpus 완성 |
 
 ---
 
 ## main SHA
 
-`c1a8072e` — origin/main (2026-04-26) — PR #291 머지 (W-0201/W-0202 포함)
-
-> ⚠️ PR #293 (App CI fix) 머지 후 이 SHA가 변경됨. 머지 후 업데이트 필요.
+`c1a8072e` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210 포함
 
 ---
 
@@ -29,13 +26,16 @@
 |---|---|
 | **Engine CI** 1448 passed | PR #291 머지 (fix/loader-primary-cache-dir) |
 | **Contract CI** PASS | PR #291 포함 |
-| **App CI** 0 TS errors | `fix/app-ci-ts-errors` 0575515d — PR #293 오픈 |
+| **App CI** 250 tests pass, 0 TS errors | PR #293 main 머지 완료 (c1a8072e) |
+| **W-0163** CI governance | PR #293에 포함 — required checks + memory sync |
 | **W-0201** query_transformer fix | PR #291 main 머지 완료 |
 | **W-0202** canonical features + active registry | PR #291 main 머지 완료 |
 | **W-0210** 4-layer viz | main 머지 완료 |
 | **W-0203** terminal UX | PR #290 main 머지 완료 |
 | **W-0162** JWT security P0 | PR #253 main 머지 완료 |
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
+| **W-0162 P1/P2** JWT RS256 + 블랙리스트 | PR #277 main 머지 완료 (2026-04-25) |
+| **GCP cogotchi** 1024MiB + Cloud Scheduler 5 jobs | cogotchi-00013-c7n 서빙 중 (2026-04-26) |
 
 ---
 
@@ -43,26 +43,14 @@
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| **#293** `fix/app-ci-ts-errors` | App CI 127→0 TS 에러 수리 | — (즉시 머지 가능) |
-| **W-0162 P1/P2** `claude/w-0162-stability` | RS256 서명검증 + 토큰 블랙리스트 | GCP 재배포 |
+| (없음) | — | 모든 즉시 항목 완료 |
 
 ---
 
 ## 다음 실행 순서 (우선순위 순)
 
-### 즉시 (PR 머지)
-1. **PR #293 머지** → App CI 초록 확보 → CURRENT.md main SHA 업데이트
-
-### 단기 (다음 에이전트 세션)
-2. **W-0163** CI governance hardening
-   - required check names 설정
-   - always-present PR checks
-   - memory-sync PR flow
-   - stale handoff archive
-   - 로컬 검증 완료: App check/test, Contract gate, Engine pytest
-3. **W-0162 P1/P2** 머지 + GCP 재배포
-   - `claude/w-0162-stability` 브랜치 PR
-   - GCP cogotchi-worker 재배포
+### 즉시
+- 긴급 항목 없음 — 모든 CI 초록, GCP 정상 (cogotchi-00013-c7n)
 
 ### 중기 (설계 필요)
 4. **Layer A 검색 고도화** (40+차원 완성)
