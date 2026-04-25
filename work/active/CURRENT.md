@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25 B)
+# CURRENT — 단일 진실 (2026-04-25 C)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -9,18 +9,45 @@
 
 `e2fba18b` — PR #252, #253, #254, #256 모두 머지 완료
 
-## 완료 (이번 세션 — 아키텍처 개선)
+## 완료 (이번 세션 C — 전체 데이터 아키텍처 설계)
 
 | 변경 | 내용 |
 |---|---|
-| `cloudbuild.yaml` | `--min-instances 1` 추가 — API cold start 제거 |
-| `cloudbuild.worker.yaml` | `--concurrency 1` + `--timeout 900` 추가 — job 중복 방지 |
-| `engine/search/similar.py` | W-0162 Layer A 업그레이드: feature_snapshot 우선 사용 (3→40+ dims) + FeatureWindowStore batch enrichment |
-| `docs/runbooks/cloud-scheduler-setup.md` | Cloud Scheduler 등록 runbook 신규 작성 |
+| `docs/design/10_COMPLETE_DATA_ARCHITECTURE.md` | 전체 데이터 아키텍처 완성 (v1.2, §1-18): User Activity + Wiki + Stats Engine + Notification + Social + LLM Wiki (Karpathy pattern) + Indicator Viz 연결 |
+| `docs/design/11_CTO_DATA_ARCHITECTURE_REALITY.md` | CTO 현실 검토: 설계 vs 실제 코드베이스 비교, 10개 CTO 결정, 구현 우선순위 P0/P1/P2/P3 |
+| `engine/wiki/COGOCHI.md` | LLM Agent schema 문서 (17 sections): 에이전트 권한 모델, wiki 구조, closed-loop, Korean support |
+| `docs/design/DESIGN_V3.2_KNOWLEDGE_ARCHITECTURE.md` | 4-layer knowledge architecture canonical patch |
+| `docs/design/00_MASTER_ARCHITECTURE.md` | 마스터 아키텍처 (v3.0) |
+| `docs/design/01~06, 09_*.md` | 패턴 모델, 엔진 런타임, 검색 엔진, AI 에이전트, 데이터 계약, reranker spec |
 
-## 이전 세션 완료
+## 이번 세션 핵심 결정 (CTO)
 
-| PR | 내용 |
+| 결정 | 내용 |
+|---|---|
+| 검색 파이프라인 | 4-stage sequential 아님 — 3-layer blend (A/B/C) 유지 + LambdaRank는 Stage 4로 추가 |
+| LightGBM 2개 분리 | Binary P(win) classifier (기존) + LambdaRank reranker (신규, verdict 50+ 이후) |
+| engine/rag/ 이름 | 유지, docstring 추가 — 실제로는 deterministic 256-dim embedding (semantic RAG 아님) |
+| Semantic RAG | Phase 3까지 불필요. 뉴스 ingestion 시 추가. |
+| LLM Wiki | engine/wiki/ 신규 생성. COGOCHI.md = agent schema. §18 spec 참조. |
+| Context Assembly | engine/agents/context.py 신규 필요 — LLM 호출 규칙 없음이 현재 가장 큰 갭 |
+| Read/Display 분리 | Write/Storage와 완전히 다른 문제. WorkspacePayload BFF endpoint 필요 (P3) |
+
+## 이전 세션 완료 (2026-04-25 B)
+
+## 다음 P0 실행 순서 (코드)
+
+| 우선순위 | 작업 | 이유 |
+|---|---|---|
+| P0-1 | Ledger → Supabase 이전 (`engine/ledger/supabase_store.py` 완성) | JSON files = Cloud Run 재시작 시 소실 위험 |
+| P0-2 | DB migration system (`engine/db/migrations/*.sql`) | embedded DDL로 schema 변경 불가 |
+| P1-1 | W-0156: feature_windows → search corpus 연결 완성 | Layer A 검색 재계산 없이 materialized 사용 |
+| P1-2 | Stats Engine (`engine/stats/engine.py`) | pattern_stats_cache 없으면 Wiki 불가 |
+| P2-1 | Context Assembly rules (`engine/agents/context.py`) | LLM call마다 어떤 context 주입할지 규칙 없음 |
+| P2-2 | WikiIngestAgent (`engine/wiki/ingest.py`) | §18 spec 구현 |
+
+## 이전 세션 완료 (2026-04-25 B)
+
+| PR/변경 | 내용 |
 |---|---|
 | #252 (W-0157) | `/jobs/feature_materialization/run` + `/jobs/raw_ingest/run` Cloud Scheduler HTTP endpoints |
 | #253 (W-0162) | JWT P0 hardening — JWKS cache + circuit breaker |
