@@ -23,6 +23,18 @@ def test_write_refinement_report_includes_objective_and_selection(tmp_path) -> N
         winner_variant_ref="variant-19",
         handoff_payload={
             "baseline_family_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
+            "canonical_feature_score": 0.8125,
+            "reference_canonical_feature_score": 0.84,
+            "holdout_canonical_feature_score": 0.785,
+            "canonical_feature_scored_case_count": 3,
+            "canonical_feature_summary": {
+                "oi_zscore_mean": 1.92,
+                "funding_rate_zscore_mean": -1.08,
+                "funding_flip_rate": 0.667,
+                "volume_percentile_mean": 0.81,
+                "pullback_depth_pct_mean": 0.093,
+                "cvd_price_divergence_mean": -0.11,
+            },
         },
     )
     store.record_selection_decision(
@@ -81,6 +93,10 @@ def test_write_refinement_report_includes_objective_and_selection(tmp_path) -> N
     assert "Baseline Ref" in text
     assert "Baseline Family Ref" in text
     assert "family:tradoor-oi-reversal-v1__reset-reclaim-compression" in text
+    assert "Canonical Feature Score" in text
+    assert "Reference Canonical Feature Score" in text
+    assert "Holdout Canonical Feature Score" in text
+    assert "Canonical Feature Summary" in text
     assert "Operator Recommendation" in text
 
 

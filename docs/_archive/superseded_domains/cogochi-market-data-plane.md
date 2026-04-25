@@ -105,6 +105,35 @@ AI 가 알아야 하는 것은:
 
 즉 AI 는 raw provider payload 가 아니라 `AIContextPack` 을 소비해야 한다.
 
+### 5. Panel Layout Plane
+
+Claude-style interaction 을 만들려면 data plane 위에 별도의 layout plane 이 필요하다.
+
+이 plane 이 결정하는 것은:
+
+- 어떤 panel 이 존재하는지
+- panel 이 어느 zone 에 있는지
+- panel 순서가 어떤지
+- panel 이 접혀 있는지
+- panel 이 AI / compare 로 보내질 수 있는지
+
+초기 zone 모델은 단순하게 유지한다.
+
+- `main`: 하단 ANALYZE 의 주 작업대
+- `side`: 하단 ANALYZE 의 보조 dock
+
+첫 구현에서는 자유형 grid drag/drop 전체를 하지 않는다.
+대신 `dock / undock / reorder / collapse` 를 persisted state 로 제공한다.
+이게 있어야 나중에 compare canvas 와 detached panel 도 같은 identity 모델 위에서 확장 가능하다.
+
+또 하나 필요한 것은 `persisted compare shelf` 다.
+이건 full compare canvas 전의 0단계 모델이다.
+
+- 사용자가 고른 panel subset 을 유지한다.
+- 추가 fetch 없이 같은 workspace payload 를 재사용한다.
+- AI compare handoff 의 입력 집합이 된다.
+- tab state 와 함께 저장된다.
+
 ## Surface Placement Rules
 
 ### Main Chart
@@ -146,6 +175,7 @@ AI 가 알아야 하는 것은:
 - LIVE STACK
 - OPTIONS
 - VENUE DIVERGENCE
+- ON-CHAIN / DEX / VOLATILITY BACKDROP
 - EVIDENCE TABLE
 - EXECUTION BOARD
 - pinned study panels
@@ -212,6 +242,71 @@ interface AIContextPack {
 - BTC `Options` + BTC `Venue Divergence` + BTC `Execution` 을 한 canvas 에 pin
 - 선택한 3개 study 를 AI 로 보내 “bull thesis vs bear thesis” 설명
 
+## Panel Layout Model
+
+### Fixed vs movable
+
+고정 영역:
+
+- main chart
+- right summary HUD
+- right AI input rail
+
+이동 가능한 영역:
+
+- bottom ANALYZE 의 detail panels
+
+즉, 사용자는 chart/hud 자체를 흔드는 것이 아니라 detail panel 을 workspace 안에서 재배치한다.
+
+### Panel identity
+
+초기 panel ids:
+
+- `thesis`
+- `live-stack`
+- `options`
+- `venue-divergence`
+- `verified-backdrop`
+- `dex-market-structure`
+- `onchain-cycle-detail`
+- `evidence-log`
+- `execution-board`
+
+### Actions
+
+- `move-left` / `move-right`
+- `dock-to-side`
+- `undock-to-main`
+- `collapse`
+- `send-to-ai`
+- `pin-to-compare`
+
+### Persistence
+
+panel layout 은 active tab state 에 저장한다.
+
+이유:
+
+- symbol/timeframe/session 맥락과 함께 움직인다.
+- compare canvas 전환 시 tab preset 과 panel arrangement 를 같이 보존할 수 있다.
+
+### Visual thesis
+
+`Claude`처럼 보이는 핵심은 패널이 많아지는 것이 아니라, **한 column 에 갇혀 있던 detail blocks 가 workspace object 로 승격되는 것**이다.
+
+- panel 은 카드가 아니라 얇은 rail + section body 로 보여야 한다.
+- chrome 은 최소화하고, 이동 affordance 는 header 의 작은 control 로 제한한다.
+- side dock 은 inspector 처럼 좁고 밀도 있게 유지한다.
+
+### Compare shelf
+
+compare shelf 는 bottom ANALYZE 상단에 위치하는 작은 panel strip 이다.
+
+- 저장 단위는 `AnalyzePanelId[]`
+- panel zone(`main`/`side`) 과는 독립적
+- panel 이 접혀도 pinned 상태는 유지
+- AI compare 는 shelf panel 집합을 그대로 소비
+
 ## Producer Roadmap
 
 ### Phase A — Contract
@@ -245,6 +340,124 @@ interface AIContextPack {
 
 - bottom tabs 를 compare canvas 로 축소/전환
 - `ANALYZE / SCAN / JUDGE` 는 panel presets 로 재정의
+
+## Indicator Rollout Tiers
+
+### Tier 0 — Core default render
+
+실시간 트레이딩 판단에 직접 붙는 지표. 기본적으로 렌더한다.
+
+- Price structure
+- Confluence
+- Funding
+- Open Interest
+- CVD
+- Liquidity clusters
+- Options snapshot
+- Execution
+
+### Tier 1 — Verified backdrop render
+
+무료 또는 현재 repo 안의 verified route 로 이미 계산 가능한 지표. 하단 ANALYZE에 카드로 보인다.
+
+- Stablecoin Supply Ratio (SSR)
+- Realized Volatility Cone
+- Funding Flip Clock
+- On-chain cycle proxy (`/api/onchain/cryptoquant` via CoinMetrics/CryptoQuant fallback)
+- DEX liquidity/volume backdrop (DexScreener exact/proxy mapping 기반)
+
+### Tier 2 — Experimental or deferred
+
+source coverage 또는 유료 의존이 강한 지표. 값이 있더라도 `experimental/deferred` trust 없이 기본 surface 에 올리지 않는다.
+
+- Exchange reserve / labeled exchange netflow
+- SOPR exact
+- MVRV Z-score exact
+- NUPL exact
+- Unique swappers
+- DEX fees / revenue
+- Token unlocks
+- Arkham netflow / whale transfers
+
+## Surface Placement Matrix
+
+### Right Summary HUD
+
+2초 안에 결론을 내려야 하는 요약만 둔다.
+
+- Confluence score / confidence / regime
+- Funding state
+- On-chain cycle summary (`MVRV / NUPL / netflow` 압축값)
+- DEX liquidity summary (`24H vol / liquidity / avg trade size`)
+- Execution next action
+
+### Bottom Workspace
+
+실제 비교, 검증, 실행 준비를 위한 canonical detail surface.
+
+- LIVE STACK
+- OPTIONS
+- VENUE DIVERGENCE
+- ON-CHAIN / DEX / VOL cards
+- DEX MARKET STRUCTURE
+  - Top pairs
+  - Chain concentration
+  - Chain TVL backdrop
+  - Coverage / trust / freshness
+- ON-CHAIN CYCLE DETAIL
+  - Netflow 24h / 7d
+  - MVRV / NUPL / SOPR / Puell
+  - Whale ratio
+- EVIDENCE LOG
+- EXECUTION BOARD
+
+### AI Detail
+
+AI는 별도 데이터 저장소가 아니라 동일 study payload의 natural-language interpreter 다.
+
+- selected studies 의 summary
+- trust / source / methodology
+- DEX top pairs / chain breakdown
+- on-chain cycle raw detail
+- thesis / warnings / counter-case
+
+## Trust Tiers
+
+- `core`
+  - 차트 원천 데이터. 예: Binance klines.
+- `verified`
+  - 공식 formula 와 현재 repo route 로 재현 가능한 지표.
+  - 예: SSR, RV cone, funding flip, CoinMetrics MVRV proxy, DexScreener liquidity.
+- `experimental`
+  - symbol mapping ambiguity, partial pool coverage, or proxy formula 존재.
+  - 예: GeckoTerminal whale flow, Dex search aggregation.
+- `deferred`
+  - 실데이터 source 는 정의됐지만 현재 운영/비용/키가 없어 기본 surface 에 올리지 않는 지표.
+
+## Methodology Baselines
+
+아래 링크/공식은 implementation note 가 아니라 contract baseline 이다.
+
+- RSI: TradingView support formula baseline
+  - [RSI](https://www.tradingview.com/support/solutions/43000502338/)
+- Moving averages / EMA / SMA: TradingView support baseline
+  - [Moving Averages](https://www.tradingview.com/support/solutions/43000502589-moving-averages/)
+- MACD: TradingView support baseline
+  - [MACD](https://www.tradingview.com/support/solutions/43000502344-moving-average-convergence-divergence-macd-indicator/)
+- Bollinger Bands: TradingView support baseline
+  - [Bollinger Bands](https://www.tradingview.com/support/solutions/43000501840/)
+- Volume Profile / HVN / LVN: TradingView support baseline
+  - [Volume Profile](https://www.tradingview.com/support/solutions/43000502040-volume-profile/)
+- SSR: CryptoQuant user guide baseline
+  - [Stablecoin Supply Ratio](https://userguide.cryptoquant.com/cryptoquant-metrics/stablecoin/stablecoin-supply-ratio)
+- MVRV / NUPL / SOPR family: Glassnode docs baseline
+  - [MVRV Ratio](https://docs.glassnode.com/guides-and-tutorials/metric-guides/mvrv/mvrv-ratio)
+  - [STH-NUPL](https://docs.glassnode.com/guides-and-tutorials/metric-guides/unrealized-profit-loss/sth-nupl)
+  - [LTH-SOPR](https://docs.glassnode.com/guides-and-tutorials/metric-guides/sopr/lth-sopr)
+- DEX TVL / volume / fees: DefiLlama and Token Terminal baselines
+  - [DefiLlama methodology](https://docs.llama.fi/)
+  - [DefiLlama dimensions](https://docs.llama.fi/list-your-project/other-dashboards/dimensions)
+  - [Token Terminal metrics](https://docs.tokenterminal.com/docs/metrics-1)
 
 ## Explicit Gaps to Close
 

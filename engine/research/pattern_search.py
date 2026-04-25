@@ -454,7 +454,6 @@ class PatternSearchRunArtifact:
     benchmark_pack_id: str
     winner_variant_slug: str | None
     variant_results: list[VariantSearchResult]
-    definition_ref: dict = field(default_factory=dict)
     search_query_spec: dict | None = None
     variant_specs: list[PatternVariantSpec] = field(default_factory=list)
     variant_deltas: list[VariantDeltaInsight] = field(default_factory=list)
@@ -771,6 +770,20 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
                 }
             },
             hypotheses=["widen accumulation timing window", "slightly lower accumulation score floor"],
+        ),
+        PatternVariantSpec(
+            pattern_slug=pattern_slug,
+            variant_slug=f"{pattern_slug}__breakout-range-soft",
+            timeframe=base.timeframe,
+            phase_overrides={
+                "BREAKOUT": {
+                    "required_blocks": ["post_accumulation_range_breakout"],
+                    "required_any_groups": [["oi_expansion_confirm", "oi_acceleration"]],
+                    "optional_blocks": ["breakout_volume_confirm"],
+                    "max_bars": 24,
+                }
+            },
+            hypotheses=["make breakout local to accumulation range", "allow OI acceleration as OI expansion proxy"],
         ),
         PatternVariantSpec(
             pattern_slug=pattern_slug,
@@ -2706,7 +2719,23 @@ def evaluate_variant_on_case(
         from_timeframe=case.timeframe,
         to_timeframe=timeframe,
     )
-    klines, features = _slice_case_frames(case, timeframe=timeframe, warmup_bars=scaled_warmup_bars)
+    try:
+        klines, features = _slice_case_frames(case, timeframe=timeframe, warmup_bars=scaled_warmup_bars)
+    except (CacheMiss, ValueError) as exc:
+        return VariantCaseResult(
+            case_id=case.case_id,
+            symbol=case.symbol,
+            role=case.role,
+            observed_phase_path=[],
+            current_phase="DATA_MISSING",
+            phase_fidelity=0.0,
+            phase_depth_progress=0.0,
+            entry_hit=False,
+            target_hit=False,
+            lead_bars=None,
+            score=0.0,
+            failed_reason_counts={type(exc).__name__: 1},
+        )
     attempts: list[PhaseAttemptRecord] = []
     machine = PatternStateMachine(pattern, on_phase_attempt=attempts.append)
     replay = replay_pattern_frames(

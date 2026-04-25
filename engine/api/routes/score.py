@@ -2,6 +2,10 @@
 
 Heavy CPU (pandas, feature_calc, LightGBM, blocks) runs in a worker thread
 via `asyncio.to_thread` so the event loop stays responsive.
+
+In-process TTL cache (30s) keyed on (symbol, last_bar_ts_ms) avoids
+repeated LightGBM + feature_calc for the same bar when multiple clients
+score the same symbol concurrently.
 """
 from __future__ import annotations
 
@@ -30,10 +34,12 @@ async def score(request: Request, req: ScoreRequest) -> ScoreResponse:
                 f"(got {len(req.klines)}). Send more history."
             ),
         )
+
     last_bar_ts = req.klines[-1].t
     cached = get_score_cache(req.symbol, last_bar_ts)
     if cached is not None:
         return cached
+
     result = await asyncio.to_thread(score_sync, req)
     set_score_cache(req.symbol, last_bar_ts, result)
     return result

@@ -244,48 +244,9 @@ describe('createPatternCapture', () => {
   });
 
   it('allows draft-only researchContext when parser output is present', async () => {
-    (engine.createRuntimeCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (engine.createCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      capture: {
-        capture_id: 'cap-1',
-        symbol: 'BTCUSDT',
-        timeframe: '4h',
-        captured_at_ms: 1_776_566_400_000,
-        chart_context: {},
-        research_context: {
-          pattern_family: 'tradoor_ptb_oi_reversal',
-          thesis: [],
-          phase_annotations: [],
-          research_tags: [],
-          pattern_draft: {
-            schema_version: 1,
-            pattern_family: 'tradoor_ptb_oi_reversal',
-            source_type: 'manual_note',
-            source_text: 'OI spike then reclaim',
-            symbol_candidates: ['TRADOORUSDT'],
-            thesis: [],
-            phases: [],
-            trade_plan: {},
-            search_hints: {
-              must_have_signals: [],
-              preferred_timeframes: [],
-              exclude_patterns: [],
-              similarity_focus: [],
-              symbol_scope: [],
-            },
-            ambiguities: [],
-          },
-          parser_meta: {
-            parser_role: 'pattern_parser',
-            parser_model: 'gpt-5.4',
-            parser_prompt_version: 'pattern-draft-v1',
-            pattern_draft_schema_version: 1,
-            signal_vocab_version: 'signal-vocab-v1',
-            ambiguity_count: 0,
-          },
-        },
-        block_scores: {},
-      },
+      capture: { capture_id: 'cap-1' },
     });
 
     const input: PatternCaptureCreateRequest = {
@@ -325,7 +286,7 @@ describe('createPatternCapture', () => {
 
     await createPatternCapture('user-1', input);
 
-    expect(engine.createRuntimeCapture).toHaveBeenCalledWith(
+    expect(engine.createCapture).toHaveBeenCalledWith(
       expect.objectContaining({
         research_context: expect.objectContaining({
           pattern_family: 'tradoor_ptb_oi_reversal',

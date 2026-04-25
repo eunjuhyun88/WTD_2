@@ -55,11 +55,8 @@ Contract change
 3. benchmark-pack draft generation can now start from `pattern_draft` fallback fields as long as range bounds are available from phase timestamps or viewport metadata.
 4. engine `QueryTransformer` exists with deterministic `transform_pattern_draft(...)` output, and benchmark-search artifacts now persist optional `search_query_spec` payloads sourced from capture `pattern_draft`.
 5. app now has a canonical `SearchQuerySpec` TypeScript contract, and `SeedSearchResult` can carry the same additive `search_query_spec` shape instead of falling back to untyped dict payloads later.
-6. `PatternSeedScout` now bridges `Find Similar` through engine `/captures`, `/captures/{id}/benchmark_search`, and `/patterns/{slug}/similar-live`, and the surface response includes the emitted `searchQuerySpec`.
-7. engine search/runtime/ledger already exists and phase truth remains rule-first, but the live DOUNI path still uses app-owned `analyze_market` / raw-provider fan-out instead of a canonical `PatternDraft -> SearchQuerySpec -> engine search` flow.
-8. app `createPatternCapture(...)` writes through `engine.createRuntimeCapture(...)`, so capture translation tests must model `/runtime/captures` echoing exact `pattern_draft` / `parser_meta` payloads instead of the legacy `/captures` client.
-9. the first executable slice from this contract is now merged on `origin/main` via PR #230 / #231, so the remaining work is follow-up propagation and cutover rather than first-landing uncertainty.
-10. current local follow-up extracts the `PatternSeedScout` engine bridge into a shared server helper and wires DOUNI to the same helper through a dedicated `find_similar_patterns` tool, so live pattern-search turns can hit `PatternDraft -> benchmark_search -> similar-live` without going through `analyze_market`.
+6. engine search/runtime/ledger already exists and phase truth remains rule-first, but the live DOUNI path still uses app-owned `analyze_market` / raw-provider fan-out instead of a canonical `PatternDraft -> SearchQuerySpec -> engine search` flow.
+7. `PatternSeedScout` still routes `Find Similar` through an app-local heuristic matcher, so the surface button does not yet persist engine search artifacts or consume canonical `similar-live` results.
 
 ## Assumptions
 
@@ -86,19 +83,14 @@ Contract change
 - benchmark-pack draft generation should accept `pattern_draft` as a fallback source for phase/timeframe intent so captures no longer require hand-authored `phase_annotations` before the parser boundary exists.
 - the next executable slice persists engine-generated `search_query_spec` on benchmark-search artifacts by threading it through `PatternBenchmarkSearchConfig` instead of storing it only in capture-local compatibility projections.
 - the first live surface bridge stays app-orchestrated: `PatternSeedScout` may build a narrow heuristic `PatternDraft`, but it must persist that draft through engine `/captures`, trigger engine `/captures/{id}/benchmark_search`, and read candidates from engine `/patterns/{slug}/similar-live`.
-- app-side capture translation tests must follow the runtime plane contract because runtime is now the canonical terminal capture store.
 - this slice preserves the current panel response shape where practical so route truth changes land before broader surface redesign.
-- execution branch is `codex/w-0160-pattern-seed-engine-bridge`; unrelated `CURRENT.md` drift is treated as upstream lane movement and should not be folded into the W-0160 merge unit.
-- the next work for this contract belongs on top of current mainline or the broader `W-0160-pattern-definition-plane` lane; the seed-bridge extraction itself is already merged.
-- the next executable follow-up should cut DOUNI pattern-search turns over to the existing `PatternSeedScout` engine bridge before widening `SearchQuerySpec` propagation further, because removing app-owned raw analysis from live pattern-search turns has the highest product leverage.
-- branch split reason for the next follow-up: the merged seed-bridge PR is already closed, so the DOUNI cutover must land as a fresh main-based merge unit on its own execution branch.
-- DOUNI pattern-search turns should use a dedicated retrieval tool instead of overloading `check_pattern_status`; status and similar-case retrieval remain separate engine responsibilities even if both tools can be present in one turn.
+- branch split note: implementation happened while the local checkout was on `codex/w-0159-liquidation-followup`, so the merge unit for W-0160 must be isolated onto a clean W-0160 branch via cherry-pick before PR/merge.
 
 ## Next Steps
 
-1. extend the same `SearchQuerySpec` persistence path to seed-search / other benchmark consumers so they emit the canonical app contract instead of route-local dict payloads.
-2. tighten the signal-rule registry and query-spec schema from the current transitional numeric-bound maps into fully versioned shared engine/app contracts.
-3. remove the remaining DOUNI parser heuristic drift by replacing the app-side thesis parser with an engine-owned parser ingress when that contract lands.
+1. replace the `PatternSeedScout` mock matcher with an engine-backed bridge that emits `PatternDraft`, persists a manual-hypothesis capture, runs benchmark search, and returns `similar-live` candidates.
+2. extend the same `SearchQuerySpec` persistence path to seed-search / other benchmark consumers so they emit the canonical app contract instead of route-local dict payloads.
+3. tighten the signal-rule registry and query-spec schema from the current transitional numeric-bound maps into fully versioned shared engine/app contracts.
 
 ## Exit Criteria
 
@@ -110,12 +102,12 @@ Contract change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0160-pattern-draft-query-transformer-contract.md`
-- branch: `origin/main` baseline merged; follow-up should branch cleanly from current main or `codex/w-0160-pattern-definition-plane`
+- branch: `codex/w-0160-pattern-draft-transformer-contract`
 - verification:
-  - `npm --prefix app run test -- src/lib/server/douni/intentClassifier.test.ts src/lib/server/douni/contextBuilder.test.ts src/routes/api/terminal/pattern-seed/match/match.test.ts`
+  - `npm --prefix app run test -- src/routes/api/terminal/pattern-seed/match/match.test.ts`
   - `npm --prefix app run test -- src/lib/contracts/terminalPersistence.test.ts src/lib/server/terminalPersistence.capture.test.ts`
   - `npm --prefix app run check`
   - `uv run --project . --group dev python -m pytest tests/test_capture_routes.py -q`
   - `uv run --project . --group dev python -m pytest tests/test_query_transformer.py -q`
   - `uv run --project . --group dev python -m pytest tests/test_pattern_search.py -q`
-- remaining blockers: `SearchQuerySpec` still needs broader search-plane adoption, DOUNI still has raw-analysis fan-out to remove, and verdict-driven threshold calibration remains a follow-up slice
+- remaining blockers: live `AgentContextPack` adoption, DOUNI raw-analysis removal, and verdict-driven threshold calibration remain follow-up slices

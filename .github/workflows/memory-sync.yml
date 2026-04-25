@@ -1,0 +1,61 @@
+name: Memory Sync
+
+# PR이 main에 머지될 때마다 자동으로:
+#   1. MemKraft에 PR 이벤트 기록
+#   2. CURRENT.md main SHA 동기화
+#   3. 변경사항 main에 커밋
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync Memory + CURRENT.md
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install memkraft
+        run: pip install memkraft --quiet
+
+      - name: Run sync script
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          python scripts/sync_memory.py \
+            --pr-number "$PR_NUMBER" \
+            --pr-title "$PR_TITLE" \
+            --pr-body "$PR_BODY" \
+            --sha "$MERGE_SHA" \
+            --author "$AUTHOR"
+
+      - name: Commit memory + CURRENT.md updates
+        run: |
+          git config user.name "memory-sync[bot]"
+          git config user.email "memory-sync@wtd-v2"
+          git add memory/ work/active/CURRENT.md
+          # 변경사항 없으면 커밋 건너뜀
+          git diff --cached --quiet && echo "nothing to commit" || \
+            git commit -m "chore(memory): PR #${{ github.event.pull_request.number }} — auto sync memory + CURRENT.md"
+          git push origin main
