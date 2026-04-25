@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { SearchQuerySpec } from '$lib/contracts/search/querySpec';
   import type { TerminalAsset } from '$lib/types/terminal';
+  import type { PromotionGateResult } from '$lib/contracts/search/seedSearch';
 
   type MatchCandidate = {
     symbol: string;
-    source: 'engine';
+    source: 'engine' | 'similar';
     score: number;
     matchedSignals: string[];
     missingSignals: string[];
@@ -38,6 +39,7 @@
   let snapshotFiles = $state<File[]>([]);
   let requestedSignals = $state<string[]>([]);
   let searchQuerySpec = $state<SearchQuerySpec | null>(null);
+  let promotionGate = $state<PromotionGateResult | null>(null);
   let currentRunId = $state<string | null>(null);
   let judgedCandidates = $state<Set<string>>(new Set());
 
@@ -81,6 +83,7 @@
       }
       requestedSignals = Array.isArray(body.seed?.requestedSignals) ? body.seed.requestedSignals : [];
       searchQuerySpec = isSearchQuerySpec(body.seed?.searchQuerySpec) ? body.seed.searchQuerySpec : null;
+      promotionGate = isRecord(body.promotionGate) ? (body.promotionGate as unknown as PromotionGateResult) : null;
       candidates = Array.isArray(body.candidates) ? body.candidates : [];
       currentRunId = body.seed?.runId ?? body.seed?.researchRunId ?? null;
       judgedCandidates = new Set();
@@ -177,6 +180,56 @@
                 <span class="chip spec">{phase}</span>
               {/each}
             </div>
+          </div>
+        {/if}
+
+        {#if promotionGate}
+          <div class="gate-card" data-decision={promotionGate.decision}>
+            <div class="gate-head">
+              <p class="seed-label">Benchmark Gate</p>
+              <span class="gate-badge" data-decision={promotionGate.decision}>
+                {promotionGate.decision === 'promote_candidate' ? 'PROMOTE' : 'REJECT'}
+              </span>
+              {#if promotionGate.decisionPath && promotionGate.decisionPath !== 'rejected'}
+                <span class="gate-path">{promotionGate.decisionPath}</span>
+              {/if}
+            </div>
+            <div class="gate-metrics">
+              {#if promotionGate.canonicalFeatureScore !== null}
+                <span class="gate-metric">
+                  <span class="gate-metric-label">feat</span>
+                  {(promotionGate.canonicalFeatureScore * 100).toFixed(0)}
+                </span>
+              {/if}
+              <span class="gate-metric">
+                <span class="gate-metric-label">recall</span>
+                {(promotionGate.referenceRecall * 100).toFixed(0)}%
+              </span>
+              <span class="gate-metric">
+                <span class="gate-metric-label">fidelity</span>
+                {(promotionGate.phaseFidelity * 100).toFixed(0)}%
+              </span>
+              {#if promotionGate.entryProfitableRate !== null}
+                <span class="gate-metric">
+                  <span class="gate-metric-label">win%</span>
+                  {(promotionGate.entryProfitableRate * 100).toFixed(0)}%
+                </span>
+              {/if}
+            </div>
+            {#if Object.keys(promotionGate.gateResults).length > 0}
+              <div class="gate-gates">
+                {#each Object.entries(promotionGate.gateResults) as [gate, passed]}
+                  <span class="gate-chip" data-passed={passed}>{gate.replace(/_/g, ' ')}</span>
+                {/each}
+              </div>
+            {/if}
+            {#if promotionGate.rejectionReasons.length > 0}
+              <div class="gate-reasons">
+                {#each promotionGate.rejectionReasons as reason}
+                  <p class="gate-reason">{reason}</p>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/if}
 
@@ -536,5 +589,94 @@
     margin-left: auto;
     font-size: 10px;
     color: rgba(74,222,128,0.7);
+  }
+
+  /* Gate card */
+  .gate-card {
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.02);
+    padding: 9px 10px;
+    display: grid;
+    gap: 7px;
+  }
+  .gate-card[data-decision='promote_candidate'] {
+    border-color: rgba(74,222,128,0.2);
+    background: rgba(74,222,128,0.04);
+  }
+  .gate-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .gate-badge {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    border-radius: 3px;
+    padding: 2px 6px;
+    border: 1px solid rgba(248,113,113,0.35);
+    color: rgba(252,165,165,0.95);
+    background: rgba(248,113,113,0.08);
+  }
+  .gate-badge[data-decision='promote_candidate'] {
+    border-color: rgba(74,222,128,0.35);
+    color: rgba(134,239,172,0.95);
+    background: rgba(74,222,128,0.08);
+  }
+  .gate-path {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(247,242,234,0.4);
+    margin-left: auto;
+  }
+  .gate-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .gate-metric {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    color: rgba(247,242,234,0.75);
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+  }
+  .gate-metric-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    color: rgba(247,242,234,0.38);
+    letter-spacing: 0.05em;
+  }
+  .gate-gates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .gate-chip {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    border-radius: 3px;
+    padding: 2px 5px;
+    border: 1px solid rgba(248,113,113,0.25);
+    color: rgba(252,165,165,0.8);
+    background: rgba(248,113,113,0.05);
+  }
+  .gate-chip[data-passed='true'] {
+    border-color: rgba(74,222,128,0.25);
+    color: rgba(134,239,172,0.85);
+    background: rgba(74,222,128,0.05);
+  }
+  .gate-reasons {
+    display: grid;
+    gap: 2px;
+  }
+  .gate-reason {
+    margin: 0;
+    font-size: 9px;
+    color: rgba(252,165,165,0.7);
+    line-height: 1.4;
   }
 </style>
