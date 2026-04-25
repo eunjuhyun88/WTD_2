@@ -17,12 +17,6 @@ def _ensure_utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def _series_or_default(frame: pd.DataFrame, column: str, default: object) -> pd.Series:
-    if column in frame.columns:
-        return frame[column]
-    return pd.Series([default] * len(frame), index=frame.index)
-
-
 def _coerce_events_frame(events: Sequence[Mapping[str, object]] | pd.DataFrame) -> pd.DataFrame:
     if isinstance(events, pd.DataFrame):
         frame = events.copy()
@@ -41,11 +35,11 @@ def _coerce_events_frame(events: Sequence[Mapping[str, object]] | pd.DataFrame) 
 
     frame = frame.copy()
     frame["timestamp"] = timestamps
-    frame["provider"] = _series_or_default(frame, "provider", "binance").fillna("binance").astype(str)
-    frame["venue"] = _series_or_default(frame, "venue", "binance_futures").fillna("binance_futures").astype(str)
-    frame["quality_state"] = _series_or_default(frame, "quality_state", "complete").fillna("complete").astype(str)
-    frame["fallback_state"] = _series_or_default(frame, "fallback_state", "none").fillna("none").astype(str)
-    frame["side"] = _series_or_default(frame, "side", "").fillna("").astype(str).str.upper()
+    frame["provider"] = frame.get("provider", "binance").fillna("binance").astype(str)
+    frame["venue"] = frame.get("venue", "binance_futures").fillna("binance_futures").astype(str)
+    frame["quality_state"] = frame.get("quality_state", "complete").fillna("complete").astype(str)
+    frame["fallback_state"] = frame.get("fallback_state", "none").fillna("none").astype(str)
+    frame["side"] = frame.get("side", "").fillna("").astype(str).str.upper()
 
     for col in ("notional_usd", "order_price", "average_price", "quantity", "executed_quantity"):
         if col in frame.columns:
@@ -69,23 +63,6 @@ def _single_or_mixed(values: pd.Series, default: str) -> str:
     if len(uniques) == 1:
         return next(iter(uniques))
     return "mixed"
-
-
-def _derive_liquidation_side_metrics(
-    *,
-    short_liq_usd: float,
-    long_liq_usd: float,
-    total_liq_usd: float,
-) -> tuple[str, float | None, float | None]:
-    if total_liq_usd <= 0:
-        return "none", None, None
-    dominance_share = max(short_liq_usd, long_liq_usd) / total_liq_usd
-    imbalance_ratio = (short_liq_usd - long_liq_usd) / total_liq_usd
-    if short_liq_usd > long_liq_usd:
-        return "short_liq", dominance_share, imbalance_ratio
-    if long_liq_usd > short_liq_usd:
-        return "long_liq", dominance_share, imbalance_ratio
-    return "balanced", dominance_share, imbalance_ratio
 
 
 def build_liquidation_window_records(
@@ -116,11 +93,18 @@ def build_liquidation_window_records(
             long_liq_usd = float(notional[long_mask].sum())
             total_liq_usd = float(notional.sum())
             net_liq_usd = short_liq_usd - long_liq_usd
-            dominant_side, dominant_share, imbalance_ratio = _derive_liquidation_side_metrics(
-                short_liq_usd=short_liq_usd,
-                long_liq_usd=long_liq_usd,
-                total_liq_usd=total_liq_usd,
-            )
+            dominant_share = None
+            imbalance_ratio = None
+            dominant_side = "none"
+            if total_liq_usd > 0:
+                dominant_share = max(short_liq_usd, long_liq_usd) / total_liq_usd
+                imbalance_ratio = net_liq_usd / total_liq_usd
+                if short_liq_usd > long_liq_usd:
+                    dominant_side = "short_liq"
+                elif long_liq_usd > short_liq_usd:
+                    dominant_side = "long_liq"
+                else:
+                    dominant_side = "balanced"
 
             largest_event_usd = None
             largest_event_side = None
@@ -168,74 +152,4 @@ def build_liquidation_window_records(
                     largest_event_side=largest_event_side,
                 )
             )
-    return records
-
-
-def build_liquidation_window_records_from_history(
-    *,
-    symbol: str,
-    timeframe: str,
-    history: pd.DataFrame,
-    ingested_at: datetime,
-    provider: str = "coinalyze",
-    venue: str = "coinalyze_market_wide",
-) -> list[MarketLiquidationWindowRecord]:
-    if history.empty:
-        return []
-
-    frame = history.copy()
-    frame.index = pd.to_datetime(frame.index, utc=True, format="mixed")
-    frame = frame.sort_index()
-    frame["long_liq_usd"] = pd.to_numeric(frame.get("long_liq_usd"), errors="coerce").fillna(0.0)
-    frame["short_liq_usd"] = pd.to_numeric(frame.get("short_liq_usd"), errors="coerce").fillna(0.0)
-
-    window_delta = pd.Timedelta(timeframe)
-    ingested_at_utc = _ensure_utc(ingested_at)
-    records: list[MarketLiquidationWindowRecord] = []
-
-    for window_start, row in frame.iterrows():
-        window_start_ts = pd.Timestamp(window_start).tz_convert("UTC").floor(timeframe)
-        window_end_ts = window_start_ts + window_delta
-        short_liq_usd = float(row["short_liq_usd"])
-        long_liq_usd = float(row["long_liq_usd"])
-        total_liq_usd = short_liq_usd + long_liq_usd
-        dominant_side, dominance_share, imbalance_ratio = _derive_liquidation_side_metrics(
-            short_liq_usd=short_liq_usd,
-            long_liq_usd=long_liq_usd,
-            total_liq_usd=total_liq_usd,
-        )
-        quality_state = "complete" if pd.notna(row["short_liq_usd"]) and pd.notna(row["long_liq_usd"]) else "partial"
-        freshness_ms = max(
-            0,
-            int((ingested_at_utc - window_end_ts.to_pydatetime()).total_seconds() * 1000),
-        )
-
-        records.append(
-            MarketLiquidationWindowRecord(
-                provider=provider,
-                venue=venue,
-                symbol=symbol,
-                timeframe=timeframe,
-                window_start_ts=window_start_ts.to_pydatetime(),
-                window_end_ts=window_end_ts.to_pydatetime(),
-                source_start_ts=window_start_ts.to_pydatetime(),
-                source_end_ts=window_end_ts.to_pydatetime(),
-                ingested_at=ingested_at_utc,
-                freshness_ms=freshness_ms,
-                quality_state=quality_state,
-                fallback_state="none",
-                event_count=0,
-                short_event_count=0,
-                long_event_count=0,
-                short_liq_usd=short_liq_usd,
-                long_liq_usd=long_liq_usd,
-                total_liq_usd=total_liq_usd,
-                net_liq_usd=short_liq_usd - long_liq_usd,
-                dominant_side=dominant_side,
-                dominance_share=dominance_share,
-                imbalance_ratio=imbalance_ratio,
-                largest_event_usd=None,
-                largest_event_side=None,
-            )
-        )
     return records

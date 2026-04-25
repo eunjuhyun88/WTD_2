@@ -14,15 +14,14 @@ from scanner.feature_calc import compute_features_table
 from scoring.block_evaluator import evaluate_block_masks
 
 
-
 def _referenced_blocks_for_pattern(machine: PatternStateMachine) -> set[str]:
     refs: set[str] = set()
     for phase in machine.pattern.phases:
         refs.update(phase.required_blocks)
         refs.update(phase.optional_blocks)
-        refs.update(getattr(phase, 'soft_blocks', []))
+        refs.update(phase.soft_blocks)
         refs.update(phase.disqualifier_blocks)
-        for group in getattr(phase, 'required_any_groups', []):
+        for group in phase.required_any_groups:
             refs.update(group)
     return refs
 
@@ -37,6 +36,18 @@ def _row_snapshot(row: pd.Series) -> dict:
         else:
             snapshot[key] = str(value)
     return snapshot
+
+
+def _pattern_block_names(machine: PatternStateMachine) -> set[str]:
+    names: set[str] = set()
+    for phase in machine.pattern.phases:
+        names.update(phase.required_blocks)
+        names.update(phase.optional_blocks)
+        names.update(phase.soft_blocks)
+        names.update(phase.disqualifier_blocks)
+        for group in phase.required_any_groups:
+            names.update(group)
+    return names
 
 
 def replay_pattern_frames(
@@ -61,7 +72,12 @@ def replay_pattern_frames(
             phase_history=[],
         )
 
-    masks = evaluate_block_masks(features_df, klines_df, symbol, requested_blocks=_referenced_blocks_for_pattern(machine))
+    masks = evaluate_block_masks(
+        features_df,
+        klines_df,
+        symbol,
+        block_names=_pattern_block_names(machine),
+    )
     end_idx = len(features_df)
     if timestamp_limit is not None:
         matching = features_df.index[features_df.index < timestamp_limit]

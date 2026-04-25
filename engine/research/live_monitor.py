@@ -18,9 +18,16 @@ from pathlib import Path
 import pandas as pd
 
 from data_cache.loader import load_klines
+from features.canonical_pattern import score_canonical_feature_snapshot
+from patterns.active_variant_registry import (
+    ACTIVE_PATTERN_VARIANT_STORE,
+    DEFAULT_ACTIVE_PATTERN_VARIANTS,
+    ActivePatternVariantEntry,
+)
 from research.pattern_search import (
     BenchmarkCase,
     PatternVariantSpec,
+    PatternSearchArtifactStore,
     build_variant_pattern,
     evaluate_variant_on_case,
 )
@@ -64,17 +71,50 @@ PHASE_ORDER = {
     # alpha-confluence-v1 phases (W-0107)
     "LAYER_SETUP": 0, "CVD_SIGNAL": 1, "ALPHA_ENTRY": 2,
 }
+_FEATURE_RANKING_BLEND_WEIGHT = 0.15
 
-# Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
-# Add new patterns here as they are promoted.
+# Seed/fallback defaults kept for backward compatibility with older tests and
+# for first-run bootstrap before the durable registry is populated.
 PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
-    ("tradoor-oi-reversal-v1",          "tradoor-oi-reversal-v1__canonical",                    {"ACCUMULATION", "REAL_DUMP"}),
-    ("funding-flip-reversal-v1",        "funding-flip-reversal-v1__canonical__dur-long",        {"ENTRY_ZONE", "FLIP_SIGNAL"}),
-    ("wyckoff-spring-reversal-v1",      "wyckoff-spring-reversal-v1__canonical__dur-long",      {"SPRING", "SIGN_OF_STRENGTH"}),
-    ("whale-accumulation-reversal-v1",  "whale-accumulation-reversal-v1__canonical__dur-long",  {"BOTTOM_CONFIRM", "WHALE_ACCUMULATION"}),
-    ("volume-absorption-reversal-v1",   "volume-absorption-reversal-v1__canonical",             {"SELLING_CLIMAX", "ABSORPTION"}),
-    ("compression-breakout-reversal-v1", "compression-breakout-reversal-v1__cbr-v1",            {"SETUP", "COILING"}),
+    (entry.pattern_slug, entry.variant_slug, set(entry.watch_phases))
+    for entry in DEFAULT_ACTIVE_PATTERN_VARIANTS
 ]
+
+
+def _registry_variant_slug(pattern_slug: str) -> str | None:
+    for promoted_pattern_slug, variant_slug, _watch_phases in PROMOTED_PATTERNS:
+        if promoted_pattern_slug == pattern_slug:
+            return variant_slug
+    return None
+
+
+def resolve_live_variant_slug(
+    pattern_slug: str,
+    requested_variant_slug: str | None = None,
+    *,
+    artifact_store: PatternSearchArtifactStore | None = None,
+) -> str:
+    """Resolve the live-monitor variant.
+
+    Priority:
+    1. explicit requested variant (except "auto")
+    2. latest benchmark-search winner persisted for the pattern
+    3. registry fallback from PROMOTED_PATTERNS
+    4. canonical naming convention fallback
+    """
+    if requested_variant_slug and requested_variant_slug != "auto":
+        return requested_variant_slug
+
+    artifact_store = artifact_store or PatternSearchArtifactStore()
+    for artifact in artifact_store.list(pattern_slug=pattern_slug, limit=20):
+        winner_variant_slug = artifact.get("winner_variant_slug")
+        if winner_variant_slug:
+            return winner_variant_slug
+
+    registry_variant_slug = _registry_variant_slug(pattern_slug)
+    if registry_variant_slug:
+        return registry_variant_slug
+    return f"{pattern_slug}__canonical"
 
 
 @dataclass
@@ -86,7 +126,17 @@ class LiveScanResult:
     fwd_peak_pct: float | None
     realistic_pct: float | None
     phase_fidelity: float
+    observed_phase_path: list[str] = field(default_factory=list)
+    phase_depth_progress: float = 0.0
+    similarity_score: float = 0.0
+    replay_similarity_score: float = 0.0
+    canonical_feature_score: float = 0.5
+    ranking_score: float = 0.0
+    target_hit: bool = False
     pattern_slug: str = "tradoor-oi-reversal-v1"
+    variant_slug: str = "tradoor-oi-reversal-v1__canonical"
+    timeframe: str = "1h"
+    canonical_feature_snapshot: dict[str, float | bool | None] = field(default_factory=dict)
     scanned_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
@@ -104,9 +154,27 @@ class LiveScanResult:
         return d
 
 
+def list_active_pattern_entries() -> list[ActivePatternVariantEntry]:
+    return ACTIVE_PATTERN_VARIANT_STORE.list_effective()
+
+
+def _resolve_active_pattern_entry(pattern_slug: str) -> ActivePatternVariantEntry | None:
+    entry = ACTIVE_PATTERN_VARIANT_STORE.get(pattern_slug)
+    if entry is not None:
+        return entry
+    for candidate in list_active_pattern_entries():
+        if candidate.pattern_slug == pattern_slug:
+            return candidate
+    return None
+
+
+def _clip01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
 def scan_universe_live(
     universe: list[str] | None = None,
-    variant_slug: str = "tradoor-oi-reversal-v1__canonical",
+    variant_slug: str | None = None,
     pattern_slug: str = "tradoor-oi-reversal-v1",
     timeframe: str = "1h",
     window_bars: int = 120,
@@ -119,7 +187,7 @@ def scan_universe_live(
 
     Args:
         universe: list of symbols to scan (default: DEFAULT_UNIVERSE)
-        variant_slug: promoted variant to evaluate
+        variant_slug: explicit variant to evaluate; None/"auto" uses latest benchmark-search winner
         pattern_slug: pattern family
         timeframe: bar size (default 1h)
         window_bars: lookback bars for phase detection (default 120 = 5 days)
@@ -131,14 +199,17 @@ def scan_universe_live(
         List of LiveScanResult sorted by phase priority (ACCUMULATION first).
     """
     if universe is None:
-        universe = DEFAULT_UNIVERSE
+        universe = list_cached_symbols(require_perp=False)
+        if not universe:
+            universe = DEFAULT_UNIVERSE
     if watch_phases is None:
         watch_phases = WATCH_PHASES
 
     now = datetime.now(timezone.utc)
+    resolved_variant_slug = resolve_live_variant_slug(pattern_slug, variant_slug)
     variant = PatternVariantSpec(
         pattern_slug=pattern_slug,
-        variant_slug=variant_slug,
+        variant_slug=resolved_variant_slug,
         timeframe=timeframe,
     )
     pattern = build_variant_pattern(pattern_slug, variant)
@@ -183,7 +254,16 @@ def scan_universe_live(
             fwd_peak_pct=r.forward_peak_return_pct,
             realistic_pct=r.realistic_forward_peak_return_pct,
             phase_fidelity=r.phase_fidelity or 0.0,
+            observed_phase_path=list(r.observed_phase_path),
+            phase_depth_progress=r.phase_depth_progress or 0.0,
+            similarity_score=r.score or 0.0,
+            replay_similarity_score=r.score or 0.0,
+            ranking_score=r.score or 0.0,
+            target_hit=bool(r.target_hit),
             pattern_slug=pattern_slug,
+            variant_slug=variant_slug,
+            timeframe=timeframe,
+            canonical_feature_snapshot=dict(r.canonical_feature_snapshot),
             scanned_at=now,
         ))
 
@@ -202,6 +282,7 @@ def scan_universe_live(
             "name": "live-phase-scan",
             "params": {
                 "pattern": variant_slug,
+                "resolved_variant_slug": resolved_variant_slug,
                 "universe_size": len(universe),
                 "window_bars": window_bars,
                 "staleness_hours": staleness_hours,
@@ -222,9 +303,81 @@ def scan_universe_live(
     return results
 
 
+def search_pattern_state_similarity(
+    pattern_slug: str,
+    *,
+    universe: list[str] | None = None,
+    variant_slug: str | None = None,
+    timeframe: str | None = None,
+    top_k: int = 20,
+    min_similarity_score: float = 0.2,
+    window_bars: int = 120,
+    staleness_hours: int = 48,
+    warmup_bars: int = 240,
+) -> list[LiveScanResult]:
+    """Rank the live universe by replay/state-machine similarity for one pattern family.
+
+    This is the production search path for "same market state / same structure"
+    queries. It deliberately reuses replay-based phase scoring instead of candle-
+    image matching or a separate cosine snapshot model.
+    """
+
+    active_entry = _resolve_active_pattern_entry(pattern_slug)
+    resolved_variant_slug = (
+        variant_slug
+        or (active_entry.variant_slug if active_entry is not None else f"{pattern_slug}__canonical")
+    )
+    resolved_timeframe = (
+        timeframe
+        or (active_entry.timeframe if active_entry is not None else "1h")
+    )
+    watch_phases = set(active_entry.watch_phases) if active_entry is not None else None
+
+    results = scan_universe_live(
+        universe=universe,
+        variant_slug=resolved_variant_slug,
+        pattern_slug=pattern_slug,
+        timeframe=resolved_timeframe,
+        window_bars=window_bars,
+        staleness_hours=staleness_hours,
+        warmup_bars=warmup_bars,
+        log_to_experiment=False,
+        watch_phases=watch_phases,
+    )
+    filtered = [
+        result
+        for result in results
+        if result.similarity_score >= min_similarity_score
+    ]
+    for result in filtered:
+        result.replay_similarity_score = result.similarity_score
+        result.canonical_feature_score = score_canonical_feature_snapshot(
+            result.canonical_feature_snapshot
+        )
+        result.ranking_score = round(
+            _clip01(
+                result.replay_similarity_score
+                + _FEATURE_RANKING_BLEND_WEIGHT * (result.canonical_feature_score - 0.5)
+            ),
+            6,
+        )
+    filtered.sort(
+        key=lambda result: (
+            -result.ranking_score,
+            -result.replay_similarity_score,
+            -result.canonical_feature_score,
+            -result.phase_depth_progress,
+            -result.phase_fidelity,
+            PHASE_ORDER.get(result.phase, 9),
+            result.symbol,
+        )
+    )
+    return filtered[:top_k]
+
+
 def scan_all_patterns_live(
     universe: list[str] | None = None,
-    timeframe: str = "1h",
+    timeframe: str | None = None,
     window_bars: int = 120,
     staleness_hours: int = 48,
     warmup_bars: int = 240,
@@ -232,23 +385,23 @@ def scan_all_patterns_live(
 ) -> list[LiveScanResult]:
     """Scan universe across all promoted patterns and return merged results.
 
-    Iterates over PROMOTED_PATTERNS and calls scan_universe_live() for each,
+    Iterates over the active-variant registry and calls scan_universe_live() for each,
     deduplicating by (symbol, pattern_slug). Results are sorted by phase
     priority: entry candidates first, then watch list, then others.
     """
     all_results: list[LiveScanResult] = []
     seen: set[tuple[str, str]] = set()
-    for pat_slug, var_slug, wp in PROMOTED_PATTERNS:
+    for entry in list_active_pattern_entries():
         results = scan_universe_live(
             universe=universe,
-            variant_slug=var_slug,
-            pattern_slug=pat_slug,
-            timeframe=timeframe,
+            variant_slug=entry.variant_slug,
+            pattern_slug=entry.pattern_slug,
+            timeframe=timeframe or entry.timeframe,
             window_bars=window_bars,
             staleness_hours=staleness_hours,
             warmup_bars=warmup_bars,
             log_to_experiment=log_to_experiment,
-            watch_phases=wp,
+            watch_phases=set(entry.watch_phases),
         )
         for r in results:
             key = (r.symbol, r.pattern_slug)
@@ -262,6 +415,21 @@ def scan_all_patterns_live(
         -(x.fwd_peak_pct or -999),
     ))
     return all_results
+
+
+def resolve_live_variant_slug(pattern_slug: str, variant_slug: str | None = None) -> str:
+    """Return the canonical live variant slug for a pattern.
+
+    If *variant_slug* is given, return it as-is (caller override).
+    Otherwise look up the canonical variant in PROMOTED_PATTERNS.
+    Falls back to ``{pattern_slug}__canonical`` if not registered.
+    """
+    if variant_slug is not None:
+        return variant_slug
+    for slug, canonical, _ in PROMOTED_PATTERNS:
+        if slug == pattern_slug:
+            return canonical
+    return f"{pattern_slug}__canonical"
 
 
 def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SCAN") -> None:

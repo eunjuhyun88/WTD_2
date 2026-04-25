@@ -6,14 +6,15 @@ RUN apk add --no-cache curl
 
 ARG APP_BUILD_TARGET=cloud-run
 ENV APP_BUILD_TARGET=${APP_BUILD_TARGET}
-ENV NODE_ENV=production
 
 COPY app/package*.json ./
-RUN npm ci
+RUN npm ci \
+ && npm install --no-save @rollup/rollup-linux-x64-musl@4.60.1
 
 COPY app/ ./
 
-RUN npm run build
+RUN npm run prepare \
+ && npm run build
 
 FROM node:20-alpine AS runtime
 

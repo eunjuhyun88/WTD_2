@@ -4,7 +4,7 @@ Exposes live pattern phase scan results to the app surface and stores
 user verdicts for future threshold calibration.
 
 Endpoints:
-    GET  /live-signals          → run (or return cached) scan_universe_live()
+    GET  /live-signals          → run (or return cached) scan_all_patterns_live()
     POST /live-signals/verdict  → append user verdict to verdicts.jsonl
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from research.live_monitor import LiveScanResult, scan_universe_live
+from research.live_monitor import LiveScanResult, scan_all_patterns_live
 
 router = APIRouter()
 
@@ -70,7 +70,7 @@ async def get_live_signals() -> dict:
     cached = _cache_result is not None and (now - _cache_ts) < _CACHE_TTL
 
     if not cached:
-        results: list[LiveScanResult] = await asyncio.to_thread(scan_universe_live)
+        results: list[LiveScanResult] = await asyncio.to_thread(scan_all_patterns_live)
         _cache_result = [r.to_dict() for r in results]
         _cache_ts = now
 

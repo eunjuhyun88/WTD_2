@@ -51,13 +51,13 @@ def test_fetch_force_orders_range_paginates_and_normalizes(monkeypatch) -> None:
         ],
     ]
 
-    def _fake_fetch_signed_json(path: str, params: dict[str, object]) -> list[dict]:
-        calls.append(f"{path}?symbol={params['symbol']}&endTime={params['endTime']}")
+    def _fake_fetch_json(path: str) -> list[dict]:
+        calls.append(path)
         if len(calls) <= len(batches):
             return batches[len(calls) - 1]
         return []
 
-    monkeypatch.setattr(liq_mod, "_fetch_signed_json", _fake_fetch_signed_json)
+    monkeypatch.setattr(liq_mod, "_fetch_json", _fake_fetch_json)
     monkeypatch.setattr(liq_mod.time, "sleep", lambda _: None)
 
     frame = liq_mod.fetch_force_orders_range(

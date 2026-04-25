@@ -32,7 +32,7 @@ import logging
 import time
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 
 log = logging.getLogger("engine.captures")
@@ -276,18 +276,12 @@ def _normalize_research_context(
 
     if not payload.get("phase_annotations") and isinstance(pattern_draft.get("phases"), list):
         draft_timeframe = pattern_draft.get("timeframe")
-        projected_timeframe = (
-            draft_timeframe if isinstance(draft_timeframe, str) and draft_timeframe else default_timeframe
-        )
+        projected_timeframe = draft_timeframe if isinstance(draft_timeframe, str) and draft_timeframe else default_timeframe
         payload["phase_annotations"] = [
             {
                 "phase_id": phase.get("phase_id"),
                 "label": phase.get("label"),
-                "timeframe": (
-                    phase.get("timeframe")
-                    if isinstance(phase.get("timeframe"), str) and phase.get("timeframe")
-                    else projected_timeframe
-                ),
+                "timeframe": phase.get("timeframe") if isinstance(phase.get("timeframe"), str) and phase.get("timeframe") else projected_timeframe,
                 "signals_required": [
                     item for item in phase.get("signals_required", []) if isinstance(item, str)
                 ][:24],
@@ -317,19 +311,9 @@ def _normalize_research_context(
                     ) or None
                 payload["entry_spec"] = {
                     "entry_phase_id": entry_phase,
-                    "entry_trigger": (
-                        entry_trigger if isinstance(entry_trigger, str) and entry_trigger else None
-                    ),
-                    "stop_rule": (
-                        trade_plan.get("stop_rule")
-                        if isinstance(trade_plan.get("stop_rule"), str)
-                        else None
-                    ),
-                    "target_rule": (
-                        trade_plan.get("target_rule")
-                        if isinstance(trade_plan.get("target_rule"), str)
-                        else None
-                    ),
+                    "entry_trigger": entry_trigger if isinstance(entry_trigger, str) and entry_trigger else None,
+                    "stop_rule": trade_plan.get("stop_rule") if isinstance(trade_plan.get("stop_rule"), str) else None,
+                    "target_rule": trade_plan.get("target_rule") if isinstance(trade_plan.get("target_rule"), str) else None,
                 }
 
     return payload
@@ -370,6 +354,15 @@ async def create_capture(request: Request, body: CaptureCreateBody) -> dict:
     )
     _capture_store.save(record)
     LEDGER_RECORD_STORE.append_capture_record(record)
+
+    # Trigger wiki page update for this pattern (debounced, best-effort).
+    if record.pattern_slug:
+        try:
+            from wiki.ingest import get_wiki_agent
+            get_wiki_agent().on_capture_created(record.pattern_slug, record.id)
+        except Exception:
+            pass
+
     return {"ok": True, "capture": record.to_dict()}
 
 
@@ -538,6 +531,20 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
         verdict_id=outcome.id,
     )
 
+    # Invalidate stats cache so next request reflects this verdict immediately.
+    try:
+        from stats.engine import get_stats_engine
+        get_stats_engine().invalidate()
+    except Exception:
+        pass  # stats cache is best-effort
+
+    # Trigger wiki page update for this pattern (debounced, best-effort).
+    try:
+        from wiki.ingest import get_wiki_agent
+        get_wiki_agent().on_verdict_submitted(capture.pattern_slug, outcome.id)
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "capture_id": capture_id,
@@ -596,7 +603,6 @@ def _build_capture_search_query_spec(capture: CaptureRecord) -> dict[str, Any] |
             exc,
         )
         return None
-
 
 @router.post("/{capture_id}/benchmark_pack_draft")
 async def create_capture_benchmark_pack_draft(

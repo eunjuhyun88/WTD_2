@@ -2,16 +2,7 @@
   import { setActivePair } from '$lib/stores/activePairStore';
   import { priceStore } from '$lib/stores/priceStore';
   import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
-  import type {
-    MacroCalendarItem,
-    TerminalAlertRule,
-    TerminalWatchlistItem,
-  } from '$lib/contracts/terminalPersistence';
-  import {
-    createSymbolSelection,
-    createTerminalSelection,
-    type TerminalSelectionState,
-  } from '$lib/terminal/terminalSelectionState';
+  import { createSymbolSelection, createTerminalSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
 
   interface AlertRow {
     id: string;
@@ -47,7 +38,7 @@
     anomalies?: TerminalAnomaly[];
     onSelect?: (s: TerminalSelectionState) => void;
     onQuery?: (q: string) => void;
-    onDeleteSavedAlert?: (id: string) => void;
+    onSelect?: (selection: TerminalSelectionState) => void;
   }
   let {
     trendingData,
@@ -62,7 +53,7 @@
     anomalies = [],
     onSelect,
     onQuery,
-    onDeleteSavedAlert,
+    onSelect,
   }: Props = $props();
 
   const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [
@@ -293,6 +284,45 @@
           <span class="query-count">{queryCount(q.id)}</span>
         </button>
       {/each}
+    </div>
+  </section>
+
+  <!-- Watchlist -->
+  <section class="rail-section">
+    <h3 class="section-title">
+      Watchlist
+      <span class="alert-count">{watchlist.length}</span>
+    </h3>
+    <div class="watchlist">
+      {#if watchlist.length > 0}
+        <div class="watch-head">
+          <span>SYM</span>
+          <span>PRICE</span>
+          <span>24H</span>
+          <span>SIG</span>
+        </div>
+      {/if}
+      {#each watchlist as coin}
+        {@const chg = coin.change24h ?? coin.percentChange24h ?? 0}
+        <button
+          class="watch-item"
+          class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT'}
+          onclick={() => {
+            onSelect?.(createSymbolSelection(`${coin.symbol}USDT`, '4h', 'left_watchlist'));
+            setActivePair(coin.symbol + '/USDT');
+          }}
+        >
+          <span class="watch-sym">{coin.symbol}</span>
+          <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
+          <span class="watch-chg" style="color:{pctColor(chg)}">
+            {formatPct(chg)}
+          </span>
+          <span class="watch-sig">{signalMark(chg)}</span>
+        </button>
+      {/each}
+      {#if watchlist.length === 0}
+        <p class="empty-text">Loading watchlist…</p>
+      {/if}
     </div>
   </section>
 

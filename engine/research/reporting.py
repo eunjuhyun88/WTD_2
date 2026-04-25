@@ -104,6 +104,27 @@ def write_refinement_report(
         lines.append("- Promotion Rejection Reasons:")
         for reason in rejection_reasons:
             lines.append(f"  - {reason}")
+    canonical_feature_score = run.handoff_payload.get("canonical_feature_score")
+    if canonical_feature_score is not None:
+        lines.append(f"- Canonical Feature Score: `{canonical_feature_score}`")
+    reference_canonical_feature_score = run.handoff_payload.get("reference_canonical_feature_score")
+    if reference_canonical_feature_score is not None:
+        lines.append(f"- Reference Canonical Feature Score: `{reference_canonical_feature_score}`")
+    holdout_canonical_feature_score = run.handoff_payload.get("holdout_canonical_feature_score")
+    if holdout_canonical_feature_score is not None:
+        lines.append(f"- Holdout Canonical Feature Score: `{holdout_canonical_feature_score}`")
+    canonical_feature_scored_case_count = run.handoff_payload.get("canonical_feature_scored_case_count")
+    if canonical_feature_scored_case_count:
+        lines.append(f"- Canonical Feature Scored Cases: `{canonical_feature_scored_case_count}`")
+    canonical_feature_summary = run.handoff_payload.get("canonical_feature_summary")
+    if isinstance(canonical_feature_summary, dict):
+        meaningful_feature_summary = {
+            key: value
+            for key, value in canonical_feature_summary.items()
+            if value is not None
+        }
+        if meaningful_feature_summary:
+            lines.append(f"- Canonical Feature Summary: `{meaningful_feature_summary}`")
     training_result = run.handoff_payload.get("training_result")
     if training_result is None:
         lines.append(f"- Payload: `{run.handoff_payload}`")

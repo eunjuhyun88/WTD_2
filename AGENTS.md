@@ -199,3 +199,84 @@ Avoid mixing types in one change set when possible.
 - Domains: `docs/domains/*.md`
 - Decisions: `docs/decisions/*.md`
 - Runbooks: `docs/runbooks/*.md`
+
+---
+
+<!-- MEMKRAFT-BLOCK-START (v2.0.0) -->
+## Memory Protocol (MemKraft)
+
+MemKraft v2.0.0 is installed. Base dir: `memory/` (project root).
+
+```python
+from memory.mk import mk
+```
+
+### 작업 시작 전 — evidence_first (필수)
+
+비자명한 작업을 시작하기 전에 반드시 과거 결정·장애를 조회한다.
+
+```python
+evidence = mk.evidence_first("관련 키워드")
+# decisions + incidents + entities 통합 조회
+```
+
+### 작업 완료 후 — log_event (필수)
+
+PR 머지, 배포, 주요 완료 시 반드시 기록한다. CURRENT.md main SHA도 함께 업데이트.
+
+```python
+mk.log_event(
+    "PR #NNN merged: {한줄요약}",
+    tags="pr,merge,{work_id}",
+    importance="high",
+)
+```
+
+### 아키텍처 결정 — decision_record
+
+non-trivial 설계 선택(라이브러리 도입, 구조 변경, 정책 결정) 시 기록.
+
+```python
+mk.decision_record(
+    what="결정 내용",
+    why="이유",
+    how="구현 방법",
+    tags="domain,work_id",
+)
+```
+
+### 장애/실패 — incident_record
+
+CI 실패, 프로덕션 장애, 데이터 손실 시 기록.
+
+```python
+mk.incident_record(
+    title="무엇이 깨졌는가",
+    symptoms=["증상1", "증상2"],
+    severity="medium",  # low | medium | high | critical
+)
+```
+
+### Tier 규칙
+
+- `core` — 현재 활성 결정, 반복 참조하는 엔티티
+- `recall` — 최근 완료된 작업, 일시적 메모
+- `archival` — 히스토리 보존용
+
+```python
+mk.tier_set("entity-slug", tier="core")
+```
+
+### 검색
+
+```python
+mk.search("키워드")           # hybrid: exact + IDF + fuzzy
+mk.evidence_first("키워드")   # decisions + incidents + memory 통합
+```
+
+### Gotchas
+
+- Tier: `core` / `recall` / `archival` only (`critical` ❌)
+- `log_event` 후 CURRENT.md main SHA 업데이트 함께
+- 과거 기억 조회 시 `grep` 전에 `mk.search()` 먼저
+<!-- MEMKRAFT-BLOCK-END -->

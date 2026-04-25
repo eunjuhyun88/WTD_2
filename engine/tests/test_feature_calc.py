@@ -13,6 +13,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from features.canonical_pattern import (
+    CANONICAL_PATTERN_FEATURE_COLUMNS,
+    extract_canonical_pattern_feature_snapshot,
+)
 from models.signal import (
     EMAAlignment,
     Operator,
@@ -187,6 +191,59 @@ def test_features_table_columns_complete():
     assert "price" in df.columns
     assert "symbol" in df.columns
     assert (df["symbol"] == "TEST").all()
+
+
+def test_features_table_exposes_canonical_pattern_feature_subset():
+    n = MIN_HISTORY_BARS + 30
+    k = _make_klines(n, seed=17)
+    descending_close = np.linspace(110.0, 95.0, 12)
+    anchor_ts = k.index[-13]
+    k.loc[anchor_ts, "open"] = 120.5
+    k.loc[anchor_ts, "close"] = 120.0
+    k.loc[anchor_ts, "high"] = 121.0
+    k.loc[anchor_ts, "low"] = 119.0
+    last_slice = k.index[-12:]
+    prev_close = float(k.loc[k.index[-13], "close"])
+    opens = np.concatenate([[prev_close], descending_close[:-1]])
+    k.loc[last_slice, "open"] = opens
+    k.loc[last_slice, "close"] = descending_close
+    k.loc[last_slice, "high"] = np.maximum(opens, descending_close) * 1.002
+    k.loc[last_slice, "low"] = np.minimum(opens, descending_close) * 0.998
+    k.loc[last_slice, "volume"] = np.linspace(2000.0, 9000.0, 12)
+    k.loc[last_slice, "taker_buy_base_volume"] = k.loc[last_slice, "volume"] * 0.95
+
+    idx = k.index
+    oi_raw = np.full(n, 1000.0)
+    oi_raw[-1] = 1500.0
+    funding_rate = np.full(n, -0.01)
+    funding_rate[-1] = 0.01
+    perp = pd.DataFrame(
+        {
+            "funding_rate": funding_rate,
+            "oi_raw": oi_raw,
+            "oi_change_1h": pd.Series(oi_raw, index=idx).pct_change().fillna(0.0).to_numpy(),
+            "oi_change_24h": pd.Series(oi_raw, index=idx).pct_change(24).fillna(0.0).to_numpy(),
+            "long_short_ratio": np.full(n, 1.1),
+        },
+        index=idx,
+    )
+
+    df = compute_features_table(k, symbol="TEST", perp=perp)
+
+    assert set(CANONICAL_PATTERN_FEATURE_COLUMNS).issubset(df.columns)
+    row = df.iloc[-1]
+    assert row["oi_raw"] == pytest.approx(1500.0)
+    assert row["oi_zscore"] > 0.0
+    assert row["funding_rate_zscore"] > 0.0
+    assert row["funding_flip_flag"] == pytest.approx(1.0)
+    assert row["volume_percentile"] > 0.9
+    assert row["pullback_depth_pct"] > 0.0
+    assert row["cvd_price_divergence"] == pytest.approx(1.0)
+
+    snapshot = extract_canonical_pattern_feature_snapshot(row)
+    assert snapshot["funding_flip_flag"] is True
+    assert snapshot["oi_raw"] == pytest.approx(1500.0)
+    assert snapshot["cvd_price_divergence"] == pytest.approx(1.0)
 
 
 def test_features_table_drops_warmup():

@@ -142,13 +142,24 @@ For `W-0122`, the immediate job is narrower:
 2. make `/api/confluence/current` prefer engine `/api/facts/confluence`
 3. preserve current app-side heuristic aggregation only as fallback
 
-### Next Compatibility Cut — Flow
+### Branch Split Reason — `codex/w-0122-flow-fact-bridge`
+
+- parent `codex/w-0148-data-engine-reset` worktree picked up unrelated user WIP plus merge conflicts
+- this slice needs one clean PR and must not touch the conflicted tree
+- branch starts from validated reset head `81c1d7c7` and owns one bounded follow-up only
+
+### Current Compatibility Cut
 
 1. keep `/api/market/flow` public payload stable
-2. make `/api/market/flow` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
-3. keep ticker / CMC / liquidation details on legacy ingress only until engine fact routes expose them canonically
+2. make `/api/market/flow` prefer engine `/api/facts/perp-context`
+3. keep ticker / CMC reads in app until a dedicated engine price-summary route exists
+4. preserve current app-side derivatives composition only as fallback
+5. mirror the same `perp-context` bridge pattern in `/api/market/events` without moving DexScreener enrichment yet
+6. make `/api/market/derivatives/[pair]` prefer engine `/api/facts/perp-context` while preserving the route payload shape
+7. keep the app `facts` proxy allowlist aligned with the actually-used `price-context` / `perp-context` engine routes
 
 ### Current Lane Slice — Consumer Fact Cut
+This slice groups the next product-facing fact consumers under one W-0122 merge unit so the app keeps moving toward engine-owned truth without spawning a second branch for the same lane.
 
 This slice groups the next product-facing fact consumers under one W-0122 merge unit so the app keeps moving toward engine-owned truth without spawning a second branch for the same lane.
 
@@ -165,108 +176,6 @@ This slice groups the next product-facing fact consumers under one W-0122 merge 
 11. expose app plane-client helper for `/api/facts/chain-intel`
 12. keep `/api/market/chain-intel` live provider payload stable and attach engine chain-intel source state only as additive `factCoverage`
 13. lock the cut with targeted `market/events`, `terminal/intel-policy`, `reference-stack`, `chain-intel`, and plane-client tests
-
-### Current Lane Slice — `ctx/fact` Contract Fill-In
-
-This slice keeps `GET /ctx/fact` as the bounded landing zone but makes it satisfy the `FactSnapshot` contract that app adapters and agent loaders already read.
-
-1. keep `GET /ctx/fact` stable for current engine/app consumers
-2. fill `fact_id`, `provider_state`, compact `confluence`, and `reference_health` on the engine payload
-3. keep detailed transitional fields (`bars`, `market`, `snapshot`, `feature_row`) in place until downstream consumers no longer depend on them
-4. avoid any new app-side fact composition; only align the engine payload and current adapter expectations
-5. lock the cut with targeted engine `ctx` tests plus app fact-proxy / snapshot adapter tests
-
-### Current Lane Slice — Indicator Catalog Alias Cleanup
-
-This slice removes a stale duplicate engine entrypoint now that fact-plane consumers use the canonical `/facts/*` family.
-
-1. remove legacy `GET /ctx/indicator-catalog`
-2. keep `GET /facts/indicator-catalog` as the sole canonical indicator inventory route
-3. move route coverage from `ctx` tests onto the canonical `facts` route tests
-4. refresh generated engine OpenAPI types so app contracts stop advertising the dead alias
-
-### Current Lane Slice — Market-Cap Bridge Consolidation
-
-This slice keeps `market-cap` engine-preferred behavior intact, but moves the readiness choice into one bounded bridge so app fallback logic stops duplicating owner-selection rules.
-
-1. add one app-side `market-cap` bridge loader with explicit `macro` vs `global` readiness modes
-2. keep `marketCapPlane` as the legacy fallback producer only when engine facts are not ready enough
-3. make `/api/market/macro-overview` and `/api/coingecko/global` consume the shared bridge result instead of open-coding engine-first selection
-4. preserve existing public payloads and `X-WTD-*` headers
-
-### Current Lane Slice — Snapshot Engine Contract
-
-This cut tightens the public snapshot compatibility bridge so non-persistent reads stop falling back to app-owned fact assembly unless the engine fact path is unavailable.
-
-1. keep `/api/market/snapshot` response shape stable for both GET and POST
-2. keep authenticated `persist=true` POST on the legacy app persistence path until the engine owns snapshot persistence
-3. route GET and any `persist=false` snapshot read through the engine-first `collectPublicMarketSnapshot()` path
-4. keep legacy app snapshot assembly only as the degraded fallback behind the engine fact adapter
-5. lock the cut with targeted snapshot route tests covering GET plus unauthenticated/non-persistent POST
-
-### Current Lane Slice — Intel Policy Direct Load
-
-This cut reduces terminal surface latency and duplicate fact reads by removing internal app route loopbacks for `flow` and `events` inside `/api/terminal/intel-policy`.
-
-1. keep `/api/terminal/intel-policy` public payload stable
-2. extract engine-first `flow` and `events` loaders so routes and terminal orchestration share one composition path
-3. fetch `perp-context` once per intel-policy request and reuse it across flow/events assembly
-4. read macro regime directly from the fact-backed market-cap helper instead of calling `/api/market/macro-overview` over loopback
-5. preserve legacy enrichments and public route headers for standalone `/api/market/flow` and `/api/market/events`
-6. lock the cut with targeted `flow`, `events`, and `intel-policy` route tests
-
-### Current Lane Slice — Intel Policy Shared Feeds
-
-This follow-up cut removes the remaining internal app route loopbacks that `intel-policy` still uses for public feed assembly.
-
-1. keep `/api/terminal/intel-policy` public payload stable
-2. extract shared loaders for `news`, `trending`, and `opportunity-scan`
-3. make `/api/terminal/intel-policy` call those loaders directly instead of hitting app HTTP routes
-4. preserve standalone route behavior, cache semantics, and DB persist on `/api/terminal/opportunity-scan`
-5. lock the cut with targeted `intel-policy` coverage plus direct helper tests where the cache path changes materially
-
-### Current Lane Slice — Terminal Execution Loopback Cleanup
-
-This small follow-up removes an app-server self-call that remains on the terminal execution path and showed up during the direct-loader audit.
-
-1. keep `/api/terminal/intel-agent-shadow/execute` public payload stable
-2. extract quick-trade open persistence + side effects into a shared server function
-3. make `intel-agent-shadow/execute` call that shared function directly instead of POSTing to `/api/quick-trades/open`
-4. preserve `/api/quick-trades/open` route behavior by making it a thin wrapper over the same shared function
-5. lock the cut with targeted `intel-agent-shadow/execute` coverage
-
-### Current Lane Slice — Confluence Direct Load
-
-This follow-up keeps the existing engine-first confluence bridge but removes the remaining app HTTP loopbacks that the legacy fallback still uses.
-
-1. keep `/api/confluence/current` public payload stable
-2. preserve engine `/api/facts/confluence` as the preferred upstream
-3. extract shared direct loaders/helpers for the legacy fallback inputs that currently route through app HTTP
-4. make fallback composition call those helpers directly instead of `fetch(origin + /api/...)`
-5. keep legacy fallback semantics intact until engine fact confluence fully covers the needed evidence set
-6. lock the cut with targeted `confluence/current` route coverage plus helper tests where cache/reuse behavior changes materially
-
-### Current Lane Slice — Confluence Analyze Direct Load
-
-This follow-up removes the last app-server loopback that remains on the confluence fallback path after `Confluence Direct Load` landed.
-
-1. keep `/api/confluence/current` public payload stable
-2. preserve engine `/api/facts/confluence` as the preferred upstream
-3. replace fallback `/api/cogochi/analyze` loopback with a direct bounded analyze service read
-4. keep legacy confluence scoring semantics intact; only the in-process load path changes
-5. fix the stale work-item conflict markers while touching the lane doc so `W-0122` is again a clean canonical source
-6. lock the cut with targeted `confluence/current` route coverage plus app check
-
-### Current Lane Slice — Influencer Metric Fact Coverage
-
-This cut keeps the existing app-side influencer payload intact, but attaches engine-owned indicator inventory truth so the route stops shipping a purely app-local research bundle.
-
-1. keep `/api/market/influencer-metrics` public payload stable and additive-only
-2. keep `fetchInfluencerMetrics()` as the existing app-side producer; do not move provider fetch logic in this cut
-3. attach additive `factCoverage` by reading engine `/facts/indicator-catalog` once per request
-4. normalize known report-binding aliases (`whale_activity`, `total_value_locked`, `dex_volume_tvl_ratio`, `social_mention_velocity`) to canonical catalog ids at the route adapter layer only
-5. surface route headers that make engine-backed coverage vs pure app fallback explicit
-6. lock the cut with targeted influencer route tests plus app check
 
 ## Goal
 
@@ -585,16 +494,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
 - **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. public cutover 는 대체가 아니라 additive `factCoverage` adapter 로 시작한다.
 - **`/facts/chain-intel` 은 먼저 bounded engine landing zone 으로 연다** — app `/api/market/chain-intel` 의 live Solscan/TRONSCAN/Etherscan payload 를 즉시 대체하지 않고, engine cache/source state 를 읽는 compact fact route 를 `factCoverage` 로 붙인다.
-- **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut` 에서 이어간다.
-- **`ctx/fact` should satisfy the contract it already advertises** — `FactSnapshot` already exposes optional `fact_id`, `provider_state`, `confluence`, and `reference_health`, and app adapters probe for those fields today. The engine landing zone should populate them before more transitional app logic grows around missing values.
-- **legacy `/api/engine/ctx/fact` bridge is dead and should be removed** — fact-plane callers already use `/api/facts/ctx/fact`; keeping the same path allowlisted on the frozen legacy engine proxy only preserves duplicate ingress without any consumer.
-- **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
-- **indicator catalog should not keep a duplicate `ctx` alias once plane proxies are live** — app fact consumers and plane clients already use `/facts/indicator-catalog`; keeping `/ctx/indicator-catalog` only preserves a second fact owner path and stale contract surface.
-- **terminal execution paths should share server helpers instead of HTTP loopbacks** — when `intel-policy`, `intel-agent-shadow/execute`, and `/api/quick-trades/open` live in the same app process, shared loaders/functions are the canonical surface and internal `fetch('/api/...')` should be removed before new orchestration grows around them.
-- **influencer metric report bindings should map to engine catalog ids at the route adapter layer** — the app research report already exposes `indicatorId`, but some ids are report-local aliases rather than canonical catalog ids. The compatibility cut should normalize aliases in the route adapter instead of rewriting the report producer or changing engine inventory ids.
-- **confluence fallback should read shared market loaders, not market HTTP routes** — `/api/confluence/current` may keep its legacy heuristic fallback for now, but venue divergence / RV cone / SSR / funding flip / liq clusters / options inputs should come from shared server loaders so confluence and standalone routes reuse one cache and one composition path.
-- **confluence fallback should read analyze service directly when it stays in-process** — once the legacy market inputs moved to shared loaders, the remaining `/api/cogochi/analyze` self-call becomes duplicate app ingress. `/api/confluence/current` should consume the bounded analyze service directly and keep the public analyze route as a thin external contract.
-
+- **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — 현재 `codex/w-0122-market-cap-fact-cut` history 에는 unrelated `W-0148` commit 이 섞여 있으므로, PR 전에는 W-0122 commits 만 clean execution branch/worktree 로 추출한다.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -638,9 +538,9 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: latest merged slice = PR #238 on `origin/main`; next W-0122 execution branch must start from updated `main`
-- verification status: PR #236 and PR #238 landed on `main`; the confluence analyze direct-load slice passed targeted `vitest` (`src/routes/api/confluence/current/confluence-current.test.ts`) plus `npm --prefix app run check` (`0 errors`, existing warnings only)
-- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, remaining app self-calls outside the current snapshot/intel-policy/confluence path
+- branch/worktree state: `codex/w-0122-market-cap-fact-cut`, clean after `e5f80a6a`
+- verification status: engine `pytest tests/test_facts_route.py -q` = `11 passed`; app targeted `vitest` (`planeClients`, `reference-stack`, `chain-intel`, `intel-policy`, `events`, `flow`, `macro-overview`, `coingecko/global`) = `18 passed`; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
+- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail
 

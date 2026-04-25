@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import pandas as pd
 import pytest
 
+from features.canonical_pattern import score_canonical_feature_snapshot
+from patterns.active_variant_registry import ActivePatternVariantStore
 from research.pattern_search import (
     DEFAULT_FAMILY_SELECTION_POLICY,
     BenchmarkCase,
@@ -153,10 +155,11 @@ def test_seed_variants_cover_early_and_late_phase_hypotheses() -> None:
     variants = build_seed_variants("tradoor-oi-reversal-v1")
     slugs = {variant.variant_slug for variant in variants}
 
-    assert len(variants) >= 6
+    assert len(variants) >= 7
     assert "tradoor-oi-reversal-v1__arch-soft-real-loose" in slugs
     assert "tradoor-oi-reversal-v1__real-patience-accum-early" in slugs
     assert "tradoor-oi-reversal-v1__holdout-recovery-bias" in slugs
+    assert "tradoor-oi-reversal-v1__intraday-dump-cluster" in slugs
 
 
 def test_expand_variants_across_timeframes_adds_higher_timeframe_family() -> None:
@@ -177,7 +180,7 @@ def test_expand_variants_across_timeframes_adds_higher_timeframe_family() -> Non
     assert by_slug["tradoor-oi-reversal-v1__canonical__tf-4h"].timeframe == "4h"
 
 
-def test_expand_variants_across_timeframes_skips_subhour_targets_from_1h_base() -> None:
+def test_expand_variants_across_timeframes_keeps_subhour_targets_from_1h_base() -> None:
     variants = expand_variants_across_timeframes(
         [
             PatternVariantSpec(
@@ -191,8 +194,9 @@ def test_expand_variants_across_timeframes_skips_subhour_targets_from_1h_base() 
     slugs = {variant.variant_slug for variant in variants}
 
     assert "tradoor-oi-reversal-v1__canonical" in slugs
+    assert "tradoor-oi-reversal-v1__canonical__tf-15m" in slugs
     assert "tradoor-oi-reversal-v1__canonical__tf-4h" in slugs
-    assert "tradoor-oi-reversal-v1__canonical__tf-15m" not in slugs
+
 
 
 def test_evaluate_variant_on_case_scales_warmup_and_normalizes_lead_time(monkeypatch) -> None:
@@ -2219,6 +2223,151 @@ def test_run_pattern_benchmark_search_records_run_and_artifact(tmp_path, monkeyp
     assert negative_memory_store.list("tradoor-oi-reversal-v1") == []
 
 
+def test_run_pattern_benchmark_search_syncs_gate_cleared_winner_to_active_registry(
+    tmp_path, monkeypatch
+) -> None:
+    pack_store = BenchmarkPackStore(tmp_path / "packs")
+    artifact_store = PatternSearchArtifactStore(tmp_path / "artifacts")
+    negative_memory_store = NegativeSearchMemoryStore(tmp_path / "negative")
+    active_variant_store = ActivePatternVariantStore(tmp_path / "active-variants")
+    controller = ResearchWorkerController(ResearchStateStore(tmp_path / "research.sqlite"))
+    pack = ReplayBenchmarkPack(
+        benchmark_pack_id="pack-active",
+        pattern_slug="tradoor-oi-reversal-v1",
+        candidate_timeframes=["1h"],
+        cases=[
+            BenchmarkCase(
+                symbol="PTBUSDT",
+                timeframe="1h",
+                start_at=_dt("2026-04-13T00:00:00+00:00"),
+                end_at=_dt("2026-04-15T12:00:00+00:00"),
+                expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+                role="reference",
+            ),
+            BenchmarkCase(
+                symbol="TRADOORUSDT",
+                timeframe="1h",
+                start_at=_dt("2026-04-11T00:00:00+00:00"),
+                end_at=_dt("2026-04-14T18:00:00+00:00"),
+                expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+                role="holdout",
+            ),
+        ],
+    )
+    pack_store.save(pack)
+
+    def _winner_case(case_id: str, role: str, symbol: str, score: float) -> VariantCaseResult:
+        snapshot = {
+            "oi_zscore": 2.1 if role == "reference" else 1.6,
+            "funding_rate_zscore": -1.4 if role == "reference" else -0.9,
+            "funding_flip_flag": role == "reference",
+            "volume_percentile": 0.88 if role == "reference" else 0.73,
+            "pullback_depth_pct": 0.08 if role == "reference" else 0.1,
+            "cvd_price_divergence": -0.21 if role == "reference" else 0.12,
+        }
+        return VariantCaseResult(
+            case_id=case_id,
+            symbol=symbol,
+            role=role,
+            observed_phase_path=["ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+            current_phase="BREAKOUT",
+            phase_fidelity=1.0,
+            phase_depth_progress=1.0,
+            entry_hit=True,
+            target_hit=True,
+            lead_bars=2,
+            score=score,
+            entry_close=1.0,
+            forward_peak_return_pct=18.0,
+            entry_next_open=1.001,
+            realistic_forward_peak_return_pct=17.5,
+            canonical_feature_snapshot=snapshot,
+        )
+
+    def _fake_eval(_pack, variant, *, warmup_bars=240):
+        if variant.variant_slug.endswith("__winner"):
+            return VariantSearchResult(
+                variant_id=variant.variant_id,
+                variant_slug=variant.variant_slug,
+                reference_score=0.95,
+                holdout_score=0.91,
+                overall_score=0.938,
+                case_results=[
+                    _winner_case("case-ref", "reference", "PTBUSDT", 0.95),
+                    _winner_case("case-holdout", "holdout", "TRADOORUSDT", 0.91),
+                ],
+            )
+        return VariantSearchResult(
+            variant_id=variant.variant_id,
+            variant_slug=variant.variant_slug,
+            reference_score=0.42,
+            holdout_score=0.22,
+            overall_score=0.36,
+            case_results=[
+                VariantCaseResult(
+                    case_id="case-ref",
+                    symbol="PTBUSDT",
+                    role="reference",
+                    observed_phase_path=["ARCH_ZONE"],
+                    current_phase="ARCH_ZONE",
+                    phase_fidelity=0.2,
+                    phase_depth_progress=0.2,
+                    entry_hit=False,
+                    target_hit=False,
+                    lead_bars=None,
+                    score=0.36,
+                )
+            ],
+        )
+
+    monkeypatch.setattr("research.pattern_search.evaluate_variant_against_pack", _fake_eval)
+
+    run = run_pattern_benchmark_search(
+        PatternBenchmarkSearchConfig(
+            pattern_slug="tradoor-oi-reversal-v1",
+            benchmark_pack_id="pack-active",
+            min_reference_score=0.6,
+            min_holdout_score=0.3,
+            variants=[
+                PatternVariantSpec(
+                    pattern_slug="tradoor-oi-reversal-v1",
+                    variant_slug="tradoor-oi-reversal-v1__baseline",
+                    timeframe="1h",
+                ),
+                PatternVariantSpec(
+                    pattern_slug="tradoor-oi-reversal-v1",
+                    variant_slug="tradoor-oi-reversal-v1__winner",
+                    timeframe="1h",
+                ),
+            ],
+        ),
+        controller=controller,
+        pack_store=pack_store,
+        artifact_store=artifact_store,
+        negative_memory_store=negative_memory_store,
+        active_variant_store=active_variant_store,
+    )
+
+    active = active_variant_store.get("tradoor-oi-reversal-v1")
+    artifact = artifact_store.load(run.research_run_id)
+
+    assert run.winner_variant_ref == "tradoor-oi-reversal-v1__winner"
+    assert run.handoff_payload["active_registry_variant_slug"] == "tradoor-oi-reversal-v1__winner"
+    assert run.handoff_payload["canonical_feature_score"] is not None
+    assert run.handoff_payload["reference_canonical_feature_score"] is not None
+    assert run.handoff_payload["holdout_canonical_feature_score"] is not None
+    assert run.handoff_payload["canonical_feature_scored_case_count"] == 2
+    assert run.handoff_payload["canonical_feature_summary"]["funding_flip_rate"] == pytest.approx(0.5)
+    assert active is not None
+    assert active.variant_slug == "tradoor-oi-reversal-v1__winner"
+    assert active.timeframe == "1h"
+    assert active.watch_phases == ["ACCUMULATION", "REAL_DUMP"]
+    assert active.source_kind == "benchmark_search"
+    assert artifact is not None
+    assert artifact["promotion_report"]["canonical_feature_scored_case_count"] == 2
+    assert artifact["promotion_report"]["canonical_feature_summary"]["funding_flip_rate"] == pytest.approx(0.5)
+
+
 def test_run_pattern_benchmark_search_promotes_reset_family_when_tied_with_manual(tmp_path, monkeypatch) -> None:
     pack_store = BenchmarkPackStore(tmp_path / "packs")
     artifact_store = PatternSearchArtifactStore(tmp_path / "artifacts")
@@ -2640,6 +2789,7 @@ def _mk_case_result(
     score: float = 0.8,
     case_id: str = "case",
     symbol: str = "PTBUSDT",
+    canonical_feature_snapshot: dict[str, float | bool | None] | None = None,
 ) -> VariantCaseResult:
     return VariantCaseResult(
         case_id=case_id,
@@ -2653,6 +2803,7 @@ def _mk_case_result(
         target_hit=target_hit,
         lead_bars=lead_bars,
         score=score,
+        canonical_feature_snapshot=canonical_feature_snapshot or {},
     )
 
 
@@ -2679,6 +2830,63 @@ def test_build_promotion_report_promotes_when_all_gates_clear() -> None:
     assert report.false_discovery_rate == 0.0
     assert report.rejection_reasons == []
     assert all(report.gate_results.values())
+
+
+def test_build_promotion_report_includes_canonical_feature_diagnostics() -> None:
+    reference_snapshot = {
+        "oi_zscore": 2.4,
+        "funding_rate_zscore": -1.5,
+        "funding_flip_flag": True,
+        "volume_percentile": 0.92,
+        "pullback_depth_pct": 0.08,
+        "cvd_price_divergence": -0.32,
+    }
+    holdout_snapshot = {
+        "oi_zscore": 1.2,
+        "funding_rate_zscore": -0.7,
+        "funding_flip_flag": False,
+        "volume_percentile": 0.68,
+        "pullback_depth_pct": 0.11,
+        "cvd_price_divergence": 0.18,
+    }
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.8,
+        holdout_score=0.75,
+        overall_score=0.77,
+        case_results=[
+            _mk_case_result(
+                role="reference",
+                case_id="ref-1",
+                symbol="PTBUSDT",
+                canonical_feature_snapshot=reference_snapshot,
+            ),
+            _mk_case_result(
+                role="holdout",
+                case_id="hold-1",
+                symbol="TRADOORUSDT",
+                canonical_feature_snapshot=holdout_snapshot,
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+    expected_reference_score = score_canonical_feature_snapshot(reference_snapshot)
+    expected_holdout_score = score_canonical_feature_snapshot(holdout_snapshot)
+
+    assert report.canonical_feature_scored_case_count == 2
+    assert report.reference_canonical_feature_score == pytest.approx(expected_reference_score)
+    assert report.holdout_canonical_feature_score == pytest.approx(expected_holdout_score)
+    assert report.canonical_feature_score == pytest.approx(
+        round((expected_reference_score + expected_holdout_score) / 2.0, 6)
+    )
+    assert report.canonical_feature_summary["oi_zscore_mean"] == pytest.approx(1.8)
+    assert report.canonical_feature_summary["funding_rate_zscore_mean"] == pytest.approx(-1.1)
+    assert report.canonical_feature_summary["funding_flip_rate"] == pytest.approx(0.5)
+    assert report.canonical_feature_summary["volume_percentile_mean"] == pytest.approx(0.8)
+    assert report.canonical_feature_summary["pullback_depth_pct_mean"] == pytest.approx(0.095)
+    assert report.canonical_feature_summary["cvd_price_divergence_mean"] == pytest.approx(-0.07)
 
 
 def test_build_promotion_report_rejects_when_reference_recall_below_floor() -> None:
@@ -2796,6 +3004,7 @@ def _mk_case_result_with_return(
     case_id: str = "case",
     symbol: str = "PTBUSDT",
     phase_fidelity: float = 1.0,
+    canonical_feature_snapshot: dict[str, float | bool | None] | None = None,
 ) -> VariantCaseResult:
     return VariantCaseResult(
         case_id=case_id,
@@ -2813,6 +3022,7 @@ def _mk_case_result_with_return(
         score=0.8 if (entry_hit and target_hit) else 0.55,
         entry_close=100.0 if forward_peak_return_pct is not None else None,
         forward_peak_return_pct=forward_peak_return_pct,
+        canonical_feature_snapshot=canonical_feature_snapshot or {},
     )
 
 

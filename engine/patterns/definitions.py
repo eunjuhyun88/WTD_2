@@ -6,8 +6,7 @@ from typing import Any
 from capture.store import CaptureStore
 from capture.types import CaptureRecord
 from patterns.definition_refs import (
-    build_definition_id as _build_definition_id,
-    build_definition_ref as _build_definition_ref,
+    build_definition_ref,
     definition_id_from_ref,
 )
 from patterns.library import PATTERN_LIBRARY
@@ -16,23 +15,14 @@ from patterns.types import PatternObject
 
 
 def _definition_id(pattern: PatternObject) -> str:
-    return _build_definition_id(pattern.slug, pattern.version) or pattern.slug
-
-
-def build_definition_ref(
-    pattern_slug: str,
-    *,
-    pattern_version: int | None = None,
-) -> dict[str, Any] | None:
-    pattern = PATTERN_LIBRARY.get(pattern_slug)
-    if pattern is None:
-        return None
-    return _build_definition_ref(pattern_slug, pattern_version, existing=None)
+    return f"{pattern.slug}:v{pattern.version}"
 
 
 def current_definition_id(pattern_slug: str) -> str | None:
-    definition_ref = build_definition_ref(pattern_slug)
-    return definition_id_from_ref(definition_ref)
+    pattern = PATTERN_LIBRARY.get(pattern_slug)
+    if pattern is None:
+        return None
+    return _definition_id(pattern)
 
 
 def _dedupe_strings(values: list[str]) -> list[str]:
@@ -127,12 +117,16 @@ class PatternDefinitionService:
         pattern = self.pattern_library.get(pattern_slug)
         if pattern is None:
             return None
-        definition_ref = build_definition_ref(pattern_slug, pattern_version=pattern_version)
-        if definition_ref is None:
-            return None
+        version = pattern_version or pattern.version
         evidence = self._load_capture_evidence(pattern_slug, limit=10)
-        definition_ref["pattern_family"] = self._pattern_family(pattern, evidence)
-        return definition_ref
+        return {
+            "definition_id": f"{pattern.slug}:v{version}",
+            "pattern_slug": pattern.slug,
+            "pattern_version": version,
+            "pattern_family": self._pattern_family(pattern, evidence),
+            "timeframe": pattern.timeframe,
+            "direction": pattern.direction,
+        }
 
     def parse_definition_id(self, definition_id: str) -> dict[str, Any]:
         slug, separator, version_token = definition_id.partition(":v")

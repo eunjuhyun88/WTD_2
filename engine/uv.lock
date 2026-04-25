@@ -260,6 +260,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "lightgbm" },
+    { name = "memkraft" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pillow" },
@@ -294,6 +295,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "lightgbm", marker = "extra == 'ml'", specifier = ">=4.0" },
     { name = "lightgbm", extras = ["apple"], specifier = ">=4.6.0" },
+    { name = "memkraft", specifier = ">=1.0.1" },
     { name = "numpy", specifier = ">=1.24" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pillow", specifier = ">=12.2.0" },
@@ -580,6 +582,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "memkraft"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/2c/59b3e5376f669ade9fc468e93efb516b4f5a226ae1cdaedcef0fef98e44e/memkraft-2.0.0.tar.gz", hash = "sha256:e37ba994c06b32ebc97fbb6f7d933b029f0a15873b0926b330e253d424eed6eb", size = 269541, upload-time = "2026-04-23T17:51:46.058Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/58/9e/2f52fdf25017399ab8524cb8d3fb52b581e8772aacf694e755e814493469/memkraft-2.0.0-py3-none-any.whl", hash = "sha256:a216fc6c18e9d98ab59e65949c9fc367e8d433212352d57cb28f602af4aa99eb", size = 176843, upload-time = "2026-04-23T17:51:44.603Z" },
 ]
 
 [[package]]

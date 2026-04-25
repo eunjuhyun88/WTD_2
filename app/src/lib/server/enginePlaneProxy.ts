@@ -22,7 +22,7 @@ const FACTS_RULES: PlaneRule[] = [
 		timeoutMs: 10_000,
 	},
 	{
-		pattern: /^(reference-stack|chain-intel|market-cap|confluence|indicator-catalog)$/,
+		pattern: /^(price-context|perp-context|reference-stack|chain-intel|market-cap|confluence|indicator-catalog)$/,
 		methods: new Set(['GET']),
 		toUpstream: (path) => `facts/${path}`,
 		timeoutMs: 10_000,
