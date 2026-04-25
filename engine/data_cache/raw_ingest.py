@@ -4,41 +4,22 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-from data_cache.binance_credentials import resolve_binance_user_data_credentials
-from data_cache.coinalyze_credentials import resolve_coinalyze_api_key
 from data_cache.fetch_binance import fetch_klines_max
-from data_cache.fetch_binance_liquidations import (
-    empty_force_orders_frame,
-    fetch_force_orders_range,
-)
-from data_cache.fetch_coinalyze_liquidations import (
-    empty_liquidation_history_frame,
-    fetch_coinalyze_liquidation_history,
-)
-from data_cache.liquidation_windows import (
-    build_liquidation_window_records,
-    build_liquidation_window_records_from_history,
-)
 from data_cache.fetch_binance_perp import fetch_futures_klines_max, fetch_perp_raw
 from data_cache.loader import CACHE_DIR, cache_path, perp_cache_path
 from data_cache.resample import tf_string_to_minutes
 from data_cache.raw_store import (
     DEFAULT_DB_PATH,
     CanonicalRawStore,
-    RawLiquidationEventRecord,
     RawMarketBarRecord,
-    MarketLiquidationWindowRecord,
     RawOrderflowMetricRecord,
     RawPerpMetricRecord,
 )
-
-PUBLIC_LIQUIDATION_PROVIDER = "coinalyze"
-PUBLIC_LIQUIDATION_VENUE = "coinalyze_market_wide"
 
 
 def _utcnow() -> datetime:
@@ -241,190 +222,6 @@ def _normalize_perp_metrics(
     return rows
 
 
-def fetch_binance_liquidation_events(
-    symbol: str,
-    *,
-    lookback_hours: int,
-) -> tuple[pd.DataFrame, str]:
-    if lookback_hours <= 0:
-        return empty_force_orders_frame(), "disabled"
-    try:
-        frame = fetch_force_orders_range(symbol, lookback_hours=lookback_hours)
-    except RuntimeError as exc:
-        message = str(exc)
-        if (
-            "Invalid symbol" in message
-            or "HTTP 401" in message
-            or "HTTP 403" in message
-            or "API-key" in message
-        ):
-            return empty_force_orders_frame(), "unavailable"
-        raise
-    return frame, ("ok" if not frame.empty else "empty")
-
-
-def _normalize_liquidation_events(
-    *,
-    symbol: str,
-    events: pd.DataFrame,
-    ingested_at: datetime,
-) -> list[RawLiquidationEventRecord]:
-    rows: list[RawLiquidationEventRecord] = []
-    for ts, row in events.sort_index().iterrows():
-        source_ts = _as_timestamp(ts)
-        side = str(row.get("side") or "")
-        quality_state = (
-            "complete"
-            if side and (
-                pd.notna(row.get("notional_usd"))
-                or (
-                    pd.notna(row.get("order_price"))
-                    and (
-                        pd.notna(row.get("executed_quantity"))
-                        or pd.notna(row.get("quantity"))
-                    )
-                )
-            )
-            else "partial"
-        )
-        rows.append(
-            RawLiquidationEventRecord(
-                provider="binance",
-                venue="binance_futures",
-                symbol=symbol,
-                ts=source_ts.to_pydatetime(),
-                source_ts=source_ts.to_pydatetime(),
-                ingested_at=ingested_at,
-                freshness_ms=_freshness_ms(ingested_at, source_ts),
-                quality_state=quality_state,
-                fallback_state="none",
-                event_id=str(row["event_id"]),
-                side=side,
-                order_price=float(row["order_price"]) if pd.notna(row.get("order_price")) else None,
-                average_price=(
-                    float(row["average_price"])
-                    if pd.notna(row.get("average_price"))
-                    else None
-                ),
-                quantity=float(row["quantity"]) if pd.notna(row.get("quantity")) else None,
-                executed_quantity=(
-                    float(row["executed_quantity"])
-                    if pd.notna(row.get("executed_quantity"))
-                    else None
-                ),
-                quote_quantity=(
-                    float(row["quote_quantity"])
-                    if pd.notna(row.get("quote_quantity"))
-                    else None
-                ),
-                notional_usd=(
-                    float(row["notional_usd"])
-                    if pd.notna(row.get("notional_usd"))
-                    else None
-                ),
-                order_type=str(row["order_type"]) if pd.notna(row.get("order_type")) else None,
-                time_in_force=(
-                    str(row["time_in_force"])
-                    if pd.notna(row.get("time_in_force"))
-                    else None
-                ),
-                status=str(row["status"]) if pd.notna(row.get("status")) else None,
-            )
-        )
-    return rows
-
-
-def _materialize_liquidation_windows(
-    *,
-    store: CanonicalRawStore,
-    symbol: str,
-    ingested_at: datetime,
-    lookback_hours: int,
-) -> int:
-    if lookback_hours <= 0:
-        return 0
-    since = ingested_at - timedelta(hours=lookback_hours)
-    event_rows = store.load_liquidation_events(symbol=symbol, since=since)
-    window_rows: list[MarketLiquidationWindowRecord] = build_liquidation_window_records(
-        symbol=symbol,
-        events=event_rows,
-        ingested_at=ingested_at,
-    )
-    return store.upsert_liquidation_windows(window_rows)
-
-
-def _public_liquidation_timeframes(timeframe: str) -> tuple[str, ...]:
-    if timeframe == "4h":
-        return ("4h",)
-    return tuple(dict.fromkeys((timeframe, "4h")))
-
-
-def _fetch_public_liquidation_history(
-    symbol: str,
-    *,
-    timeframe: str,
-    limit: int,
-) -> tuple[pd.DataFrame, str]:
-    try:
-        frame = fetch_coinalyze_liquidation_history(
-            symbol,
-            timeframe=timeframe,
-            limit=limit,
-        )
-    except RuntimeError:
-        return empty_liquidation_history_frame(), "unavailable"
-    return frame, ("ok" if not frame.empty else "empty")
-
-
-def _materialize_public_liquidation_windows(
-    *,
-    store: CanonicalRawStore,
-    symbol: str,
-    timeframe: str,
-    ingested_at: datetime,
-    limit: int,
-) -> tuple[int, str]:
-    window_rows_written = 0
-    statuses: list[str] = []
-
-    for public_timeframe in _public_liquidation_timeframes(timeframe):
-        history, status = _fetch_public_liquidation_history(
-            symbol,
-            timeframe=public_timeframe,
-            limit=limit,
-        )
-        statuses.append(status)
-        if status == "unavailable":
-            continue
-
-        store.delete_liquidation_windows(
-            symbol=symbol,
-            timeframe=public_timeframe,
-            venue=PUBLIC_LIQUIDATION_VENUE,
-        )
-        window_rows = build_liquidation_window_records_from_history(
-            symbol=symbol,
-            timeframe=public_timeframe,
-            history=history,
-            ingested_at=ingested_at,
-            provider=PUBLIC_LIQUIDATION_PROVIDER,
-            venue=PUBLIC_LIQUIDATION_VENUE,
-        )
-        window_rows_written += store.upsert_liquidation_windows(window_rows)
-
-    if not statuses:
-        return 0, "disabled_public"
-    if all(status == "unavailable" for status in statuses):
-        return window_rows_written, "unavailable"
-    if any(status == "unavailable" for status in statuses):
-        if any(status in {"ok", "empty"} for status in statuses):
-            return window_rows_written, "partial"
-        return window_rows_written, "unavailable"
-    if any(status == "ok" for status in statuses):
-        return window_rows_written, "ok"
-    return window_rows_written, "empty"
-
-
 @dataclass(frozen=True)
 class RawIngestionResult:
     symbol: str
@@ -434,21 +231,8 @@ class RawIngestionResult:
     market_bars_written: int
     orderflow_metrics_written: int
     perp_metrics_written: int
-    liquidation_status: str
-    liquidation_credential_state: str
-    liquidation_credential_env: str | None
-    liquidation_lookback_hours: int
-    liquidation_events_written: int
-    liquidation_windows_written: int
-    liquidation_source_scope: str
-    public_liquidation_status: str
-    public_liquidation_credential_state: str
-    public_liquidation_credential_env: str | None
-    public_liquidation_windows_written: int
-    public_liquidation_source_scope: str
     latest_market_bar_ts: str | None
     latest_perp_ts: str | None
-    latest_liquidation_ts: str | None
     db_path: str
     ingested_at: str
 
@@ -462,45 +246,12 @@ def ingest_binance_symbol_raw(
     timeframe: str = "1h",
     store: CanonicalRawStore | None = None,
     refresh_cache: bool = True,
-    include_liquidations: bool = False,
-    include_public_liquidations: bool = True,
-    liquidation_lookback_hours: int = 24,
-    public_liquidation_limit: int = 100,
 ) -> RawIngestionResult:
     store = store or CanonicalRawStore()
     ingested_at = _utcnow()
 
     market_bars, venue, fallback_state = fetch_binance_market_bars(symbol, timeframe)
     perp = fetch_perp_raw(symbol)
-    liquidation_credentials = resolve_binance_user_data_credentials()
-    public_liquidation_credentials = resolve_coinalyze_api_key()
-    if include_liquidations:
-        if liquidation_credentials.present:
-            liquidation_events, liquidation_status = fetch_binance_liquidation_events(
-                symbol,
-                lookback_hours=liquidation_lookback_hours,
-            )
-        else:
-            liquidation_events = empty_force_orders_frame()
-            liquidation_status = "unavailable"
-    else:
-        liquidation_events = empty_force_orders_frame()
-        liquidation_status = "disabled_user_data"
-
-    public_liquidation_windows_written = 0
-    if include_public_liquidations:
-        if public_liquidation_credentials.present:
-            public_liquidation_windows_written, public_liquidation_status = _materialize_public_liquidation_windows(
-                store=store,
-                symbol=symbol,
-                timeframe=timeframe,
-                ingested_at=ingested_at,
-                limit=public_liquidation_limit,
-            )
-        else:
-            public_liquidation_status = "unavailable"
-    else:
-        public_liquidation_status = "disabled_public"
 
     if refresh_cache:
         _persist_legacy_cache(market_bars, cache_path(symbol, timeframe))
@@ -528,11 +279,6 @@ def ingest_binance_symbol_raw(
         perp=perp,
         ingested_at=ingested_at,
     )
-    liquidation_rows = _normalize_liquidation_events(
-        symbol=symbol,
-        events=liquidation_events,
-        ingested_at=ingested_at,
-    )
 
     store.delete_symbol_timeframe("raw_market_bars", symbol=symbol, timeframe=timeframe)
     store.delete_symbol_timeframe("raw_orderflow_metrics", symbol=symbol, timeframe=timeframe)
@@ -541,13 +287,6 @@ def ingest_binance_symbol_raw(
     market_written = store.upsert_market_bars(market_rows)
     orderflow_written = store.upsert_orderflow_metrics(orderflow_rows)
     perp_written = store.upsert_perp_metrics(perp_rows)
-    liquidation_written = store.upsert_liquidation_events(liquidation_rows)
-    liquidation_window_written = _materialize_liquidation_windows(
-        store=store,
-        symbol=symbol,
-        ingested_at=ingested_at,
-        lookback_hours=max(liquidation_lookback_hours, 4),
-    )
 
     latest_market_ts = store.latest_timestamp(
         "raw_market_bars",
@@ -559,10 +298,6 @@ def ingest_binance_symbol_raw(
         symbol=symbol,
         timeframe=timeframe,
     )
-    latest_liquidation_ts = store.latest_timestamp(
-        "raw_liquidation_events",
-        symbol=symbol,
-    )
 
     return RawIngestionResult(
         symbol=symbol,
@@ -572,25 +307,8 @@ def ingest_binance_symbol_raw(
         market_bars_written=market_written,
         orderflow_metrics_written=orderflow_written,
         perp_metrics_written=perp_written,
-        liquidation_status=liquidation_status,
-        liquidation_credential_state=liquidation_credentials.state,
-        liquidation_credential_env=liquidation_credentials.env_var,
-        liquidation_lookback_hours=liquidation_lookback_hours,
-        liquidation_events_written=liquidation_written,
-        liquidation_windows_written=liquidation_window_written,
-        liquidation_source_scope="user_data",
-        public_liquidation_status=public_liquidation_status,
-        public_liquidation_credential_state=public_liquidation_credentials.state,
-        public_liquidation_credential_env=public_liquidation_credentials.env_var,
-        public_liquidation_windows_written=public_liquidation_windows_written,
-        public_liquidation_source_scope="market_wide",
         latest_market_bar_ts=latest_market_ts.isoformat() if latest_market_ts is not None else None,
         latest_perp_ts=latest_perp_ts.isoformat() if latest_perp_ts is not None else None,
-        latest_liquidation_ts=(
-            latest_liquidation_ts.isoformat()
-            if latest_liquidation_ts is not None
-            else None
-        ),
         db_path=str(store.db_path),
         ingested_at=ingested_at.isoformat(),
     )
@@ -610,28 +328,6 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not refresh the legacy CSV cache while ingesting raw rows",
     )
-    parser.add_argument(
-        "--liquidation-lookback-hours",
-        type=int,
-        default=24,
-        help="Recent liquidation event lookback window in hours, default: 24",
-    )
-    parser.add_argument(
-        "--include-liquidations",
-        action="store_true",
-        help="Opt into Binance user-data force-order ingestion for this run",
-    )
-    parser.add_argument(
-        "--no-public-liquidations",
-        action="store_true",
-        help="Disable Coinalyze market-wide liquidation window materialization for this run",
-    )
-    parser.add_argument(
-        "--public-liquidation-limit",
-        type=int,
-        default=100,
-        help="Per-timeframe Coinalyze liquidation history window count, default: 100",
-    )
     return parser
 
 
@@ -643,10 +339,6 @@ def main(argv: list[str] | None = None) -> int:
         timeframe=args.timeframe,
         store=store,
         refresh_cache=not args.no_cache_refresh,
-        include_liquidations=args.include_liquidations,
-        include_public_liquidations=not args.no_public_liquidations,
-        liquidation_lookback_hours=args.liquidation_lookback_hours,
-        public_liquidation_limit=args.public_liquidation_limit,
     )
     print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
     return 0

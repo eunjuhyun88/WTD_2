@@ -434,6 +434,12 @@ export type {
 	SearchQuerySpec
 } from './search/querySpec';
 export type {
+	SearchQueryNumericBounds,
+	SearchQueryPhase,
+	SearchQueryTransformerMeta,
+	SearchQuerySpec
+} from './search/querySpec';
+export type {
 	SeedSearchRequest,
 	SeedSearchCandidate,
 	SeedSearchResult

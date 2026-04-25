@@ -1,18 +1,16 @@
 """Binance USDT-M force-order fetcher for canonical raw liquidation events."""
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
+import os
 import time
 import urllib.error
-import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from data_cache.binance_credentials import resolve_binance_user_data_credentials
+from data_cache.binance_credentials import resolve_binance_api_key
 
 _FUTURES_URL = "https://fapi.binance.com"
 _UA = "cogochi-autoresearch/data_cache"
@@ -34,20 +32,12 @@ _FRAME_COLUMNS = [
 ]
 
 
-def _fetch_signed_json(path: str, params: dict[str, object]) -> list[dict]:
-    resolution = resolve_binance_user_data_credentials()
-    if not resolution.present or resolution.api_key is None or resolution.api_secret is None:
-        raise RuntimeError("Binance USER_DATA credentials unavailable")
-
-    encoded_params = urllib.parse.urlencode(params)
-    signature = hmac.new(
-        resolution.api_secret.encode("utf-8"),
-        encoded_params.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
-    url = f"{_FUTURES_URL}{path}?{encoded_params}&signature={signature}"
+def _fetch_json(path: str) -> list[dict]:
+    url = f"{_FUTURES_URL}{path}"
     headers = {"User-Agent": _UA}
-    headers["X-MBX-APIKEY"] = resolution.api_key
+    resolution = resolve_binance_api_key()
+    if resolution.present and resolution.value is not None:
+        headers["X-MBX-APIKEY"] = resolution.value
     req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -162,17 +152,11 @@ def fetch_force_orders_range(
     collected: list[dict] = []
 
     for page in range(max_pages):
-        batch = _fetch_signed_json(
-            "/fapi/v1/forceOrders",
-            {
-                "symbol": symbol,
-                "limit": limit,
-                "startTime": start_ms,
-                "endTime": next_end_ms,
-                "recvWindow": 10_000,
-                "timestamp": int(datetime.now(timezone.utc).timestamp() * 1000),
-            },
+        path = (
+            f"/fapi/v1/forceOrders?symbol={symbol}"
+            f"&limit={limit}&startTime={start_ms}&endTime={next_end_ms}"
         )
+        batch = _fetch_json(path)
         if not batch:
             break
         collected.extend(batch)

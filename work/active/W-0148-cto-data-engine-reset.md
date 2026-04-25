@@ -266,12 +266,9 @@ Engine logic change
 
 ## Next Steps
 
-1. keep `CURRENT.md` aligned with merged mainline so the canonical order remains `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`, and reject new branch-extraction work that bypasses that queue.
+1. `PR0.2` remaining cutover is to move the next app consumers off inline engine calls and onto `enginePlanes/*`, starting with `marketSnapshotService.ts`.
 2. W-0156/W-0122 implementation lanes should codify the raw retention split explicitly: canonical normalized tables for replay-critical data, TTL cache for provider-native blobs, and materialized `feature_windows` as the cross-pattern contract.
-3. freeze the data-engine vs pattern-engine ownership boundary so `W-0122` computes canonical features once and `W-0145` consumes them without duplicating math inside replay/search logic.
-4. use the pattern-runtime decomposition note in `docs/domains/terminal-ai-scan-architecture.md` as the canonical checklist before opening the next runtime/search/promotion lanes.
-5. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
-6. when reopening the TRADOOR/PTB architecture discussion, cut follow-up lanes by contract family (`definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, `promotion`) rather than by chart surface or ad hoc table creation.
+3. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, and `SECURITY_ALLOWED_HOSTS`.
 
 ## Exit Criteria
 

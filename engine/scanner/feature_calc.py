@@ -28,6 +28,12 @@ import numpy as np
 import pandas as pd
 from numpy.lib.stride_tricks import sliding_window_view
 
+from features.canonical_pattern import (
+    CANONICAL_PATTERN_FEATURE_COLUMNS,
+    extract_canonical_pattern_feature_snapshot,
+    materialize_canonical_pattern_features,
+    score_canonical_feature_snapshot,
+)
 from models.signal import (
     CVDState,
     EMAAlignment,
@@ -41,6 +47,16 @@ from models.signal import (
 # the 20d-high window (480 hourly bars). Below this, several features
 # would be NaN or wildly biased by warmup.
 MIN_HISTORY_BARS = 500
+
+__all__ = [
+    "MIN_HISTORY_BARS",
+    "FEATURE_COLUMNS",
+    "CANONICAL_PATTERN_FEATURE_COLUMNS",
+    "compute_snapshot",
+    "compute_features_table",
+    "extract_canonical_pattern_feature_snapshot",
+    "score_canonical_feature_snapshot",
+]
 
 
 # =========================================================================
@@ -1126,6 +1142,14 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "cvd_state",
     "taker_buy_ratio_1h",
     "cvd_cumulative",
+    # G2. Canonical pattern feature plane
+    "oi_raw",
+    "oi_zscore",
+    "funding_rate_zscore",
+    "funding_flip_flag",
+    "volume_percentile",
+    "pullback_depth_pct",
+    "cvd_price_divergence",
     # H. Price changes
     "price_change_1h",
     "price_change_4h",
@@ -1226,7 +1250,6 @@ _REGISTRY_COLUMNS: tuple[str, ...] = tuple(
 
 # Public API: full feature column list used by Context, blocks, and models.
 FEATURE_COLUMNS: tuple[str, ...] = _CORE_FEATURE_COLUMNS + _REGISTRY_COLUMNS
-
 
 def compute_features_table(
     klines: pd.DataFrame,
@@ -1366,6 +1389,11 @@ def compute_features_table(
         funding_rate = (
             perp_aligned["funding_rate"].fillna(0.0).to_numpy(dtype=np.float64)
         )
+        oi_raw = (
+            perp_aligned["oi_raw"].fillna(0.0).to_numpy(dtype=np.float64)
+            if "oi_raw" in perp_aligned.columns
+            else np.zeros(len(index), dtype=np.float64)
+        )
         oi_change_1h = (
             perp_aligned["oi_change_1h"].fillna(0.0).to_numpy(dtype=np.float64)
         )
@@ -1377,6 +1405,7 @@ def compute_features_table(
         )
     else:
         funding_rate = np.zeros(len(index), dtype=np.float64)
+        oi_raw = np.zeros(len(index), dtype=np.float64)
         oi_change_1h = np.zeros(len(index), dtype=np.float64)
         oi_change_24h = np.zeros(len(index), dtype=np.float64)
         long_short_ratio = np.ones(len(index), dtype=np.float64)
@@ -1391,6 +1420,21 @@ def compute_features_table(
     # cvd_cumulative: running net buy volume (taker_buy - taker_sell = 2*tbv - vol)
     cvd_net_per_bar = (2.0 * taker_buy - volume).fillna(0.0)
     cvd_cumulative = cvd_net_per_bar.cumsum()
+    oi_raw_s = pd.Series(oi_raw, index=index, dtype=float)
+    funding_rate_s = pd.Series(funding_rate, index=index, dtype=float)
+    canonical_pattern_df = materialize_canonical_pattern_features(
+        close=close,
+        high=high,
+        volume=volume,
+        funding_rate=funding_rate_s,
+        oi_raw=oi_raw_s,
+        cvd_cumulative=cvd_cumulative,
+        oi_zscore_period=max(8, _b24h),
+        funding_rate_zscore_period=max(8, _b7d),
+        volume_percentile_period=max(8, _b7d),
+        pullback_period=max(4, _b24h),
+        cvd_divergence_period=max(4, max(1, _b24h // 2)),
+    )
 
     # --- H. Price changes — tf-scaled bar counts ---
     price_change_1h  = close.pct_change(_b1h).fillna(0.0)
@@ -1633,12 +1677,19 @@ def compute_features_table(
             "dist_from_20d_low": dist_from_20d_low.to_numpy(),
             "swing_pivot_distance": swing_pivot_distance,
             "funding_rate": funding_rate,
+            "oi_raw": canonical_pattern_df["oi_raw"].to_numpy(),
             "oi_change_1h": oi_change_1h,
             "oi_change_24h": oi_change_24h,
             "long_short_ratio": long_short_ratio,
             "cvd_state": cvd_state,
             "taker_buy_ratio_1h": taker_buy_ratio_1h.to_numpy(),
             "cvd_cumulative": cvd_cumulative.to_numpy(),
+            "oi_zscore": canonical_pattern_df["oi_zscore"].to_numpy(),
+            "funding_rate_zscore": canonical_pattern_df["funding_rate_zscore"].to_numpy(),
+            "funding_flip_flag": canonical_pattern_df["funding_flip_flag"].to_numpy(),
+            "volume_percentile": canonical_pattern_df["volume_percentile"].to_numpy(),
+            "pullback_depth_pct": canonical_pattern_df["pullback_depth_pct"].to_numpy(),
+            "cvd_price_divergence": canonical_pattern_df["cvd_price_divergence"].to_numpy(),
             # H. Price changes
             "price_change_1h": price_change_1h.to_numpy(),
             "price_change_4h": price_change_4h.to_numpy(),

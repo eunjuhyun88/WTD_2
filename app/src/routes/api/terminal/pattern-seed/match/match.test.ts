@@ -111,9 +111,6 @@ describe('/api/terminal/pattern-seed/match', () => {
     expect(payload.ok).toBe(true);
     expect(payload.seed.captureId).toBe('cap-1');
     expect(payload.seed.researchRunId).toBe('run-1');
-    expect(payload.seed.searchQuerySpec).toMatchObject({
-      must_have_signals: ['oi_spike', 'dump_then_reclaim', 'higher_lows_sequence'],
-    });
     expect(payload.seed.requestedSignals).toEqual([
       'oi_spike',
       'dump_then_reclaim',

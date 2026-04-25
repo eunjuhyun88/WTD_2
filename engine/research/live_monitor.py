@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from data_cache.loader import load_klines
+from features.canonical_pattern import score_canonical_feature_snapshot
 from patterns.active_variant_registry import (
     ACTIVE_PATTERN_VARIANT_STORE,
     DEFAULT_ACTIVE_PATTERN_VARIANTS,
@@ -26,6 +27,7 @@ from patterns.active_variant_registry import (
 from research.pattern_search import (
     BenchmarkCase,
     PatternVariantSpec,
+    PatternSearchArtifactStore,
     build_variant_pattern,
     evaluate_variant_on_case,
 )
@@ -69,6 +71,7 @@ PHASE_ORDER = {
     # alpha-confluence-v1 phases (W-0107)
     "LAYER_SETUP": 0, "CVD_SIGNAL": 1, "ALPHA_ENTRY": 2,
 }
+_FEATURE_RANKING_BLEND_WEIGHT = 0.15
 
 # Seed/fallback defaults kept for backward compatibility with older tests and
 # for first-run bootstrap before the durable registry is populated.
@@ -76,6 +79,42 @@ PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
     (entry.pattern_slug, entry.variant_slug, set(entry.watch_phases))
     for entry in DEFAULT_ACTIVE_PATTERN_VARIANTS
 ]
+
+
+def _registry_variant_slug(pattern_slug: str) -> str | None:
+    for promoted_pattern_slug, variant_slug, _watch_phases in PROMOTED_PATTERNS:
+        if promoted_pattern_slug == pattern_slug:
+            return variant_slug
+    return None
+
+
+def resolve_live_variant_slug(
+    pattern_slug: str,
+    requested_variant_slug: str | None = None,
+    *,
+    artifact_store: PatternSearchArtifactStore | None = None,
+) -> str:
+    """Resolve the live-monitor variant.
+
+    Priority:
+    1. explicit requested variant (except "auto")
+    2. latest benchmark-search winner persisted for the pattern
+    3. registry fallback from PROMOTED_PATTERNS
+    4. canonical naming convention fallback
+    """
+    if requested_variant_slug and requested_variant_slug != "auto":
+        return requested_variant_slug
+
+    artifact_store = artifact_store or PatternSearchArtifactStore()
+    for artifact in artifact_store.list(pattern_slug=pattern_slug, limit=20):
+        winner_variant_slug = artifact.get("winner_variant_slug")
+        if winner_variant_slug:
+            return winner_variant_slug
+
+    registry_variant_slug = _registry_variant_slug(pattern_slug)
+    if registry_variant_slug:
+        return registry_variant_slug
+    return f"{pattern_slug}__canonical"
 
 
 @dataclass
@@ -90,10 +129,14 @@ class LiveScanResult:
     observed_phase_path: list[str] = field(default_factory=list)
     phase_depth_progress: float = 0.0
     similarity_score: float = 0.0
+    replay_similarity_score: float = 0.0
+    canonical_feature_score: float = 0.5
+    ranking_score: float = 0.0
     target_hit: bool = False
     pattern_slug: str = "tradoor-oi-reversal-v1"
     variant_slug: str = "tradoor-oi-reversal-v1__canonical"
     timeframe: str = "1h"
+    canonical_feature_snapshot: dict[str, float | bool | None] = field(default_factory=dict)
     scanned_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
@@ -125,9 +168,13 @@ def _resolve_active_pattern_entry(pattern_slug: str) -> ActivePatternVariantEntr
     return None
 
 
+def _clip01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
 def scan_universe_live(
     universe: list[str] | None = None,
-    variant_slug: str = "tradoor-oi-reversal-v1__canonical",
+    variant_slug: str | None = None,
     pattern_slug: str = "tradoor-oi-reversal-v1",
     timeframe: str = "1h",
     window_bars: int = 120,
@@ -140,7 +187,7 @@ def scan_universe_live(
 
     Args:
         universe: list of symbols to scan (default: DEFAULT_UNIVERSE)
-        variant_slug: promoted variant to evaluate
+        variant_slug: explicit variant to evaluate; None/"auto" uses latest benchmark-search winner
         pattern_slug: pattern family
         timeframe: bar size (default 1h)
         window_bars: lookback bars for phase detection (default 120 = 5 days)
@@ -152,14 +199,17 @@ def scan_universe_live(
         List of LiveScanResult sorted by phase priority (ACCUMULATION first).
     """
     if universe is None:
-        universe = DEFAULT_UNIVERSE
+        universe = list_cached_symbols(require_perp=False)
+        if not universe:
+            universe = DEFAULT_UNIVERSE
     if watch_phases is None:
         watch_phases = WATCH_PHASES
 
     now = datetime.now(timezone.utc)
+    resolved_variant_slug = resolve_live_variant_slug(pattern_slug, variant_slug)
     variant = PatternVariantSpec(
         pattern_slug=pattern_slug,
-        variant_slug=variant_slug,
+        variant_slug=resolved_variant_slug,
         timeframe=timeframe,
     )
     pattern = build_variant_pattern(pattern_slug, variant)
@@ -207,10 +257,13 @@ def scan_universe_live(
             observed_phase_path=list(r.observed_phase_path),
             phase_depth_progress=r.phase_depth_progress or 0.0,
             similarity_score=r.score or 0.0,
+            replay_similarity_score=r.score or 0.0,
+            ranking_score=r.score or 0.0,
             target_hit=bool(r.target_hit),
             pattern_slug=pattern_slug,
             variant_slug=variant_slug,
             timeframe=timeframe,
+            canonical_feature_snapshot=dict(r.canonical_feature_snapshot),
             scanned_at=now,
         ))
 
@@ -229,6 +282,7 @@ def scan_universe_live(
             "name": "live-phase-scan",
             "params": {
                 "pattern": variant_slug,
+                "resolved_variant_slug": resolved_variant_slug,
                 "universe_size": len(universe),
                 "window_bars": window_bars,
                 "staleness_hours": staleness_hours,
@@ -295,9 +349,23 @@ def search_pattern_state_similarity(
         for result in results
         if result.similarity_score >= min_similarity_score
     ]
+    for result in filtered:
+        result.replay_similarity_score = result.similarity_score
+        result.canonical_feature_score = score_canonical_feature_snapshot(
+            result.canonical_feature_snapshot
+        )
+        result.ranking_score = round(
+            _clip01(
+                result.replay_similarity_score
+                + _FEATURE_RANKING_BLEND_WEIGHT * (result.canonical_feature_score - 0.5)
+            ),
+            6,
+        )
     filtered.sort(
         key=lambda result: (
-            -result.similarity_score,
+            -result.ranking_score,
+            -result.replay_similarity_score,
+            -result.canonical_feature_score,
             -result.phase_depth_progress,
             -result.phase_fidelity,
             PHASE_ORDER.get(result.phase, 9),

@@ -14,6 +14,18 @@ from scanner.feature_calc import compute_features_table
 from scoring.block_evaluator import evaluate_block_masks
 
 
+def _referenced_blocks_for_pattern(machine: PatternStateMachine) -> set[str]:
+    refs: set[str] = set()
+    for phase in machine.pattern.phases:
+        refs.update(phase.required_blocks)
+        refs.update(phase.optional_blocks)
+        refs.update(phase.soft_blocks)
+        refs.update(phase.disqualifier_blocks)
+        for group in phase.required_any_groups:
+            refs.update(group)
+    return refs
+
+
 def _row_snapshot(row: pd.Series) -> dict:
     snapshot: dict[str, float | str | None] = {}
     for key, value in row.items():
