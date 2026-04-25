@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-26)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -16,11 +16,7 @@
 
 ## main SHA
 
-`2092ac01` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
-
-## 진행 중 브랜치
-
-`claude/zealous-keller-80c554` — W-0203/W-0204/W-0205 PR #292
+`87f44b0b` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
 
 ---
 
@@ -41,9 +37,9 @@
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
 | **W-0162 P1/P2** JWT RS256 + 블랙리스트 | PR #277 main 머지 완료 (2026-04-25) |
 | **GCP cogotchi** 1024MiB + Cloud Scheduler 5 jobs | cogotchi-00013-c7n 서빙 중 (2026-04-26) |
-| **W-0204** captures.py active_variant_store 연결 | PR #292 (b755025b) |
-| **W-0203** +server.ts runPatternSeedMatch 위임 | PR #292 (b755025b) |
-| **W-0205** PromotionReport Gate 카드 UI | PR #292 (b755025b) |
+| **W-0204** captures.py active_variant_store 연결 | PR #292 main 머지 완료 |
+| **W-0203** pattern-seed route delegation | PR #292 main 머지 완료 |
+| **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
 
 ---
 
@@ -51,18 +47,22 @@
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| #292 | W-0203/W-0204/W-0205 | App CI 통과 |
+| (없음) | — | 모든 즉시 항목 완료 |
 
 ---
 
 ## 다음 실행 순서 (우선순위 순)
 
 ### 즉시
-- PR #292 App CI 통과 후 머지
+- 긴급 항목 없음 — 모든 CI 초록, GCP 정상 (cogotchi-00013-c7n)
 
 ### 중기 (설계 필요)
-1. **Layer A 검색 고도화** (40+차원 완성)
-2. **카피트레이딩 Phase 1** 구현 시작 — PRD 완성됨, DB 스키마 먼저
+4. **Layer A 검색 고도화** (40+차원 완성)
+   - feature_snapshot 우선순위 정제
+   - 패턴 매칭 정밀도 측정 지표 확립
+5. **카피트레이딩 Phase 1** 구현 시작
+   - PRD 완성됨: `docs/` 참조
+   - DB 스키마 먼저 (Supabase migration)
 
 ---
 
@@ -70,5 +70,11 @@
 
 - [ ] GCP cogotchi-worker Cloud Build trigger
 - [ ] Vercel `EXCHANGE_ENCRYPTION_KEY` (프로덕션)
-- [x] Cloud Scheduler HTTP jobs — 5 jobs 등록 완료 (2026-04-25)
-- [x] `_primary_cache_dir` NameError 수정 — PR #291 main 머지 + GCP 배포 완료 (2026-04-26)
+- [x] Cloud Scheduler HTTP jobs — 5 jobs 등록 완료 (2026-04-25): feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build
+- [x] `_primary_cache_dir` NameError 수정 — PR #291 main 머지 + GCP cogotchi-00013-c7n 배포 완료 (2026-04-26)
+
+---
+
+## 체크포인트 파일
+
+- `work/active/W-app-ci-repair-checkpoint-20260426.md` — 이번 세션 상세 기록
