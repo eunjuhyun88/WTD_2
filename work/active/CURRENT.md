@@ -7,16 +7,17 @@
 
 ## main SHA
 
-`e2fba18b` — PR #252, #253, #254, #256 모두 머지 완료
+`9681e298` — origin/main (2026-04-25) — agent protocol + docs reorganization + W-0156/0162 complete
 
-## 완료 (이번 세션 — 아키텍처 개선)
+## 완료 (이전 세션들)
 
-| 변경 | 내용 |
-|---|---|
-| `cloudbuild.yaml` | `--min-instances 1` 추가 — API cold start 제거 |
-| `cloudbuild.worker.yaml` | `--concurrency 1` + `--timeout 900` 추가 — job 중복 방지 |
-| `engine/search/similar.py` | W-0162 Layer A 업그레이드: feature_snapshot 우선 사용 (3→40+ dims) + FeatureWindowStore batch enrichment |
-| `docs/runbooks/cloud-scheduler-setup.md` | Cloud Scheduler 등록 runbook 신규 작성 |
+| Work Item | 내용 | Status |
+|---|---|---|
+| **W-0156** | Feature materialization plane (canonical_pattern.py + FeatureWindowStore foundation) | ✅ Merged #250 + #259 |
+| **W-0162** | Layer A search upgrade (3→40+ dims) + JWT P0 hardening | ✅ Merged #253 + #259 |
+| **W-0200** | Core loop proof (range select → analyze → find similar → save) | ✅ Merged #256 |
+| **W-0280** | Agent execution protocol + evidence runbook | ✅ Merged #280 |
+| **Infra** | Architecture improvements: min-instances, worker hardening, docs reorganization | ✅ In progress |
 
 ## 이전 세션 완료
 
@@ -31,30 +32,32 @@
 
 ---
 
-## 활성 Work Items (우선순위 순)
+## 활성 Work Items (우선순위 순 — W-0156 기초 완료 후)
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0200** | `W-0200-core-loop-proof.md` | 🟢 COMPLETE — 머지됨 | GCP 재배포 + 프로덕션 스모크 테스트 |
+| **W-0202** | `W-0202-featurewindowstore-search-cutover.md` | 🔴 READY FOR CODE | SearchCorpusStore → FeatureWindowStore(W-0156 완료) 기반 cutover: `corpus_builder.py` 신규 + build-time enrichment |
+| **W-0203** | `W-0203-engine-performance-benchmark-lab.md` | 🟡 DESIGN | W-0202 완료 후: TRADOOR/PTB baseline 벤치마크 프로토콜 |
+| **W-0201** | `W-0201-pattern-wiki-compiler.md` | 🟡 DESIGN | W-0203 완료 후: Pattern Wiki skeleton + TRADOOR/PTB artifacts |
 
 ---
 
-## Deferred (루프 완성 이후 재개)
+## Deferred (W-0202 완료 후 재개)
 
 | ID | 상태 | 재개 조건 |
 |---|---|---|
-| W-0162 | 🟢 PARTIAL — Layer A 업그레이드 완료 | search corpus → FeatureWindowStore 완전 전환 (W-0162 남은 slice) |
+| W-0162 | 🟢 PARTIAL — Layer A 업그레이드 완료 | W-0202 search corpus cutover 완료 후 남은 Layer B/C slice |
+| **W-0156** | **🟢 COMPLETE** | **Feature materialization plane 구현 완료 — FeatureWindowStore 기초 확보 ✅** |
 | W-0160 | 🟡 DEFERRED | runtime capture/ledger scope policy, legacy backfill policy |
 | W-0148 | 🟡 DEFERRED | broader plane contract/governance owner 작업 |
-| W-0122 | 🟡 DEFERRED | fact-plane canonical routes |
+| W-0157 | 🟡 DEFERRED | similar-live feature ranking (W-0202 후 follow-up) |
+| W-0158 | 🟡 DEFERRED | promotion feature diagnostics |
+| W-0159 | 🟡 DEFERRED | next raw family 우선순위 결정 |
 | W-0145 | 🟡 DEFERRED | corpus/search store |
+| W-0122 | 🟡 DEFERRED | fact-plane canonical routes |
 | W-0150 | 🟡 DEFERRED | breakout production lane |
 | W-0151 | 🟡 DEFERRED | active variant registry |
 | W-0152 | 🟡 DEFERRED | state/phase similarity search |
-| W-0156 | 🟡 DEFERRED | feature plane foundation |
-| W-0157 | 🟡 DEFERRED | similar-live feature ranking (core endpoints landed in PR #252) |
-| W-0158 | 🟡 DEFERRED | promotion feature diagnostics |
-| W-0159 | 🟡 DEFERRED | next raw family 우선순위 결정 |
 | W-0149 | 🟡 DEFERRED | W-0200에 흡수 완료 |
 | W-0142 | 🟡 DEFERRED | runtime state API 확장 |
 | W-0140 | 🟡 DEFERRED | bottom ANALYZE slimming |
