@@ -108,6 +108,7 @@
       change24hPct={change24hPct}
       contextMode="chart"
       {alphaMarkers}
+      {analysisData}
       {onCaptureSaved}
       {onTfChange}
       onCaptureSelect={isTablet ? handleCaptureSelect : undefined}
