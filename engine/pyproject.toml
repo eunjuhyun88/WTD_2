@@ -20,6 +20,7 @@ dependencies = [
     "pillow>=12.2.0",
     "supabase>=2.0",
     "PyJWT[cryptography]>=2.8",
+    "memkraft>=1.0.1",
 ]
 
 [project.optional-dependencies]
