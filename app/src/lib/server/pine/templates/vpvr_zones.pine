@@ -1,0 +1,26 @@
+//@version=6
+// WTD — Volume Profile Zones (HVN/LVN)
+// High-volume nodes from WTD analysis
+indicator("WTD VPVR Zones — {{symbol}}", overlay = true, max_lines_count = 50, max_labels_count = 50)
+
+// ─── Zones (injected) ───────────────────────────────────────
+// Format: comma-separated "price|volume|type"  (type = hvn|lvn|poc)
+var string ZONES = "{{zones}}"
+
+// ─── Render once ────────────────────────────────────────────
+var bool rendered = false
+
+if barstate.islastconfirmedhistory and not rendered
+    array<string> entries = str.split(ZONES, ",")
+    for entry in entries
+        parts = str.split(entry, "|")
+        if array.size(parts) >= 3
+            price  = str.tonumber(array.get(parts, 0))
+            vol    = str.tonumber(array.get(parts, 1))
+            kind   = array.get(parts, 2)
+            if not na(price)
+                col = kind == "poc" ? color.new(color.yellow, 20) : kind == "hvn" ? color.new(color.aqua, 50) : color.new(color.gray, 70)
+                width = kind == "poc" ? 3 : kind == "hvn" ? 2 : 1
+                line.new(x1 = bar_index - 300, y1 = price, x2 = bar_index + 30, y2 = price, color = col, width = width, extend = extend.right)
+                label.new(x = bar_index + 30, y = price, text = str.upper(kind) + "  " + str.tostring(vol / 1000000, "#.#") + "M", style = label.style_label_left, color = col, textcolor = color.white, size = size.tiny)
+    rendered := true

@@ -1,0 +1,31 @@
+//@version=6
+// WTD — Whale Liquidation Lines
+// Source: Hyperliquid leaderboard top traders
+indicator("WTD Whale Liqs — {{symbol}}", overlay = true, max_lines_count = 20, max_labels_count = 20)
+
+// ─── Liquidation prices (injected) ──────────────────────────
+// Format: comma-separated "side|price|size|leverage"
+// e.g.  "long|65420|1200000|10x,short|71200|800000|5x"
+var string LIQS = "{{liquidations}}"
+
+// ─── Color helpers ──────────────────────────────────────────
+longColor  = color.new(color.lime, 30)
+shortColor = color.new(color.red,  30)
+
+// ─── Parse and render once ──────────────────────────────────
+var bool rendered = false
+
+if barstate.islastconfirmedhistory and not rendered
+    array<string> entries = str.split(LIQS, ",")
+    for entry in entries
+        parts = str.split(entry, "|")
+        if array.size(parts) >= 4
+            side  = array.get(parts, 0)
+            price = str.tonumber(array.get(parts, 1))
+            size  = str.tonumber(array.get(parts, 2))
+            lev   = array.get(parts, 3)
+            lineColor = side == "long" ? longColor : shortColor
+            if not na(price)
+                line.new(x1 = bar_index - 200, y1 = price, x2 = bar_index + 50, y2 = price, color = lineColor, width = 2, style = line.style_dashed, extend = extend.right)
+                label.new(x = bar_index + 50, y = price, text = str.upper(side) + "  " + lev + "  $" + str.tostring(size / 1000, "#.#") + "K", style = label.style_label_left, color = lineColor, textcolor = color.white, size = size.tiny)
+    rendered := true

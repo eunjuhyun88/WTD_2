@@ -1,0 +1,33 @@
+//@version=6
+// WTD — Wyckoff Phase Overlay
+// Phase: {{phase}} | Confidence: {{confidence}}%
+// Generated: {{generatedAt}}
+indicator("WTD Wyckoff Overlay — {{symbol}}", overlay = true, max_boxes_count = 50, max_labels_count = 50)
+
+// ─── Phase config (injected by WTD analysis engine) ──────────
+var string  PHASE       = "{{phase}}"           // AC | MK | RE | DI
+var float   PHASE_HIGH  = {{phaseHigh}}
+var float   PHASE_LOW   = {{phaseLow}}
+var int     PHASE_START = {{phaseStartTs}}
+var float   CONFIDENCE  = {{confidence}}
+
+// ─── Visual config ──────────────────────────────────────────
+acColor = color.new(color.green,  85)
+mkColor = color.new(color.blue,   85)
+reColor = color.new(color.orange, 85)
+diColor = color.new(color.red,    85)
+
+phaseColor = PHASE == "AC" ? acColor : PHASE == "MK" ? mkColor : PHASE == "RE" ? reColor : diColor
+phaseLabel = PHASE == "AC" ? "Accumulation" : PHASE == "MK" ? "Markup" : PHASE == "RE" ? "Reaccumulation" : "Distribution"
+
+// ─── Render once on first valid bar ─────────────────────────
+var box  phaseBox = na
+var label phaseTag = na
+
+if barstate.islastconfirmedhistory and na(phaseBox)
+    phaseBox := box.new(left = PHASE_START, top = PHASE_HIGH, right = bar_index, bottom = PHASE_LOW, bgcolor = phaseColor, border_color = color.new(color.gray, 50), border_width = 1)
+    phaseTag := label.new(x = bar_index, y = PHASE_HIGH, text = phaseLabel + "  " + str.tostring(CONFIDENCE, "#.#") + "%", style = label.style_label_down, color = color.new(color.black, 30), textcolor = color.white, size = size.small)
+
+// ─── Extend box on each new bar ─────────────────────────────
+if not na(phaseBox)
+    box.set_right(phaseBox, bar_index)

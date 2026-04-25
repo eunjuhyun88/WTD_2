@@ -1,0 +1,30 @@
+//@version=6
+// WTD — Smart Money Zones
+// Accumulation/distribution zones from on-chain + flow analysis
+indicator("WTD Smart Money — {{symbol}}", overlay = true, max_boxes_count = 30, max_labels_count = 30)
+
+// ─── Zones (injected) ───────────────────────────────────────
+// Format: comma-separated "startTs|endTs|priceLow|priceHigh|kind|conf"
+// kind = accumulation | distribution
+var string SMC_ZONES = "{{smcZones}}"
+
+// ─── Render once ────────────────────────────────────────────
+var bool rendered = false
+
+if barstate.islastconfirmedhistory and not rendered
+    array<string> entries = str.split(SMC_ZONES, ",")
+    for entry in entries
+        parts = str.split(entry, "|")
+        if array.size(parts) >= 6
+            startTs = str.tonumber(array.get(parts, 0))
+            endTs   = str.tonumber(array.get(parts, 1))
+            pLow    = str.tonumber(array.get(parts, 2))
+            pHigh   = str.tonumber(array.get(parts, 3))
+            kind    = array.get(parts, 4)
+            conf    = str.tonumber(array.get(parts, 5))
+            if not na(startTs) and not na(endTs) and not na(pLow) and not na(pHigh)
+                col = kind == "accumulation" ? color.new(color.lime, 80) : color.new(color.red, 80)
+                tag = kind == "accumulation" ? "ACC" : "DIST"
+                box.new(left = int(startTs), top = pHigh, right = int(endTs), bottom = pLow, xloc = xloc.bar_time, bgcolor = col, border_color = color.new(color.gray, 30), border_width = 1)
+                label.new(x = int(startTs), y = pHigh, xloc = xloc.bar_time, text = tag + "  " + str.tostring(conf, "#.#") + "%", style = label.style_label_lower_right, color = col, textcolor = color.white, size = size.small)
+    rendered := true

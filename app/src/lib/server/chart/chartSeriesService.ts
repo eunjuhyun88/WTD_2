@@ -149,19 +149,6 @@ const OI_PERIOD_MAP: Record<string, string> = {
   '1h': '1h', '2h': '2h', '4h': '4h', '6h': '6h', '12h': '12h', '1d': '1d',
 };
 
-function normalizeRequest(args: {
-  symbol?: string;
-  tf?: string;
-  limit?: number;
-  emaTf?: string;
-}) {
-  const symbol = args.symbol?.trim().toUpperCase() || 'BTCUSDT';
-  const tf = args.tf?.trim().toLowerCase() || '1h';
-  const limit = Math.min(Math.max(args.limit ?? 500, 1), 1000);
-  const emaTf = args.emaTf?.trim() ?? '';
-  return { symbol, tf, limit, emaTf };
-}
-
 function parseKlines(rawKlines: number[][]): KlineBar[] {
   return rawKlines.map((k) => ({
     time: Math.floor(k[0] / 1000),
@@ -172,6 +159,7 @@ function parseKlines(rawKlines: number[][]): KlineBar[] {
     volume: parseFloat(k[5] as unknown as string),
   }));
 }
+
 
 async function fetchKlines(
   symbol: string,
