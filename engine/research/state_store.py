@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -57,7 +57,6 @@ def _json_loads_list(value: str | None) -> list[str]:
 class ResearchRun:
     research_run_id: str
     pattern_slug: str
-    definition_ref: dict
     objective_id: str
     baseline_ref: str
     search_policy: dict
@@ -70,6 +69,7 @@ class ResearchRun:
     updated_at: str
     started_at: str | None
     completed_at: str | None
+    definition_ref: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

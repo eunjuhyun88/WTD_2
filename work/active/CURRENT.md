@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-25 D)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -7,7 +7,17 @@
 
 ## main SHA
 
-`61e7ce11` — current local `origin/main` ref after PR #217
+`c5e606f9` — origin/main (2026-04-25) — CI repair + branch cleanup
+
+## W-0210 완료 (feat/agent-execution-protocol → PR #283 머지 진행 중)
+
+| 레이어 | 내용 |
+|---|---|
+| Layer 1 | `AlphaOverlayLayer` — 엔진 분석 → 차트 price lines + markers |
+| Layer 2 | `WhaleWatchCard` + `/api/cogochi/whales` — Hyperliquid Top 10 |
+| Layer 3 | `comparisonStore` — BTC 100-base 정규화 오버레이 |
+| Layer 4 | `NewsFlashBar` + `newsStore` + `/api/cogochi/news` — CryptoPanic 뉴스 |
+| **비용** | **$0 net-new** |
 
 ## 완료 (이번 세션 C — 전체 데이터 아키텍처 설계)
 

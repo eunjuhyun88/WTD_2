@@ -17,6 +17,7 @@
   import SaveStrip from './SaveStrip.svelte';
   import ResearchPanel from './ResearchPanel.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
+  import ChartMetricStrip from './ChartMetricStrip.svelte';
   import IndicatorPaneStack from './IndicatorPaneStack.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
@@ -32,6 +33,10 @@
   import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
+  import { AlphaOverlayLayer } from '../chart/AlphaOverlayLayer';
+  import type { PanelAnalyzeData } from '$lib/terminal/panelAdapter';
+  import { comparisonStore } from '$lib/stores/comparisonStore';
+  import { whaleStore } from '$lib/stores/whaleStore';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -77,6 +82,11 @@
     }>;
     /** Fired when a candle closes (WS k.x=true). Parent can refresh analyze/verdict state. */
     onCandleClose?: (bar: { time: number; open: number; high: number; low: number; close: number; volume: number }) => void;
+    /**
+     * Full analysis response — drives AlphaOverlayLayer (W-0210 Layer 1):
+     * ATR TP/Stop price lines, phase markers, breakout arrows.
+     */
+    analysisData?: PanelAnalyzeData | null;
     /** Gamma pin overlay — pass from parent when options-snapshot data is live. null hides line. */
     gammaPin?: GammaPinData | null;
     /**
@@ -104,6 +114,7 @@
     onCandleClose,
     gammaPin = null,
     onCaptureSelect = undefined,
+    analysisData = null,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -182,6 +193,70 @@
     return items;
   });
 
+  // ── Permanent derivatives metric strip ────────────────────────────────────
+  // Always-visible bar showing funding / OI / CVD / regime — core data for crypto traders
+  let metricStripItems = $derived.by(() => {
+    const items: Array<{ label: string; value: string; tone: 'bull' | 'bear' | 'warn' | 'neutral' | 'info' }> = [];
+
+    // Funding rate — most important derivative signal
+    if (quantRegime?.fundingPct != null) {
+      const fr = quantRegime.fundingPct;
+      const sign = fr >= 0 ? '+' : '';
+      items.push({
+        label: 'Funding',
+        value: `${sign}${fr.toFixed(4)}%`,
+        tone: fr > 0.05 ? 'bear' : fr < -0.02 ? 'bull' : 'neutral',
+      });
+    }
+
+    // OI Δ% — open interest momentum
+    if (quantRegime?.oiDeltaPct != null) {
+      const oi = quantRegime.oiDeltaPct;
+      const sign = oi >= 0 ? '+' : '';
+      items.push({
+        label: 'OI Δ',
+        value: `${sign}${oi.toFixed(2)}%`,
+        tone: oi > 3 ? 'warn' : oi > 0 ? 'bull' : 'bear',
+      });
+    }
+
+    // CVD divergence
+    if (cvdDivergence?.label) {
+      items.push({
+        label: 'CVD',
+        value: cvdDivergence.label,
+        tone: cvdDivergence.state === 'bullish_divergence' ? 'bull'
+          : cvdDivergence.state === 'bearish_divergence' ? 'bear'
+          : 'neutral',
+      });
+    }
+
+    // Regime
+    if (quantRegime?.label) {
+      items.push({
+        label: 'Regime',
+        value: quantRegime.label,
+        tone: quantRegime.tone,
+      });
+    }
+
+    // Bid/Ask book pressure
+    if (bidPct && askPct) {
+      items.push({
+        label: 'Book',
+        value: `${bidPct}/${askPct}`,
+        tone: bidPct >= askPct ? 'bull' : 'bear',
+      });
+    }
+
+    // Spread
+    if (depthData?.spreadBps != null) {
+      items.push({ label: 'Spread', value: `${depthData.spreadBps.toFixed(1)} bps`, tone: 'neutral' });
+    }
+
+    return items;
+  });
+
   // Save Setup modal (mobile legacy)
   let showSaveModal = $state(false);
   let savedCaptureId = $state<string | null>(null);   // shown as toast after save
@@ -201,6 +276,8 @@
   let showMACD = $derived($chartIndicators.macd);   // replaces RSI pane when active
   // derivativesOverlay = opt-in overlay on main chart; false = sub-pane (default/standard)
   let derivativesOnMain = $derived($chartIndicators.derivativesOverlay);
+  // W-0210 Layer 3: comparison overlay (BTC or benchmark symbol)
+  let showComparison = $derived($chartIndicators.comparison);
 
   let chartMode = $state<'candle' | 'line'>('candle');
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
@@ -224,7 +301,7 @@
   });
 
   type StudyCategory = 'Favorites' | 'Overlays' | 'Pane' | 'Flow';
-  type StudyId = 'ema' | 'vwap' | 'bb' | 'atr' | 'macd' | 'cvd' | 'overlay';
+  type StudyId = 'ema' | 'vwap' | 'bb' | 'atr' | 'macd' | 'cvd' | 'overlay' | 'comparison';
   type StudyDefinition = {
     id: StudyId;
     label: string;
@@ -300,6 +377,15 @@
       description: 'Draw funding and cumulative CVD directly on the price chart.',
       active: derivativesOnMain,
     },
+    {
+      id: 'comparison',
+      label: 'BTC comparison overlay',
+      short: 'BTC ∥',
+      category: 'Overlays',
+      description: 'Normalized BTC price alongside current symbol — shows correlation / divergence.',
+      active: showComparison,
+      featured: true,
+    },
   ]);
 
   let filteredStudyCatalog = $derived.by(() => {
@@ -343,6 +429,9 @@
   // ── Layer 4: Gamma pin primitive (W-0122-Phase3) ──────────────────────────
   let gammaPinPrimitive: GammaPinPrimitive | null = null;
 
+  // ── W-0210 Layer 1: Alpha overlay (analysis → price lines + markers) ───────
+  let _alphaOverlay: AlphaOverlayLayer | null = null;
+
   // ── Layer 3: Capture annotations (W-0120) ────────────────────────────────
   let candleSeriesForAnnotations = $state<ISeriesApi<'Candlestick'> | null>(null);
   let candleMarkerApi: { setMarkers: (markers: SeriesMarker<UTCTimestamp>[]) => void } | null = null;
@@ -368,6 +457,20 @@
     if (!priceSeries || rangePrimitive) return;
     rangePrimitive = new RangePrimitive();
     (priceSeries as ISeriesApi<SeriesType>).attachPrimitive(rangePrimitive as unknown as Parameters<ISeriesApi<SeriesType>['attachPrimitive']>[0]);
+  }
+
+  /** Instantiate or update the AlphaOverlayLayer against the current candle series. */
+  function syncAlphaOverlay() {
+    if (!priceSeries || !mainChart) { _alphaOverlay = null; return; }
+    // Only Candlestick series supports the full overlay (price lines + markers)
+    if (!candleSeriesForAnnotations) { _alphaOverlay = null; return; }
+    if (!_alphaOverlay) {
+      _alphaOverlay = new AlphaOverlayLayer(
+        candleSeriesForAnnotations as ISeriesApi<'Candlestick'>,
+        mainChart,
+      );
+    }
+    _alphaOverlay.apply(analysisData);
   }
 
   function detachRangePrimitive() {
@@ -495,6 +598,8 @@
   let stopLine:   ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   /** Liquidation / cluster levels on main chart (CryptoQuant-style price rails). */
   let liqPriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
+  /** W-0210 Layer 2: Whale liq price lines — separate set for easy clear/rebuild. */
+  let whalePriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
 
   // ── Timeframes ────────────────────────────────────────────────────────────
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
@@ -858,6 +963,50 @@
       s.setData(toLine(ind.sma5));
     }
 
+    // W-0210 Layer 3: Comparison overlay — normalized BTC (or benchmark) on same panel
+    // Uses a dedicated right price scale so it doesn't distort the main price scale.
+    if (showComparison && symbol !== COMPARISON_SYMBOL) {
+      const compData = $comparisonStore.data;
+      if (compData.length) {
+        // Normalize main symbol klines to same 100-base for fair comparison
+        const mainBase = klines[0]?.close;
+        if (mainBase) {
+          const mainNorm = klines.map(k => ({
+            time: k.time as UTCTimestamp,
+            value: (k.close / mainBase) * 100,
+          }));
+
+          // Add main series normalized line (on comparison scale)
+          const mainNormSeries = mainChart.addSeries(LineSeries, {
+            color: 'rgba(255,199,80,0.5)',
+            lineWidth: 1 as const,
+            priceScaleId: 'comparison',
+            lastValueVisible: false,
+            priceLineVisible: false,
+            title: symbol.replace('USDT', ''),
+          });
+          mainNormSeries.setData(mainNorm);
+
+          // Add BTC normalized line
+          const compSeries = mainChart.addSeries(LineSeries, {
+            color: 'rgba(75,158,253,0.65)',
+            lineWidth: 1 as const,
+            priceScaleId: 'comparison',
+            lastValueVisible: true,
+            priceLineVisible: false,
+            title: 'BTC',
+          });
+          compSeries.setData(compData);
+
+          // Configure shared comparison price scale (right-side, minimal footprint)
+          mainChart.priceScale('comparison').applyOptions({
+            visible: false,  // hide axis — relative values are less meaningful
+            scaleMargins: { top: 0.05, bottom: 0.05 },
+          });
+        }
+      }
+    }
+
     // VWAP toggle
     if (showVWAP && ind.vwap?.length) {
       const s = mainChart.addSeries(LineSeries, { color: 'rgba(255,200,60,0.9)', lineWidth: 1, lineStyle: 1 as const, lastValueVisible: true, priceLineVisible: false });
@@ -980,6 +1129,9 @@
       }
       candleMarkerApi?.setMarkers(markers);
     }
+
+    // W-0210 Layer 1: Alpha overlay — ATR levels + phase markers from analysisData
+    syncAlphaOverlay();
 
     mainChart.subscribeCrosshairMove((param) => {
       if (param.time) {
@@ -1199,6 +1351,38 @@
     liqPriceLines = [];
   }
 
+  // W-0210 Layer 2: Whale liquidation price lines
+  function clearWhalePriceLines() {
+    if (!priceSeries) return;
+    for (const pl of whalePriceLines) {
+      try { priceSeries.removePriceLine(pl); } catch { /* removed with chart */ }
+    }
+    whalePriceLines = [];
+  }
+
+  function applyWhalePriceLines() {
+    clearWhalePriceLines();
+    if (!priceSeries) return;
+    const positions = $whaleStore.positions;
+    // Only show whales with known liquidation prices
+    const withLiq = positions.filter(p => p.liquidationPrice != null && Number.isFinite(p.liquidationPrice!));
+    // Show top 3 by sizeUsd
+    const top3 = [...withLiq].sort((a, b) => b.sizeUsd - a.sizeUsd).slice(0, 3);
+    for (const pos of top3) {
+      const liqPrice = pos.liquidationPrice!;
+      const col = pos.netPosition === 'long' ? 'rgba(248,113,113,0.5)' : 'rgba(52,211,153,0.5)';
+      const pl = priceSeries.createPriceLine({
+        price: liqPrice,
+        color: col,
+        lineWidth: 1,
+        lineStyle: 3, // dotted
+        axisLabelVisible: false,
+        title: `🐋 ${pos.address}`,
+      });
+      whalePriceLines.push(pl);
+    }
+  }
+
   /** Nearest long/short liq + strongest cluster prices — same time axis as candles. */
   function applyLiqPriceLines() {
     clearLiqPriceLines();
@@ -1308,6 +1492,10 @@
 
   function destroyCharts() {
     clearLiqPriceLines();
+    clearWhalePriceLines();
+    // W-0210: destroy alpha overlay before removing series
+    _alphaOverlay?.destroy();
+    _alphaOverlay = null;
     // Detach Layer 1 primitive before removing chart (W-0086 / W-0117)
     detachDragHandlers();
     detachRangePrimitive();
@@ -1409,6 +1597,7 @@
     macd: 'macd',
     cvd: 'cvd',
     overlay: 'derivativesOverlay',
+    comparison: 'comparison',
   };
 
   function toggleStudy(id: StudyId) {
@@ -1500,6 +1689,8 @@
     void chartMode;
     void cvdDivergence;
     void derivativesOnMain;
+    void showComparison;
+    void $comparisonStore.data;  // re-render when comparison data arrives
     const data = chartData;
     if (!data || loading) return;
     void tick().then(() => {
@@ -1512,6 +1703,32 @@
   $effect(() => {
     void verdictLevels;
     updateLevels();
+  });
+
+  // W-0210 Layer 1: Re-apply alpha overlay when analysisData changes (no chart rebuild)
+  $effect(() => {
+    void analysisData;
+    if (priceSeries && !loading) {
+      syncAlphaOverlay();
+    }
+  });
+
+  // W-0210 Layer 2: Apply whale liq price lines when data changes
+  $effect(() => {
+    void $whaleStore.positions;
+    if (priceSeries && !loading) {
+      applyWhalePriceLines();
+    }
+  });
+
+  // W-0210 Layer 3: Fetch comparison data when comparison is toggled or TF changes
+  const COMPARISON_SYMBOL = 'BTCUSDT';
+  $effect(() => {
+    void showComparison;
+    void tf;
+    if (showComparison && symbol !== COMPARISON_SYMBOL) {
+      comparisonStore.setSymbol(COMPARISON_SYMBOL, tf);
+    }
   });
 
   // Close indicators panel on outside click (deferred so the opening click does not close it).
@@ -1691,6 +1908,9 @@
         <PhaseBadge phase={null} />
       </div>
     </div>
+    {#if metricStripItems.length > 0}
+      <ChartMetricStrip items={metricStripItems} />
+    {/if}
     <div class="pane-main"  bind:this={mainEl}></div>
 
     <!-- Indicator panes (Vol, MACD/RSI, OI, CVD) ────────────────────────────── -->
