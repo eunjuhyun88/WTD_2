@@ -24,16 +24,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Require memory sync token
+      - name: Detect memory sync token
+        id: memory_token
         env:
           MEMORY_SYNC_TOKEN: ${{ secrets.MEMORY_SYNC_TOKEN }}
         run: |
           if [ -z "$MEMORY_SYNC_TOKEN" ]; then
-            echo "MEMORY_SYNC_TOKEN is required so sync PRs trigger required checks."
-            exit 1
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::MEMORY_SYNC_TOKEN is not configured; skipping memory sync PR creation."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Checkout main
+        if: steps.memory_token.outputs.available == 'true'
         uses: actions/checkout@v4
         with:
           ref: main
@@ -41,18 +45,22 @@ jobs:
           token: ${{ secrets.MEMORY_SYNC_TOKEN }}
 
       - name: Setup Python
+        if: steps.memory_token.outputs.available == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install uv
+        if: steps.memory_token.outputs.available == 'true'
         uses: astral-sh/setup-uv@v5
 
       - name: Sync engine dependencies
+        if: steps.memory_token.outputs.available == 'true'
         run: uv sync --locked
         working-directory: engine
 
       - name: Run sync script
+        if: steps.memory_token.outputs.available == 'true'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -69,6 +77,7 @@ jobs:
             --author "$AUTHOR"
 
       - name: Create memory sync pull request
+        if: steps.memory_token.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ secrets.MEMORY_SYNC_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
