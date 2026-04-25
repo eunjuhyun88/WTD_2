@@ -50,6 +50,7 @@ from research.pattern_search import (
     PatternSearchArtifactStore,
     run_pattern_benchmark_search,
 )
+from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
 from research.query_transformer import transform_pattern_draft
 
 log = logging.getLogger("engine.captures")
@@ -609,6 +610,7 @@ async def create_capture_benchmark_search(
         config,
         pack_store=_benchmark_pack_store,
         artifact_store=_pattern_search_artifact_store,
+        active_variant_store=ACTIVE_PATTERN_VARIANT_STORE,
     )
     artifact = await asyncio.to_thread(_pattern_search_artifact_store.load, run.research_run_id)
     return {
