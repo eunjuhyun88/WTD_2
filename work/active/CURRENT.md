@@ -88,6 +88,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0201** | `W-0201-core-loop-contract-hardening.md` | 🟡 ACTIVE — 구현/타깃 검증 완료 | PR diff review + optional terminal smoke |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
@@ -104,6 +105,7 @@
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
+| **W-0200** | `W-0200-core-loop-proof.md` | 🟢 COMPLETE — 머지됨 | GCP 재배포 + 프로덕션 스모크 테스트 |
 
 ---
 
@@ -160,8 +162,9 @@
 
 ## 현재 브랜치 상태
 
+- `codex/w-0201-core-loop-contract-hardening`: core loop contract hardening (이번 세션 작업)
 - `claude/strange-proskuriakova`: architecture improvements (이번 세션 작업, PR 대기)
-- main: e2fba18b (모든 PR 머지 완료)
+- main: 18187dcf (모든 PR 머지 완료)
 
 ---
 

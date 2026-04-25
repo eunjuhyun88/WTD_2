@@ -9,6 +9,8 @@
 // reaches these via `readRaw()` in `providers/rawSources.ts`, which
 // wraps the Binance-hitting calls with the provider-level
 // `binanceQuota` limiter.
+// W-0201: treat this as a legacy raw adapter; new product/search/runtime
+// consumers must use `/api/facts/*`, `/api/search/*`, or `/api/runtime/*`.
 //
 // The previous client-side `RateLimiter` class + `rateLimiter`
 // singleton lived here so `scanner.ts` and `toolExecutor.ts` could

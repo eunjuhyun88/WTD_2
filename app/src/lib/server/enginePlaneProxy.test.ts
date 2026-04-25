@@ -24,6 +24,10 @@ describe('enginePlaneProxy', () => {
 		expect(isAllowedPlaneProxyPath('search', 'scan/scan_1', 'GET')).toBe(true);
 		expect(isAllowedPlaneProxyPath('search', 'seed', 'POST')).toBe(true);
 		expect(isAllowedPlaneProxyPath('search', 'seed/run_1', 'GET')).toBe(true);
+		expect(isAllowedPlaneProxyPath('search', 'similar', 'POST')).toBe(true);
+		expect(isAllowedPlaneProxyPath('search', 'similar/run_1', 'GET')).toBe(true);
+		expect(isAllowedPlaneProxyPath('search', 'quality/judge', 'POST')).toBe(true);
+		expect(isAllowedPlaneProxyPath('search', 'quality/stats', 'GET')).toBe(true);
 		expect(isAllowedPlaneProxyPath('runtime', 'captures', 'POST')).toBe(true);
 		expect(isAllowedPlaneProxyPath('runtime', 'captures', 'GET')).toBe(true);
 		expect(isAllowedPlaneProxyPath('runtime', 'ctx/fact', 'GET')).toBe(false);
@@ -113,6 +117,51 @@ describe('enginePlaneProxy', () => {
 				method: 'POST',
 				headers: expect.any(Headers),
 			}),
+		);
+	});
+
+	it('maps similar-search and quality routes to canonical /search upstreams', async () => {
+		const upstream = new Response(JSON.stringify({ ok: true, plane: 'search' }), {
+			status: 200,
+			headers: { 'content-type': 'application/json' },
+		});
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(upstream as never);
+
+		const similarReq = new Request('http://localhost/api/search/similar', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ pattern_draft: {}, top_k: 10 }),
+		});
+		await handleEnginePlaneRequest(
+			{
+				request: similarReq,
+				params: { path: 'similar' },
+				getClientAddress: () => '127.0.0.1',
+			} as any,
+			'search',
+			'POST',
+		);
+
+		const judgeReq = new Request('http://localhost/api/search/quality/judge', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ run_id: 'run_1', candidate_id: 'w_1', verdict: 'good' }),
+		});
+		await handleEnginePlaneRequest(
+			{ request: judgeReq, params: { path: 'quality/judge' } } as any,
+			'search',
+			'POST',
+		);
+
+		expect(globalThis.fetch).toHaveBeenNthCalledWith(
+			1,
+			'http://localhost:8000/search/similar',
+			expect.objectContaining({ method: 'POST' }),
+		);
+		expect(globalThis.fetch).toHaveBeenNthCalledWith(
+			2,
+			'http://localhost:8000/search/quality/judge',
+			expect.objectContaining({ method: 'POST' }),
 		);
 	});
 

@@ -146,6 +146,13 @@ def test_run_similar_search_empty_corpus():
     assert result["status"] == "degraded"
     assert result["candidates"] == []
     assert "run_id" in result
+    assert result["active_layers"] == {"layer_a": True, "layer_b": True, "layer_c": False}
+    assert result["stage_counts"] == {
+        "corpus_windows": 0,
+        "ranked_candidates": 0,
+        "returned_candidates": 0,
+    }
+    assert result["degraded_reason"] == "search_corpus_empty"
 
 
 def test_run_and_retrieve():
@@ -159,6 +166,9 @@ def test_run_and_retrieve():
         retrieved = get_similar_search(run_id, db_path=db)
     assert retrieved is not None
     assert retrieved["run_id"] == run_id
+    assert retrieved["active_layers"] == result["active_layers"]
+    assert retrieved["stage_counts"] == result["stage_counts"]
+    assert retrieved["degraded_reason"] == result["degraded_reason"]
 
 
 def test_get_similar_search_not_found():

@@ -93,7 +93,24 @@ describe('/api/terminal/pattern-seed/match', () => {
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ ok: true, candidates: [] }),
+          JSON.stringify({
+            ok: true,
+            run_id: 'sim-run-1',
+            candidates: [
+              {
+                symbol: 'PTBUSDT',
+                window_id: 'ptb-window-1',
+                final_score: 0.91,
+                layer_a_score: 0.88,
+                layer_b_score: 0.82,
+                layer_c_score: null,
+                candidate_phase_path: ['REAL_DUMP', 'ACCUMULATION'],
+                start_ts: '2026-04-01T00:00:00Z',
+                end_ts: '2026-04-01T12:00:00Z',
+                close_return_pct: 4.2,
+              },
+            ],
+          }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         ),
       );
@@ -116,7 +133,11 @@ describe('/api/terminal/pattern-seed/match', () => {
     const payload = await response.json();
     expect(payload.ok).toBe(true);
     expect(payload.seed.captureId).toBe('cap-1');
+    expect(payload.seed.runId).toBe('sim-run-1');
     expect(payload.seed.researchRunId).toBe('run-1');
+    expect(payload.seed.searchQuerySpec).toMatchObject({
+      must_have_signals: ['oi_spike', 'dump_then_reclaim', 'higher_lows_sequence'],
+    });
     expect(payload.seed.requestedSignals).toEqual([
       'oi_spike',
       'dump_then_reclaim',
@@ -125,9 +146,10 @@ describe('/api/terminal/pattern-seed/match', () => {
     expect(payload.candidates).toHaveLength(1);
     expect(payload.candidates[0]).toMatchObject({
       symbol: 'PTBUSDT',
-      source: 'engine',
-      matchedSignals: ['oi_spike', 'dump_then_reclaim', 'higher_lows_sequence'],
-      missingSignals: [],
+      source: 'similar',
+      windowId: 'ptb-window-1',
+      layerAScore: 0.88,
+      layerBScore: 0.82,
     });
 
     expect(engineFetch).toHaveBeenCalledTimes(4);
