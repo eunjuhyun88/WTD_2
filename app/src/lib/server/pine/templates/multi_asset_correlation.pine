@@ -1,0 +1,34 @@
+//@version=6
+// WTD — Multi-Asset Correlation Overlay
+// Compare {{symbol}} normalized against {{compareSymbol}}
+indicator("WTD Compare {{symbol}} vs {{compareSymbol}}", overlay = false)
+
+// ─── Config ─────────────────────────────────────────────────
+compareSymbol = input.symbol("{{compareSymbol}}", "Compare against")
+lookback      = input.int({{lookback}}, "Normalization window", minval = 20, maxval = 500)
+
+// ─── Fetch comparison series ────────────────────────────────
+compareClose = request.security(compareSymbol, timeframe.period, close, lookahead = barmerge.lookahead_off)
+
+// ─── Normalize both to 100 at lookback start ────────────────
+baseClose      = close[lookback]
+baseCompare    = compareClose[lookback]
+normSelf       = na(baseClose)   ? na : (close        / baseClose)   * 100
+normCompare    = na(baseCompare) ? na : (compareClose / baseCompare) * 100
+
+// ─── Rolling correlation ────────────────────────────────────
+corr = ta.correlation(close, compareClose, lookback)
+
+// ─── Plots ──────────────────────────────────────────────────
+plot(normSelf,    title = "{{symbol}} norm",      color = color.new(color.aqua,  0), linewidth = 2)
+plot(normCompare, title = "{{compareSymbol}} norm", color = color.new(color.orange, 0), linewidth = 2)
+hline(100, "Base 100", color = color.new(color.gray, 50))
+
+// ─── Correlation gauge in top-right ─────────────────────────
+var table info = table.new(position.top_right, 2, 2, bgcolor = color.new(color.black, 70))
+if barstate.islast
+    corrColor = corr > 0.7 ? color.lime : corr < -0.7 ? color.red : color.yellow
+    table.cell(info, 0, 0, "Correlation", text_color = color.gray, text_size = size.small)
+    table.cell(info, 1, 0, str.tostring(corr, "#.##"), text_color = corrColor, text_size = size.small)
+    table.cell(info, 0, 1, "Window", text_color = color.gray, text_size = size.small)
+    table.cell(info, 1, 1, str.tostring(lookback), text_color = color.white, text_size = size.small)

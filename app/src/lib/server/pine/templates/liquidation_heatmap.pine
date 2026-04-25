@@ -1,0 +1,26 @@
+//@version=6
+// WTD — Liquidation Heatmap
+// Aggregated liquidation density at price levels
+indicator("WTD Liq Heatmap — {{symbol}}", overlay = true, max_lines_count = 100)
+
+// ─── Heatmap data (injected) ────────────────────────────────
+// Format: comma-separated "price|intensity"  (intensity 0..1)
+var string HEATMAP = "{{heatmap}}"
+
+// ─── Render once ────────────────────────────────────────────
+var bool rendered = false
+
+if barstate.islastconfirmedhistory and not rendered
+    array<string> entries = str.split(HEATMAP, ",")
+    for entry in entries
+        parts = str.split(entry, "|")
+        if array.size(parts) >= 2
+            price     = str.tonumber(array.get(parts, 0))
+            intensity = str.tonumber(array.get(parts, 1))
+            if not na(price) and not na(intensity)
+                // Higher intensity = more red, lower = more blue (cold)
+                transp = int(95 - (intensity * 70))
+                col = intensity > 0.7 ? color.new(color.red, transp) : intensity > 0.4 ? color.new(color.orange, transp) : color.new(color.yellow, transp)
+                width = intensity > 0.7 ? 3 : intensity > 0.4 ? 2 : 1
+                line.new(x1 = bar_index - 200, y1 = price, x2 = bar_index + 30, y2 = price, color = col, width = width, extend = extend.right)
+    rendered := true

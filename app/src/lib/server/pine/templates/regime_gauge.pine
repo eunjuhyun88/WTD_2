@@ -1,0 +1,33 @@
+//@version=6
+// WTD — Regime Background
+// Regime: {{regime}} | Trend: {{trendStrength}}
+indicator("WTD Regime — {{symbol}}", overlay = true)
+
+// ─── Regime config (from WTD analysis) ──────────────────────
+var string REGIME         = "{{regime}}"          // trend_up | trend_down | range | breakout
+var float  TREND_STRENGTH = {{trendStrength}}     // 0..1
+var float  REGIME_HIGH    = {{regimeHigh}}
+var float  REGIME_LOW     = {{regimeLow}}
+
+// ─── Color map ──────────────────────────────────────────────
+upColor    = color.new(color.green,  92)
+downColor  = color.new(color.red,    92)
+rangeColor = color.new(color.gray,   92)
+brkColor   = color.new(color.yellow, 88)
+
+regimeColor = REGIME == "trend_up" ? upColor : REGIME == "trend_down" ? downColor : REGIME == "breakout" ? brkColor : rangeColor
+
+// ─── Apply background ───────────────────────────────────────
+bgcolor(regimeColor, title = "Regime")
+
+// ─── Range channel (if range regime) ────────────────────────
+plot(REGIME == "range" and not na(REGIME_HIGH) ? REGIME_HIGH : na, title = "Range High", color = color.new(color.gray, 30), style = plot.style_line, linewidth = 1)
+plot(REGIME == "range" and not na(REGIME_LOW)  ? REGIME_LOW  : na, title = "Range Low",  color = color.new(color.gray, 30), style = plot.style_line, linewidth = 1)
+
+// ─── Top-right info table ───────────────────────────────────
+var table info = table.new(position.top_right, 2, 2, bgcolor = color.new(color.black, 70), border_width = 1)
+if barstate.islast
+    table.cell(info, 0, 0, "Regime", text_color = color.gray, text_size = size.small)
+    table.cell(info, 1, 0, REGIME, text_color = color.white, text_size = size.small)
+    table.cell(info, 0, 1, "Strength", text_color = color.gray, text_size = size.small)
+    table.cell(info, 1, 1, str.tostring(TREND_STRENGTH * 100, "#.#") + "%", text_color = color.aqua, text_size = size.small)
