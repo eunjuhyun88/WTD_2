@@ -90,6 +90,12 @@ describe('/api/terminal/pattern-seed/match', () => {
           }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ok: true, candidates: [] }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
       );
 
     const request = new Request('http://localhost/api/terminal/pattern-seed/match', {
@@ -127,12 +133,13 @@ describe('/api/terminal/pattern-seed/match', () => {
       missingSignals: [],
     });
 
-    expect(engineFetch).toHaveBeenCalledTimes(3);
+    expect(engineFetch).toHaveBeenCalledTimes(4);
     expect(vi.mocked(engineFetch).mock.calls[0][0]).toBe('/captures');
     expect(vi.mocked(engineFetch).mock.calls[1][0]).toBe('/captures/cap-1/benchmark_search');
     expect(vi.mocked(engineFetch).mock.calls[2][0]).toBe(
       '/patterns/tradoor-oi-reversal-v1/similar-live?top_k=10&min_similarity_score=0.2',
     );
+    expect(vi.mocked(engineFetch).mock.calls[3][0]).toBe('/search/similar');
 
     const createRequest = vi.mocked(engineFetch).mock.calls[0][1];
     const createPayload = JSON.parse(String(createRequest?.body));
