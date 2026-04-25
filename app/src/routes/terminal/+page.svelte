@@ -201,9 +201,6 @@
   // ── Global market pulse (thermo) ──────────────────────────
   let thermoData = $state<ThermoData>(EMPTY_THERMO_DATA);
 
-  // ── Workspace panel ────────────────────────────────────────
-  let workspaceOpen = $state(false);
-
   function handleWorkspaceJudge(verdict: string, note?: string) {
     if (activeSymbol) {
       trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
@@ -1708,8 +1705,6 @@
         analysisData={activeAnalysisData as any}
         symbol={activeSymbol || pairToSymbol(gPair)}
         tf={symbolToTF(gTf)}
-        open={workspaceOpen}
-        onToggle={() => workspaceOpen = !workspaceOpen}
         onJudge={handleWorkspaceJudge}
       />
     {/if}
@@ -1746,7 +1741,7 @@
       onRetry={handleRetryAnalysis}
       onSelectAsset={selectAsset}
       onClearBoard={clearBoard}
-      onWorkspaceToggle={() => { workspaceOpen = !workspaceOpen; }}
+      onWorkspaceToggle={undefined}
     />
     {/if}
   </div>

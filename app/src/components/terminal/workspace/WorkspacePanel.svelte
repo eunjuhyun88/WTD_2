@@ -12,8 +12,6 @@
     analysisData?: PanelAnalyzeData | null;
     symbol?: string;
     tf?: string;
-    open?: boolean;
-    onToggle?: () => void;
     onJudge?: (verdict: JudgmentVerdict, note?: string) => void;
   }
 
@@ -21,21 +19,24 @@
     analysisData,
     symbol = '',
     tf = '4h',
-    open = false,
-    onToggle,
     onJudge,
   }: Props = $props();
 
   const verdict = $derived(buildVerdictFromAnalysis(analysisData));
   const evidence = $derived(buildEvidenceFromAnalysis(analysisData));
   const sym = $derived(symbol.replace('USDT', '') || '—');
+  const dir = $derived(verdict?.direction ?? null);
+  const conf = $derived(
+    analysisData?.p_win != null
+      ? `${Math.round((analysisData.p_win as number) * 100)}%`
+      : (verdict?.confidence ?? null)
+  );
 
-  let judgeNote = $state('');
   let judged = $state<JudgmentVerdict | null>(null);
 
   function handleJudge(v: JudgmentVerdict) {
-    judged = v;
-    onJudge?.(v, judgeNote || undefined);
+    judged = judged === v ? null : v;
+    if (judged) onJudge?.(v);
   }
 
   function stateClass(state: TerminalEvidence['state']) {
@@ -45,302 +46,260 @@
     return 'dim';
   }
 
-  function stateLabel(state: TerminalEvidence['state']) {
-    if (state === 'bullish') return 'PASS';
-    if (state === 'bearish') return 'FAIL';
-    if (state === 'warning') return 'WARN';
-    return '—';
+  function stateGlyph(state: TerminalEvidence['state']) {
+    if (state === 'bullish') return '▲';
+    if (state === 'bearish') return '▼';
+    if (state === 'warning') return '!';
+    return '·';
   }
 </script>
 
-<div class="workspace" class:open>
-  <!-- Toggle bar -->
-  <button class="workspace-toggle" onclick={onToggle} aria-label="Toggle workspace">
-    <span class="toggle-label">WORKSPACE</span>
-    <span class="toggle-sym">{sym} · {tf.toUpperCase()}</span>
-    <span class="toggle-arrow">{open ? '▼' : '▲'}</span>
-  </button>
+<!-- TradingView-style sub-pane: always visible, fixed height below chart -->
+<div class="ws-pane">
 
-  {#if open}
-    <div class="workspace-body">
-      <!-- Section: Evidence Table -->
-      <section class="ws-section">
-        <div class="ws-section-head">Evidence Table</div>
-        {#if evidence.length === 0}
-          <p class="ws-empty">No evidence data</p>
-        {:else}
-          <div class="ev-table">
-            <div class="ev-table-head">
-              <span>Feature</span>
-              <span>Value</span>
-              <span>Status</span>
-              <span>Why</span>
-            </div>
-            {#each evidence as ev}
-              <div class="ev-table-row" data-state={stateClass(ev.state)}>
-                <span class="ev-metric">{ev.metric}</span>
-                <span class="ev-val">{ev.value}{ev.delta ? ` ${ev.delta}` : ''}</span>
-                <span class="ev-status" data-state={stateClass(ev.state)}>{stateLabel(ev.state)}</span>
-                <span class="ev-why">{ev.interpretation}</span>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </section>
+  <!-- Pane header: label + legend + judgment micro-buttons -->
+  <div class="ws-head">
+    <span class="ws-pane-label">EVIDENCE</span>
 
-      <!-- Section: Judgment -->
-      <section class="ws-section">
-        <div class="ws-section-head">Judgment</div>
-        {#if !verdict}
-          <p class="ws-empty">Analyze first</p>
-        {:else}
-          <div class="judge-buttons">
-            {#each ([
-              { key: 'valid',     label: 'Valid',      tone: 'good' },
-              { key: 'invalid',   label: 'Invalid',    tone: 'bad' },
-              { key: 'too_early', label: 'Too Early',  tone: 'warn' },
-              { key: 'too_late',  label: 'Too Late',   tone: 'warn' },
-              { key: 'near_miss', label: 'Near Miss',  tone: 'dim' },
-            ] as const) as btn}
-              <button
-                class="judge-btn"
-                class:active={judged === btn.key}
-                data-tone={btn.tone}
-                onclick={() => handleJudge(btn.key)}
-              >{btn.label}</button>
-            {/each}
-          </div>
-          {#if judged}
-            <div class="judge-note-row">
-              <input
-                class="judge-note"
-                type="text"
-                placeholder="Note (optional)…"
-                bind:value={judgeNote}
-              />
-              <button
-                class="judge-submit"
-                onclick={() => onJudge?.(judged!, judgeNote || undefined)}
-              >Submit</button>
-            </div>
-            <p class="judge-feedback">
-              Judgment saved: <strong>{judged}</strong>
-              {judgeNote ? `— "${judgeNote}"` : ''}
-            </p>
-          {/if}
-        {/if}
-      </section>
+    {#if sym !== '—'}
+      <span class="ws-sym-tag">{sym} · {tf.toUpperCase()}</span>
+    {/if}
+
+    {#if dir}
+      <span class="ws-verdict-tag" data-dir={dir}>{dir.toUpperCase()}</span>
+    {/if}
+
+    {#if conf}
+      <span class="ws-conf">{conf}</span>
+    {/if}
+
+    <div class="ws-head-spacer"></div>
+
+    <!-- Inline judgment micro-buttons (TV-style compact) -->
+    <div class="ws-judge-row" role="group" aria-label="Quick judgment">
+      {#each ([
+        { key: 'valid',     label: '✓',  tone: 'good', title: 'Valid' },
+        { key: 'invalid',   label: '✗',  tone: 'bad',  title: 'Invalid' },
+        { key: 'too_early', label: '⏤', tone: 'warn', title: 'Too Early' },
+        { key: 'too_late',  label: '⌛', tone: 'warn', title: 'Too Late' },
+        { key: 'near_miss', label: '◎',  tone: 'dim',  title: 'Near Miss' },
+      ] as const) as btn}
+        <button
+          class="judge-micro"
+          class:active={judged === btn.key}
+          data-tone={btn.tone}
+          title={btn.title}
+          onclick={() => handleJudge(btn.key)}
+          aria-pressed={judged === btn.key}
+        >{btn.label}</button>
+      {/each}
     </div>
-  {/if}
+
+    {#if judged}
+      <span class="judge-saved">saved: {judged.replace('_', ' ')}</span>
+    {/if}
+  </div>
+
+  <!-- Evidence rows — scrollable horizontal compact table -->
+  <div class="ws-body">
+    {#if evidence.length === 0}
+      <div class="ws-empty">
+        {#if !verdict}
+          <span class="ws-empty-text">Analyze a symbol to see evidence</span>
+        {:else}
+          <span class="ws-empty-text">No evidence layers available</span>
+        {/if}
+      </div>
+    {:else}
+      <div class="ev-grid">
+        <!-- Column headers -->
+        <div class="ev-col-head">Feature</div>
+        <div class="ev-col-head">Value</div>
+        <div class="ev-col-head ev-col-state">▲▼</div>
+        <div class="ev-col-head ev-col-why">Interpretation</div>
+
+        <!-- Evidence rows -->
+        {#each evidence as ev}
+          <div class="ev-cell ev-metric" title={ev.metric}>{ev.metric}</div>
+          <div class="ev-cell ev-val">{ev.value}{ev.delta ? ` ${ev.delta}` : ''}</div>
+          <div class="ev-cell ev-state" data-s={stateClass(ev.state)}>
+            <span class="ev-glyph">{stateGlyph(ev.state)}</span>
+          </div>
+          <div class="ev-cell ev-why" title={ev.interpretation}>{ev.interpretation}</div>
+        {/each}
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
-  .workspace {
+  /* ── Pane shell — TradingView sub-pane aesthetics ── */
+  .ws-pane {
     flex-shrink: 0;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    background: var(--tv-bg-1, #131722);
+    height: 148px;
     display: flex;
     flex-direction: column;
-    transition: height 0.18s ease;
-  }
-
-  /* Toggle bar */
-  .workspace-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 14px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-    border-bottom: 1px solid transparent;
-    transition: background 0.08s;
-  }
-  .workspace-toggle:hover {
-    background: rgba(255,255,255,0.03);
-  }
-  .open .workspace-toggle {
-    border-bottom-color: rgba(255,255,255,0.06);
-  }
-  .toggle-label {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.32);
-  }
-  .toggle-sym {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    color: rgba(255,255,255,0.50);
-  }
-  .toggle-arrow {
-    margin-left: auto;
-    font-size: 8px;
-    color: rgba(255,255,255,0.28);
-  }
-
-  /* Body */
-  .workspace-body {
-    display: flex;
-    flex-direction: row;
-    gap: 0;
-    max-height: 260px;
+    background: var(--tv-bg-1, #131722);
+    border-top: 1px solid rgba(255,255,255,0.055);
     overflow: hidden;
   }
 
-  /* Sections */
-  .ws-section {
-    flex: 1;
-    min-width: 0;
-    border-right: 1px solid rgba(255,255,255,0.05);
-    padding: 8px 10px;
-    overflow-y: auto;
+  /* ── Pane header ── */
+  .ws-head {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 6px;
+    padding: 0 10px;
+    height: 26px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.012);
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  .ws-section:last-child { border-right: none; }
+  .ws-head::-webkit-scrollbar { display: none; }
 
-  .ws-section-head {
+  .ws-pane-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    letter-spacing: 0.12em;
     color: rgba(255,255,255,0.28);
     flex-shrink: 0;
-    padding-bottom: 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    margin-bottom: 2px;
   }
-
-  .ws-empty {
+  .ws-sym-tag {
     font-family: var(--sc-font-mono, monospace);
     font-size: 10px;
-    color: rgba(255,255,255,0.22);
+    font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    flex-shrink: 0;
   }
-
-  /* Evidence Table */
-  .ev-table {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+  .ws-verdict-tag {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-  }
-  .ev-table-head {
-    display: grid;
-    grid-template-columns: 1.8fr 1fr 0.7fr 2fr;
-    gap: 6px;
-    padding: 3px 4px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 3px 3px 0 0;
     font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.30);
+    padding: 1px 5px;
+    border-radius: 2px;
+    flex-shrink: 0;
   }
-  .ev-table-row {
-    display: grid;
-    grid-template-columns: 1.8fr 1fr 0.7fr 2fr;
-    gap: 6px;
-    padding: 4px 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    align-items: center;
-    transition: background 0.08s;
-  }
-  .ev-table-row:hover { background: rgba(255,255,255,0.03); }
+  .ws-verdict-tag[data-dir='bullish'] { background: rgba(34,171,148,0.14); color: #22ab94; }
+  .ws-verdict-tag[data-dir='bearish'] { background: rgba(242,54,69,0.14);  color: #f23645; }
+  .ws-verdict-tag[data-dir='neutral'] { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.55); }
 
-  .ev-metric {
-    color: rgba(255,255,255,0.60);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ev-val {
-    color: rgba(255,255,255,0.82);
-    font-weight: 700;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ev-status {
-    font-weight: 700;
-    font-size: 9px;
-    letter-spacing: 0.06em;
-  }
-  .ev-status[data-state='pass'] { color: #22ab94; }
-  .ev-status[data-state='fail'] { color: #f23645; }
-  .ev-status[data-state='warn'] { color: #efc050; }
-  .ev-status[data-state='dim']  { color: rgba(255,255,255,0.28); }
-
-  .ev-why {
-    color: rgba(255,255,255,0.38);
-    font-size: 9px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Judgment */
-  .judge-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-  .judge-btn {
-    padding: 5px 10px;
-    border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.03);
-    color: rgba(255,255,255,0.55);
+  .ws-conf {
     font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    color: rgba(255,199,80,0.72);
+    flex-shrink: 0;
+  }
+
+  .ws-head-spacer { flex: 1; }
+
+  /* ── Judgment micro-buttons (right side of header) ── */
+  .ws-judge-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .judge-micro {
+    width: 20px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: transparent;
     font-size: 10px;
-    font-weight: 700;
+    color: rgba(255,255,255,0.35);
     cursor: pointer;
     transition: all 0.08s;
-  }
-  .judge-btn:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
-  .judge-btn.active[data-tone='good']  { background: rgba(34,171,148,0.14); border-color: rgba(34,171,148,0.35); color: #22ab94; }
-  .judge-btn.active[data-tone='bad']   { background: rgba(242,54,69,0.14);  border-color: rgba(242,54,69,0.35);  color: #f23645; }
-  .judge-btn.active[data-tone='warn']  { background: rgba(239,192,80,0.14); border-color: rgba(239,192,80,0.35); color: #efc050; }
-  .judge-btn.active[data-tone='dim']   { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.22); color: rgba(255,255,255,0.75); }
-
-  .judge-note-row {
     display: flex;
-    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .judge-micro:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.72); }
+  .judge-micro.active[data-tone='good'] { background: rgba(34,171,148,0.18); border-color: rgba(34,171,148,0.4); color: #22ab94; }
+  .judge-micro.active[data-tone='bad']  { background: rgba(242,54,69,0.18);  border-color: rgba(242,54,69,0.4);  color: #f23645; }
+  .judge-micro.active[data-tone='warn'] { background: rgba(239,192,80,0.18); border-color: rgba(239,192,80,0.4); color: #efc050; }
+  .judge-micro.active[data-tone='dim']  { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.75); }
+
+  .judge-saved {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    color: rgba(34,171,148,0.72);
+    flex-shrink: 0;
+  }
+
+  /* ── Body: scrollable evidence grid ── */
+  .ws-body {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: 0;
+  }
+
+  .ws-empty {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 14px;
+  }
+  .ws-empty-text {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    color: rgba(255,255,255,0.20);
+  }
+
+  /* Evidence grid — CSS grid with fixed columns, single-row scrollable */
+  .ev-grid {
+    display: grid;
+    grid-template-columns: 160px 100px 30px 1fr;
+    grid-auto-rows: auto;
+    min-width: max-content;
+    width: 100%;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+  }
+
+  /* Column headers */
+  .ev-col-head {
+    padding: 3px 6px;
+    background: rgba(255,255,255,0.03);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.28);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .ev-col-state { text-align: center; }
+
+  /* Evidence cells */
+  .ev-cell {
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
     align-items: center;
   }
-  .judge-note {
-    flex: 1;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 4px;
-    padding: 5px 8px;
-    font-size: 11px;
-    color: rgba(255,255,255,0.72);
-    outline: none;
-  }
-  .judge-note::placeholder { color: rgba(255,255,255,0.22); }
-  .judge-submit {
-    padding: 5px 10px;
-    border: 1px solid rgba(34,171,148,0.28);
-    background: rgba(34,171,148,0.08);
-    color: #22ab94;
-    border-radius: 4px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .judge-feedback {
-    font-size: 10px;
-    color: rgba(255,255,255,0.42);
-    font-family: var(--sc-font-mono, monospace);
-  }
-  .judge-feedback strong { color: rgba(255,255,255,0.72); }
+  .ev-cell:hover { background: rgba(255,255,255,0.025); }
+
+  .ev-metric { color: rgba(255,255,255,0.55); }
+  .ev-val    { color: rgba(255,255,255,0.85); font-weight: 700; }
+  .ev-why    { color: rgba(255,255,255,0.38); font-size: 9px; }
+
+  .ev-state { justify-content: center; }
+  .ev-glyph { font-size: 9px; font-weight: 700; }
+  .ev-state[data-s='pass'] .ev-glyph { color: #22ab94; }
+  .ev-state[data-s='fail'] .ev-glyph { color: #f23645; }
+  .ev-state[data-s='warn'] .ev-glyph { color: #efc050; }
+  .ev-state[data-s='dim']  .ev-glyph { color: rgba(255,255,255,0.28); }
+
+  @media (max-width: 959px) { .ws-pane { display: none; } }
 </style>
