@@ -1261,6 +1261,14 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     ALPHA_PRESURGE.slug: ALPHA_PRESURGE,      # W-0115 Alpha Universe
 }
 
+# Patterns derived from HTML reference sources — tagged "html_ref".
+# This list is built dynamically so new html_ref patterns are picked up
+# automatically when added to PATTERN_LIBRARY.
+HTML_REFERENCE_PATTERNS: list[PatternObject] = [
+    p for p in PATTERN_LIBRARY.values() if "html_ref" in p.tags
+]
+
+
 def get_pattern(slug: str) -> PatternObject:
     if slug not in PATTERN_LIBRARY:
         raise KeyError(f"Unknown pattern: {slug!r}. Available: {list(PATTERN_LIBRARY)}")

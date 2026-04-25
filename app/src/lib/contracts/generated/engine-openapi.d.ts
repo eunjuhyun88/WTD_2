@@ -326,6 +326,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Similar
+         * @description 3-layer pattern similarity search.
+         *
+         *     Layer A — feature signature distance (always active)
+         *     Layer B — phase path LCS similarity (active when observed_phase_paths provided)
+         *     Layer C — ML p_win from LightGBM (active when model is trained)
+         */
+        post: operations["search_similar_search_similar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/similar/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Similar Result */
+        get: operations["search_similar_result_search_similar__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/quality/judge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Quality Judge
+         * @description Record a user judgement (good/bad/neutral) on a search candidate.
+         *
+         *     This feeds the weight recalibration loop: after _MIN_SAMPLES_FOR_RECALIBRATION
+         *     judgements the blend weights for Layer A/B/C shift toward whichever layer
+         *     has the higher user-validated accuracy.
+         */
+        post: operations["search_quality_judge_search_quality_judge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/quality/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Quality Stats
+         * @description Return per-layer accuracy stats and the current active blend weights.
+         */
+        get: operations["search_quality_stats_search_quality_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/runtime/captures": {
         parameters: {
             query?: never;
@@ -1954,6 +2039,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features/window": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Feature Window
+         * @description Latest materialized feature_window for symbol/timeframe.
+         *
+         *     Computes and persists on-demand from local cache (offline=True) if not
+         *     yet materialized. Never fans out to providers.
+         */
+        get: operations["get_feature_window_features_window_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/pattern-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Events
+         * @description List persisted pattern_events for symbol/timeframe/pattern_family.
+         */
+        get: operations["get_pattern_events_features_pattern_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -2073,6 +2201,77 @@ export interface paths {
          *       terminal_pattern_captures → 90 days (user data: longer retention)
          */
         post: operations["run_db_cleanup_jobs_db_cleanup_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/feature_windows_build/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Feature Windows Build
+         * @description Cloud Scheduler → rebuild FeatureWindowStore from local CSV cache.
+         *
+         *     Runs every 6 hours (BINANCE_30 × [15m, 1h, 4h], 90 days history).
+         *     Idempotent: UPSERT only writes bars not already stored.
+         */
+        post: operations["run_feature_windows_build_jobs_feature_windows_build_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/feature_materialization/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Feature Materialization
+         * @description Cloud Scheduler → materialize canonical feature_windows for universe.
+         *
+         *     Reads from existing local cache (offline=True) — never fans out to providers.
+         *     Produces feature_windows, pattern_events, search_corpus_signatures in
+         *     engine/state/feature_materialization.sqlite.
+         */
+        post: operations["run_feature_materialization_jobs_feature_materialization_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/raw_ingest/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Raw Ingest
+         * @description Cloud Scheduler → ingest raw market data for universe into canonical raw store.
+         *
+         *     Fetches from Binance and writes raw_market_bars, raw_perp_metrics,
+         *     raw_orderflow_metrics into engine/state/canonical_raw.sqlite.
+         *     Also refreshes the legacy CSV cache so downstream jobs stay in sync.
+         */
+        post: operations["run_raw_ingest_jobs_raw_ingest_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2237,8 +2436,6 @@ export interface components {
         };
         /** BulkImportBody */
         BulkImportBody: {
-            /** User Id */
-            user_id: string;
             /** Rows */
             rows: components["schemas"]["BulkImportRow"][];
         };
@@ -2347,8 +2544,6 @@ export interface components {
              * @enum {string}
              */
             capture_kind: "pattern_candidate" | "manual_hypothesis" | "chart_bookmark" | "post_trade_review";
-            /** User Id */
-            user_id?: string | null;
             /** Symbol */
             symbol: string;
             /**
@@ -3072,6 +3267,72 @@ export interface components {
             /** Taker Buy Ratio */
             taker_buy_ratio?: number | null;
         };
+        /** QualityJudgementRequest */
+        QualityJudgementRequest: {
+            /** Run Id */
+            run_id: string;
+            /** Candidate Id */
+            candidate_id: string;
+            /**
+             * Verdict
+             * @description 'good' | 'bad' | 'neutral'
+             */
+            verdict: string;
+            /** Symbol */
+            symbol?: string | null;
+            /** Layer A Score */
+            layer_a_score?: number | null;
+            /** Layer B Score */
+            layer_b_score?: number | null;
+            /** Layer C Score */
+            layer_c_score?: number | null;
+            /** Final Score */
+            final_score?: number | null;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** QualityJudgementResponse */
+        QualityJudgementResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /** Judgement Id */
+            judgement_id: string;
+        };
+        /** QualityStatsResponse */
+        QualityStatsResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Total Judgements */
+            total_judgements: number;
+            /** Layers */
+            layers?: {
+                [key: string]: unknown;
+            };
+            /** Active Weights */
+            active_weights?: {
+                [key: string]: number;
+            };
+            /** Generated At */
+            generated_at: string;
+        };
         /** RagDedupeHashRequest */
         RagDedupeHashRequest: {
             /** Pair */
@@ -3754,6 +4015,128 @@ export interface components {
             /** Candidates */
             candidates?: components["schemas"]["SearchCandidate"][];
         };
+        /** SimilarCandidate */
+        SimilarCandidate: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Window Id */
+            window_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Start Ts */
+            start_ts: string;
+            /** End Ts */
+            end_ts: string;
+            /** Bars */
+            bars: number;
+            /**
+             * Final Score
+             * @description Blended 3-layer score ∈ [0, 1]
+             */
+            final_score: number;
+            /**
+             * Layer A Score
+             * @description Feature signature similarity
+             */
+            layer_a_score: number;
+            /**
+             * Layer B Score
+             * @description Phase path LCS similarity (None if no observed_phase_paths)
+             */
+            layer_b_score?: number | null;
+            /**
+             * Layer C Score
+             * @description ML p_win from LightGBM (None if model not trained)
+             */
+            layer_c_score?: number | null;
+            /**
+             * Candidate Phase Path
+             * @description Actual observed phase sequence for this candidate symbol.
+             */
+            candidate_phase_path?: string[];
+            /** Signature */
+            signature?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Close Return Pct
+             * @description Corpus window close-to-close return % (proxy outcome for display).
+             */
+            close_return_pct?: number | null;
+        };
+        /** SimilarSearchRequest */
+        SimilarSearchRequest: {
+            /**
+             * Pattern Draft
+             * @description PatternDraft with phases and search_hints. search_hints.target_return_pct / volatility_range / volume_breakout_threshold are used for Layer A scoring.
+             */
+            pattern_draft?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Observed Phase Paths
+             * @description Ordered phase IDs the user has already observed (e.g. ['DUMP','ACCUMULATION']). Activates Layer B scoring.
+             */
+            observed_phase_paths?: string[];
+            /**
+             * Symbol
+             * @description Optional corpus filter — restrict candidates to one symbol.
+             */
+            symbol?: string | null;
+            /**
+             * Timeframe
+             * @description Target timeframe for corpus candidates.
+             * @default 4h
+             */
+            timeframe: string;
+            /**
+             * Top K
+             * @description Maximum candidates returned.
+             * @default 10
+             */
+            top_k: number;
+        };
+        /** SimilarSearchResponse */
+        SimilarSearchResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Status */
+            status: string;
+            /** Generated At */
+            generated_at: string;
+            /** Run Id */
+            run_id: string;
+            /** Request */
+            request?: {
+                [key: string]: unknown;
+            };
+            /** Candidates */
+            candidates?: components["schemas"]["SimilarCandidate"][];
+            /**
+             * Scoring Layers
+             * @description Which layers were active: {layer_a, layer_b, layer_c}
+             */
+            scoring_layers?: {
+                [key: string]: boolean;
+            };
+        };
         /** SnapInput */
         SnapInput: {
             /** Symbol */
@@ -3820,8 +4203,6 @@ export interface components {
         TrainRequest: {
             /** Records */
             records: components["schemas"]["TradeRecord"][];
-            /** User Id */
-            user_id?: string | null;
         };
         /** TrainResponse */
         TrainResponse: {
@@ -3914,8 +4295,6 @@ export interface components {
         _CaptureBody: {
             /** Symbol */
             symbol: string;
-            /** User Id */
-            user_id?: string | null;
             /**
              * Phase
              * @default
@@ -3995,8 +4374,6 @@ export interface components {
         };
         /** _PatternTrainBody */
         _PatternTrainBody: {
-            /** User Id */
-            user_id?: string | null;
             /** Definition Id */
             definition_id?: string | null;
             /**
@@ -4065,8 +4442,6 @@ export interface components {
         };
         /** _WatchBody */
         _WatchBody: {
-            /** User Id */
-            user_id: string;
             /** Symbol */
             symbol: string;
             /** Target Phase */
@@ -4786,10 +5161,126 @@ export interface operations {
             };
         };
     };
+    search_similar_search_similar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimilarSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_similar_result_search_similar__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_quality_judge_search_quality_judge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QualityJudgementRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityJudgementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_quality_stats_search_quality_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityStatsResponse"];
+                };
+            };
+        };
+    };
     list_runtime_captures_runtime_captures_get: {
         parameters: {
             query?: {
-                user_id?: string | null;
                 definition_id?: string | null;
                 pattern_slug?: string | null;
                 symbol?: string | null;
@@ -4983,9 +5474,7 @@ export interface operations {
     };
     get_workspace_runtime_workspace__symbol__get: {
         parameters: {
-            query?: {
-                user_id?: string | null;
-            };
+            query?: never;
             header?: never;
             path: {
                 symbol: string;
@@ -5458,7 +5947,6 @@ export interface operations {
     train_report_train_report_get: {
         parameters: {
             query?: {
-                user_id?: string | null;
                 top_k?: number;
             };
             header?: never;
@@ -7528,6 +8016,77 @@ export interface operations {
             };
         };
     };
+    get_feature_window_features_window_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                venue?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_events_features_pattern_events_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                venue?: string;
+                pattern_family?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     run_pattern_scan_jobs_pattern_scan_run_post: {
         parameters: {
             query?: never;
@@ -7629,6 +8188,66 @@ export interface operations {
         };
     };
     run_db_cleanup_jobs_db_cleanup_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_feature_windows_build_jobs_feature_windows_build_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_feature_materialization_jobs_feature_materialization_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_raw_ingest_jobs_raw_ingest_run_post: {
         parameters: {
             query?: never;
             header?: never;

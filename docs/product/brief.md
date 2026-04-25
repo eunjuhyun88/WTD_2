@@ -1,5 +1,9 @@
 # Product Brief
 
+> **Layer Scope:** This repository is the **Layer 0 Engine** (WTD v2 terminal + core loop flywheel).
+> Layers 1-3 (Cogochi Protocol, on-chain marketplace) are separate products in separate repositories.
+> See `AGENTS.md` and `docs/decisions/` for the complete architecture.
+
 ## Purpose
 
 WTD v2 provides an AI-assisted crypto research and execution workflow where users inspect market context, evaluate setups, and act with evidence-backed guidance.

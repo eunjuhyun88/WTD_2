@@ -45,6 +45,24 @@ def cache_path(symbol: str, timeframe: str) -> Path:
     return CACHE_DIR / f"{symbol}_{timeframe}.csv"
 
 
+def list_cached_symbols(*, require_perp: bool = False) -> list[str]:
+    """Return sorted list of symbols that have at least one cached 1h klines file.
+
+    Args:
+        require_perp: If True, only return symbols that also have a perp cache.
+    """
+    if not CACHE_DIR.exists():
+        return []
+    symbols = {
+        p.stem[: -len("_1h")]
+        for p in CACHE_DIR.glob("*_1h.csv")
+        if p.stem.endswith("_1h")
+    }
+    if require_perp:
+        symbols = {s for s in symbols if perp_cache_path(s).exists()}
+    return sorted(symbols)
+
+
 def perp_cache_path(symbol: str) -> Path:
     """Return the CSV path for a symbol's merged perp series."""
     return CACHE_DIR / f"{symbol}_perp.csv"

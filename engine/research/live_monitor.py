@@ -264,6 +264,21 @@ def scan_all_patterns_live(
     return all_results
 
 
+def resolve_live_variant_slug(pattern_slug: str, variant_slug: str | None = None) -> str:
+    """Return the canonical live variant slug for a pattern.
+
+    If *variant_slug* is given, return it as-is (caller override).
+    Otherwise look up the canonical variant in PROMOTED_PATTERNS.
+    Falls back to ``{pattern_slug}__canonical`` if not registered.
+    """
+    if variant_slug is not None:
+        return variant_slug
+    for slug, canonical, _ in PROMOTED_PATTERNS:
+        if slug == pattern_slug:
+            return canonical
+    return f"{pattern_slug}__canonical"
+
+
 def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SCAN") -> None:
     """Print a formatted scan report to stdout."""
     now = results[0].scanned_at if results else datetime.now(timezone.utc)
