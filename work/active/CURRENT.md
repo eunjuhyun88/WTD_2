@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25 C)
+# CURRENT — 단일 진실 (2026-04-25)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`b48b7d17` — current local `origin/main` ref after PR #217
+`61e7ce11` — current local `origin/main` ref after PR #217
 
 ## 완료 (이번 세션 C — 전체 데이터 아키텍처 설계)
 

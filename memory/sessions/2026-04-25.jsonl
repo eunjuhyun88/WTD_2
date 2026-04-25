@@ -3,3 +3,4 @@
 {"ts": "2026-04-25T16:33:39.783595", "event": "PR #278 merged by claude: feat(memory): MemKraft v2.0 — 에이전트 장기 기억 + 협업 프로토콜", "tags": ["pr", "merge", "W-0162", "W-0160"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T07:34:42.911267", "event": "PR #279 merged by eunjuhyun88: feat(ci): PR 머지 시 MemKraft + CURRENT.md 자동 동기화", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T07:39:38.386929", "event": "PR #280 merged by eunjuhyun88: docs(agent-protocol): add execution checkpoints + evidence protocol", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T08:55:08.382729", "event": "PR #281 merged by eunjuhyun88: feat(engine): P0-P2 infrastructure — migration runner, corpus bridge, stats engine, context assembler, wiki agent", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
