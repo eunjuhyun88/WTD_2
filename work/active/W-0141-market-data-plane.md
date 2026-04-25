@@ -19,9 +19,14 @@ Contract change
 - backend ingress source, freshness, ownership, fallback 규칙 정의
 - `ChartBoard -> StudySnapshot[] -> Bottom Workspace / AI` 공통 계약 정의
 - compare canvas 전환을 위한 `pin / detach / compare` 데이터 모델 정의
+- Claude-like panel layout 을 위한 `dock / reorder / collapse / AI handoff` 레이아웃 계약 정의
+- Claude-like compare shelf 를 위한 `pin / unpin / compare AI handoff` 계약 정의
 - app contract scaffold 추가 (`StudySnapshot`, `WorkspaceSection`, `AIContextPack`)
 - Phase 1 producer 구현: 기존 `analyze/chart/pillar fetches` 를 `CogochiWorkspaceEnvelope` 로 묶는 pure adapter 추가
 - Phase 1 consumer 구현: `TradeMode` 의 sidebar summary / AI detail handoff 가 `CogochiWorkspaceEnvelope` 를 소비하도록 연결
+- Phase 2 producer 구현: `workspace-bundle` 에 실데이터 기반 `verified` study 를 포함
+- DEX / on-chain / volatility 지표를 `core / verified / experimental / deferred` trust tier 로 구분
+- DEX 중심 Top 지표를 bottom ANALYZE 에 실제 카드로 승격
 
 ## Non-Goals
 
@@ -40,10 +45,13 @@ Contract change
 - `docs/domains/cogochi-market-data-plane.md`
 - `app/src/lib/contracts/terminalBackend.ts`
 - `app/src/lib/contracts/cogochiDataPlane.ts`
+- `app/src/lib/contracts/cogochiPanelLayout.ts`
+- `app/src/routes/api/cogochi/workspace-bundle/+server.ts`
 - `app/src/lib/cogochi/workspaceDataPlane.ts`
 - `app/src/lib/api/terminalBackend.ts`
 - `app/src/components/terminal/workspace/ChartBoard.svelte`
 - `app/src/lib/cogochi/modes/TradeMode.svelte`
+- `app/src/lib/cogochi/shell.store.ts`
 
 ## Facts
 
@@ -52,6 +60,10 @@ Contract change
 3. `W-0137`, `W-0140` 으로 오른쪽 HUD와 하단 ANALYZE의 역할은 분리됐지만, 데이터 흐름은 여전히 `summary/detail duplicated derivation` 상태다.
 4. `W-0122` 문서와 `ADR-008` 은 pane-scoped feed ownership 과 indicator registry 는 정의했지만, `workspace composition contract` 는 정의하지 않았다.
 5. 현재 backend source 는 engine route, app route, provider shim 이 섞여 있어 source-of-truth 경계가 사용자에게도, 코드에도 충분히 명확하지 않다.
+6. repo 안에는 이미 `/api/onchain/cryptoquant`, `/api/market/stablecoin-ssr`, `/api/market/rv-cone`, `/api/market/funding-flip`, `DexScreener` route 들이 있어 실데이터 기반 study 승격이 가능하다.
+7. `DefiLlama` client 도 이미 repo 안에 있어 DEX pair-level liquidity 를 `chain TVL / total DeFi TVL` backdrop 과 함께 보여줄 수 있다.
+8. 현재 하단 ANALYZE detail surface 는 고정 순서의 markup 로 렌더되고 있어, 패널 이동/도킹/비교 같은 Claude-style workspace interaction 을 지원하지 못한다.
+9. 현재 `AI DETAIL` 은 단일 panel 또는 전체 analyze context 는 설명할 수 있지만, 사용자가 고른 panel subset 을 compare 대상으로 다루는 persisted shelf 는 없다.
 
 ## Assumptions
 
@@ -71,12 +83,25 @@ Contract change
 - `ChartBoard` 는 live series owner 이고, `TradeMode` 는 study/workspace composition owner 여야 한다.
 - compare 는 탭 전환이 아니라 `pin / detach / compare` 모델로 간다.
 - 첫 구현은 신규 backend route 를 열지 않고 app-side pure producer 로 시작한다. 다만 producer 가 backend ownership 메타를 반드시 포함해야 이후 engine producer 로 대체 가능하다.
+- Phase 1.5 로 `/api/cogochi/workspace-bundle` route 를 추가해 `TradeMode` 초기 로드와 fast refresh 가 analyze/confluence/venue/liq/options 를 단일 bundle 로 받도록 한다.
+- Top 지표 전체를 한 번에 노출하지 않고, `Tier 0 core → Tier 1 verified → Tier 2 experimental/deferred` 순으로 surface 를 늘린다.
+- `Tier 0 core` = price/funding/OI/CVD/options/liquidity/confluence/execution.
+- `Tier 1 verified` = SSR, realized volatility cone, funding flip, on-chain cycle proxy(MVRV/NUPL), DEX liquidity/volume backdrop.
+- `Tier 2 experimental/deferred` = labeled exchange reserve/netflow, SOPR exact, NUPL exact, DEX fees/unique swappers, Arkham netflow/whales.
+- DEX 중심 지표는 `search/symbol mapping ambiguity` 가 있으므로 trust tier 와 coverage note 를 반드시 노출한다.
+- DEX 카드의 canonical 최소 메트릭은 `24H Volume / Liquidity / Volume-to-Liquidity / Avg Trade Size / Chain TVL backdrop` 으로 둔다.
+- 하단 ANALYZE 는 backdrop card 에서 멈추지 않고 `DEX MARKET STRUCTURE / ON-CHAIN CYCLE DETAIL` detail surface 를 같은 payload로 렌더한다.
+- Claude-like panel UX 의 첫 구현은 자유형 drag/drop 전체가 아니라 `analyze panel identity + dock zone(main/side) + persistent order + collapse` 부터 넣는다.
+- compare canvas 의 0단계는 자유형 canvas 가 아니라 `persisted compare shelf` 로 둔다. 즉, 사용자가 고른 panel subset 을 고정하고 AI compare handoff 를 걸 수 있어야 한다.
+- Right HUD 는 의사결정 summary 전용으로 유지하고, panel 이동의 1차 대상은 하단 ANALYZE 내부의 `main column <-> side dock` 으로 한정한다.
+- 패널 이동은 `compare canvas` 의 선행 계약이며, 패널이 이동해도 데이터 source 는 동일한 `StudySnapshot` / workspace payload 를 재사용해야 한다.
+- `compare shelf` 는 추가 fetch 없이 현재 tab 의 canonical workspace payload 만 재사용한다. 비용/latency 최적화의 기본 원칙이다.
 
 ## Next Steps
 
-1. `W-0141` 도메인 문서에 ingress/source/contract/layout 배치 원칙을 기록한다.
-2. `StudySnapshot / WorkspaceSection / AIContextPack` 타입 초안을 추가한다.
-3. `buildCogochiWorkspaceEnvelope()` producer 를 추가하고 `TradeMode` 의 summary/AI consumer 를 이 계약으로 전환한다.
+1. persisted compare shelf(`pin / unpin / compare AI handoff`)를 panel layout contract 옆에 추가한다.
+2. 하단 ANALYZE 상단에 compare shelf 를 렌더하고, pinned panel subset 을 한 번에 AI compare 로 넘긴다.
+3. Tier 2 DEX 지표(`fees / unique swappers / DEX-vs-CEX ratio`)를 source availability 기준으로 순차 승격한다.
 
 ## Exit Criteria
 

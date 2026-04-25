@@ -50,19 +50,26 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
-| **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
-| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
-| **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
-| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟢 COMPLETE | `AgentContextPack` loader + DOUNI + intel-policy migrations merged |
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟢 COMPLETE | terminal surface reads now route through fact/search/runtime/surface clients; direct-fetch audit clean |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟢 COMPLETE | bottom ANALYZE thesis/evidence/execution board now consume workspace envelope contracts |
+| **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | DEX/on-chain verified studies + Claude-like analyze panel layout/compare shelf plane 를 terminal surface 에 정착 |
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭을 sidebar HUD와 역할이 다른 상세 workspace로 재구성 |
+| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 PR-READY | engine mainline integration 완료, 운영 migration 018만 남음 |
+| **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
+| **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
 
 ---
 
 ## Deferred (루프 완성 이후 재개)
 
-| ID | 상태 | 재개 조건 |
+1. **W-0141** — DEX pair aggregation + DefiLlama TVL backdrop + on-chain verified studies 를 producer/consumer 에 고정
+2. **W-0141** — analyze panel `dock / reorder / collapse / AI handoff` 를 persisted layout contract 로 고정
+3. **W-0141** — compare shelf(`pin / unpin / compare AI handoff`)를 active tab state 에 고정
+4. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+
+---
+
+## 브랜치 매핑
+
+| 브랜치 | Work Item | 상태 |
 |---|---|---|
 | W-0162 | 🟢 PARTIAL — Layer A 업그레이드 완료 | search corpus → FeatureWindowStore 완전 전환 (W-0162 남은 slice) |
 | W-0160 | 🟡 DEFERRED | runtime capture/ledger scope policy, legacy backfill policy |
