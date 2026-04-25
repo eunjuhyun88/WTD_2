@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25 B)
+# CURRENT — 단일 진실 (2026-04-25 C)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -9,6 +9,12 @@
 
 `9681e298` — origin/main (2026-04-25) — agent protocol + docs reorganization + W-0156/0162 complete
 
+## 활성 브랜치
+
+`feat/agent-execution-protocol` HEAD=`0433ccd7` — **W-0210 완료, PR 미오픈**
+- origin에 push 안 됨
+- 3개 커밋 (68112f6e → 7f0038db → 0433ccd7) main 위로 올라가 있음
+
 ## 완료 (이전 세션들)
 
 | Work Item | 내용 | Status |
@@ -18,6 +24,7 @@
 | **W-0200** | Core loop proof (range select → analyze → find similar → save) | ✅ Merged #256 |
 | **W-0280** | Agent execution protocol + evidence runbook | ✅ Merged #280 |
 | **Infra** | Architecture improvements: min-instances, worker hardening, docs reorganization | ✅ In progress |
+| **W-0210** | Terminal 4-layer data viz (AlphaOverlay + WhaleWatch + BTC Comparison + NewsBar) | ✅ 커밋 완료 `0433ccd7`, PR 미오픈 |
 
 ## 이전 세션 완료
 
