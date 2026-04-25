@@ -17,7 +17,7 @@
 
 ## main SHA
 
-`d449e305` — origin/main (2026-04-26) — W-0132 copy trading + agent session index 포함
+`d77af40f` — origin/main (2026-04-26) — W-0132 copy trading + agent session index 포함
 
 ## 진행 중 PR
 
