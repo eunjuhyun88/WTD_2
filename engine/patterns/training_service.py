@@ -19,6 +19,12 @@ from patterns.model_registry import MODEL_REGISTRY_STORE, PatternModelRegistrySt
 from scoring.feature_matrix import encode_features_df
 from scoring.lightgbm_engine import MIN_TRAIN_RECORDS, get_engine
 
+# Auto-promote a new candidate to active when it clears both gates.
+# AUC 0.60 = better than random with meaningful signal margin.
+# MIN_RECORDS ensures we have enough evidence before gating live alerts.
+_AUTO_PROMOTE_MIN_AUC = 0.60
+_AUTO_PROMOTE_MIN_RECORDS = 30
+
 
 def train_pattern_model_from_ledger(
     pattern_slug: str,
@@ -120,6 +126,38 @@ def train_pattern_model_from_ledger(
             },
         )
 
+    auto_promoted = False
+    if (
+        result["replaced"]
+        and result["auc"] is not None
+        and result["auc"] >= _AUTO_PROMOTE_MIN_AUC
+        and len(records) >= _AUTO_PROMOTE_MIN_RECORDS
+    ):
+        resolved_def_id = definition_id_from_ref(definition_ref)
+        try:
+            registry_entry = registry_store.promote(
+                pattern_slug=pattern_slug,
+                model_key=model_key,
+                model_version=model_version,
+                threshold_policy_version=threshold_policy_version,
+                definition_id=resolved_def_id,
+            )
+            payload["rollout_state"] = registry_entry.rollout_state
+            record_store.append_model_record(
+                pattern_slug=pattern_slug,
+                model_version=model_version,
+                user_id=user_id,
+                definition_ref=definition_ref,
+                payload={
+                    **payload,
+                    "rollout_state": registry_entry.rollout_state,
+                    "promotion_event": "auto_promote",
+                },
+            )
+            auto_promoted = True
+        except Exception:
+            pass  # auto-promotion is best-effort; candidate is still usable
+
     return {
         "ok": True,
         "pattern_slug": pattern_slug,
@@ -128,6 +166,7 @@ def train_pattern_model_from_ledger(
         "model_version": model_version,
         "rollout_state": payload["rollout_state"],
         "replaced": result["replaced"],
+        "auto_promoted": auto_promoted,
         "training_run_recorded": True,
         "model_recorded": bool(result["replaced"]),
         "auc": result["auc"],

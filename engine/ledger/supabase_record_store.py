@@ -95,9 +95,14 @@ class SupabaseLedgerRecordStore:
     # ── Core CRUD ────────────────────────────────────────────────────────────
 
     def append(self, record: PatternLedgerRecord) -> None:
-        """Upsert a PatternLedgerRecord to Supabase."""
+        """Upsert to Supabase (primary) + local JSON backup (best-effort)."""
         row = record.to_dict()
         _sb().table("pattern_ledger_records").upsert(row).execute()
+        try:
+            from ledger.store import LedgerRecordStore
+            LedgerRecordStore().append(record)
+        except Exception:
+            pass  # JSON backup is best-effort; Supabase is authoritative
 
     def load(self, pattern_slug: str, record_id: str) -> PatternLedgerRecord | None:
         result = (
