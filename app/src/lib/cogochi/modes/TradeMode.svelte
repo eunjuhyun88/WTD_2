@@ -912,10 +912,21 @@
     return `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`;
   }
 
+  function _fmtConfluenceRegime(regime: ConfluenceResult['regime'] | null | undefined): string {
+    switch (regime) {
+      case 'strong_bull': return '강한 상승';
+      case 'bull': return '상승';
+      case 'bear': return '하락';
+      case 'strong_bear': return '강한 하락';
+      default: return '중립';
+    }
+  }
+
   // ── Confidence ───────────────────────────────────────────────────────────
   const confidence = $derived(
     analyzeData?.entryPlan?.confidencePct ??
-    (analyzeData?.deep?.total_score != null ? Math.abs(analyzeData.deep.total_score) * 100 : null)
+    (analyzeData?.deep?.total_score != null ? Math.abs(analyzeData.deep.total_score) * 100 : null) ??
+    (confluence?.confidence != null ? confluence.confidence * 100 : null)
   );
   const confidencePct  = $derived(confidence != null ? `${Math.round(confidence)}%` : '0%');
   const fmtConf        = $derived(confidence != null ? `${Math.round(confidence)}` : '—');
@@ -983,16 +994,26 @@
   })());
 
   // ── Narrative ─────────────────────────────────────────────────────────
-  const narrativeDir = $derived(
-    analyzeData?.ensemble?.direction?.toLowerCase().includes('short') ||
-    analyzeData?.riskPlan?.bias?.includes('bear') ? '숏' : '롱'
-  );
+  const narrativeDir = $derived.by<'롱' | '숏' | '관망'>(() => {
+    const direction = analyzeData?.ensemble?.direction?.toLowerCase();
+    const bias = analyzeData?.riskPlan?.bias?.toLowerCase();
+    if (direction?.includes('short') || bias?.includes('bear')) return '숏';
+    if (direction?.includes('long') || bias?.includes('bull')) return '롱';
+    if (confluence) {
+      if (confluence.regime === 'bull' || confluence.regime === 'strong_bull') return '롱';
+      if (confluence.regime === 'bear' || confluence.regime === 'strong_bear') return '숏';
+    }
+    return '관망';
+  });
   const narrativeBias = $derived(
     analyzeData?.riskPlan?.bias ??
     analyzeData?.ensemble?.reason ??
     analyzeData?.deep?.verdict ??
-    null
+    (confluence
+      ? `${_fmtConfluenceRegime(confluence.regime)} · score ${confluence.score >= 0 ? '+' : ''}${confluence.score.toFixed(0)} · conf ${Math.round(confluence.confidence * 100)}%`
+      : null)
   );
+  const recommendationLabel = $derived(narrativeDir === '관망' ? '관망 권장' : `${narrativeDir} 진입 권장`);
   const evidencePos = $derived(evidenceItems.filter(e => e.pos).length);
   const evidenceNeg = $derived(evidenceItems.filter(e => !e.pos).length);
 
@@ -1054,7 +1075,7 @@
           </div>
         {:else}
           <div class="narrative" role="region" aria-label="Trade bias and direction">
-            <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
+            <span class="bull" aria-label="Recommendation">{recommendationLabel} ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
           </div>
           {#if confluence}
             <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
@@ -1292,7 +1313,7 @@
           {#if tab.id === 'analyze'}
             <span class="pb-val pos">{confidenceAlpha}</span>
             <span class="pb-sep" aria-hidden="true">·</span>
-            <span class="pb-txt">{narrativeDir} 진입 권장</span>
+            <span class="pb-txt">{recommendationLabel}</span>
             {#if analyzeData?.flowSummary?.oi && analyzeData.flowSummary.oi !== 'n/a'}
               <span class="pb-sep" aria-hidden="true">·</span>
               <span class="pb-dim">OI {analyzeData.flowSummary.oi}</span>
@@ -1462,7 +1483,7 @@
                       {#if !analyzePanelIsCollapsed(panelId)}
                         {#if panelId === 'thesis'}
                           <div class="narrative">
-                            <span class="bull">{narrativeDir} 진입 권장 ·</span>
+                            <span class="bull">{recommendationLabel} ·</span>
                             {' '}{narrativeBias ?? '분석 완료'}
                             {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
                               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
@@ -1710,7 +1731,7 @@
                             <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
                           {:else if panelId === 'thesis'}
                             <div class="narrative compact">
-                              <span class="bull">{narrativeDir} ·</span>
+                              <span class="bull">{recommendationLabel} ·</span>
                               {' '}{narrativeBias ?? '분석 완료'}
                             </div>
                           {:else if panelId === 'evidence-log'}
@@ -2075,7 +2096,7 @@
             <span class="conf-val">{fmtConf}</span>
           </div>
           <div class="narrative" style="font-size: 9px; line-height: 1.6;" role="region" aria-label="Trade bias">
-            <span class="bull">{narrativeDir} 권장 ·</span>
+            <span class="bull">{recommendationLabel} ·</span>
             {' '}{narrativeBias ?? '분석 완료'}
             {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>

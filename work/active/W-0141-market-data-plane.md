@@ -64,6 +64,9 @@ Contract change
 7. `DefiLlama` client 도 이미 repo 안에 있어 DEX pair-level liquidity 를 `chain TVL / total DeFi TVL` backdrop 과 함께 보여줄 수 있다.
 8. 현재 하단 ANALYZE detail surface 는 고정 순서의 markup 로 렌더되고 있어, 패널 이동/도킹/비교 같은 Claude-style workspace interaction 을 지원하지 못한다.
 9. 현재 `AI DETAIL` 은 단일 panel 또는 전체 analyze context 는 설명할 수 있지만, 사용자가 고른 panel subset 을 compare 대상으로 다루는 persisted shelf 는 없다.
+10. 실제 terminal surface 에서 `workspace-bundle` 과 `captures GET` 이 auth hook 에 막혀 `401` 이 나면, chart 는 떠도 summary/HUD/detail 데이터는 비어 보인다. 즉 public-read ingress allowlist 도 data plane 계약의 일부다.
+11. 현재 local engine (`127.0.0.1:8000`) 은 `ENGINE_INTERNAL_SECRET=local-dev-secret` 으로 보호되고 있고, app-web runtime 에 같은 secret 이 없으면 `/api/cogochi/analyze`, `/api/cogochi/alpha/world-model`, `workspace-bundle` 내부 engine fetch 가 전부 fallback/degraded 로 떨어진다.
+12. `dexOverview` 는 provider/source 문제가 아니라 `/api/market/dex/overview` 가 auth hook public allowlist 에 없어서 `401` 로 비던 상태였다.
 
 ## Assumptions
 
@@ -96,11 +99,15 @@ Contract change
 - Right HUD 는 의사결정 summary 전용으로 유지하고, panel 이동의 1차 대상은 하단 ANALYZE 내부의 `main column <-> side dock` 으로 한정한다.
 - 패널 이동은 `compare canvas` 의 선행 계약이며, 패널이 이동해도 데이터 source 는 동일한 `StudySnapshot` / workspace payload 를 재사용해야 한다.
 - `compare shelf` 는 추가 fetch 없이 현재 tab 의 canonical workspace payload 만 재사용한다. 비용/latency 최적화의 기본 원칙이다.
+- read-only terminal bootstrap 경로(`/api/cogochi/workspace-bundle`, anonymous `GET /api/captures`)는 auth hook 에서 public 로 통과시켜야 한다. 그렇지 않으면 route 내부 graceful fallback 이 실행되기 전에 `401` 로 잘린다.
+- engine analyze 가 degraded 일 때도, 이미 들어온 confluence/workspace summary 로 `α/confidence/recommendation` 을 메꿔 surface 가 빈칸처럼 보이지 않게 한다. 단, entry/stop/target 같은 실행값은 실제 plan 이 없으면 추정해서 채우지 않는다.
+- local dev canonical contract 도 production 과 동일하게 `ENGINE_INTERNAL_SECRET` 을 app/engine 양쪽에 맞춰야 한다. engine 이 살아 있어도 secret 이 불일치하면 terminal 은 `SCAN=0`, `JUDGE=—` 같은 false-empty 상태로 보인다.
+- public-read market backdrop routes(`workspace-bundle`, `captures GET`, `market/dex/overview`)는 auth hook allowlist 의 일부로 취급한다. 그렇지 않으면 provider data 가 있어도 terminal surface 에서는 false-empty 로 보인다.
 
 ## Next Steps
 
-1. persisted compare shelf(`pin / unpin / compare AI handoff`)를 panel layout contract 옆에 추가한다.
-2. 하단 ANALYZE 상단에 compare shelf 를 렌더하고, pinned panel subset 을 한 번에 AI compare 로 넘긴다.
+1. app local env contract 에 `ENGINE_INTERNAL_SECRET` 을 추가하고, local dev server 를 same-secret 상태로 재기동한다.
+2. persisted compare shelf(`pin / unpin / compare AI handoff`)를 terminal surface 에서 실제 데이터와 함께 검증한다.
 3. Tier 2 DEX 지표(`fees / unique swappers / DEX-vs-CEX ratio`)를 source availability 기준으로 순차 승격한다.
 
 ## Exit Criteria

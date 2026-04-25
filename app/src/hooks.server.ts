@@ -29,6 +29,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/auth/',           // login, register, session check, nonce, etc.
   '/api/agents/stats',         // local-first agent sync no-op endpoints
   '/api/cogochi/analyze',       // read-only shell bootstrap
+  '/api/cogochi/workspace-bundle', // read-only terminal workspace bundle
   '/api/cogochi/alerts',        // read-only recent alert feed
   '/api/cogochi/thermometer',   // read-only market pulse
   '/api/cogochi/alpha/',        // read-only alpha world model
@@ -48,6 +49,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/stablecoin-ssr',    // W-0122-F: derived SSR (DefiLlama + CoinGecko), 30m cache
   '/api/market/rv-cone',           // W-0122-F: realized vol cone (Binance klines), 1h cache
   '/api/market/funding-flip',      // W-0122-F: funding flip clock (Binance history), 10m cache
+  '/api/market/dex/overview',      // W-0141: DEX liquidity/volume backdrop
   '/api/confluence/',              // W-0122-Confluence: score aggregator (read-only)
   '/api/market/options-snapshot',  // W-0122-C1: Deribit options snapshot (public), 5m cache
   '/api/coingecko/',
@@ -73,7 +75,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/doctrine',
 ];
 
-function isPublicApiPath(pathname: string): boolean {
+function isPublicApiPath(pathname: string, method = 'GET'): boolean {
+  if (pathname === '/api/captures' && method === 'GET') return true;
   return PUBLIC_API_PREFIXES.some(prefix => pathname.startsWith(prefix));
 }
 
@@ -98,7 +101,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Only call DB when a session cookie is present, to avoid unnecessary DB hits.
   const pathname = event.url.pathname;
   const isApiRoute = pathname.startsWith('/api/');
-  const isPublicApi = isApiRoute && isPublicApiPath(pathname);
+  const isPublicApi = isApiRoute && isPublicApiPath(pathname, event.request.method);
   const isPublicPage = isPublicPagePath(pathname);
 
   let user: App.Locals['user'] = null;

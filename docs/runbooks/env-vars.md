@@ -7,6 +7,7 @@ Canonical env contract for local/prod runtime.
 | Variable | Default | Used by | Purpose |
 |---|---|---|---|
 | `ENGINE_URL` | `http://localhost:8000` | `app-web` | App -> engine API base URL |
+| `ENGINE_INTERNAL_SECRET` | none | `app-web`, `engine-api` | Shared secret for privileged app -> engine routes |
 | `DATABASE_URL` | none | `app-web` | Postgres connection |
 | `ENGINE_PORT` | `8000` | `engine-api` | Engine HTTP port |
 | `APP_ORIGIN` | `http://localhost:3000` | `engine-api` | CORS allow-origin |
@@ -80,4 +81,5 @@ Notes:
 
 1. Copy `./.env.example` to `./.env` and fill required variables.
 2. For app-specific extended keys, also review `app/.env.example`.
-3. Start stack with `docker compose up --build`.
+3. If local engine auth hardening is enabled, set the same `ENGINE_INTERNAL_SECRET` in both app-web and engine-api.
+4. Start stack with `docker compose up --build`.
