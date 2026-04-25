@@ -26,9 +26,12 @@ END_SHA="$(git rev-parse HEAD)"
 DATE="$(date -u +%Y-%m-%d)"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# 1. memory/sessions/{date}.jsonl append (memkraft 형식과 일치)
-SESSION_FILE="memory/sessions/${DATE}.jsonl"
-mkdir -p memory/sessions
+# 1. 두 곳에 동시 append:
+#    - memory/sessions/{date}.jsonl       (날짜별 — 시간순 timeline)
+#    - memory/sessions/agents/{agent}.jsonl (에이전트별 — 본인 이력 추적)
+DATE_FILE="memory/sessions/${DATE}.jsonl"
+AGENT_FILE="memory/sessions/agents/${AGENT}.jsonl"
+mkdir -p memory/sessions/agents
 
 # event = "session ended", tags=session,end + agent ID
 ENTRY=$(jq -nc --arg ts "$TS" \
@@ -50,7 +53,8 @@ ENTRY=$(jq -nc --arg ts "$TS" \
      handoff: $handoff
    }')
 
-echo "$ENTRY" >> "$SESSION_FILE"
+echo "$ENTRY" >> "$DATE_FILE"
+echo "$ENTRY" >> "$AGENT_FILE"
 
 # 2. spec/CONTRACTS.md에서 자기 lock 제거
 if [ -f spec/CONTRACTS.md ]; then
@@ -62,13 +66,14 @@ if [ -f spec/CONTRACTS.md ]; then
   fi
 fi
 
-# 3. lesson이 있으면 memory에 저장 (incident가 아니라 session note)
+# 3. lesson이 있으면 두 곳에 모두 저장 (incident가 아니라 session note)
 if [ -n "$LESSON" ]; then
   LESSON_ENTRY=$(jq -nc --arg ts "$TS" \
                          --arg agent "$AGENT" \
                          --arg event "lesson: $LESSON" \
      '{ts: $ts, id: $agent, event: $event, tags: ["lesson", $agent], importance: "high"}')
-  echo "$LESSON_ENTRY" >> "$SESSION_FILE"
+  echo "$LESSON_ENTRY" >> "$DATE_FILE"
+  echo "$LESSON_ENTRY" >> "$AGENT_FILE"
 fi
 
 # 4. state 갱신
@@ -78,4 +83,5 @@ echo "✓ Session $AGENT closed"
 echo "  shipped: $SHIPPED"
 echo "  handoff: $HANDOFF"
 [ -n "$LESSON" ] && echo "  lesson:  $LESSON"
-echo "  ledger:  $SESSION_FILE"
+echo "  date jsonl:  $DATE_FILE"
+echo "  agent jsonl: $AGENT_FILE"

@@ -19,6 +19,8 @@ Every session starts with:
 
 This auto-issues your Agent ID (A###), refreshes derived state, and shows
 active locks, P0/P1 priorities, and MemKraft signals in <50 seconds.
+`work/active/CURRENT.md` remains the human-maintained source of truth;
+`state/` is derived and must not replace it.
 
 When claiming a file-domain (engine/X, app/Y), run:
 ```bash
@@ -38,10 +40,10 @@ Reference: `design/proposed/multi-agent-os-v2.md`
 Read in this order:
 
 1. `AGENTS.md`
-2. `./tools/start.sh` output (Agent ID + state + priorities)
-3. `spec/PRIORITIES.md` for P0/P1 detail
-4. `work/active/CURRENT.md` (legacy — deprecating)
-5. Relevant `work/active/*.md` if listed in CURRENT.md
+2. `work/active/CURRENT.md`
+3. `./tools/start.sh` output (Agent ID + derived state + priorities)
+4. `spec/PRIORITIES.md` for compact P0/P1 detail
+5. Relevant `work/active/*.md` listed in `CURRENT.md`
 6. Relevant `docs/domains/*.md`
 7. Relevant `docs/product/*.md`
 8. Minimal required code files
