@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-26)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`7aa03160` — origin/main (2026-04-26) — memory sync #292 + active variant promotion + indicator defaults + CI governance 포함
+`092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
 
 ---
 
@@ -31,8 +31,8 @@
 | **W-0201** query_transformer fix | PR #291 main 머지 완료 |
 | **W-0202** canonical features + active registry | PR #291 main 머지 완료 |
 | **W-0210** 4-layer viz | main 머지 완료 |
-| **W-0211** multi-pane chart + Pine Script engine | PR #298 main 머지 완료 (74afaba3) |
-| **Indicator defaults** OI/Funding/Liq 기본 ON | main 머지 완료 (2092ac01) |
+| **W-0211** multi-pane chart + Pine Script engine | PR #298 + #302 main 머지 완료 (87f44b0b) |
+| **fix/indicator-defaults** OI/Funding/Liq 기본 ON | PR #302 main 머지 완료 (2026-04-26) |
 | **W-0203** terminal UX | PR #290 main 머지 완료 |
 | **W-0162** JWT security P0 | PR #253 main 머지 완료 |
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
@@ -42,6 +42,7 @@
 | **W-0203** pattern-seed route delegation | PR #292 main 머지 완료 |
 | **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
 | **W-0164** repo state hygiene | PR #305 main 머지 완료 |
+| **worktree 정리** 46→5개 | claude/.codex/.worktrees /tmp 전부 정리 완료 (2026-04-26) |
 
 ---
 
@@ -49,22 +50,24 @@
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| (없음) | — | 모든 즉시 항목 완료 |
+| PR #308 | feat(W-0211): native multi-pane + Pine Script | 머지 대기 |
+| PR #309 | docs: 설계문서 + CURRENT.md | 머지 대기 |
 
 ---
 
 ## 다음 실행 순서 (우선순위 순)
 
 ### 즉시
-- 긴급 항목 없음 — 모든 CI 초록, GCP 정상 (cogotchi-00013-c7n)
+1. **W-0212 차트 UX 마무리** — 패인 드래그 리사이즈 검증 + 크로스헤어 값 업데이트 + KPI 스파크라인 확인
+   - `feat/w-0212-chart-ux-polish`
 
-### 중기 (설계 필요)
-4. **Layer A 검색 고도화** (40+차원 완성)
-   - feature_snapshot 우선순위 정제
-   - 패턴 매칭 정밀도 측정 지표 확립
-5. **카피트레이딩 Phase 1** 구현 시작
-   - PRD 완성됨: `docs/` 참조
-   - DB 스키마 먼저 (Supabase migration)
+### 중기
+2. **W-0132 카피트레이딩 Phase 1** — migration 022 + leaderboard API + UI panel
+   - `feat/w-0132-copy-trading-phase1`
+3. **W-0145 Search Corpus 40+차원** — corpus_builder 40차원 확장
+   - `feat/w-0145-search-corpus-40dim`
+
+설계: `work/active/W-next-design-20260426.md`
 
 ---
 
@@ -74,3 +77,10 @@
 - [ ] Vercel `EXCHANGE_ENCRYPTION_KEY` (프로덕션)
 - [x] Cloud Scheduler HTTP jobs — 5 jobs 등록 완료 (2026-04-25): feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build
 - [x] `_primary_cache_dir` NameError 수정 — PR #291 main 머지 + GCP cogotchi-00013-c7n 배포 완료 (2026-04-26)
+
+---
+
+## 체크포인트 파일
+
+- `work/active/W-app-ci-repair-checkpoint-20260426.md` — App CI 수리 세션 기록
+- `work/active/W-next-design-20260426.md` — 다음 작업 설계 (W-0212 → W-0132 → W-0145)
