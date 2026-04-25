@@ -191,24 +191,21 @@ class JWTValidator:
             raise HTTPException(status_code=401, detail="Missing authorization token")
 
         try:
-            # Remove "Bearer " prefix if present
             if token.startswith("Bearer "):
                 token = token[7:]
 
-            # Step 1: Decode JWT payload
+            # Step 1: Verify signature via JWKS (RS256) if JWKS URL is configured.
+            # Falls back to structure-only validation when JWKS is unavailable
+            # (circuit open, local dev without JWT_JWKS_URL).
+            jwks = await self.get_jwks()
+            if jwks:
+                sub = await self._verify_with_jwks(token, jwks)
+                return sub
+
+            # Step 2: Structure + expiration fallback (no signature check).
             payload = self._decode_jwt(token)
-
-            # Step 2: Validate payload structure
             jwt_payload = JWTPayload(**payload)
-
-            # Step 3: Validate claims
             self._validate_claims(jwt_payload)
-
-            # Step 4: Verify signature against JWKS (if available)
-            # TODO: Implement RS256 signature verification using JWKS keys
-            # For now, payload structure + expiration validation provides basic security
-            # In production, use PyJWT with JWKS keys: jwt.decode(token, key, algorithms=["RS256"])
-
             return jwt_payload.sub
 
         except (KeyError, TypeError, ValueError) as e:
@@ -219,6 +216,47 @@ class JWTValidator:
         except Exception as e:
             log.error("Unexpected JWT error: %s", str(e))
             raise HTTPException(status_code=500, detail="Token validation error") from e
+
+    async def _verify_with_jwks(self, token: str, jwks: dict[str, Any]) -> str:
+        """Verify RS256 signature using JWKS keys and return sub claim."""
+        import jwt as pyjwt
+        from jwt.algorithms import RSAAlgorithm
+
+        keys = jwks.get("keys", [])
+        if not keys:
+            raise HTTPException(status_code=401, detail="No JWKS keys available")
+
+        # Try each key until one verifies successfully.
+        last_exc: Exception | None = None
+        for key_data in keys:
+            try:
+                public_key = RSAAlgorithm.from_jwk(key_data)
+                decode_kwargs: dict[str, Any] = {
+                    "algorithms": ["RS256"],
+                    "options": {"verify_exp": True},
+                }
+                if self.audience:
+                    decode_kwargs["audience"] = self.audience
+                payload = pyjwt.decode(token, public_key, **decode_kwargs)
+                sub = payload.get("sub")
+                if not sub:
+                    raise ValueError("JWT missing 'sub' claim")
+                return sub
+            except pyjwt.ExpiredSignatureError as exc:
+                raise HTTPException(status_code=403, detail="Token expired") from exc
+            except pyjwt.InvalidAudienceError as exc:
+                raise HTTPException(status_code=403, detail="Invalid token audience") from exc
+            except pyjwt.InvalidSignatureError as exc:
+                last_exc = exc
+                continue  # try next key
+            except pyjwt.DecodeError as exc:
+                last_exc = exc
+                continue
+
+        raise HTTPException(
+            status_code=401,
+            detail="JWT signature verification failed",
+        ) from last_exc
 
     def _decode_jwt(self, token: str) -> dict[str, Any]:
         """Decode JWT without verification (unsafe for untrusted input)."""
