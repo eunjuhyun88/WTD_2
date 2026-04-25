@@ -83,11 +83,29 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     except Exception as exc:
         log.warning("GlobalCtx warm-up failed (non-fatal): %s", exc)
 
+    # Run pending engine migrations against Supabase (idempotent, safe at startup)
+    try:
+        import asyncio as _asyncio
+        from db.migrate import run_pending
+        await _asyncio.to_thread(run_pending)
+    except Exception as exc:
+        log.warning("migration runner failed (non-fatal): %s", exc)
+
     # Pre-populate Redis kline cache from local CSV (non-blocking, best-effort)
     try:
         await prefetch_klines()
     except Exception as exc:
         log.warning("kline prefetch warm-up failed (non-fatal): %s", exc)
+
+    # Kick off feature_windows build in background so first search uses 40+ dims.
+    # Does not block startup — build may take several minutes on cold start.
+    try:
+        import asyncio as _asyncio
+        from workers.feature_windows_prefetcher import prefetch_feature_windows
+        _asyncio.ensure_future(prefetch_feature_windows())
+        log.info("feature_windows warm-up scheduled (background)")
+    except Exception as exc:
+        log.warning("feature_windows warm-up failed (non-fatal): %s", exc)
 
     # Restore in-progress pattern states from Supabase into local SQLite.
     # Without this, every Cloud Run restart resets all pattern tracking to
@@ -212,7 +230,10 @@ async def jwt_auth_middleware(request: Request, call_next):  # noqa: ANN001
     - Extracts user_id from JWT token in Authorization header
     - Injects request.state.user_id for downstream routes
     - Skips health checks and internal job endpoints
+    - Skips routes authenticated via x-engine-internal-secret (handled by request_id_middleware)
     """
+    if request.headers.get("x-engine-internal-secret", "").strip():
+        return await call_next(request)
     if is_protected_route(request.url.path):
         try:
             user_id = await extract_user_id_from_jwt(request)

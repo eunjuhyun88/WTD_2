@@ -34,7 +34,9 @@ export type IndicatorKey =
   | 'oi'
   | 'funding'
   | 'liq'
-  | 'volume';
+  | 'volume'
+  // W-0210 Layer 3: normalized comparison overlay
+  | 'comparison';
 
 /** Indicators that occupy a sub-pane slot (not a main-chart overlay). */
 export const PANE_INDICATORS: ReadonlyArray<IndicatorKey> = [
@@ -61,6 +63,7 @@ const DEFAULT_STATE: ChartIndicatorState = {
   funding: false,
   liq: false,
   volume: true,
+  comparison: false,
 };
 
 const STORAGE_KEY = 'wtd.chart.indicators.v1';
@@ -123,6 +126,8 @@ export function normalizeIndicatorKey(raw: string): IndicatorKey | null {
       return 'liq';
     case 'volume': case 'vol':
       return 'volume';
+    case 'comparison': case 'btc': case 'compare': case 'benchmark':
+      return 'comparison';
     default:
       return null;
   }

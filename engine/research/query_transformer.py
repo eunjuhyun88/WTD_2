@@ -5,18 +5,77 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 TRANSFORMER_VERSION = "query-transformer-v1"
-SIGNAL_VOCAB_VERSION = "signal-vocab-v1"
-RULE_REGISTRY_VERSION = "signal-rule-registry-v1"
+SIGNAL_VOCAB_VERSION = "signal-vocab-v2"
+RULE_REGISTRY_VERSION = "signal-rule-registry-v2"
 
 _SIGNAL_RULES: dict[str, dict[str, dict[str, Any]]] = {
+    # OI group
     "oi_spike": {
         "required_numeric": {"oi_zscore": {"min": 1.5}},
+    },
+    "oi_hold_after_spike": {
+        "required_boolean": {"oi_hold_after_spike": True},
+    },
+    "oi_reexpansion": {
+        "required_boolean": {"oi_reexpansion": True},
+    },
+    "oi_unwind": {
+        "forbidden_boolean": {"oi_expansion": True},
+        "required_numeric": {"oi_zscore": {"max": -0.5}},
+    },
+    # Funding group
+    "funding_flip_negative_to_positive": {
+        "required_boolean": {"funding_flip_negative_to_positive": True},
+    },
+    "funding_extreme_short": {
+        "required_numeric": {"funding_rate_zscore": {"max": -2.0}},
+    },
+    "funding_extreme_long": {
+        "required_numeric": {"funding_rate_zscore": {"min": 2.0}},
+    },
+    "short_funding_pressure": {
+        "required_numeric": {"funding_rate_zscore": {"max": -1.0}},
+    },
+    "long_funding_pressure": {
+        "required_numeric": {"funding_rate_zscore": {"min": 1.0}},
+    },
+    # Volume group
+    "volume_spike": {
+        "required_boolean": {"volume_spike": True},
+    },
+    "low_volume": {
+        "forbidden_boolean": {"volume_spike": True},
+    },
+    "volume_dryup": {
+        "required_boolean": {"volume_dryup": True},
+    },
+    "volume_breakout": {
+        "preferred_numeric": {"volume_percentile": {"min": 0.75}},
+    },
+    # Price structure group
+    "price_dump": {
+        "required_boolean": {"recent_decline": True},
+    },
+    "price_spike": {
+        "required_boolean": {"recent_rally": True},
     },
     "higher_lows_sequence": {
         "required_boolean": {"higher_lows_sequence": True},
     },
-    "funding_flip_negative_to_positive": {
-        "required_boolean": {"funding_flip_negative_to_positive": True},
+    "sideways": {
+        "required_boolean": {"sideways_compression": True},
+    },
+    "upward_sideways": {
+        "preferred_boolean": {"higher_lows_sequence": True},
+        "required_boolean": {"sideways_compression": True},
+    },
+    "arch_zone": {
+        "required_boolean": {"sideways_compression": True},
+        "preferred_boolean": {"volume_dryup": True},
+    },
+    "breakout": {
+        "required_boolean": {"range_high_break": True},
+        "preferred_numeric": {"breakout_strength": {"min": 0.01}},
     },
     "range_high_break": {
         "required_boolean": {"range_high_break": True},
@@ -24,14 +83,17 @@ _SIGNAL_RULES: dict[str, dict[str, dict[str, Any]]] = {
     "dump_then_reclaim": {
         "preferred_boolean": {"dump_then_reclaim": True},
     },
-    "volume_breakout": {
-        "preferred_numeric": {"volume_percentile": {"min": 0.75}},
+    # Positioning group
+    "short_build_up": {
+        "required_numeric": {"funding_rate_zscore": {"max": -0.5}},
+        "required_boolean": {"oi_hold_after_spike": True},
     },
-    "short_funding_pressure": {
-        "required_numeric": {"funding_rate_zscore": {"max": -1.0}},
+    "long_build_up": {
+        "required_numeric": {"funding_rate_zscore": {"min": 0.5}},
+        "preferred_boolean": {"oi_expansion": True},
     },
-    "long_funding_pressure": {
-        "required_numeric": {"funding_rate_zscore": {"min": 1.0}},
+    "short_to_long_switch": {
+        "required_boolean": {"funding_flip_negative_to_positive": True},
     },
 }
 

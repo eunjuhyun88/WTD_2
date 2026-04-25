@@ -2,13 +2,9 @@ name: App CI
 
 on:
   pull_request:
-    paths:
-      - "app/**"
-      - ".github/workflows/app-ci.yml"
   push:
-    paths:
-      - "app/**"
-      - ".github/workflows/app-ci.yml"
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,7 +15,7 @@ concurrency:
 
 jobs:
   app:
-    name: App Check And Test
+    name: App CI
     runs-on: ubuntu-latest
     defaults:
       run:

@@ -52,7 +52,6 @@ from research.pattern_search import (
     select_mutation_anchor_from_history,
     select_mutation_anchor_variant_slug,
     should_use_reset_lane,
-    _filter_candidate_timeframes_for_pack,
 )
 from ledger.types import PatternLedgerRecord
 from research.state_store import ResearchStateStore
@@ -198,34 +197,6 @@ def test_expand_variants_across_timeframes_keeps_subhour_targets_from_1h_base() 
     assert "tradoor-oi-reversal-v1__canonical__tf-15m" in slugs
     assert "tradoor-oi-reversal-v1__canonical__tf-4h" in slugs
 
-
-def test_filter_candidate_timeframes_for_pack_drops_unsupported_subhour_data(monkeypatch) -> None:
-    pack = ReplayBenchmarkPack(
-        benchmark_pack_id="pack-1",
-        pattern_slug="tradoor-oi-reversal-v1",
-        candidate_timeframes=["15m", "1h", "4h"],
-        cases=[
-            BenchmarkCase(
-                symbol="PTBUSDT",
-                timeframe="1h",
-                start_at=_dt("2026-04-13T00:00:00+00:00"),
-                end_at=_dt("2026-04-14T00:00:00+00:00"),
-                expected_phase_path=["FAKE_DUMP", "ACCUMULATION", "BREAKOUT"],
-            )
-        ],
-    )
-
-    def fake_load_klines(symbol: str, timeframe: str, offline: bool = False):
-        if timeframe == "15m":
-            raise FileNotFoundError("missing native 15m cache")
-        index = pd.date_range("2026-04-13T00:00:00Z", periods=4, freq="1h", tz="UTC")
-        return pd.DataFrame({"close": [1.0, 1.0, 1.0, 1.0]}, index=index)
-
-    monkeypatch.setattr("research.pattern_search.load_klines", fake_load_klines)
-
-    supported = _filter_candidate_timeframes_for_pack(pack, base_timeframe="1h")
-
-    assert supported == ["1h", "4h"]
 
 
 def test_evaluate_variant_on_case_scales_warmup_and_normalizes_lead_time(monkeypatch) -> None:

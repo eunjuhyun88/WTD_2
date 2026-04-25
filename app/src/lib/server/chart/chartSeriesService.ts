@@ -55,10 +55,8 @@ export type ChartSeriesResult = { payload: ChartPayload; cacheStatus: 'hit' | 'm
 
 type FetchLike = typeof fetch;
 
-import { alignHtfSeriesToLtfTimes, isStrictlyHigherTf } from '$lib/chart/mtfAlign';
-import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
-
 const CHART_CACHE_TTL_MS = 15_000;
+const FAPI = 'https://fapi.binance.com';
 const chartCache = new Map<string, { expiresAt: number; payload: ChartPayload }>();
 
 // ── Layer 1: Fetch ────────────────────────────────────────────────────────────
@@ -150,6 +148,18 @@ const OI_PERIOD_MAP: Record<string, string> = {
   '5m': '5m', '15m': '15m', '30m': '30m',
   '1h': '1h', '2h': '2h', '4h': '4h', '6h': '6h', '12h': '12h', '1d': '1d',
 };
+
+function parseKlines(rawKlines: number[][]): KlineBar[] {
+  return rawKlines.map((k) => ({
+    time: Math.floor(k[0] / 1000),
+    open: parseFloat(k[1] as unknown as string),
+    high: parseFloat(k[2] as unknown as string),
+    low: parseFloat(k[3] as unknown as string),
+    close: parseFloat(k[4] as unknown as string),
+    volume: parseFloat(k[5] as unknown as string),
+  }));
+}
+
 
 async function fetchKlines(
   symbol: string,

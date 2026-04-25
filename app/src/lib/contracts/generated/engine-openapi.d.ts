@@ -326,6 +326,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/query-spec/transform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Query Spec Transform */
+        post: operations["search_query_spec_transform_search_query_spec_transform_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search/similar": {
         parameters: {
             query?: never;
@@ -885,6 +902,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/active-variants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Active Variants
+         * @description Return the effective active pattern variants used by live runtime.
+         */
+        get: operations["get_active_variants_patterns_active_variants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/states": {
         parameters: {
             query?: never;
@@ -977,6 +1014,26 @@ export interface paths {
          * @description Entry candidates for a specific pattern.
          */
         get: operations["get_candidates_patterns__slug__candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/similar-live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Similar Live
+         * @description Return current symbols ranked by pattern-state similarity for one family.
+         */
+        get: operations["get_similar_live_patterns__slug__similar_live_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1226,6 +1283,46 @@ export interface paths {
          * @description Register a user-defined pattern into the library.
          */
         post: operations["register_pattern_patterns_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/benchmark-pack-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Benchmark Pack Draft
+         * @description Build a benchmark pack from a capture and save it.
+         */
+        post: operations["create_benchmark_pack_draft_patterns__slug__benchmark_pack_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/benchmark-search-from-capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Benchmark Search From Capture
+         * @description Build benchmark pack and run a full benchmark search from a capture.
+         */
+        post: operations["run_benchmark_search_from_capture_patterns__slug__benchmark_search_from_capture_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2082,6 +2179,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Logout
+         * @description Revoke the caller's JWT.
+         *
+         *     The token is added to the Redis blacklist with TTL = remaining validity.
+         *     Subsequent requests with the same token will receive 403.
+         *
+         *     Requires: Authorization: Bearer <token>
+         */
+        post: operations["logout_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -2136,26 +2258,6 @@ export interface paths {
          * @description Cloud Scheduler → capture current pattern candidates.
          */
         post: operations["run_auto_capture_jobs_auto_capture_run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/jobs/search_corpus/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run Search Corpus
-         * @description Cloud Scheduler → refresh compact search corpus from local cache.
-         */
-        post: operations["run_search_corpus_jobs_search_corpus_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2758,6 +2860,13 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** LogoutResponse */
+        LogoutResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Message */
+            message: string;
+        };
         /** MemoryCandidate */
         MemoryCandidate: {
             /** Id */
@@ -3238,6 +3347,51 @@ export interface components {
             similarity_focus?: string[];
             /** Symbol Scope */
             symbol_scope?: string[];
+        };
+        /** PatternDraftTransformRequest */
+        PatternDraftTransformRequest: {
+            pattern_draft: components["schemas"]["PatternDraftBody"];
+            parser_meta?: components["schemas"]["ParserMetaBody"] | null;
+        };
+        /** PatternDraftTransformResponse */
+        PatternDraftTransformResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /**
+             * Status
+             * @default transformed
+             * @constant
+             */
+            status: "transformed";
+            /** Generated At */
+            generated_at: string;
+            /** Search Query Spec */
+            search_query_spec: {
+                [key: string]: unknown;
+            };
+            /** Transformer Meta */
+            transformer_meta?: {
+                [key: string]: unknown;
+            };
+            /** Parser Meta */
+            parser_meta?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * PerpSnapshot
@@ -4136,6 +4290,22 @@ export interface components {
             scoring_layers?: {
                 [key: string]: boolean;
             };
+            /**
+             * Active Layers
+             * @description Canonical layer visibility alias for scoring_layers.
+             */
+            active_layers?: {
+                [key: string]: boolean;
+            };
+            /**
+             * Stage Counts
+             * @description Search pipeline visibility counts for corpus/ranking/return stages.
+             */
+            stage_counts?: {
+                [key: string]: number;
+            };
+            /** Degraded Reason */
+            degraded_reason?: string | null;
         };
         /** SnapInput */
         SnapInput: {
@@ -4290,6 +4460,26 @@ export interface components {
             max_adverse: number;
             /** Direction */
             direction: string;
+        };
+        /** _BenchmarkPackDraftBody */
+        _BenchmarkPackDraftBody: {
+            /** Capture Id */
+            capture_id: string;
+            /**
+             * Max Holdouts
+             * @default 4
+             */
+            max_holdouts: number;
+        };
+        /** _BenchmarkSearchBody */
+        _BenchmarkSearchBody: {
+            /** Capture Id */
+            capture_id: string;
+            /**
+             * Max Holdouts
+             * @default 4
+             */
+            max_holdouts: number;
         };
         /** _CaptureBody */
         _CaptureBody: {
@@ -5148,6 +5338,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_query_spec_transform_search_query_spec_transform_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatternDraftTransformRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternDraftTransformResponse"];
                 };
             };
             /** @description Validation Error */
@@ -6087,6 +6310,28 @@ export interface operations {
             };
         };
     };
+    get_active_variants_patterns_active_variants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_all_states_patterns_states_get: {
         parameters: {
             query?: never;
@@ -6189,6 +6434,47 @@ export interface operations {
     get_candidates_patterns__slug__candidates_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_similar_live_patterns__slug__similar_live_get: {
+        parameters: {
+            query?: {
+                variant_slug?: string | null;
+                timeframe?: string | null;
+                top_k?: number;
+                min_similarity_score?: number;
+                window_bars?: number;
+                staleness_hours?: number;
+                warmup_bars?: number;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -6657,6 +6943,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_RegisterPatternBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_benchmark_pack_draft_patterns__slug__benchmark_pack_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_BenchmarkPackDraftBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_benchmark_search_from_capture_patterns__slug__benchmark_search_from_capture_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_BenchmarkSearchBody"];
             };
         };
         responses: {
@@ -8087,6 +8447,26 @@ export interface operations {
             };
         };
     };
+    logout_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogoutResponse"];
+                };
+            };
+        };
+    };
     run_pattern_scan_jobs_pattern_scan_run_post: {
         parameters: {
             query?: never;
@@ -8128,26 +8508,6 @@ export interface operations {
         };
     };
     run_auto_capture_jobs_auto_capture_run_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    run_search_corpus_jobs_search_corpus_run_post: {
         parameters: {
             query?: never;
             header?: never;

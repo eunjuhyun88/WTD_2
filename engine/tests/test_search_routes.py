@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.routes import search
+from api.schemas_pattern_draft import PatternDraftBody
 from capture.store import CaptureStore
 from patterns.definitions import PatternDefinitionService
 from patterns.library import PATTERN_LIBRARY
@@ -41,6 +42,147 @@ def _definition_service(tmp_path) -> PatternDefinitionService:
         capture_store=capture_store,
         registry_store=registry_store,
     )
+
+
+def _pattern_draft_payload() -> dict:
+    return {
+        "schema_version": 1,
+        "pattern_family": "tradoor_ptb_oi_reversal",
+        "pattern_label": "OI spike then higher lows",
+        "source_type": "manual_note",
+        "source_text": "OI spike after second dump then higher lows",
+        "timeframe": "15m",
+        "symbol_candidates": ["TRADOORUSDT"],
+        "phases": [
+            {
+                "phase_id": "real_dump",
+                "label": "Real Dump",
+                "sequence_order": 1,
+                "signals_required": ["oi_spike"],
+            },
+            {
+                "phase_id": "accumulation",
+                "label": "Accumulation",
+                "sequence_order": 2,
+                "signals_required": ["higher_lows_sequence"],
+            },
+        ],
+        "search_hints": {
+            "preferred_timeframes": ["15m", "1h"],
+            "similarity_focus": ["phase_path"],
+        },
+    }
+
+
+def test_pattern_draft_schema_roundtrips_engine_contract() -> None:
+    draft = PatternDraftBody.model_validate(_pattern_draft_payload())
+    payload = draft.model_dump(mode="json")
+
+    assert payload["schema_version"] == 1
+    assert payload["pattern_family"] == "tradoor_ptb_oi_reversal"
+    assert payload["phases"][0]["phase_id"] == "real_dump"
+    assert payload["search_hints"]["preferred_timeframes"] == ["15m", "1h"]
+
+
+def test_search_query_spec_transform_route_returns_deterministic_spec() -> None:
+    response = _client().post(
+        "/search/query-spec/transform",
+        json={
+            "pattern_draft": _pattern_draft_payload(),
+            "parser_meta": {
+                "parser_role": "pattern_seed_parser",
+                "parser_model": "heuristic-v1",
+                "parser_prompt_version": "pattern-seed-heuristic-v1",
+                "pattern_draft_schema_version": 1,
+                "signal_vocab_version": "signal-vocab-v1",
+                "confidence": 0.82,
+                "ambiguity_count": 0,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    spec = payload["search_query_spec"]
+    assert payload["status"] == "transformed"
+    assert payload["owner"] == "engine"
+    assert payload["plane"] == "search"
+    assert payload["transformer_meta"]["transformer_version"] == "query-transformer-v1"
+    assert payload["parser_meta"]["parser_role"] == "pattern_seed_parser"
+    assert spec["phase_path"] == ["real_dump", "accumulation"]
+    assert spec["reference_timeframe"] == "15m"
+    assert spec["must_have_signals"] == ["oi_spike", "higher_lows_sequence"]
+    assert spec["phase_queries"][0]["required_numeric"]["oi_zscore"]["min"] == 1.5
+    assert spec["phase_queries"][1]["required_boolean"]["higher_lows_sequence"] is True
+
+
+def test_search_query_spec_transform_route_rejects_invalid_draft() -> None:
+    payload = _pattern_draft_payload()
+    payload["phases"] = []
+
+    response = _client().post(
+        "/search/query-spec/transform",
+        json={"pattern_draft": payload},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "pattern_draft_invalid"
+
+
+def test_similar_route_reports_pipeline_metadata(monkeypatch) -> None:
+    def fake_run_similar_search(_request: dict) -> dict:
+        return {
+            "run_id": "sim-1",
+            "request": {"mode": "3layer"},
+            "status": "live",
+            "updated_at": "2026-04-25T00:00:00+00:00",
+            "candidates": [
+                {
+                    "candidate_id": "cand-1",
+                    "window_id": "window-1",
+                    "symbol": "TRADOORUSDT",
+                    "timeframe": "15m",
+                    "start_ts": "2026-04-24T00:00:00+00:00",
+                    "end_ts": "2026-04-24T01:00:00+00:00",
+                    "bars": 4,
+                    "final_score": 0.91,
+                    "layer_a_score": 0.88,
+                    "layer_b_score": 0.82,
+                    "layer_c_score": None,
+                    "candidate_phase_path": ["real_dump", "accumulation"],
+                    "signature": {"close_return_pct": 4.2},
+                    "close_return_pct": 4.2,
+                }
+            ],
+            "active_layers": {"layer_a": True, "layer_b": True, "layer_c": False},
+            "stage_counts": {
+                "corpus_windows": 5,
+                "ranked_candidates": 1,
+                "returned_candidates": 1,
+            },
+            "degraded_reason": None,
+        }
+
+    monkeypatch.setattr(search, "run_similar_search", fake_run_similar_search)
+
+    response = _client().post(
+        "/search/similar",
+        json={
+            "pattern_draft": {},
+            "observed_phase_paths": ["real_dump", "accumulation"],
+            "timeframe": "15m",
+            "top_k": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["run_id"] == "sim-1"
+    assert payload["active_layers"] == {"layer_a": True, "layer_b": True, "layer_c": False}
+    assert payload["scoring_layers"] == payload["active_layers"]
+    assert payload["stage_counts"]["corpus_windows"] == 5
+    assert payload["stage_counts"]["returned_candidates"] == 1
+    assert payload["degraded_reason"] is None
 
 
 def test_search_catalog_route_returns_corpus_inventory(monkeypatch, tmp_path) -> None:

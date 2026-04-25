@@ -117,6 +117,25 @@ export async function fetchPerpContextProxy(
 	});
 }
 
+/** Alias kept for callers that used the old name before refactor. */
+export const fetchFactPerpContextProxy = fetchPerpContextProxy;
+
+/** @deprecated Use EngineFactPerpContextPayload */
+export type PerpContextPayload = EngineFactPerpContextPayload;
+
+export async function fetchFactMarketCapProxy(
+	fetchFn: ServerFetch,
+	args: { offline?: boolean } = {},
+): Promise<MarketCapSnapshot | null> {
+	return fetchEnginePlaneJson<MarketCapSnapshot>(fetchFn, 'facts', {
+		path: 'market-cap',
+		query: {
+			offline: args.offline ?? true,
+		},
+		timeoutMs: 8_000,
+	});
+}
+
 export async function fetchIndicatorCatalogProxy(
 	fetchFn: ServerFetch,
 	filters: IndicatorCatalogFilterInput = {},

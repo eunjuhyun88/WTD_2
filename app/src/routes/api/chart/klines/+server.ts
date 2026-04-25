@@ -11,6 +11,8 @@ export const GET: RequestHandler = async ({ url, fetch, getClientAddress }) => {
   const tf = url.searchParams.get('tf') ?? '1h';
   const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '500'), 1000);
   const emaTf = url.searchParams.get('emaTf')?.trim() ?? '';
+  const startTimeRaw = url.searchParams.get('startTime');
+  const startTime = startTimeRaw ? parseInt(startTimeRaw) : undefined;
 
   try {
     const { payload, cacheStatus } = await getChartSeries({

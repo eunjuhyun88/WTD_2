@@ -13,11 +13,28 @@ vi.mock('$lib/server/engineTransport', () => ({
   })),
 }));
 
-import { POST } from './+server';
+import { GET, POST } from './+server';
 
 describe('/api/captures', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('reads captures through the runtime plane compatibility path', async () => {
+    vi.mocked(getAuthUserFromCookies).mockResolvedValueOnce({ id: 'user-1' } as any);
+
+    const res = await GET({
+      url: new URL('http://localhost/api/captures?symbol=BTCUSDT&limit=25'),
+      cookies: {},
+    } as any);
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(engineFetch)).toHaveBeenCalledWith(
+      '/runtime/captures?user_id=user-1&limit=25&symbol=BTCUSDT',
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 
   it('binds authenticated user_id onto canonical capture writes', async () => {
@@ -40,7 +57,7 @@ describe('/api/captures', () => {
 
     expect(res.status).toBe(200);
     expect(vi.mocked(engineFetch)).toHaveBeenCalledWith(
-      '/captures',
+      '/runtime/captures',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({

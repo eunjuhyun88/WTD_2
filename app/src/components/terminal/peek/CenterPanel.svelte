@@ -6,6 +6,7 @@
   import CaptureReviewDrawer from '../chart/CaptureReviewDrawer.svelte';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { CaptureAnnotation } from '../chart/primitives/CaptureMarkerPrimitive';
+  import type { PanelAnalyzeData } from '$lib/terminal/panelAdapter';
 
   type PeekTab = 'analyze' | 'scan' | 'judge' | 'review';
 
@@ -29,6 +30,8 @@
     onTfChange: (tf: string) => void;
     onDismissLabCta: () => void;
     alphaMarkers?: Array<{ timestamp: number; phase: string; label: string; color?: string }>;
+    /** W-0210 Layer 1: full analysis data → ChartBoard AlphaOverlayLayer */
+    analysisData?: PanelAnalyzeData | null;
     analyze?: Snippet;
     scan?: Snippet;
     judge?: Snippet;
@@ -55,6 +58,7 @@
     onTfChange,
     onDismissLabCta,
     alphaMarkers = undefined,
+    analysisData = null,
     analyze,
     scan,
     judge,
@@ -104,6 +108,7 @@
       change24hPct={change24hPct}
       contextMode="chart"
       {alphaMarkers}
+      {analysisData}
       {onCaptureSaved}
       {onTfChange}
       onCaptureSelect={isTablet ? handleCaptureSelect : undefined}
@@ -138,12 +143,6 @@
     {analyzeCount}
     {scanCount}
     {judgeCount}
-    reviewCount={effectiveReviewCount}
-    openTab={peekOpenTab}
-    {analyze}
-    {scan}
-    {judge}
-    review={reviewContent}
   />
 </main>
 

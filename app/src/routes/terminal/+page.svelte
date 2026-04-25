@@ -24,9 +24,6 @@
   import { get } from 'svelte/store';
   import { douniRuntimeStore } from '$lib/stores/douniRuntime';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
-  import { buildTerminalHeaderModel } from '$lib/terminal/terminalHeaderModel';
-  import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
-  import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
     fetchTerminalQueryPresets,
@@ -101,17 +98,22 @@
     TerminalWatchlistItem,
   } from '$lib/contracts/terminalPersistence';
 
+  import { fetchThermoData, EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
+  import { alphaBuckets } from '$lib/stores/alphaBuckets';
+  import AlphaMarketBar from '../../components/cogochi/AlphaMarketBar.svelte';
+  import NewsFlashBar from '../../components/terminal/workspace/NewsFlashBar.svelte';
+  import { newsStore, newsEventsToAlphaMarkers } from '$lib/stores/newsStore';
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
-  import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
-  import TerminalHeaderMeta from '../../components/terminal/workspace/TerminalHeaderMeta.svelte';
-  import TerminalRightRail from '../../components/terminal/workspace/TerminalRightRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
+  import WorkspacePanel from '../../components/terminal/workspace/WorkspacePanel.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
-  import PeekDrawer from '../../components/terminal/peek/PeekDrawer.svelte';
   import ScanGrid from '../../components/terminal/peek/ScanGrid.svelte';
   import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
+  import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
+  import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
+  import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
@@ -143,6 +145,13 @@
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
   let alphaMarkers = $state<Array<{ timestamp: number; phase: string; label: string; color?: string }>>([]);
+
+  // W-0210 Layer 4: merge news events into alphaMarkers for chart rendering
+  const alphaMarkersWithNews = $derived.by(() => [
+    ...alphaMarkers.filter(m => m.phase !== 'news'),
+    ...newsEventsToAlphaMarkers($newsStore.events),
+  ]);
+
   let alphaUniverse = $state<'ALL' | 'ALPHA' | 'SHORT'>('ALL');
   let alphaWorldData = $state<{ phases: any[]; phase_counts: Record<string, number>; n_symbols: number } | null>(null);
   let alphaWorldLoading = $state(false);
@@ -161,7 +170,6 @@
   let layerBarsMap = $state<Record<string, any[]>>({});
   let chartPayloadMap = $state<Record<string, ChartSeriesPayload>>({});
   let activeChartPayload = $state<ChartSeriesPayload | null>(null);
-  let selectionState = $state<TerminalSelectionState>(createSymbolSelection('BTCUSDT', '4h', 'system_default'));
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -185,12 +193,30 @@
   let peekCaptures = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let peekSimilar = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let peekLoadingSimilar = $state(false);
+  let reviewInboxCount = $state(0);
 
   // ── Capture modal ──────────────────────────────────────────
   // On desktop the persistent left rail is always shown; drawer is for tablet/mobile only
   const isDesktop = $derived($viewportTier.tier === 'DESKTOP');
   let showLeftRail = $state(true);
   let activeAnalysisTab = $state<'summary' | 'entry' | 'risk' | 'catalysts' | 'metrics'>('summary');
+
+  // ── Terminal mode ──────────────────────────────────────────
+  // OBSERVE: chart-focused (right rail + workspace hidden)
+  // ANALYZE: full layout with verdict HUD + evidence workspace
+  // EXECUTE: future trade sizing (stub)
+  let terminalMode = $state<'observe' | 'analyze' | 'execute'>('analyze');
+
+  // ── Global market pulse (thermo) ──────────────────────────
+  let thermoData = $state<ThermoData>(EMPTY_THERMO_DATA);
+
+  function handleWorkspaceJudge(verdict: string, note?: string) {
+    if (activeSymbol) {
+      trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
+    }
+    // TODO: POST /api/cogochi/judgment once endpoint is built
+    console.log('[workspace-judge]', { symbol: activeSymbol, verdict, note });
+  }
   let chartWorkspaceEl = $state<HTMLElement | undefined>(undefined);
 
   // ── Chart price-level overlays (entry / target / stop) ───────
@@ -773,10 +799,21 @@
     }
   }
 
-  function focusPatternSymbol(item: { symbol: string }) {
-    const pair = item.symbol.replace('USDT', '/USDT');
-    selectionState = createSymbolSelection(item.symbol, symbolToTF(gTf), 'pattern_engine', item.symbol);
-    setActivePair(pair);
+  async function loadLiveSignals() {
+    try {
+      const envelope = await fetchLiveSignals();
+      if (envelope) {
+        liveSignals = envelope.signals;
+        liveSignalsCached = envelope.cached;
+        liveSignalsScannedAt = envelope.scanned_at;
+      }
+    } catch {}
+  }
+
+  async function loadReviewInboxCount() {
+    try {
+      reviewInboxCount = await fetchReviewInboxCount(100);
+    } catch {}
   }
 
   // ── PEEK drawer loaders ────────────────────────────────────
@@ -979,12 +1016,7 @@
 
   function handleQueryChip(query: string) { sendCommand(query); }
 
-  function handleLeftRailSelection(next: TerminalSelectionState) {
-    selectionState = next;
-  }
-
   function selectAsset(symbol: string) {
-    selectionState = createSymbolSelection(symbol, symbolToTF(gTf), 'left_watchlist');
     activeSymbol = symbol;
     activeAnalysisTab = 'summary';
     activeChartPayload = chartPayloadMap[symbol] ?? null;
@@ -1015,7 +1047,6 @@
     activeChartPayload = null;
     chartLevels = {};
     activeAnalysisTab = 'summary';
-    selectionState = createSymbolSelection(pairToSymbol(gPair), symbolToTF(gTf), 'system_default');
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -1148,7 +1179,11 @@
     loadTerminalReadPath();
     loadTerminalPersistenceState();
     loadEvents();
+    // Load global market pulse (thermo) — low priority, fire-and-forget
+    fetchThermoData().then((d) => { if (d) thermoData = d; });
     loadPeekCaptures();
+    loadReviewInboxCount();
+    peekCapturesInterval = setInterval(() => runIfVisible(loadPeekCaptures), 120_000);
     for (const item of buildTerminalBootstrapTasks({
       loadTrending,
       loadNews,
@@ -1207,8 +1242,6 @@
       prevPair = pair;
       prevTf = tf;
       const symbol = pairToSymbol(pair);
-      const selectionOrigin = untrack(() => selectionState.origin);
-      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeSymbol = symbol;
       activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
@@ -1233,8 +1266,6 @@
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
-      const selectionOrigin = untrack(() => selectionState.origin);
-      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeReadPathKey = '';
       memoryQueryIdMap = {};
       memoryTopEvidenceMap = {};
@@ -1306,6 +1337,12 @@
     if (change !== null) {
       terminalState.setLast24hChange(change);
     }
+  });
+
+  // W-0210 Layer 4: fetch news when active symbol changes
+  $effect(() => {
+    const sym = activeSymbol;
+    if (sym) void newsStore.fetchNews(sym);
   });
 
   // ── Analysis rail mode ────────────────────────────────────────
@@ -1466,29 +1503,38 @@
   }
 
   // ── PEEK drawer derived + handlers ────────────────────────
-  const peekAnalyzeCount = $derived(analysisData?.verdict ? 1 : 0);
+  const peekAnalyzeCount = $derived((analysisData as any)?.verdict ? 1 : 0);
   const peekScanCount = $derived(scannerAlerts.length);
   const peekJudgeCount = $derived(peekCaptures.filter((c: any) => {
     const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
     return !hasOutcome;
   }).length);
 
-  const peekVerdict = $derived(analysisData?.verdict ?? null);
+  const peekVerdict = $derived((analysisData as any)?.verdict ?? null);
   const peekEntry = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
   const peekStop = $derived((analysisData as any)?.verdict?.stop ?? (analysisData as any)?.deep?.stop ?? null);
   const peekTarget = $derived((analysisData as any)?.verdict?.target ?? (analysisData as any)?.deep?.target ?? null);
-  const peekPWin = $derived(analysisData?.p_win ?? null);
+  const peekPWin = $derived((analysisData as any)?.p_win ?? null);
   const peekLast = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
 
   async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
     const symbol = activeSymbol || pairToSymbol(gPair);
     const timeframe = symbolToTF(gTf);
-    console.log('[peek] saveJudgment (UI stub)', {
+    if (!symbol) return;
+    const data = analysisData;
+    await createPatternCapture({
       symbol,
       timeframe,
-      ...input,
+      contextKind: 'symbol',
+      triggerOrigin: 'manual',
+      note: input.note || undefined,
+      snapshot: { freshness: 'live' },
+      decision: {
+        verdict: input.verdict,
+        confidence: (data as any)?.p_win ?? undefined,
+      },
+      sourceFreshness: { manual: new Date().toISOString() },
     });
-    // TODO: POST /api/terminal/pattern-captures when backend is ready.
     await loadPeekCaptures();
   }
 
@@ -1512,12 +1558,7 @@
   <link rel="canonical" href={buildCanonicalHref('/terminal')} />
 </svelte:head>
 
-<!-- ═══════════════════════════════════════════════════ -->
-<!-- PEEK layout (chart-first + bottom drawer) -->
-<!-- ═══════════════════════════════════════════════════ -->
-
 <div class="surface-page terminal-page-peek">
-  <!-- Command bar -->
   <section class="terminal-shell-head">
     <TerminalCommandBar
       assetsCount={boardAssets.length}
@@ -1525,51 +1566,66 @@
       onToggleMarketRail={toggleLeftRail}
       price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
       change24h={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+      mode={terminalMode}
+      onModeChange={(m) => { terminalMode = m as typeof terminalMode; }}
     />
   </section>
 
-  <!-- Chart + SaveStrip + PEEK drawer -->
-  <main class="peek-main">
-    <div class="chart-and-strip" bind:this={chartWorkspaceEl}>
-      <ChartBoard
-        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-        tf={symbolToTF(gTf)}
-        verdictLevels={chartLevels}
-        initialData={activeChartPayload}
-        depthSnapshot={readPathDepth}
-        liqSnapshot={readPathLiq}
-        quantRegime={boardModel.quantRegime}
-        cvdDivergence={boardModel.cvdDivergence}
-        change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
-        contextMode="chart"
-        onCaptureSaved={handleCaptureSaved}
-        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
-      />
-      <SaveStrip
-        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-        tf={symbolToTF(gTf)}
-        ohlcvBars={ohlcvBars}
-        onSaved={handleCaptureSaved}
-      />
-      {#if showLabCta}
-        <div class="lab-cta-banner">
-          <span class="lab-cta-check">✓</span>
-          <span class="lab-cta-text">Setup saved</span>
-          <div class="lab-cta-actions">
-            <a class="lab-cta-link lab-cta-link--dash" href="/dashboard">Dashboard →</a>
-            <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Lab →</a>
-          </div>
-          <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
-        </div>
-      {/if}
-    </div>
+  <!-- Market Pulse bar: global context traders check first (F&G, Kimchi, BTC.D, buckets) -->
+  <div class="market-pulse-bar" aria-label="Global market pulse">
+    <AlphaMarketBar thermo={thermoData} buckets={$alphaBuckets} />
+  </div>
 
-    <!-- PEEK drawer — 3-tab bottom overlay -->
-    <PeekDrawer analyzeCount={peekAnalyzeCount} scanCount={peekScanCount} judgeCount={peekJudgeCount}>
-      <svelte:fragment slot="analyze">
+  <!-- W-0210 Layer 4: scrolling news ticker — auto-hides when empty -->
+  <NewsFlashBar symbol={activeSymbol || 'BTCUSDT'} />
+
+  <div class="peek-body">
+    {#if showLeftRail}
+    <aside class="peek-left-rail">
+      <TerminalLeftRail
+        {trendingData}
+        watchlistRows={persistedWatchlist}
+        alerts={scannerAlerts}
+        savedAlerts={savedAlertRules}
+        {patternPhases}
+        activeSymbol={activeSymbol || pairToSymbol(gPair)}
+        macroItems={macroCalendarItems}
+        {marketEvents}
+        queryPresets={terminalQueryPresets}
+        anomalies={terminalAnomalies}
+        onQuery={handleQueryChip}
+        onDeleteSavedAlert={handleDeleteSavedAlert}
+      />
+    </aside>
+    {/if}
+
+    <div class="center-col">
+    <CenterPanel
+      symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+      tf={symbolToTF(gTf)}
+      verdictLevels={chartLevels as Record<string, number>}
+      alphaMarkers={alphaMarkersWithNews}
+      initialData={activeChartPayload}
+      depthSnapshot={readPathDepth}
+      liqSnapshot={readPathLiq}
+      quantRegime={boardModel.quantRegime}
+      cvdDivergence={boardModel.cvdDivergence}
+      change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+      analysisData={activeAnalysisData as any}
+      {showLabCta}
+      {labCtaSlug}
+      analyzeCount={peekAnalyzeCount}
+      scanCount={peekScanCount}
+      judgeCount={peekJudgeCount}
+      reviewCount={reviewInboxCount}
+      onCaptureSaved={handleCaptureSaved}
+      onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+      onDismissLabCta={() => showLabCta = false}
+    >
+      {#snippet analyze()}
         <TerminalContextPanel
           analysisData={activeAnalysisData}
-          newsData={newsData}
+          {newsData}
           activeTab={activeAnalysisTab}
           onTabChange={handleAnalysisTabChange}
           onAction={sendCommand}
@@ -1578,379 +1634,6 @@
           onRetry={handleRetryAnalysis}
           isPinned={isActivePinned}
           hasSavedAlert={hasActiveSavedAlert}
-          bars={ohlcvBars}
-          {layerBarsMap}
-          {patternRecallMatches}
-        />
-      </svelte:fragment>
-
-      <svelte:fragment slot="scan">
-        <ScanGrid
-          alerts={scannerAlerts}
-          similar={peekSimilar}
-          activeSymbol={activeSymbol || pairToSymbol(gPair)}
-          loadingSimilar={peekLoadingSimilar}
-          onOpenCapture={handlePeekOpenCapture}
-        />
-      </svelte:fragment>
-
-      <svelte:fragment slot="judge">
-        <JudgePanel
-          symbol={activeSymbol || pairToSymbol(gPair)}
-          timeframe={symbolToTF(gTf)}
-          verdict={peekVerdict}
-          entry={peekEntry}
-          stop={peekStop}
-          target={peekTarget}
-          pWin={peekPWin}
-          lastPrice={peekLast}
-          captures={peekCaptures}
-          saving={false}
-          onSaveJudgment={handlePeekSaveJudgment}
-          onRejudge={handlePeekRejudge}
-          onOpenCapture={handlePeekOpenCapture}
-        />
-      </svelte:fragment>
-    </PeekDrawer>
-  </main>
-</div>
-
-<!-- MOBILE: TerminalShell with mode routing (fallback, currently unused) -->
-{#if false}
-  <!-- Disabled until mobile support is added back -->
-  <!-- Market drawer — overlay for tablet/mobile only; desktop uses persistent left rail -->
-  <MarketDrawer
-    open={showLeftRail}
-    onClose={toggleLeftRail}
-    {trendingData}
-    watchlistRows={persistedWatchlist}
-    alerts={scannerAlerts}
-    savedAlerts={savedAlertRules}
-    {patternPhases}
-    activeSymbol={activeSymbol || pairToSymbol(gPair)}
-    macroItems={macroCalendarItems}
-    {marketEvents}
-    queryPresets={terminalQueryPresets}
-    anomalies={terminalAnomalies}
-    onQuery={handleQueryChip}
-    onDeleteSavedAlert={handleDeleteSavedAlert}
-  />
-
-  <div class="surface-page terminal-page">
-  <TerminalShell
-    showRail={true}
-    railWidth={330}
-    verdict={activeVerdict ?? null}
-    evidence={activeEvidence ?? []}
-    captureId={lastSavedCaptureId ?? null}
-    marketRows={mobileMarketRows}
-    alerts={mobileAlertsWithStatus}
-    marketLoading={loadingSymbols.size > 0}
-    alertsLoading={patternCaptureLoading}
-    onAlertFeedback={handleMobileAlertFeedback}
-    onMarketRefresh={refreshWatchlistForMobile}
-  >
-  {#snippet slotLeftRail()}
-    <TerminalLeftRail
-      {trendingData}
-      watchlistRows={persistedWatchlist}
-      alerts={scannerAlerts}
-      savedAlerts={savedAlertRules}
-      {patternPhases}
-      activeSymbol={activeSymbol || pairToSymbol(gPair)}
-      macroItems={macroCalendarItems}
-      {marketEvents}
-      queryPresets={terminalQueryPresets}
-      anomalies={terminalAnomalies}
-      onQuery={handleQueryChip}
-      onDeleteSavedAlert={handleDeleteSavedAlert}
-    />
-  </section>
-
-  <div class="peek-body">
-    {#if showLeftRail}
-      <aside class="left-rail">
-        <div class="workspace-panel-head">
-          <div class="workspace-panel-title">
-            <span class="workspace-panel-kicker">Market Rail</span>
-            <span class="workspace-panel-meta">{leftWidth}px · {terminalStatus?.anomalyCount ?? terminalAnomalies.length} anomalies</span>
-          </div>
-          <button class="panel-head-toggle" type="button" onclick={toggleLeftRail} aria-label="Hide market rail">
-            <span class="panel-head-toggle-glyph">◧</span>
-          </button>
-        </div>
-        <TerminalLeftRail
-          {trendingData}
-          alerts={scannerAlerts}
-          {patternPhases}
-          {activeSymbol}
-          newsItems={newsData?.records ?? []}
-          {marketEvents}
-          queryPresets={terminalQueryPresets}
-          anomalies={terminalAnomalies}
-          onQuery={handleQueryChip}
-          onSelect={handleLeftRailSelection}
-        />
-      </aside>
-
-      <!-- Left resize handle -->
-      <button
-        class="panel-resizer"
-        type="button"
-        onmousedown={startResize}
-        aria-label="Resize left panel"
-      ></button>
-    {:else}
-      <button class="collapsed-rail-tab left" type="button" onclick={toggleLeftRail} aria-label="Show market rail">
-        <span class="collapsed-rail-icon">◧</span>
-        <span class="collapsed-rail-copy">
-          <strong>Market</strong>
-          <small>Hidden</small>
-        </span>
-      </button>
-    {/if}
-
-    <!-- Center Board -->
-    <main class="center-board">
-      <div class="workspace-panel-head center">
-        <span class="workspace-panel-kicker">Main Board</span>
-        <span class="workspace-panel-meta">{layout} layout</span>
-      </div>
-      <TerminalHeaderMeta
-        subjectLabel={headerModel.subjectLabel}
-        sourceLabel={headerModel.sourceLabel}
-        badges={headerModel.badges}
-      />
-      <!-- Desktop board (hidden on mobile via CSS) -->
-      <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
-
-        <!-- ── Chart area — hero, full height ── -->
-        <div class="chart-area">
-          <ChartBoard
-            symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-            tf={symbolToTF(gTf)}
-            verdictLevels={chartLevels}
-            initialData={activeChartPayload}
-            depthSnapshot={readPathDepth}
-            liqSnapshot={readPathLiq}
-            onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
-          />
-          <PatternStatusBar
-            onSelect={focusPatternSymbol}
-            onTransition={pushPatternTransitions}
-          />
-          <EvidenceStrip
-            evidence={activeEvidence}
-            onExpand={() => {
-              showAnalysisRail = true;
-              activeAnalysisTab = 'metrics';
-            }}
-          />
-          {#if boardModel.orderbookDepth}
-            <div class="microstructure-row">
-              <section class="micro-card orderbook-card" data-tone={boardModel.orderbookTone}>
-                <div class="micro-card-header">
-                  <span class="micro-title">Orderbook</span>
-                  <span class="micro-meta">{boardModel.orderbookBiasLabel} · {boardModel.orderbookMeta.sourceLabel}</span>
-                </div>
-                <div class="micro-stat-row">
-                  <span>Spread {boardModel.orderbookMeta.spreadLabel}</span>
-                  <span>Imbalance {boardModel.orderbookMeta.imbalanceLabel}</span>
-                  <span>Taker {boardModel.orderbookMeta.takerLabel}</span>
-                </div>
-                <div class="depth-ladders">
-                  <div class="depth-side bids">
-                    {#each boardModel.orderbookDepth.bids.slice(0, 5) as level}
-                      <div class="depth-row">
-                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                        <div class="depth-bar-wrap">
-                          <div class="depth-bar bid" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
-                  <div class="depth-side asks">
-                    {#each boardModel.orderbookDepth.asks.slice(0, 5) as level}
-                      <div class="depth-row ask-row">
-                        <div class="depth-bar-wrap ask-wrap">
-                          <div class="depth-bar ask" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
-                        </div>
-                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-              </section>
-
-              <section class="micro-card liquidity-card">
-                <div class="micro-card-header">
-                  <span class="micro-title">{boardModel.liquidityMeta.title}</span>
-                  <span class="micro-meta">{boardModel.liquidityMeta.metaLabel}</span>
-                </div>
-                <div class="micro-stat-row">
-                  <span>Short Liq {formatCompactUsd(boardModel.liquidityMeta.shortLiqUsd)}</span>
-                  <span>Long Liq {formatCompactUsd(boardModel.liquidityMeta.longLiqUsd)}</span>
-                </div>
-                <div class="liq-cluster-list">
-                  {#if boardModel.liquidityClusters.length > 0}
-                    {#each boardModel.liquidityClusters as cluster}
-                      <div class="liq-cluster-row">
-                        <span class="liq-side" data-side={cluster.side}>{cluster.side === 'BUY' ? 'Shorts' : 'Longs'}</span>
-                        <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                        <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
-                        <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
-                      </div>
-                    {/each}
-                  {:else}
-                    <p class="liq-empty">No forced liquidation spikes in the recent window.</p>
-                  {/if}
-                </div>
-              </section>
-            </div>
-          {/if}
-          {#if companionAssets.length > 0}
-            <div class="market-mini-grid">
-              {#each companionAssets as asset}
-                {@const verdict = verdictMap[asset.symbol]}
-                <button class="mini-asset-card" onclick={() => selectAsset(asset.symbol)}>
-                  <div class="mini-top">
-                    <span class="mini-symbol">{asset.symbol.replace('USDT','')}</span>
-                    <span class:mini-up={asset.changePct1h >= 0} class:mini-down={asset.changePct1h < 0}>
-                      {asset.changePct1h >= 0 ? '+' : ''}{asset.changePct1h.toFixed(2)}%
-                    </span>
-                  </div>
-                  <div class="mini-meta-row">
-                    <span>{asset.volumeRatio1h.toFixed(1)}x vol</span>
-                    <span>OI {asset.oiChangePct1h >= 0 ? '+' : ''}{asset.oiChangePct1h.toFixed(1)}%</span>
-                  </div>
-                  {#if verdict}
-                    <p class="mini-reason">{verdict.reason.slice(0, 72)}{verdict.reason.length > 72 ? '…' : ''}</p>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <!-- ── Analysis rail — single verdict or scan list ── -->
-        {#if showAnalysisRail}
-        <button
-          class="panel-resizer right"
-          type="button"
-          onmousedown={startAnalysisResize}
-          aria-label="Resize analysis panel"
-        ></button>
-        <TerminalRightRail
-          {isStreaming}
-          {isScanMode}
-          resultCount={boardAssets.length}
-          activeLabel={activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay}
-          width={analysisWidth}
-          summaryCards={surfaceSummary.shellSummaryCards}
-          subtitle={surfaceSummary.terminalSubtitle}
-          statusItems={statusStripItems.slice(0, 6)}
-          onBack={clearBoard}
-          onToggle={toggleAnalysisRail}
-        >
-          <!-- MODE B — Scan results list -->
-          {#if isScanMode}
-            <div class="scan-list">
-              {#each scanAssets as { asset, verdict } (asset.symbol)}
-                {@const sym = asset.symbol.replace('USDT','')}
-                {@const dir = verdict?.direction ?? asset.bias}
-                {@const active = asset.symbol === activeSymbol}
-                <button
-                  class="scan-card"
-                  class:active
-                  class:bullish={dir === 'bullish'}
-                  class:bearish={dir === 'bearish'}
-                  onclick={() => selectAsset(asset.symbol)}
-                >
-                  <div class="sc-left">
-                    <span class="sc-sym">{sym}</span>
-                    <span class="sc-venue">USDT·PERP</span>
-                  </div>
-                  <div class="sc-right">
-                    <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
-                    {#if verdict?.reason}
-                      <span class="sc-reason">{verdict.reason.slice(0, 48)}{verdict.reason.length > 48 ? '…' : ''}</span>
-                    {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
-                      <span class="sc-loading">analyzing…</span>
-                    {/if}
-                  </div>
-                </button>
-              {/each}
-            </div>
-
-            <!-- Also show active symbol's VerdictCard below the list if loaded -->
-            {#if heroAsset && heroVerdict}
-              <div class="scan-detail">
-                <TerminalContextPanel
-                  analysisData={activeAnalysisData}
-                  newsData={newsData}
-                  activeTab={activeAnalysisTab}
-                    onTabChange={handleAnalysisTabChange}
-                onAction={sendCommand}
-                onCapture={() => showCaptureModal = true}
-                bars={ohlcvBars}
-                statusItems={statusStripItems.slice(0, 6)}
-                {layerBarsMap}
-              />
-            </div>
-            {/if}
-
-          <!-- MODE A — Single asset compact verdict -->
-          {:else if isLoadingActive && !heroVerdict}
-            <div class="board-loading">
-              <div class="loading-ring"></div>
-              <p class="loading-msg">Analyzing {activePairDisplay}…</p>
-            </div>
-          {:else if heroAsset && heroVerdict}
-            <TerminalContextPanel
-              analysisData={activeAnalysisData}
-              newsData={newsData}
-              activeTab={activeAnalysisTab}
-              onTabChange={handleAnalysisTabChange}
-              onAction={sendCommand}
-              onCapture={() => showCaptureModal = true}
-              bars={ohlcvBars}
-              statusItems={statusStripItems.slice(0, 6)}
-              {layerBarsMap}
-            />
-          {:else}
-            <div class="board-empty">
-              <p class="empty-icon">◈</p>
-              <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
-            </div>
-          {/if}
-        </TerminalRightRail>
-        {:else}
-          <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
-            <span class="collapsed-rail-icon">◨</span>
-            <span class="collapsed-rail-copy">
-              <strong>Analysis</strong>
-              <small>Hidden</small>
-            </span>
-          </button>
-        {/if}
-
-      </div>
-
-      <!-- Desktop bottom dock -->
-      <div class="desktop-dock">
-        <TerminalBottomDock
-          loading={isStreaming || isLoadingActive}
-          feedItems={dockFeedItems}
-          onSend={sendCommand}
-        />
-      </div>
-
-      <!-- Mobile board + dock -->
-      <div class="mobile-board-wrap">
-        <MobileActiveBoard
-          asset={activeAsset}
-          verdict={activeVerdict}
-          evidence={activeEvidence}
           bars={ohlcvBars}
           {layerBarsMap}
           {patternRecallMatches}
@@ -2036,7 +1719,17 @@
         />
       {/snippet}
     </CenterPanel>
+    {#if terminalMode === 'analyze'}
+      <WorkspacePanel
+        analysisData={activeAnalysisData as any}
+        symbol={activeSymbol || pairToSymbol(gPair)}
+        tf={symbolToTF(gTf)}
+        onJudge={handleWorkspaceJudge}
+      />
+    {/if}
+    </div>
 
+    {#if terminalMode !== 'observe'}
     <RightRailPanel
       {isStreaming}
       {isScanMode}
@@ -2067,11 +1760,11 @@
       onRetry={handleRetryAnalysis}
       onSelectAsset={selectAsset}
       onClearBoard={clearBoard}
+      onWorkspaceToggle={undefined}
     />
-  {/snippet}
-  </TerminalShell>
+    {/if}
   </div>
-{/if}
+</div>
 
 <!-- MarketDrawer: tablet/mobile overlay (left side) -->
 <MarketDrawer
@@ -2166,27 +1859,7 @@
     cursor: pointer;
   }
 
-  /* PEEK layout for desktop */
   .terminal-page-peek {
-    width: min(100%, calc(100% - 8px));
-    height: calc(100dvh - 8px);
-    display: flex;
-    flex-direction: column;
-    padding-top: 2px;
-    padding-bottom: max(4px, var(--sc-consent-reserved-h, 0px));
-    overflow: hidden;
-    background: var(--sc-bg-0, #0b0e14);
-    color: var(--sc-text-0, #f7f2ea);
-  }
-
-  .peek-main {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-  }
-
-  .terminal-page {
     width: min(100%, calc(100% - 8px));
     height: calc(100dvh - 8px);
     display: flex;
@@ -2206,10 +1879,32 @@
     z-index: 25;
   }
 
+  .market-pulse-bar {
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background: rgba(7, 10, 16, 0.96);
+    border-bottom: 1px solid rgba(255,255,255,0.045);
+    overflow: hidden;
+  }
+
+  @media (max-width: 767px) { .market-pulse-bar { display: none; } }
+
   .peek-body {
     display: flex;
     flex-direction: row;
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .center-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     overflow: hidden;
   }

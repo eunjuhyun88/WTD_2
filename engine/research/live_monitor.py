@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from data_cache.loader import load_klines
+from data_cache.loader import list_cached_symbols, load_klines
 from features.canonical_pattern import score_canonical_feature_snapshot
 from patterns.active_variant_registry import (
     ACTIVE_PATTERN_VARIANT_STORE,
@@ -415,21 +415,6 @@ def scan_all_patterns_live(
         -(x.fwd_peak_pct or -999),
     ))
     return all_results
-
-
-def resolve_live_variant_slug(pattern_slug: str, variant_slug: str | None = None) -> str:
-    """Return the canonical live variant slug for a pattern.
-
-    If *variant_slug* is given, return it as-is (caller override).
-    Otherwise look up the canonical variant in PROMOTED_PATTERNS.
-    Falls back to ``{pattern_slug}__canonical`` if not registered.
-    """
-    if variant_slug is not None:
-        return variant_slug
-    for slug, canonical, _ in PROMOTED_PATTERNS:
-        if slug == pattern_slug:
-            return canonical
-    return f"{pattern_slug}__canonical"
 
 
 def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SCAN") -> None:

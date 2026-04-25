@@ -97,6 +97,7 @@ Every non-trivial task must have one active work item:
 
 - Split multiple agents by work item or merge unit, not arbitrary file subsets.
 - Every handoff must name active work item, active branch, verification status, and remaining blockers.
+- Do not create `work/active/AGENT-HANDOFF-*.md`; use `CURRENT.md` plus listed `W-*` work items. Archive historical snapshots under `docs/archive/agent-handoffs/`.
 - Tasks must be restartable from files, not from private reasoning or chat residue.
 - Update `Decisions` and `Next Steps` when plan, blocker, or boundary changes materially.
 - Record rejected paths or failed hypotheses when they affect future execution.
@@ -147,7 +148,8 @@ Update `work/active/CURRENT.md`:
 mk.decision_record(
     what="use FeatureWindowStore for search corpus",
     why="3→40+ dims, batch enrichment, OI/funding 2x weight",
-    how="Layer A upgrade: feature_snapshot first, then batch load"
+    how="Layer A upgrade: feature_snapshot first, then batch load",
+    tags=["domain", "work_id"],
 )
 # Create or update ADR in `docs/decisions/`
 ```
@@ -209,6 +211,13 @@ MemKraft v2.0.0 is installed. Base dir: `memory/` (project root).
 
 ```python
 from memory.mk import mk
+```
+
+`memory/mk.py` is the repo-local compatibility wrapper over the MemKraft package
+resolved by `engine/uv.lock`. Validate it with:
+
+```bash
+cd engine && uv run python ../scripts/validate_memkraft_protocol.py
 ```
 
 ### 작업 시작 전 — evidence_first (필수)
@@ -277,6 +286,8 @@ mk.evidence_first("키워드")   # decisions + incidents + memory 통합
 ### Gotchas
 
 - Tier: `core` / `recall` / `archival` only (`critical` ❌)
+- `decision_record(tags=...)`는 문자열이 아니라 리스트 사용 (`["ci", "w-0163"]`)
 - `log_event` 후 CURRENT.md main SHA 업데이트 함께
 - 과거 기억 조회 시 `grep` 전에 `mk.search()` 먼저
+- `work/active/AGENT-HANDOFF-*.md`는 금지; 과거 스냅샷은 `docs/archive/agent-handoffs/`로 이동
 <!-- MEMKRAFT-BLOCK-END -->

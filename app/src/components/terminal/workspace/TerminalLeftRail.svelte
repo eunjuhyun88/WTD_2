@@ -1,7 +1,9 @@
 <script lang="ts">
   import { setActivePair } from '$lib/stores/activePairStore';
+  import { priceStore } from '$lib/stores/priceStore';
   import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
   import { createSymbolSelection, createTerminalSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
+  import type { MacroCalendarItem, TerminalAlertRule, TerminalWatchlistItem } from '$lib/contracts/terminalPersistence';
 
   interface AlertRow {
     id: string;
@@ -35,9 +37,9 @@
     marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
-    onSelect?: (s: TerminalSelectionState) => void;
-    onQuery?: (q: string) => void;
     onSelect?: (selection: TerminalSelectionState) => void;
+    onQuery?: (q: string) => void;
+    onDeleteSavedAlert?: (id: string) => void;
   }
   let {
     trendingData,
@@ -52,6 +54,7 @@
     anomalies = [],
     onSelect,
     onQuery,
+    onDeleteSavedAlert,
   }: Props = $props();
 
   const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [
@@ -194,17 +197,21 @@
     </h3>
     <div class="watchlist">
       {#each watchlist as coin}
+        {@const base = coin.symbol.replace(/USDT$/,'')}
         {@const chg = coin.preview?.change24h ?? 0}
         {@const isActive = activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT' || coin.active}
+        {@const liveEntry = $priceStore[base]}
+        {@const displayPrice = liveEntry?.price ?? coin.preview?.price ?? 0}
+        {@const liveChg = liveEntry?.change24h ?? chg}
         <button
           class="watch-item"
           class:active={isActive}
-          onclick={() => setActivePair(coin.symbol.replace(/USDT$/,'') + '/USDT')}
+          onclick={() => setActivePair(base + '/USDT')}
         >
-          <span class="watch-sym">{coin.symbol.replace(/USDT$/, '')}</span>
+          <span class="watch-sym">{base}</span>
           <div class="watch-right">
-            <span class="watch-price">{formatPrice(coin.preview?.price ?? 0)}</span>
-            <span class="watch-chg" style="color:{pctColor(chg)}">{formatPct(chg)}</span>
+            <span class="watch-price">{formatPrice(displayPrice)}</span>
+            <span class="watch-chg" style="color:{pctColor(liveChg)}">{formatPct(liveChg)}</span>
           </div>
         </button>
       {/each}
@@ -297,7 +304,7 @@
         </div>
       {/if}
       {#each watchlist as coin}
-        {@const chg = coin.change24h ?? coin.percentChange24h ?? 0}
+        {@const chg = coin.preview?.change24h ?? 0}
         <button
           class="watch-item"
           class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT'}
@@ -307,7 +314,7 @@
           }}
         >
           <span class="watch-sym">{coin.symbol}</span>
-          <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
+          <span class="watch-price">{formatPrice(coin.preview?.price ?? 0)}</span>
           <span class="watch-chg" style="color:{pctColor(chg)}">
             {formatPct(chg)}
           </span>

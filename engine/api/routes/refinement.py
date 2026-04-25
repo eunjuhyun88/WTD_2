@@ -25,7 +25,7 @@ log = logging.getLogger("engine.refinement")
 
 router = APIRouter()
 _ledger = get_ledger_store()
-_REFINEMENT_CACHE_TTL = 30.0
+_REFINEMENT_CACHE_TTL = 300.0  # 5 min — matches stats/engine.py TTL (10× fewer Supabase queries)
 _REFINEMENT_CACHE_LOCK = threading.Lock()
 _refinement_cache_ts = 0.0
 _refinement_cache_rows: list[dict[str, Any]] | None = None

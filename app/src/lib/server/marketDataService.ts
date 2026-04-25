@@ -9,6 +9,8 @@
 // reaches these via `readRaw()` in `providers/rawSources.ts`, which
 // wraps the Binance-hitting calls with the provider-level
 // `binanceQuota` limiter.
+// W-0201: treat this as a legacy raw adapter; new product/search/runtime
+// consumers must use `/api/facts/*`, `/api/search/*`, or `/api/runtime/*`.
 //
 // The previous client-side `RateLimiter` class + `rateLimiter`
 // singleton lived here so `scanner.ts` and `toolExecutor.ts` could
@@ -57,6 +59,18 @@ export interface ForceOrder {
   time: number;
 }
 
+export interface AggTrade {
+  id: number;
+  price: number;
+  qty: number;
+  firstTradeId: number;
+  lastTradeId: number;
+  time: number;
+  isBuyerMaker: boolean;
+  side: 'BUY' | 'SELL';
+  notional: number;
+}
+
 export interface BtcOnchain {
   nTx: number;
   totalBtcSent: number;
@@ -89,6 +103,33 @@ export async function fetchDepth(symbol: string, limit = 20): Promise<OrderBookS
   const askVolume = asks.reduce((sum: number, [p, q]: [number, number]) => sum + p * q, 0);
 
   return { bids, asks, bidVolume, askVolume, ratio: askVolume > 0 ? bidVolume / askVolume : 1 };
+}
+
+/** Recent aggregated trades snapshot. This is REST-recency, not the live WS atom. */
+export async function fetchAggTradesRecent(symbol: string, limit = 250): Promise<AggTrade[]> {
+  const safeLimit = Math.max(1, Math.min(1000, Math.floor(limit)));
+  const res = await fetch(`${FAPI}/fapi/v1/aggTrades?symbol=${symbol}&limit=${safeLimit}`, {
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error(`aggTrades ${res.status}`);
+  const data = await res.json();
+
+  return data.map((row: any) => {
+    const price = Number.parseFloat(row.p);
+    const qty = Number.parseFloat(row.q);
+    const isBuyerMaker = Boolean(row.m);
+    return {
+      id: Number(row.a),
+      price,
+      qty,
+      firstTradeId: Number(row.f),
+      lastTradeId: Number(row.l),
+      time: Number(row.T),
+      isBuyerMaker,
+      side: isBuyerMaker ? 'SELL' : 'BUY',
+      notional: price * qty,
+    };
+  });
 }
 
 /** OI History (L2 enhancement) */

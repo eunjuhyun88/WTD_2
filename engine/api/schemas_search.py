@@ -144,6 +144,15 @@ class SimilarSearchResponse(BaseModel):
         default_factory=dict,
         description="Which layers were active: {layer_a, layer_b, layer_c}",
     )
+    active_layers: dict[str, bool] = Field(
+        default_factory=dict,
+        description="Canonical layer visibility alias for scoring_layers.",
+    )
+    stage_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Search pipeline visibility counts for corpus/ranking/return stages.",
+    )
+    degraded_reason: str | None = None
 
 
 # ── /search/quality — judgement and weight recalibration ─────────────────────

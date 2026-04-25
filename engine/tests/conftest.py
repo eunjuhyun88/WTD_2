@@ -78,3 +78,12 @@ def make_ctx():
         return Context(klines=klines, features=feat_df, symbol=symbol)
 
     return _builder
+
+
+def attach_fake_auth(app, user_id: str = "founder") -> None:
+    """Inject a fake user_id into request.state for test clients that bypass JWT."""
+
+    @app.middleware("http")
+    async def _inject_test_user_id(request, call_next):
+        request.state.user_id = user_id
+        return await call_next(request)

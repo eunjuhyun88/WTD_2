@@ -65,8 +65,8 @@ def test_transform_pattern_draft_builds_deterministic_search_query_spec() -> Non
     assert payload["symbol_scope"] == ["TRADOORUSDT", "PTBUSDT"]
     assert payload["transformer_meta"] == {
         "transformer_version": "query-transformer-v1",
-        "signal_vocab_version": "signal-vocab-v1",
-        "rule_registry_version": "signal-rule-registry-v1",
+        "signal_vocab_version": "signal-vocab-v2",
+        "rule_registry_version": "signal-rule-registry-v2",
     }
 
     phase_queries = payload["phase_queries"]

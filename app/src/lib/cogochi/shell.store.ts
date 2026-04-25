@@ -130,8 +130,8 @@ function assignTabToWorkspacePanes(
 const DEFAULT_WORKSPACE_COLUMN_SPLIT = 56;
 const DEFAULT_WORKSPACE_LEFT_SPLIT_Y = 58;
 const DEFAULT_WORKSPACE_RIGHT_SPLIT_Y = 50;
-const DEFAULT_SIDEBAR_WIDTH = 196;
-const DEFAULT_AI_WIDTH = 280;
+const DEFAULT_SIDEBAR_WIDTH = 178;
+const DEFAULT_AI_WIDTH = 320;
 
 const FRESH_WORKSPACE_LAYOUT = (): Record<WorkspacePanelId, WorkspacePanelRect> => ({
   analyze: { x: 0, y: 0, w: 58, h: 56 },
@@ -168,15 +168,15 @@ const makeDefault = (): ShellState => ({
     { id: 't1', kind: 'trade', mode: 'trade', title: 'BTC · new session', locked: false, tabState: FRESH_TAB_STATE() },
   ],
   activeTabId: 't1',
-  workMode: 'analyze',
+  workMode: 'observe',
   workspaceMode: 'single',
   workspacePaneIds: ['t1', null, null, null],
   workspaceImmersivePaneId: null,
   workspaceColumnSplit: DEFAULT_WORKSPACE_COLUMN_SPLIT,
   workspaceLeftSplitY: DEFAULT_WORKSPACE_LEFT_SPLIT_Y,
   workspaceRightSplitY: DEFAULT_WORKSPACE_RIGHT_SPLIT_Y,
-  sidebarVisible: true,
-  aiVisible: true,
+  sidebarVisible: false,
+  aiVisible: false,
   activeSection: 'library',
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
   aiWidth: DEFAULT_AI_WIDTH,
@@ -234,7 +234,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v7';
+const SHELL_KEY = 'cogochi_shell_v8';
 
 function createShellStore() {
   let initial: ShellState;

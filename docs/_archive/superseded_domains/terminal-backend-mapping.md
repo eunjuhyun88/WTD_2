@@ -18,6 +18,7 @@ Use this when wiring new UI or debugging data regressions.
 - `GET /api/market/snapshot?pair=<pair>&timeframe=<tf>&persist=0`
 - `GET /api/market/derivatives/<pair>?timeframe=<tf>`
 - `GET /api/market/events?pair=<pair>&timeframe=<tf>`
+- `GET /api/market/microstructure?pair=<pair>&timeframe=<tf>&limit=<n>`
 - `POST /api/cogochi/terminal/message` (SSE stream)
 
 ## UI Block -> Backend Field Map
@@ -40,9 +41,11 @@ Use this when wiring new UI or debugging data regressions.
   - fields: `price`, `change24h`, `snapshot.*`, `deep.atr_levels`, `p_win`, `layers`
 
 - `Order book depth + liquidation strips (chart area)`:
-  - source: `/api/market/derivatives/<pair>`, `/api/market/snapshot`
-  - mapped in page composition (`+page.svelte`) into `analysisData.microstructure`
-  - fields: `funding`, `lsRatio`, `liqLong24h`, `liqShort24h`, derived `spreadBps`, `depth.ratio`
+  - source: browser Binance Futures WS live stream, `/api/market/microstructure`, `/api/market/depth-ladder`, `/api/market/liquidation-clusters`
+  - fields: `orderbook.bids/asks`, `stats.spreadBps`, `stats.imbalancePct`, `tradeTape.trades`, `footprint.buckets`, `heatmap.bands`
+  - live streams: `aggTrade`, `depth20@100ms`
+  - priority: browser WS live > `/api/market/microstructure` REST snapshot > deterministic UI shell
+  - fallback: `/api/market/derivatives/<pair>`, `/api/market/snapshot` for coarse perp context
 
 - `Left rail watch/momentum`:
   - source: `/api/market/trending`
@@ -76,5 +79,5 @@ Use this when wiring new UI or debugging data regressions.
 
 ## Known Gaps
 
-- No dedicated backend depth ladder endpoint yet; current depth bars are derived from derivatives context.
-- No dedicated liquidation-cluster route yet; current cluster positions are derived from price + derivatives liquidation totals.
+- Browser-side WebSocket orderbook/trade-tape streaming is implemented for the `/cogochi` surface.
+- Server-side WebSocket proxy, persisted L2/tick storage, and replayable order-flow history are not implemented yet; `/api/market/microstructure` remains the short-TTL Binance futures REST snapshot used for boot/fallback.

@@ -1,6 +1,7 @@
 <script lang="ts">
   import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
-  import TerminalContextPanel from '../workspace/TerminalContextPanel.svelte';
+  import DecisionHUD from '../workspace/DecisionHUD.svelte';
+  import WhaleWatchCard from '../workspace/WhaleWatchCard.svelte';
   import type { TerminalAnalyzeData } from '$lib/terminal/terminalDataOrchestrator';
   import type { LiveSignal } from '$lib/terminal/terminalDataOrchestrator';
   import type { TerminalAsset, TerminalVerdict } from '$lib/types/terminal';
@@ -37,6 +38,7 @@
     onRetry: () => void;
     onSelectAsset: (symbol: string) => void;
     onClearBoard: () => void;
+    onWorkspaceToggle?: () => void;
   }
 
   let {
@@ -69,6 +71,7 @@
     onRetry,
     onSelectAsset,
     onClearBoard,
+    onWorkspaceToggle,
   }: Props = $props();
 </script>
 
@@ -102,6 +105,9 @@
         {@const sym = asset.symbol.replace('USDT','')}
         {@const dir = verdict?.direction ?? asset.bias}
         {@const active = asset.symbol === activeSymbol}
+        {@const chg = asset.changePct4h ?? null}
+        {@const fr = asset.fundingRate ?? null}
+        {@const price = asset.lastPrice ?? null}
         <button
           class="scan-card"
           class:active
@@ -111,35 +117,47 @@
         >
           <div class="sc-left">
             <span class="sc-sym">{sym}</span>
-            <span class="sc-venue">USDT·PERP</span>
+            {#if price != null}
+              <span class="sc-price">{price >= 1000
+                ? price.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                : price >= 1 ? price.toFixed(2)
+                : price.toPrecision(4)}</span>
+            {:else}
+              <span class="sc-venue">USDT·PERP</span>
+            {/if}
           </div>
           <div class="sc-right">
-            <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
-            {#if verdict?.reason}
-              <span class="sc-reason">{verdict.reason.slice(0, 48)}{verdict.reason.length > 48 ? '…' : ''}</span>
-            {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
-              <span class="sc-loading">analyzing…</span>
-            {/if}
+            <div class="sc-top-row">
+              <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
+              {#if chg != null}
+                <span class="sc-chg" class:chg-up={chg >= 0} class:chg-dn={chg < 0}>
+                  {chg >= 0 ? '▲' : '▼'}{Math.abs(chg).toFixed(2)}%
+                </span>
+              {/if}
+            </div>
+            <div class="sc-meta-row">
+              {#if fr != null}
+                <span class="sc-fr" class:fr-high={fr > 0.05} class:fr-neg={fr < -0.01}>
+                  F:{fr >= 0 ? '+' : ''}{fr.toFixed(4)}%
+                </span>
+              {/if}
+              {#if verdict?.reason}
+                <span class="sc-reason">{verdict.reason.slice(0, 32)}{verdict.reason.length > 32 ? '…' : ''}</span>
+              {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
+                <span class="sc-loading">analyzing…</span>
+              {/if}
+            </div>
           </div>
         </button>
       {/each}
     </div>
     {#if heroAsset && heroVerdict}
       <div class="scan-detail">
-        <TerminalContextPanel
-          {analysisData}
-          {newsData}
-          activeTab={activeAnalysisTab}
-          onTabChange={onTabChange}
+        <DecisionHUD
+          analysisData={analysisData as any}
+          isStreaming={isStreaming}
+          symbol={activeSymbol}
           onAction={onAction}
-          onPinToggle={onPinToggle}
-          onAlertToggle={onAlertToggle}
-          onRetry={onRetry}
-          isPinned={isActivePinned}
-          hasSavedAlert={hasActiveSavedAlert}
-          bars={ohlcvBars}
-          {layerBarsMap}
-          {patternRecallMatches}
         />
       </div>
     {/if}
@@ -149,21 +167,18 @@
       <p class="loading-msg">Analyzing {activePairDisplay}…</p>
     </div>
   {:else if heroAsset && heroVerdict}
-    <TerminalContextPanel
-      {analysisData}
-      {newsData}
-      activeTab={activeAnalysisTab}
-      onTabChange={onTabChange}
+    <DecisionHUD
+      analysisData={analysisData as any}
+      isStreaming={isStreaming}
+      isLoading={isLoadingActive && !heroVerdict}
+      symbol={activeSymbol}
       onAction={onAction}
-      onPinToggle={onPinToggle}
-      onAlertToggle={onAlertToggle}
-      onRetry={onRetry}
-      isPinned={isActivePinned}
-      hasSavedAlert={hasActiveSavedAlert}
-      bars={ohlcvBars}
-      {layerBarsMap}
-      {patternRecallMatches}
+      onWorkspaceToggle={onWorkspaceToggle}
     />
+    <!-- W-0210 Layer 2: Whale Watch — Hyperliquid top traders -->
+    <div class="whale-wrap">
+      <WhaleWatchCard symbol={activeSymbol} />
+    </div>
   {:else}
     <div class="board-empty">
       <p class="empty-icon">◈</p>
@@ -278,12 +293,21 @@
   .scan-card.active { background: rgba(255,255,255,0.07); }
   .scan-card.bullish .sc-dir { color: #4ade80; }
   .scan-card.bearish .sc-dir { color: #f87171; }
-  .sc-left  { display: flex; flex-direction: column; gap: 3px; min-width: 56px; }
+  .sc-left  { display: flex; flex-direction: column; gap: 2px; min-width: 56px; }
   .sc-sym   { font-family: var(--sc-font-mono, monospace); font-size: 12px; font-weight: 700; color: #fff; }
   .sc-venue { font-size: 9px; color: rgba(255,255,255,0.30); font-family: var(--sc-font-mono, monospace); }
-  .sc-right { display: flex; flex-direction: column; gap: 3px; flex: 1; align-items: flex-end; }
+  .sc-price { font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.70); }
+  .sc-right { display: flex; flex-direction: column; gap: 2px; flex: 1; align-items: flex-end; }
+  .sc-top-row { display: flex; align-items: center; gap: 5px; }
   .sc-dir   { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.48); }
-  .sc-reason  { font-size: 10px; color: rgba(255,255,255,0.42); text-align: right; line-height: 1.25; }
+  .sc-chg   { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; }
+  .sc-chg.chg-up { color: #22ab94; }
+  .sc-chg.chg-dn { color: #f23645; }
+  .sc-meta-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .sc-fr    { font-family: var(--sc-font-mono, monospace); font-size: 8px; font-weight: 600; color: rgba(255,255,255,0.38); letter-spacing: 0.04em; }
+  .sc-fr.fr-high { color: rgba(242,54,69,0.82); }
+  .sc-fr.fr-neg  { color: rgba(34,171,148,0.82); }
+  .sc-reason  { font-size: 9px; color: rgba(255,255,255,0.38); text-align: right; line-height: 1.2; }
   .sc-loading { font-size: 9px; color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
   @keyframes sc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
@@ -338,4 +362,10 @@
   }
   .loading-msg { font-family: var(--sc-font-mono); font-size: 13px; color: var(--sc-text-2); margin: 0; }
   @keyframes sc-spin { to { transform: rotate(360deg); } }
+
+  /* W-0210 Layer 2: Whale Watch wrapper */
+  .whale-wrap {
+    padding: 8px 8px 0;
+    flex-shrink: 0;
+  }
 </style>

@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { canonicalSymbol, terminalState } from '$lib/stores/terminalState';
+  import { canonicalChange24h, canonicalSymbol, terminalState } from '$lib/stores/terminalState';
   import SymbolPicker from './SymbolPicker.svelte';
+  import IndicatorLibrary from './IndicatorLibrary.svelte';
+  import PineScriptGenerator from './PineScriptGenerator.svelte';
 
   interface Props {
     assetsCount?: number;
@@ -8,6 +10,8 @@
     onToggleMarketRail?: () => void;
     price?: number | null;
     change24h?: number | null;
+    mode?: 'observe' | 'analyze' | 'execute';
+    onModeChange?: (mode: string) => void;
   }
 
   let {
@@ -16,11 +20,15 @@
     onToggleMarketRail,
     price = null,
     change24h = null,
+    mode = 'analyze',
+    onModeChange,
   }: Props = $props();
 
   const displayChange = $derived(change24h ?? $canonicalChange24h);
 
   let showSymbolDrop = $state(false);
+  let showIndicatorLib = $state(false);
+  let showPineGen = $state(false);
 
   function fmtPrice(p: number): string {
     if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -59,6 +67,47 @@
 
   <div class="cmd-spacer" aria-hidden="true"></div>
 
+  <!-- Mode pill: Observe / Analyze / Execute -->
+  <div class="mode-pill" role="group" aria-label="Terminal mode">
+    {#each (['observe', 'analyze', 'execute'] as const) as m}
+      <button
+        class="mode-seg"
+        class:mode-seg--active={mode === m}
+        class:mode-seg--observe={m === 'observe' && mode === 'observe'}
+        class:mode-seg--execute={m === 'execute' && mode === 'execute'}
+        onclick={() => onModeChange?.(m)}
+        aria-pressed={mode === m}
+      >{m.toUpperCase()}</button>
+    {/each}
+  </div>
+
+  <!-- Pine Script Generator -->
+  <button
+    class="cmd-btn cmd-btn--pine"
+    class:cmd-btn--active={showPineGen}
+    type="button"
+    onclick={() => showPineGen = !showPineGen}
+    aria-label="Pine Script Generator"
+    title="자연어 → Pine Script"
+  >
+    <span style="font-size:11px">⌥</span>
+    <span>Script</span>
+  </button>
+
+  <!-- Indicators -->
+  <button
+    class="cmd-btn"
+    class:cmd-btn--active={showIndicatorLib}
+    type="button"
+    onclick={() => showIndicatorLib = !showIndicatorLib}
+    aria-label="Indicator Library"
+  >
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    <span>Indicators</span>
+  </button>
+
   <!-- Markets toggle -->
   <button
     class="markets-btn"
@@ -74,6 +123,16 @@
     <span class="markets-label">Markets</span>
   </button>
 </nav>
+
+<IndicatorLibrary
+  open={showIndicatorLib}
+  onClose={() => showIndicatorLib = false}
+/>
+
+<PineScriptGenerator
+  open={showPineGen}
+  onClose={() => showPineGen = false}
+/>
 
 {#if showSymbolDrop}
   <SymbolPicker
@@ -160,6 +219,71 @@
 
   /* Spacer */
   .cmd-spacer { flex: 1 1 auto; min-width: 8px; }
+
+  /* Mode pill */
+  .mode-pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    border-radius: 5px;
+    overflow: hidden;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .mode-seg {
+    padding: 4px 9px;
+    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    color: rgba(209,212,220,0.38);
+    cursor: pointer;
+    transition: background 100ms, color 100ms;
+    white-space: nowrap;
+  }
+  .mode-seg:last-child { border-right: none; }
+  .mode-seg:hover { background: rgba(255,255,255,0.04); color: rgba(209,212,220,0.72); }
+  .mode-seg--active { background: rgba(255,255,255,0.07); color: rgba(209,212,220,0.92); }
+  .mode-seg--observe.mode-seg--active { background: rgba(99,179,237,0.09); color: #63b3ed; }
+  .mode-seg--execute.mode-seg--active { background: rgba(74,222,128,0.09); color: #4ade80; }
+
+  /* Shared cmd button (Indicators, future buttons) */
+  .cmd-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    margin-right: 6px;
+    border-radius: 4px;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    background: rgba(255,255,255,0.025);
+    color: var(--tv-text-1, rgba(209,212,220,0.72));
+    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 100ms, border-color 100ms, color 100ms;
+    flex-shrink: 0;
+  }
+  .cmd-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--tv-text-0, #D1D4DC);
+    border-color: rgba(255,255,255,0.11);
+  }
+  .cmd-btn--active {
+    background: rgba(34,171,148,0.10);
+    border-color: rgba(34,171,148,0.28);
+    color: #22AB94;
+  }
+  .cmd-btn--pine.cmd-btn--active {
+    background: rgba(255,199,80,0.10);
+    border-color: rgba(255,199,80,0.30);
+    color: #ffc750;
+  }
 
   /* Markets button */
   .markets-btn {

@@ -32,11 +32,10 @@ import logging
 import time
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 
-log = logging.getLogger("engine.captures")
-
+from api.schemas_pattern_draft import ParserMetaBody, PatternDraftBody
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store, validate_pattern_slug
@@ -109,55 +108,6 @@ class ResearchOutcomeSpecBody(BaseModel):
     confirm_breakout_within_bars: int | None = None
     min_forward_return_pct: float | None = None
     stretch_return_pct: float | None = None
-
-
-class PatternDraftPhaseBody(BaseModel):
-    phase_id: str
-    label: str
-    sequence_order: int = Field(default=0, ge=0)
-    description: str = ""
-    timeframe: str | None = None
-    signals_required: list[str] = Field(default_factory=list, max_length=24)
-    signals_preferred: list[str] = Field(default_factory=list, max_length=24)
-    signals_forbidden: list[str] = Field(default_factory=list, max_length=24)
-    directional_belief: str | None = None
-    evidence_text: str | None = None
-    time_hint: str | None = None
-    importance: float | None = Field(default=None, ge=0.0, le=1.0)
-
-
-class PatternDraftSearchHintsBody(BaseModel):
-    must_have_signals: list[str] = Field(default_factory=list, max_length=24)
-    preferred_timeframes: list[str] = Field(default_factory=list, max_length=8)
-    exclude_patterns: list[str] = Field(default_factory=list, max_length=24)
-    similarity_focus: list[str] = Field(default_factory=list, max_length=12)
-    symbol_scope: list[str] = Field(default_factory=list, max_length=32)
-
-
-class PatternDraftBody(BaseModel):
-    schema_version: int = Field(default=1, ge=1)
-    pattern_family: str
-    pattern_label: str | None = None
-    source_type: str
-    source_text: str
-    symbol_candidates: list[str] = Field(default_factory=list, max_length=16)
-    timeframe: str | None = None
-    thesis: list[str] = Field(default_factory=list, max_length=12)
-    phases: list[PatternDraftPhaseBody] = Field(default_factory=list, max_length=12)
-    trade_plan: dict[str, Any] = Field(default_factory=dict)
-    search_hints: PatternDraftSearchHintsBody = Field(default_factory=PatternDraftSearchHintsBody)
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    ambiguities: list[str] = Field(default_factory=list, max_length=16)
-
-
-class ParserMetaBody(BaseModel):
-    parser_role: str
-    parser_model: str
-    parser_prompt_version: str
-    pattern_draft_schema_version: int = Field(default=1, ge=1)
-    signal_vocab_version: str
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    ambiguity_count: int = Field(default=0, ge=0)
 
 
 class ResearchContextBody(BaseModel):
@@ -354,6 +304,15 @@ async def create_capture(request: Request, body: CaptureCreateBody) -> dict:
     )
     _capture_store.save(record)
     LEDGER_RECORD_STORE.append_capture_record(record)
+
+    # Trigger wiki page update for this pattern (debounced, best-effort).
+    if record.pattern_slug:
+        try:
+            from wiki.ingest import get_wiki_agent
+            get_wiki_agent().on_capture_created(record.pattern_slug, record.id)
+        except Exception:
+            pass
+
     return {"ok": True, "capture": record.to_dict()}
 
 
@@ -521,6 +480,20 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
         "verdict_ready",
         verdict_id=outcome.id,
     )
+
+    # Invalidate stats cache so next request reflects this verdict immediately.
+    try:
+        from stats.engine import get_stats_engine
+        get_stats_engine().invalidate()
+    except Exception:
+        pass  # stats cache is best-effort
+
+    # Trigger wiki page update for this pattern (debounced, best-effort).
+    try:
+        from wiki.ingest import get_wiki_agent
+        get_wiki_agent().on_verdict_submitted(capture.pattern_slug, outcome.id)
+    except Exception:
+        pass
 
     return {
         "ok": True,
