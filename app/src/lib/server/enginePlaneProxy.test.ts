@@ -17,6 +17,8 @@ describe('enginePlaneProxy', () => {
 
 	it('allowlists only plane-owned paths', () => {
 		expect(isAllowedPlaneProxyPath('facts', 'ctx/fact', 'GET')).toBe(true);
+		expect(isAllowedPlaneProxyPath('facts', 'perp-context', 'GET')).toBe(true);
+		expect(isAllowedPlaneProxyPath('facts', 'price-context', 'GET')).toBe(true);
 		expect(isAllowedPlaneProxyPath('facts', 'scan', 'POST')).toBe(false);
 		expect(isAllowedPlaneProxyPath('search', 'scan', 'POST')).toBe(true);
 		expect(isAllowedPlaneProxyPath('search', 'scan/scan_1', 'GET')).toBe(true);
@@ -53,6 +55,33 @@ describe('enginePlaneProxy', () => {
 		);
 		expect(res.headers.get('x-wtd-plane')).toBe('fact');
 		expect(res.headers.get('x-wtd-upstream')).toBe('facts/reference-stack');
+	});
+
+	it('maps fact perp-context routes to canonical /facts upstreams', async () => {
+		const upstream = new Response(JSON.stringify({ ok: true, plane: 'fact', kind: 'perp_context' }), {
+			status: 200,
+			headers: { 'content-type': 'application/json' },
+		});
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(upstream as never);
+
+		const req = new Request('http://localhost/api/facts/perp-context?symbol=BTCUSDT&timeframe=4h', {
+			method: 'GET',
+		});
+		const res = await handleEnginePlaneRequest(
+			{ request: req, params: { path: 'perp-context' } } as any,
+			'facts',
+			'GET',
+		);
+
+		expect(res.status).toBe(200);
+		expect(globalThis.fetch).toHaveBeenCalledWith(
+			'http://localhost:8000/facts/perp-context?symbol=BTCUSDT&timeframe=4h',
+			expect.objectContaining({
+				method: 'GET',
+				headers: expect.any(Headers),
+			}),
+		);
+		expect(res.headers.get('x-wtd-upstream')).toBe('facts/perp-context');
 	});
 
 	it('maps search POST routes to canonical /search upstreams', async () => {

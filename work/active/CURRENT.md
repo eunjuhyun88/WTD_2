@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25)
+# CURRENT — 단일 진실 (2026-04-25 B)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -7,14 +7,25 @@
 
 ## main SHA
 
-`219dc317` — current local `origin/main` ref (branch: `codex/w-0200-core-loop-proof` is 10 commits ahead)
+`18187dcf` — PR #252, #253, #254, #256, #258 모두 머지 완료 (2026-04-25)
 
-## 완료 (이번 세션)
+## 완료 (이번 세션 — 아키텍처 개선)
+
+| 변경 | 내용 |
+|---|---|
+| `cloudbuild.yaml` | `--min-instances 1` 추가 — API cold start 제거 |
+| `cloudbuild.worker.yaml` | `--concurrency 1` + `--timeout 900` 추가 — job 중복 방지 |
+| `engine/search/similar.py` | W-0162 Layer A 업그레이드: feature_snapshot 우선 사용 (3→40+ dims) + FeatureWindowStore batch enrichment |
+| `docs/runbooks/cloud-scheduler-setup.md` | Cloud Scheduler 등록 runbook 신규 작성 |
+
+## 이전 세션 완료
 
 | PR | 내용 |
 |---|---|
 | #252 (W-0157) | `/jobs/feature_materialization/run` + `/jobs/raw_ingest/run` Cloud Scheduler HTTP endpoints |
+| #253 (W-0162) | JWT P0 hardening — JWKS cache + circuit breaker |
 | #254 (W-0200) | Core Loop Proof: range select → auto-analyze → find similar (10개) → outcome → save |
+| #256 | Pattern similarity search UI |
 | DB migration 019 | `audit_log` 테이블 Supabase에 적용 완료 |
 | DB migration 020 | `capture_records`에 `definition_id`, `definition_ref_json`, `research_context_json` 컬럼 추가 |
 
@@ -24,20 +35,19 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0200** | `W-0200-core-loop-proof.md` | 🟢 COMPLETE — PR #254 머지 대기 | PR 머지 후 GCP 재배포 + 프로덕션 스모크 테스트 |
-
-> **다음 원칙**: W-0200 PR이 머지되고 프로덕션 스모크가 확인되면 deferred work items 재개 가능.
+| **W-0204** | `W-0204-chatops-pattern-review-surface.md` | 🟡 DESIGN | CUI ChatOps as pattern review/verdict surface, not order bot |
+| **W-0203** | `W-0203-engine-performance-benchmark-lab.md` | 🟡 DESIGN | Baseline/candidate benchmark recording protocol |
+| **W-0202** | `W-0202-engine-strengthening-methodology.md` | 🟡 DESIGN | Turn 5 engine-strengthening pillars into implementation slices |
+| **W-0201** | `W-0201-pattern-wiki-compiler.md` | 🟡 DESIGN | Pattern Wiki skeleton + TRADOOR/PTB first compiled artifacts |
+| **W-0200** | `W-0200-core-loop-proof.md` | 🟢 COMPLETE — 머지됨 | GCP 재배포 + 프로덕션 스모크 테스트 |
 
 ---
 
 ## Deferred (루프 완성 이후 재개)
 
-아래 work item들은 코드/브랜치가 존재하나, W-0200 프로덕션 확인 전까지 진행 금지.
-`work/active/` 파일은 유지하되, 이 index에서는 deferred 처리.
-
 | ID | 상태 | 재개 조건 |
 |---|---|---|
-| W-0162 | 🟡 DEFERRED | search corpus → full `feature_windows` 업그레이드 (PR #253 JWT 선행) |
+| W-0162 | 🟢 PARTIAL — Layer A 업그레이드 완료 | search corpus → FeatureWindowStore 완전 전환 (W-0162 남은 slice) |
 | W-0160 | 🟡 DEFERRED | runtime capture/ledger scope policy, legacy backfill policy |
 | W-0148 | 🟡 DEFERRED | broader plane contract/governance owner 작업 |
 | W-0122 | 🟡 DEFERRED | fact-plane canonical routes |
@@ -68,38 +78,27 @@
 
 ## 현재 브랜치 상태
 
-- active: `codex/w-0200-core-loop-proof` (10 commits ahead of origin/main, PR #254 open)
-- `claude/strange-proskuriakova`: job endpoints PR #252 open
-- 다음 브랜치: main에서 새로 시작 (W-0200 머지 후)
+- `claude/strange-proskuriakova`: architecture improvements (이번 세션 작업, PR 대기)
+- main: e2fba18b (모든 PR 머지 완료)
 
 ---
 
-## 즉시 실행 순서 (사람 + 에이전트)
+## 즉시 실행 순서 (사람)
 
-### 사람 실행 필요
-
-1. **PR #252 머지** — job HTTP endpoints
-2. **PR #254 머지** — W-0200 core loop
-3. **GCP Cloud Run 재배포** — 새 code 반영
-4. **Cloud Scheduler 등록** (2개 job):
-   - `POST /jobs/feature_materialization/run` — 15분, `Authorization: Bearer <SCHEDULER_SECRET>`
-   - `POST /jobs/raw_ingest/run` — 60분, 동일 auth
-5. **Vercel `EXCHANGE_ENCRYPTION_KEY`** 프로덕션 환경변수 설정
-6. **프로덕션 스모크 테스트**: 터미널 → 심볼 → 구간 드래그 → 패턴 저장 → 유사 패턴 표시 확인
-
-### 에이전트 대기 (머지 후 재개)
-
-- W-0162: full feature_windows 기반 corpus 업그레이드 (strangler pattern)
-- W-0163: pattern scanner → feature_windows 읽기로 전환
+1. **GCP Cloud Build trigger 확인**: `cogotchi-worker` 트리거 있는지 GCP 콘솔 확인 → 없으면 `/cloudbuild.worker.yaml` 트리거 추가
+2. **Cloud Scheduler 등록** — `docs/runbooks/cloud-scheduler-setup.md` 참조
+3. **Vercel `EXCHANGE_ENCRYPTION_KEY`** 프로덕션 환경변수 설정
+4. **GCP `cogotchi` min-instances 확인** — `cloudbuild.yaml` 업데이트 후 재배포 시 자동 반영
+5. **프로덕션 스모크 테스트**: 터미널 → 심볼 → 구간 드래그 → 패턴 저장 → 유사 패턴 표시 확인
 
 ---
 
 ## 인프라 미완 (사람 직접 실행 필요)
 
 - [x] Supabase migration 018 (pattern_ledger_records)
-- [x] Supabase migration 019 (audit_log) — 2026-04-25 적용 완료
-- [x] Supabase migration 020 (capture_records definition columns) — 2026-04-25 적용 완료
+- [x] Supabase migration 019 (audit_log)
+- [x] Supabase migration 020 (capture_records definition columns)
 - [x] Vercel preview branch env 정렬
-- [ ] Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 결정
+- [ ] GCP cogotchi-worker Cloud Build trigger 설정 확인
 - [ ] Vercel EXCHANGE_ENCRYPTION_KEY 환경변수 설정 (프로덕션)
-- [ ] Cloud Scheduler HTTP jobs 등록 (PR #252 머지 후)
+- [ ] Cloud Scheduler HTTP jobs 등록 (`docs/runbooks/cloud-scheduler-setup.md`)

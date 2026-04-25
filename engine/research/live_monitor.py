@@ -68,12 +68,8 @@ PHASE_ORDER = {
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
 # Add new patterns here as they are promoted.
 PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
-    ("tradoor-oi-reversal-v1",          "tradoor-oi-reversal-v1__canonical",                    {"ACCUMULATION", "REAL_DUMP"}),
-    ("funding-flip-reversal-v1",        "funding-flip-reversal-v1__canonical__dur-long",        {"ENTRY_ZONE", "FLIP_SIGNAL"}),
-    ("wyckoff-spring-reversal-v1",      "wyckoff-spring-reversal-v1__canonical__dur-long",      {"SPRING", "SIGN_OF_STRENGTH"}),
-    ("whale-accumulation-reversal-v1",  "whale-accumulation-reversal-v1__canonical__dur-long",  {"BOTTOM_CONFIRM", "WHALE_ACCUMULATION"}),
-    ("volume-absorption-reversal-v1",   "volume-absorption-reversal-v1__canonical",             {"SELLING_CLIMAX", "ABSORPTION"}),
-    ("compression-breakout-reversal-v1", "compression-breakout-reversal-v1__cbr-v1",            {"SETUP", "COILING"}),
+    ("tradoor-oi-reversal-v1",    "tradoor-oi-reversal-v1__canonical",    {"ACCUMULATION", "REAL_DUMP"}),
+    ("funding-flip-reversal-v1",  "funding-flip-reversal-v1__canonical__dur-long",  {"ENTRY_ZONE", "FLIP_SIGNAL"}),
 ]
 
 
@@ -262,6 +258,21 @@ def scan_all_patterns_live(
         -(x.fwd_peak_pct or -999),
     ))
     return all_results
+
+
+def resolve_live_variant_slug(pattern_slug: str, variant_slug: str | None = None) -> str:
+    """Return the canonical live variant slug for a pattern.
+
+    If *variant_slug* is given, return it as-is (caller override).
+    Otherwise look up the canonical variant in PROMOTED_PATTERNS.
+    Falls back to ``{pattern_slug}__canonical`` if not registered.
+    """
+    if variant_slug is not None:
+        return variant_slug
+    for slug, canonical, _ in PROMOTED_PATTERNS:
+        if slug == pattern_slug:
+            return canonical
+    return f"{pattern_slug}__canonical"
 
 
 def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SCAN") -> None:

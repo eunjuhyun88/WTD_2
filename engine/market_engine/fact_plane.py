@@ -98,6 +98,108 @@ def _source_state(name: str, frame: pd.DataFrame | None, *, requested: bool = Tr
     }
 
 
+def _provider_status(raw_status: str) -> str:
+    if raw_status == "ok":
+        return "live"
+    if raw_status == "not_requested":
+        return "reference_only"
+    if raw_status == "missing":
+        return "blocked"
+    return "stale"
+
+
+def _provider_state(sources: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    state: dict[str, dict[str, Any]] = {}
+    for source_id, source in sources.items():
+        rows = int(source.get("rows") or 0)
+        updated_at = source.get("end_at")
+        summary = f"{rows} rows" if rows > 0 else "no rows"
+        if updated_at:
+            summary = f"{summary}; latest={updated_at}"
+        state[source_id] = {
+            "status": _provider_status(str(source.get("status") or "missing")),
+            "summary": summary,
+            "updated_at": updated_at,
+        }
+    return state
+
+
+def _reference_health(provider_state: dict[str, dict[str, Any]]) -> dict[str, int]:
+    counts = {
+        "live": 0,
+        "blocked": 0,
+        "reference_only": 0,
+        "stale": 0,
+    }
+    for source in provider_state.values():
+        status = str(source.get("status") or "stale")
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
+def _crowding_state(funding_rate: float, oi_change_24h: float) -> str:
+    if funding_rate > 0.0005 and oi_change_24h > 0.03:
+        return "crowded_longs"
+    if funding_rate < -0.0005 and oi_change_24h > 0.03:
+        return "crowded_shorts"
+    if abs(funding_rate) < 0.0001 and abs(oi_change_24h) < 0.01:
+        return "neutral"
+    return "mixed"
+
+
+def _compact_confluence_summary(features: dict[str, Any]) -> dict[str, Any]:
+    score = 0
+    evidence_count = 0
+
+    ema_alignment = str(features.get("ema_alignment") or "")
+    if ema_alignment == "bullish":
+        score += 1
+        evidence_count += 1
+    elif ema_alignment == "bearish":
+        score -= 1
+        evidence_count += 1
+
+    htf_structure = str(features.get("htf_structure") or "")
+    if htf_structure == "uptrend":
+        score += 1
+        evidence_count += 1
+    elif htf_structure == "downtrend":
+        score -= 1
+        evidence_count += 1
+
+    funding_rate = float(features.get("funding_rate") or 0.0)
+    oi_change_24h = float(features.get("oi_change_24h") or 0.0)
+    crowding = _crowding_state(funding_rate, oi_change_24h)
+    if crowding == "crowded_shorts":
+        score += 1
+        evidence_count += 1
+    elif crowding == "crowded_longs":
+        score -= 1
+        evidence_count += 1
+
+    fear_greed = float(features.get("fear_greed") or 50.0)
+    if fear_greed < 25:
+        score += 1
+        evidence_count += 1
+    elif fear_greed > 75:
+        score -= 1
+        evidence_count += 1
+
+    verdict = "neutral"
+    if score > 0:
+        verdict = "bullish"
+    elif score < 0:
+        verdict = "bearish"
+
+    return {
+        "score": score,
+        "verdict": verdict,
+        "confidence": min(85, 35 + evidence_count * 8 + abs(score) * 6),
+        "regime": features.get("regime"),
+    }
+
+
 def _build_snapshot_perp_input(perp_df: pd.DataFrame | None) -> dict[str, float] | None:
     if perp_df is None or perp_df.empty:
         return None
@@ -296,8 +398,8 @@ def build_fact_context(
         raise FactContextBuildError(500, "fact_context_build_failed", str(exc)) from exc
 
     last_feature_row = features_df.iloc[-1]
+    feature_row_json = _row_to_json(last_feature_row)
     latest_bar = klines_df.iloc[-1]
-    snapshot_payload = snapshot.model_dump(mode="json")
     sources = {
         "klines": _source_state("klines", klines_df),
         "perp": _source_state("perp", perp_df),
@@ -306,9 +408,8 @@ def build_fact_context(
         "dex": _source_state("dex_bundle", dex_df),
         "chain": _source_state("chain_bundle", chain_df),
     }
-    provider_state = _provider_state_from_sources(sources)
-    bar_ts = pd.Timestamp(klines_df.index[-1]).tz_convert("UTC") if klines_df.index[-1].tzinfo is not None else pd.Timestamp(klines_df.index[-1]).tz_localize("UTC")
-    feature_row = _row_to_json(last_feature_row)
+    provider_state = _provider_state(sources)
+    end_at = _ts_to_iso(klines_df.index[-1])
 
     return {
         "ok": True,
@@ -316,7 +417,7 @@ def build_fact_context(
         "plane": "fact",
         "status": "transitional",
         "generated_at": _now_iso(),
-        "fact_id": f"{normalized_symbol}:{timeframe}:{int(bar_ts.timestamp())}",
+        "fact_id": f"fact:{normalized_symbol}:{timeframe}:{int(pd.Timestamp(klines_df.index[-1]).timestamp())}",
         "symbol": normalized_symbol,
         "timeframe": timeframe,
         "offline": offline,
@@ -325,9 +426,10 @@ def build_fact_context(
             "count": int(len(klines_df)),
             "min_required": MIN_HISTORY_BARS,
             "start_at": _ts_to_iso(klines_df.index[0]),
-            "end_at": _ts_to_iso(klines_df.index[-1]),
+            "end_at": end_at,
         },
         "sources": sources,
+        "provider_state": provider_state,
         "reference_health": _reference_health(provider_state),
         "market": {
             "price": float(latest_bar.get("close", 0.0)),
@@ -335,11 +437,11 @@ def build_fact_context(
             "high": float(latest_bar.get("high", 0.0)),
             "low": float(latest_bar.get("low", 0.0)),
             "volume": float(latest_bar.get("volume", 0.0)),
-            "timestamp": _ts_to_iso(klines_df.index[-1]),
+            "timestamp": end_at,
         },
-        "snapshot": snapshot_payload,
-        "feature_row": feature_row,
-        "confluence": _compact_confluence_summary(feature_row, snapshot_payload),
+        "snapshot": snapshot.model_dump(mode="json"),
+        "feature_row": feature_row_json,
+        "confluence": _compact_confluence_summary(feature_row_json),
         "notes": [
             "engine-owned bounded fact context",
             "backed by existing engine cache/loaders; shared-state migration still pending",

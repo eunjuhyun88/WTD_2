@@ -12,6 +12,7 @@ import pandas as pd
 from data_cache.loader import load_klines, load_perp
 from features.materialization import materialize_window_bundle
 from features.materialization_store import FeatureMaterializationStore
+from search.corpus import SearchCorpusStore, build_corpus_windows
 
 
 def _raw_market_rows(bars: pd.DataFrame, *, venue: str, symbol: str, timeframe: str) -> list[dict[str, Any]]:
@@ -132,6 +133,10 @@ def materialize_symbol_window(
     if bundle.pattern_event is not None:
         store.upsert_pattern_events([bundle.pattern_event])
     store.upsert_search_corpus_signatures([bundle.search_signature])
+
+    corpus_windows = build_corpus_windows(symbol, timeframe, bars_df)
+    if corpus_windows:
+        SearchCorpusStore().upsert_windows(corpus_windows)
 
     return {
         "feature_window": bundle.feature_window,

@@ -239,10 +239,6 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 # cvd_buying: taker order-flow is net-buy while we await squeeze.
                 # Mirrors ALPHA TERMINAL S1 "CVD from multiple exchanges aligning".
                 "cvd_buying",
-                # absorption_signal: carry-over from COMPRESSION — if buying is still
-                # being absorbed by remaining sell-walls in ENTRY_ZONE, squeeze is
-                # even more imminent when the wall finally exhausts.
-                "absorption_signal",
             ],
             disqualifier_blocks=[],
             score_weights={
@@ -253,7 +249,6 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 "volume_dryup": 0.05,
                 "oi_expansion_confirm": 0.10,
                 "cvd_buying": 0.08,
-                "absorption_signal": 0.08,
             },
             phase_score_threshold=0.70,
             transition_window_bars=12,
@@ -1260,6 +1255,14 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     OI_PRESURGE_LONG.slug: OI_PRESURGE_LONG,  # W-0114 딸깍 전략
     ALPHA_PRESURGE.slug: ALPHA_PRESURGE,      # W-0115 Alpha Universe
 }
+
+# Patterns derived from HTML reference sources — tagged "html_ref".
+# This list is built dynamically so new html_ref patterns are picked up
+# automatically when added to PATTERN_LIBRARY.
+HTML_REFERENCE_PATTERNS: list[PatternObject] = [
+    p for p in PATTERN_LIBRARY.values() if "html_ref" in p.tags
+]
+
 
 def get_pattern(slug: str) -> PatternObject:
     if slug not in PATTERN_LIBRARY:

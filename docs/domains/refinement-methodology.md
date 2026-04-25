@@ -39,6 +39,8 @@ With a methodology layer, parallel agents become one interchangeable execution s
 ## Canonical Position In The Core Loop
 
 The methodology plane sits after judged evidence and before promotion-safe deployment.
+The concrete engine-strengthening gates that feed this plane are defined in
+`docs/domains/engine-strengthening-methodology.md`.
 
 ```text
 Candidate / Capture / Outcome / Verdict
@@ -157,12 +159,17 @@ Required memory types:
 - ideas that failed consistently
 - search spaces already found to be flat
 - assumptions that turned out to be wrong
+- pattern wiki claims that were accepted, rejected, contradicted, or still need
+  verification
 
 Design rules:
 
 - memory must keep rejected paths, not only winners
 - repeated failed exploration is a methodology failure, not just wasted compute
 - memory should be compact and current, not a chat transcript dump
+- Pattern Wiki memory can organize research claims, cases, and negatives, but it
+  cannot promote runtime truth without an evaluation protocol and engine artifact
+  reference.
 
 ### 5. Promotion Layer
 
@@ -198,6 +205,7 @@ At minimum, the methodology architecture needs these entities.
 | `Aggregate Result` | cross-run summary used for comparison |
 | `Selection Decision` | records why one candidate advanced |
 | `Research Memory` | retained breakthroughs, rejections, and flat areas |
+| `Pattern Wiki Page` | source-linked synthesis page used to compile PatternDraft, benchmark, and negative-set candidates |
 
 ## Runtime Placement
 

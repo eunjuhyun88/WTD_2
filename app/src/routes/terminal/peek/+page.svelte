@@ -52,7 +52,7 @@
 
   // ── Derived from activePairState ─────────────────────────────────────────
   const activeSymbol = $derived(
-    $activePairState.pair.replace('/', '').toUpperCase()
+    ($activePairState.base + $activePairState.quote).toUpperCase()
   );
   const activeTf = $derived($activePairState.timeframe);
 
@@ -136,6 +136,7 @@
   }
 
   // ── Auto-refresh on pair change ──────────────────────────────────────────
+  let pairWatcher = $state(0);
   $effect(() => {
     const sym = activeSymbol;
     const tf = activeTf;
@@ -145,6 +146,7 @@
         loadSimilar(sym, tf);
       }
     });
+    pairWatcher++;
   });
 
   // ── Mount + periodic refresh ─────────────────────────────────────────────
@@ -163,7 +165,7 @@
   });
 
   // ── Derived counts for peek bar ──────────────────────────────────────────
-  const analyzeCount = $derived((analysisData as any)?.verdict ? 1 : 0);
+  const analyzeCount = $derived(analysisData?.verdict ? 1 : 0);
   const scanCount = $derived(scannerAlerts.length);
   const judgeCount = $derived(captures.filter((c: any) => {
     const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
@@ -171,11 +173,11 @@
   }).length);
 
   // ── Verdict extraction for JudgePanel ────────────────────────────────────
-  const judgeVerdict = $derived((analysisData as any)?.verdict ?? null);
+  const judgeVerdict = $derived(analysisData?.verdict ?? null);
   const judgeEntry   = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
   const judgeStop    = $derived((analysisData as any)?.verdict?.stop  ?? (analysisData as any)?.deep?.stop  ?? null);
   const judgeTarget  = $derived((analysisData as any)?.verdict?.target?? (analysisData as any)?.deep?.target?? null);
-  const judgePWin    = $derived((analysisData as any)?.p_win ?? null);
+  const judgePWin    = $derived(analysisData?.p_win ?? null);
   const judgeLast    = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
 </script>
 
@@ -196,45 +198,45 @@
       />
     </div>
 
-    {#snippet analyze()}
-      <TerminalContextPanel
-        {analysisData}
-        activeTab={analyzeTab}
-        onTabChange={(t) => analyzeTab = t}
-        bars={ohlcvBars}
-        {layerBarsMap}
-      />
-    {/snippet}
+    <PeekDrawer {analyzeCount} {scanCount} {judgeCount}>
+      <svelte:fragment slot="analyze">
+        <TerminalContextPanel
+          {analysisData}
+          activeTab={analyzeTab}
+          onTabChange={(t) => analyzeTab = t}
+          bars={ohlcvBars}
+          {layerBarsMap}
+        />
+      </svelte:fragment>
 
-    {#snippet scan()}
-      <ScanGrid
-        alerts={scannerAlerts}
-        {similar}
-        {activeSymbol}
-        {loadingSimilar}
-        onOpenCapture={openCapture}
-      />
-    {/snippet}
+      <svelte:fragment slot="scan">
+        <ScanGrid
+          alerts={scannerAlerts}
+          {similar}
+          {activeSymbol}
+          {loadingSimilar}
+          onOpenCapture={openCapture}
+        />
+      </svelte:fragment>
 
-    {#snippet judge()}
-      <JudgePanel
-        symbol={activeSymbol}
-        timeframe={activeTf}
-        verdict={judgeVerdict}
-        entry={judgeEntry}
-        stop={judgeStop}
-        target={judgeTarget}
-        pWin={judgePWin}
-        lastPrice={judgeLast}
-        {captures}
-        saving={savingJudgment}
-        onSaveJudgment={saveJudgment}
-        onRejudge={rejudge}
-        onOpenCapture={openCapture}
-      />
-    {/snippet}
-
-    <PeekDrawer {analyzeCount} {scanCount} {judgeCount} {analyze} {scan} {judge} />
+      <svelte:fragment slot="judge">
+        <JudgePanel
+          symbol={activeSymbol}
+          timeframe={activeTf}
+          verdict={judgeVerdict}
+          entry={judgeEntry}
+          stop={judgeStop}
+          target={judgeTarget}
+          pWin={judgePWin}
+          lastPrice={judgeLast}
+          {captures}
+          saving={savingJudgment}
+          onSaveJudgment={saveJudgment}
+          onRejudge={rejudge}
+          onOpenCapture={openCapture}
+        />
+      </svelte:fragment>
+    </PeekDrawer>
   </main>
 </div>
 

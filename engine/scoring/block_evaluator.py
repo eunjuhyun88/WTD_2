@@ -99,6 +99,13 @@ from building_blocks.confirmations.holder_concentration_ok import holder_concent
 from building_blocks.confirmations.vwap_break import vwap_break
 from building_blocks.confirmations.relative_strength_btc import relative_strength_btc
 from building_blocks.confirmations.oi_acceleration import oi_acceleration
+# HTML reference pattern blocks (volatility-squeeze, alpha-confluence, radar-golden, etc.)
+from building_blocks.confirmations.atr_ultra_low import atr_ultra_low
+from building_blocks.confirmations.liq_zone_squeeze_setup import liq_zone_squeeze_setup
+from building_blocks.confirmations.volume_surge_bull import volume_surge_bull
+from building_blocks.confirmations.volume_surge_bear import volume_surge_bear
+from building_blocks.confirmations.negative_funding_bias import negative_funding_bias
+from building_blocks.confirmations.oi_contraction_confirm import oi_contraction_confirm
 
 log = logging.getLogger("engine.blocks")
 
@@ -146,14 +153,6 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
-    ("absorption_signal",  absorption_signal),
-    ("delta_flip_positive", delta_flip_positive),
-    # VAR-tuned variant: shorter window + looser thresholds for post-climax recovery.
-    # After a selling climax the 6-bar rolling sum is dominated by the high-volume
-    # climax bar (≈0.48 tbv_ratio), pushing the ratio below 0.55. w=3 + lower
-    # to_at_least=0.52 captures the CVD transition in the 12-36h absorption window.
-    ("delta_flip_var",      lambda ctx: delta_flip_positive(ctx, window=3, flip_from_below=0.48, flip_to_at_least=0.52)),
-    ("alt_btc_accel_ratio", alt_btc_accel_ratio),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),
     ("smart_money_accumulation", smart_money_accumulation),
@@ -192,6 +191,13 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("vwap_break",                      vwap_break),
     ("relative_strength_btc",           relative_strength_btc),
     ("oi_acceleration",                 oi_acceleration),
+    # HTML reference pattern blocks (volatility-squeeze, alpha-confluence, radar-golden, etc.)
+    ("atr_ultra_low",                   atr_ultra_low),
+    ("liq_zone_squeeze_setup",          liq_zone_squeeze_setup),
+    ("volume_surge_bull",               volume_surge_bull),
+    ("volume_surge_bear",               volume_surge_bear),
+    ("negative_funding_bias",           negative_funding_bias),
+    ("oi_contraction_confirm",          oi_contraction_confirm),
     # disqualifiers
     ("volume_below_average",            volume_below_average),
     ("extreme_volatility",              extreme_volatility),

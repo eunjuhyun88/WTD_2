@@ -8,64 +8,35 @@
    * - Persisted: open state + height + active tab in localStorage.
    */
   import { onMount } from 'svelte';
-  import type { Snippet } from 'svelte';
-  import { fly } from 'svelte/transition';
-  import { cubicOut } from 'svelte/easing';
 
-  type Tab = 'analyze' | 'scan' | 'judge' | 'review';
+  type Tab = 'analyze' | 'scan' | 'judge';
 
   interface Props {
     analyzeCount?: number;
     scanCount?: number;
     judgeCount?: number;
-    reviewCount?: number;
-    /** Programmatically open to a specific tab (e.g. from capture annotation click on tablet). */
-    openTab?: Tab | null;
-    analyze?: Snippet;
-    scan?: Snippet;
-    judge?: Snippet;
-    review?: Snippet;
   }
   let {
     analyzeCount = 0,
     scanCount = 0,
     judgeCount = 0,
-    reviewCount = 0,
-    openTab = null,
-    analyze,
-    scan,
-    judge,
-    review,
   }: Props = $props();
-
-  $effect(() => {
-    if (openTab) {
-      activeTab = openTab;
-      open = true;
-      persist();
-    }
-  });
 
   // ── State ───────────────────────────────────────────────────────────────
   let open = $state(true);
   let activeTab = $state<Tab>('analyze');
   let heightPct = $state(40); // % of viewport
   let dragging = $state(false);
-  let prefersReducedMotion = $state(false);
 
   const STORAGE_KEY = 'wtdv2:peek:v1';
 
   onMount(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    prefersReducedMotion = mq.matches;
-    mq.addEventListener('change', (e) => { prefersReducedMotion = e.matches; });
-
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
         if (typeof saved.open === 'boolean') open = saved.open;
-        if (saved.tab === 'analyze' || saved.tab === 'scan' || saved.tab === 'judge' || saved.tab === 'review') activeTab = saved.tab;
+        if (saved.tab === 'analyze' || saved.tab === 'scan' || saved.tab === 'judge') activeTab = saved.tab;
         if (typeof saved.h === 'number' && saved.h >= 25 && saved.h <= 75) heightPct = saved.h;
       }
     } catch {}
@@ -79,7 +50,6 @@
       else if (e.key === '1') { activeTab = 'analyze'; open = true; persist(); }
       else if (e.key === '2') { activeTab = 'scan'; open = true; persist(); }
       else if (e.key === '3') { activeTab = 'judge'; open = true; persist(); }
-      else if (e.key === '4') { activeTab = 'review'; open = true; persist(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -124,14 +94,12 @@
     { id: 'analyze', label: 'ANALYZE', hint: '분석 · 가설 · 근거' },
     { id: 'scan',    label: 'SCAN',    hint: '유사 셋업 · 스캐너 알림' },
     { id: 'judge',   label: 'JUDGE',   hint: '판정 · 재판정' },
-    { id: 'review',  label: 'REVIEW',  hint: '결과 검토 · 플라이휠' },
   ];
 
   function count(t: Tab): number {
     if (t === 'analyze') return analyzeCount;
     if (t === 'scan') return scanCount;
-    if (t === 'judge') return judgeCount;
-    return reviewCount;
+    return judgeCount;
   }
 </script>
 
@@ -164,7 +132,7 @@
       {/each}
     </div>
     <div class="bar-right">
-      <span class="hint">SPACE toggle · 1 2 3 4 tabs</span>
+      <span class="hint">SPACE toggle · 1 2 3 tabs</span>
       <button class="chevron" onclick={toggle} aria-label={open ? 'Close' : 'Open'}>
         {open ? '▾' : '▴'}
       </button>
@@ -173,18 +141,13 @@
 
   <!-- Drawer content -->
   {#if open}
-    <div
-      class="drawer"
-      transition:fly={{ y: prefersReducedMotion ? 0 : 20, duration: prefersReducedMotion ? 0 : 180, easing: cubicOut }}
-    >
+    <div class="drawer">
       {#if activeTab === 'analyze'}
-        {@render analyze?.()}
+        <slot name="analyze" />
       {:else if activeTab === 'scan'}
-        {@render scan?.()}
+        <slot name="scan" />
       {:else if activeTab === 'judge'}
-        {@render judge?.()}
-      {:else if activeTab === 'review'}
-        {@render review?.()}
+        <slot name="judge" />
       {/if}
     </div>
   {/if}

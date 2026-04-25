@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { canonicalSymbol, canonicalChange24h, terminalState } from '$lib/stores/terminalState';
+  import { canonicalSymbol, terminalState } from '$lib/stores/terminalState';
   import SymbolPicker from './SymbolPicker.svelte';
 
   interface Props {
