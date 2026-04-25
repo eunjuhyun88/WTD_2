@@ -9,8 +9,6 @@ import {
 import { engineFetch } from '$lib/server/engineTransport';
 import type { PromotionGateResult } from '$lib/contracts/search/seedSearch';
 
-export type { PromotionGateResult } from '$lib/contracts/search/seedSearch';
-
 export type PatternSeedSignal =
   | 'oi_spike'
   | 'dump_then_reclaim'
