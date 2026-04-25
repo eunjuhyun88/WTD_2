@@ -47,8 +47,8 @@ Contract change
 1. PR #291 merged even though `App Check And Test` failed, and the main push also failed App CI.
 2. Branch protection currently requires `App CI`, `Engine Tests`, and `Contract CI`, while workflow job names do not all match those contexts.
 3. Workflow-level path filters can leave required checks missing on docs or memory-only PRs.
-4. Memory sync tried to push directly to protected `main` and failed with `GH006`.
-5. `work/active/AGENT-HANDOFF-2026-04-25.md` is stale and conflicts with `CURRENT.md`.
+4. Memory sync direct push was replaced with PR-based sync, but per-merge branches created stale concurrent PRs touching the same `memory/sessions/*.jsonl` and `CURRENT.md` files.
+5. `CURRENT.md` can become stale when feature/docs PRs record their own pending status before merge and no follow-up state repair lands.
 
 ## Assumptions
 
@@ -65,6 +65,8 @@ Contract change
 - App, engine, and contract workflows will run on every PR to avoid missing required checks.
 - Memory sync creates or updates an `automation/memory-sync-pr-*` branch and opens a PR instead of pushing to `main`.
 - If `MEMORY_SYNC_TOKEN` is missing, Memory Sync uses `GITHUB_TOKEN` and manually dispatches required workflows for the sync PR.
+- Memory sync follow-ups now converge on a single `automation/memory-sync-queue` branch/PR so multiple merge events do not produce competing stale PRs.
+- `sync_memory.py` records merge events idempotently and uses Asia/Seoul dates for `CURRENT.md`.
 - Stale handoff snapshots belong in archive, not `work/active/`.
 - `from memory.mk import mk` is backed by a repo-local wrapper and validated in the contract gate.
 - Memory sync uses the engine uv environment instead of an unpinned global `pip install memkraft`; it intentionally matches Engine CI's non-locked `uv sync` because the current lock can drift during dependency repair work.
@@ -73,21 +75,22 @@ Contract change
 
 ## Next Steps
 
-1. Merge PR #293 after user approval.
-2. Confirm Memory Sync opens or updates its follow-up PR after merge.
-3. Merge the memory sync PR after required checks pass.
+1. Merge PR #322 after required checks pass.
+2. Close stale individual memory/doc PRs: #312, #315, #317, #319, #321, #324, #326.
+3. Triage PR #285 separately as a research/eval PR.
 
 ## Exit Criteria
 
 - Required CI checks are present for every PR.
 - Memory sync no longer attempts a direct protected-branch push.
+- Memory sync uses one queue PR instead of one stale branch per merged PR.
 - Active state starts from `CURRENT.md` plus listed work items only.
 - Runtime SQLite artifacts do not dirty the worktree.
 
 ## Handoff Checklist
 
 - active work item: `work/active/W-0163-ci-agent-governance.md`
-- branch: `fix/loader-primary-cache-dir`
+- branch: `automation/memory-sync-pr-313` (PR #322)
 - verification:
   - YAML parse / workflow inspection: pass
   - App check/test: pass
@@ -95,5 +98,6 @@ Contract change
   - Engine full pytest: pass
   - branch protection check update via GitHub API: `enforce_admins=true`, required contexts present
   - `git check-ignore` for feature window SQLite: pass
+  - PR #322 local contract gate: pass
 - remaining blockers:
-  - none for CI enforcement; `MEMORY_SYNC_TOKEN` can still be added later to avoid manual workflow dispatch fallback.
+  - `MEMORY_SYNC_TOKEN` can still be added later to avoid manual workflow dispatch fallback.

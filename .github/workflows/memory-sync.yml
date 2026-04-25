@@ -3,7 +3,7 @@ name: Memory Sync
 # PR이 main에 머지될 때마다 자동으로:
 #   1. MemKraft에 PR 이벤트 기록
 #   2. CURRENT.md main SHA 동기화
-#   3. 변경사항을 protected main에 직접 push하지 않고 PR로 제안
+#   3. 변경사항을 protected main에 직접 push하지 않고 단일 큐 PR로 제안
 
 on:
   pull_request:
@@ -15,12 +15,16 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: memory-sync
+  cancel-in-progress: false
+
 jobs:
   sync:
     name: Sync Memory + CURRENT.md
     if: >
       github.event.pull_request.merged == true &&
-      !startsWith(github.event.pull_request.head.ref, 'automation/memory-sync-pr-') &&
+      !startsWith(github.event.pull_request.head.ref, 'automation/memory-sync') &&
       !startsWith(github.event.pull_request.title, 'chore(memory):')
     runs-on: ubuntu-latest
 
@@ -56,6 +60,23 @@ jobs:
         run: uv sync
         working-directory: engine
 
+      - name: Checkout memory sync queue branch
+        run: |
+          branch="automation/memory-sync-queue"
+          git fetch origin main
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch origin "$branch"
+            git checkout -B "$branch" origin/main
+            # Preserve queued memory events, but do not preserve stale CURRENT.md
+            # edits from the previous queue branch base.
+            git diff --binary origin/main..."origin/$branch" -- memory > /tmp/memory-sync-queue.patch
+            if [ -s /tmp/memory-sync-queue.patch ]; then
+              git apply --3way /tmp/memory-sync-queue.patch
+            fi
+          else
+            git checkout -B "$branch" origin/main
+          fi
+
       - name: Run sync script
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -87,20 +108,19 @@ jobs:
             exit 0
           fi
 
-          branch="automation/memory-sync-pr-${PR_NUMBER}"
-          git checkout -B "$branch"
-          git commit -m "chore(memory): sync PR #${PR_NUMBER}"
+          branch="automation/memory-sync-queue"
+          git commit -m "chore(memory): sync merged PR events"
           git push --force-with-lease origin "$branch"
 
           existing_pr="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
-          body="Automated memory/CURRENT.md sync for merged PR #${PR_NUMBER}: ${PR_TITLE}"
+          body="Automated memory/CURRENT.md sync queue. Latest merged PR: #${PR_NUMBER}: ${PR_TITLE}"
           if [ -n "$existing_pr" ]; then
-            gh pr edit "$existing_pr" --title "chore(memory): sync PR #${PR_NUMBER}" --body "$body"
+            gh pr edit "$existing_pr" --title "chore(memory): sync merged PR events" --body "$body"
           else
             gh pr create \
               --base main \
               --head "$branch" \
-              --title "chore(memory): sync PR #${PR_NUMBER}" \
+              --title "chore(memory): sync merged PR events" \
               --body "$body"
           fi
 

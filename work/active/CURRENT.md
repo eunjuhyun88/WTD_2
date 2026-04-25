@@ -9,20 +9,22 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0132-copy-trading-phase1` | engine + app | PR #313 — CI 대기 중 |
+| `W-0163-ci-agent-governance` | contract | PR #322 — memory sync 큐 통합 + stale PR 정리 |
+| `W-0132-copy-trading-phase1` | engine + app | ✅ 완료 — PR #313 main 머지 완료 |
 | `W-0145-operational-seed-search-corpus` | engine | ✅ 완료 — main에 이미 구현됨 (14 tests pass) |
 
 ---
 
 ## main SHA
 
-`092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
+`9e09b53f` — origin/main (2026-04-26) — W-0132 copy trading + agent session index 포함
 
 ## 진행 중 PR
 
 | PR | 내용 | 상태 |
 |---|---|---|
-| [#313](https://github.com/eunjuhyun88/WTD_2/pull/313) | W-0132 카피트레이딩 Phase 1 | CI 대기 |
+| [#322](https://github.com/eunjuhyun88/WTD_2/pull/322) | memory sync 큐 통합 + workflow/script 개선 | 검증 대기 |
+| [#285](https://github.com/eunjuhyun88/WTD_2/pull/285) | W-0114 research compare script | triage 대기 |
 
 ---
 
@@ -49,29 +51,34 @@
 | **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
 | **W-0164** repo state hygiene | PR #305 main 머지 완료 |
 | **worktree 정리** 46→5개 | claude/.codex/.worktrees /tmp 전부 정리 완료 (2026-04-26) |
+| **Next design** W-0132/W-0145 실행 설계 | PR #311 main 머지 완료 |
+| **Session checkpoint** worktree/PR 큐 상태 정리 | PR #314 main 머지 완료 |
+| **Agent session records** Agent 1-6 기록 저장 | PR #318 + PR #320 main 머지 완료 |
+| **W-0132** copy trading Phase 1 | PR #313 main 머지 완료 |
+| **Agent 3 handoff** Cloud Scheduler/GCP/App CI 기록 | PR #323 main 머지 완료 |
+| **Agent session index** 가변 번호 체계 | PR #325 main 머지 완료 |
 
 ---
 
-## 🔴 PR 머지 대기
+## 🔴 정리 대상 PR
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| PR #308 | feat(W-0211): native multi-pane + Pine Script | 머지 대기 |
-| PR #309 | docs: 설계문서 + CURRENT.md | 머지 대기 |
+| PR #312/#315/#319/#321/#324/#326 | 오래된 개별 memory sync PR | PR #322에 이벤트 통합 후 close |
+| PR #317 | 오래된 agent session docs PR | PR #318/#320에 흡수되어 close |
 
 ---
 
 ## 다음 실행 순서 (우선순위 순)
 
 ### 즉시
-1. **W-0212 차트 UX 마무리** — 패인 드래그 리사이즈 검증 + 크로스헤어 값 업데이트 + KPI 스파크라인 확인
-   - `feat/w-0212-chart-ux-polish`
+1. **PR #322 검증/머지** — memory sync 큐 통합, KST 날짜, 중복 이벤트 방지
+2. **stale PR close** — #312/#315/#317/#319/#321/#324/#326
+3. **PR #285 triage** — 오래된 research compare PR 유지/종료 판단
 
 ### 중기
-2. **W-0132 카피트레이딩 Phase 1** — migration 022 + leaderboard API + UI panel
-   - `feat/w-0132-copy-trading-phase1`
-3. **W-0145 Search Corpus 40+차원** — corpus_builder 40차원 확장
-   - `feat/w-0145-search-corpus-40dim`
+4. **W-0212 차트 UX 마무리** — 패인 드래그 리사이즈 검증 + 크로스헤어 값 업데이트 + KPI 스파크라인 확인
+   - `feat/w-0212-chart-ux-polish`
 
 설계: `work/active/W-next-design-20260426.md`
 
@@ -88,5 +95,5 @@
 
 ## 체크포인트 파일
 
-- `work/active/W-app-ci-repair-checkpoint-20260426.md` — App CI 수리 세션 기록
+- `docs/archive/work-checkpoints/W-app-ci-repair-checkpoint-20260426.md` — App CI 수리 세션 기록
 - `work/active/W-next-design-20260426.md` — 다음 작업 설계 (W-0212 → W-0132 → W-0145)
