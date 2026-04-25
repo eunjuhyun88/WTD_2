@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`87f44b0b` — origin/main (2026-04-26) — W-0211 multi-pane + KPI strip + Pine Script + OI/Funding/Liq 기본 ON
+`092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
 
 ---
 
@@ -41,6 +41,8 @@
 | **W-0204** captures.py active_variant_store 연결 | PR #292 main 머지 완료 |
 | **W-0203** pattern-seed route delegation | PR #292 main 머지 완료 |
 | **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
+| **W-0164** repo state hygiene | PR #305 main 머지 완료 |
+| **worktree 정리** 46→5개 | claude/.codex/.worktrees /tmp 전부 정리 완료 (2026-04-26) |
 
 ---
 
@@ -48,7 +50,8 @@
 
 | PR | 내용 | 선결조건 |
 |---|---|---|
-| (없음) | — | 모든 PR 머지 완료 |
+| PR #308 | feat(W-0211): native multi-pane + Pine Script | 머지 대기 |
+| PR #309 | docs: 설계문서 + CURRENT.md | 머지 대기 |
 
 ---
 
