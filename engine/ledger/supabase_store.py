@@ -87,10 +87,15 @@ class SupabaseLedgerStore:
     # ── Core CRUD ────────────────────────────────────────────────────────────
 
     def save(self, outcome: PatternOutcome) -> None:
-        """Upsert a PatternOutcome record to Supabase."""
+        """Upsert to Supabase (primary) + local JSON backup (best-effort)."""
         outcome.updated_at = datetime.now()
         row = _outcome_to_row(outcome)
         _sb().table("pattern_outcomes").upsert(row).execute()
+        try:
+            from ledger.store import FileLedgerStore
+            FileLedgerStore().save(outcome)
+        except Exception:
+            pass  # JSON backup is best-effort; Supabase is authoritative
 
     def load(self, pattern_slug: str, outcome_id: str) -> PatternOutcome | None:
         """Fetch a single outcome by id + pattern_slug."""

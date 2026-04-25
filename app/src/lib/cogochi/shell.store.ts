@@ -1,5 +1,10 @@
 import { writable, derived } from 'svelte/store';
 import { defaultVisible } from '$lib/indicators/registry';
+import {
+  DEFAULT_ANALYZE_PANEL_LAYOUT,
+  normalizeAnalyzePanelLayout,
+  type AnalyzePanelLayoutState,
+} from '$lib/contracts/cogochiPanelLayout';
 
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
@@ -30,6 +35,7 @@ export interface TabState {
   workspaceSplitX: number;
   workspaceSplitY: number;
   layoutMode: 'C';
+  analyzeLayout: AnalyzePanelLayoutState;
 }
 
 export interface Tab {
@@ -154,6 +160,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   workspaceSplitX: 56,
   workspaceSplitY: 54,
   layoutMode: 'C',
+  analyzeLayout: DEFAULT_ANALYZE_PANEL_LAYOUT,
 });
 
 const makeDefault = (): ShellState => ({
@@ -188,6 +195,7 @@ function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
     ...(tabState ?? {}),
     workspaceLayout: { ...FRESH_WORKSPACE_LAYOUT(), ...(tabState?.workspaceLayout ?? {}) },
     layoutMode: 'C',
+    analyzeLayout: normalizeAnalyzePanelLayout(tabState?.analyzeLayout),
   };
 }
 

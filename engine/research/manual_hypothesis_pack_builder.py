@@ -69,7 +69,6 @@ def _derive_phase_path(
     research_context: dict[str, Any],
 ) -> list[str]:
     raw_annotations = research_context.get("phase_annotations")
-    pattern_draft = research_context.get("pattern_draft")
     annotations = raw_annotations if isinstance(raw_annotations, list) else []
     ordered_annotations = annotations
     if annotations and all(
@@ -86,18 +85,6 @@ def _derive_phase_path(
         for annotation in ordered_annotations
         if isinstance(annotation, dict) and isinstance(annotation.get("phase_id"), str)
     ]
-    if not raw_phase_ids and isinstance(pattern_draft, dict):
-        draft_phases = pattern_draft.get("phases")
-        if isinstance(draft_phases, list):
-            ordered_draft_phases = sorted(
-                [
-                    phase
-                    for phase in draft_phases
-                    if isinstance(phase, dict) and isinstance(phase.get("phase_id"), str)
-                ],
-                key=lambda phase: int(phase.get("sequence_order", 0)),
-            )
-            raw_phase_ids = [str(phase["phase_id"]) for phase in ordered_draft_phases]
     if not raw_phase_ids and capture.phase:
         raw_phase_ids = [capture.phase]
     if not raw_phase_ids:
@@ -162,7 +149,6 @@ def _derive_reference_timeframe(
     research_context: dict[str, Any],
 ) -> str:
     raw_annotations = research_context.get("phase_annotations")
-    pattern_draft = research_context.get("pattern_draft")
     annotations = raw_annotations if isinstance(raw_annotations, list) else []
     annotation_timeframes = [
         annotation.get("timeframe")
@@ -171,8 +157,6 @@ def _derive_reference_timeframe(
     ]
     if annotation_timeframes:
         return annotation_timeframes[0]
-    if isinstance(pattern_draft, dict) and isinstance(pattern_draft.get("timeframe"), str):
-        return str(pattern_draft["timeframe"])
     if capture.timeframe:
         return capture.timeframe
     raise ManualHypothesisBenchmarkPackError(
@@ -185,24 +169,14 @@ def _derive_candidate_timeframes(
     research_context: dict[str, Any],
 ) -> list[str]:
     raw_annotations = research_context.get("phase_annotations")
-    pattern_draft = research_context.get("pattern_draft")
     annotations = raw_annotations if isinstance(raw_annotations, list) else []
     annotation_timeframes = [
         annotation.get("timeframe")
         for annotation in annotations
         if isinstance(annotation, dict) and isinstance(annotation.get("timeframe"), str)
     ]
-    draft_timeframes: list[str] = []
-    if isinstance(pattern_draft, dict):
-        search_hints = pattern_draft.get("search_hints")
-        if isinstance(search_hints, dict):
-            draft_timeframes = [
-                str(timeframe)
-                for timeframe in (search_hints.get("preferred_timeframes") or [])
-                if isinstance(timeframe, str)
-            ]
     family = _TIMEFRAME_FAMILY_BY_REFERENCE.get(reference_timeframe, [reference_timeframe])
-    ordered = [reference_timeframe, *annotation_timeframes, *draft_timeframes, *family]
+    ordered = [reference_timeframe, *annotation_timeframes, *family]
     deduped: list[str] = []
     for timeframe in ordered:
         if timeframe and timeframe not in deduped:
@@ -215,7 +189,6 @@ def _derive_notes(
     research_context: dict[str, Any],
 ) -> list[str]:
     notes = [f"source_capture_id={capture.capture_id}"]
-    pattern_draft = research_context.get("pattern_draft")
     source = research_context.get("source")
     if isinstance(source, dict) and isinstance(source.get("kind"), str):
         notes.append(f"source_kind={source['kind']}")
@@ -231,15 +204,6 @@ def _derive_notes(
         for item in thesis[:3]:
             if isinstance(item, str) and item:
                 notes.append(f"thesis={item}")
-    if isinstance(pattern_draft, dict):
-        source_text = pattern_draft.get("source_text")
-        if isinstance(source_text, str) and source_text:
-            notes.append(f"draft_source={source_text}")
-        draft_thesis = pattern_draft.get("thesis")
-        if isinstance(draft_thesis, list):
-            for item in draft_thesis[:3]:
-                if isinstance(item, str) and item:
-                    notes.append(f"draft_thesis={item}")
     return notes
 
 

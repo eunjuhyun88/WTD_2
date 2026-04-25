@@ -24,6 +24,8 @@ What is missing is the front door:
 - free-form trader language is not yet converted into a canonical object
 - the live agent path still mixes chat, app-owned market analysis, and search orchestration
 - there is no enforced contract between parser output and deterministic search input
+- there is no durable pattern-memory compiler that can synthesize raw trader notes,
+  captures, cases, and negative examples before parser/search execution
 
 Without that boundary, the system risks becoming a clever assistant instead of a repeatable research/search engine.
 
@@ -36,6 +38,37 @@ Without that boundary, the system risks becoming a clever assistant instead of a
 5. `SearchQuerySpec` is deterministic and versioned; it must be materialized by engine code, not by the parser.
 6. search ranking combines feature, sequence, and optional text/chart similarity, but phase truth remains rule-first.
 7. live chat must consume bounded context and canonical search results, not raw provider fan-out.
+8. Pattern Wiki synthesis may assist parser/search input creation, but wiki claims
+   are hypotheses until engine verification accepts them.
+
+## Upstream Pattern Wiki Compiler
+
+`docs/domains/pattern-wiki-compiler.md` defines the optional upstream memory
+layer for this pipeline.
+
+`docs/domains/engine-strengthening-methodology.md` defines how this parser/search
+pipeline fits into feature truth, sequence truth, negative memory, and promotion
+gates.
+
+Position:
+
+```text
+raw trader memory / captures / screenshots / outcomes
+  -> Pattern Wiki
+  -> PatternDraft candidate
+  -> QueryTransformer
+  -> SearchQuerySpec
+  -> seed search / benchmark / ledger
+```
+
+Rules:
+
+- Pattern Wiki is a synthesis and compile layer, not runtime truth.
+- Parser output remains the first structured contract crossing into engine
+  search.
+- QueryTransformer remains deterministic and engine-owned.
+- Engine verification can reject wiki claims; rejected paths must remain visible
+  as negative memory instead of being silently erased.
 
 ## Role Split
 

@@ -15,6 +15,15 @@ The core-loop extension documents are:
 - `docs/runbooks/core-loop-verification.md`
 - `docs/runbooks/core-loop-migration-plan.md`
 
+The protocol extension documents are:
+
+- `docs/domains/cogochi-protocol-extension-architecture.md`
+- `docs/domains/cogochi-protocol-shared-state-schema.md`
+- `docs/domains/cogochi-protocol-object-contracts.md`
+- `docs/domains/cogochi-protocol-route-contracts.md`
+- `docs/product/cogochi-protocol-phase1-execution-spec.md`
+- `docs/product/cogochi-protocol-phase1-implementation-split.md`
+
 ## Canonical Type Homes
 
 - App shared schemas: `app/src/lib/contracts/index.ts`

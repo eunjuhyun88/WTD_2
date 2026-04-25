@@ -17,7 +17,12 @@ from data_cache.loader import load_klines, load_perp
 from data_cache.resample import tf_string_to_minutes
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore
 from ledger.types import PatternLedgerRecord
-from patterns.definitions import PatternDefinitionService
+from patterns.active_variant_registry import (
+    ACTIVE_PATTERN_VARIANT_STORE,
+    ActivePatternVariantStore,
+    ActivePatternVariantEntry,
+    derive_watch_phases_from_pattern,
+)
 from patterns.library import get_pattern
 from patterns.replay import replay_pattern_frames
 from patterns.state_machine import PatternStateMachine
@@ -567,7 +572,7 @@ class BenchmarkPackStore:
         default_id = f"{pattern_slug}__ptb-tradoor-v1"
         existing = self.load(default_id)
         if existing is not None:
-            desired_timeframes = ["1h", "4h"]
+            desired_timeframes = ["15m", "30m", "1h", "4h"]
             if existing.candidate_timeframes != desired_timeframes:
                 existing = ReplayBenchmarkPack(
                     benchmark_pack_id=existing.benchmark_pack_id,
@@ -581,7 +586,7 @@ class BenchmarkPackStore:
         pack = ReplayBenchmarkPack(
             benchmark_pack_id=default_id,
             pattern_slug=pattern_slug,
-            candidate_timeframes=["1h", "4h"],
+            candidate_timeframes=["15m", "30m", "1h", "4h"],
             cases=[
                 BenchmarkCase(
                     symbol="PTBUSDT",
@@ -865,20 +870,54 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
             },
             hypotheses=["favor slower holdout recovery structure", "give reclaim and squeeze more weight"],
         ),
+        PatternVariantSpec(
+            pattern_slug=pattern_slug,
+            variant_slug=f"{pattern_slug}__intraday-dump-cluster",
+            timeframe=base.timeframe,
+            phase_overrides={
+                "REAL_DUMP": {
+                    "required_blocks": ["oi_spike_with_dump", "volume_spike_cluster"],
+                    "optional_blocks": ["volume_spike", "recent_decline", "funding_extreme"],
+                },
+            },
+            hypotheses=[
+                "allow intraday real-dump volume to lead the clearest oi spike by a short cluster window",
+            ],
+        ),
     ]
 
 
 def _supported_candidate_timeframes(candidate_timeframes: list[str], *, base_timeframe: str) -> list[str]:
-    base_minutes = tf_string_to_minutes(base_timeframe)
     supported: list[str] = []
     for timeframe in candidate_timeframes:
-        tf_minutes = tf_string_to_minutes(timeframe)
-        if tf_minutes < base_minutes:
-            continue
         if timeframe not in supported:
             supported.append(timeframe)
     if base_timeframe not in supported:
         supported.insert(0, base_timeframe)
+    return supported
+
+
+def _case_supports_timeframe(case: BenchmarkCase, timeframe: str) -> bool:
+    try:
+        klines = load_klines(case.symbol, timeframe, offline=True)
+    except Exception:
+        return False
+    return klines is not None and not klines.empty
+
+
+def _filter_candidate_timeframes_for_pack(
+    pack: ReplayBenchmarkPack,
+    *,
+    base_timeframe: str,
+) -> list[str]:
+    requested = _supported_candidate_timeframes(
+        pack.candidate_timeframes or [base_timeframe],
+        base_timeframe=base_timeframe,
+    )
+    supported: list[str] = []
+    for timeframe in requested:
+        if all(_case_supports_timeframe(case, timeframe) for case in pack.cases):
+            supported.append(timeframe)
     return supported
 
 
@@ -2830,6 +2869,48 @@ def evaluate_variant_against_pack(
     )
 
 
+def _find_variant_spec(
+    variants: list[PatternVariantSpec],
+    *,
+    variant_slug: str,
+) -> PatternVariantSpec | None:
+    for variant in variants:
+        if variant.variant_slug == variant_slug:
+            return variant
+    return None
+
+
+def _sync_active_variant_registry(
+    *,
+    store: ActivePatternVariantStore,
+    pattern_slug: str,
+    winner: VariantSearchResult,
+    variants: list[PatternVariantSpec],
+    promotion_report: PromotionReport,
+    research_run_id: str,
+    baseline_ref: str,
+) -> ActivePatternVariantEntry:
+    spec = _find_variant_spec(variants, variant_slug=winner.variant_slug)
+    timeframe = spec.timeframe if spec is not None else get_pattern(pattern_slug).timeframe
+    pattern = (
+        build_variant_pattern(pattern_slug, spec)
+        if spec is not None
+        else get_pattern(pattern_slug)
+    )
+    entry = ActivePatternVariantEntry(
+        pattern_slug=pattern_slug,
+        variant_slug=winner.variant_slug,
+        timeframe=timeframe,
+        watch_phases=derive_watch_phases_from_pattern(pattern),
+        source_kind="benchmark_search",
+        source_ref=baseline_ref,
+        research_run_id=research_run_id,
+        promotion_report_id=promotion_report.promotion_report_id,
+    )
+    store.upsert(entry)
+    return entry
+
+
 def run_pattern_benchmark_search(
     config: PatternBenchmarkSearchConfig,
     *,
@@ -2837,15 +2918,13 @@ def run_pattern_benchmark_search(
     pack_store: BenchmarkPackStore | None = None,
     artifact_store: PatternSearchArtifactStore | None = None,
     negative_memory_store: NegativeSearchMemoryStore | None = None,
+    active_variant_store: ActivePatternVariantStore | None = None,
 ) -> ResearchRun:
     controller = controller or ResearchWorkerController()
     pack_store = pack_store or BenchmarkPackStore()
     artifact_store = artifact_store or PatternSearchArtifactStore()
     negative_memory_store = negative_memory_store or NegativeSearchMemoryStore()
-    definition_ref = _resolve_definition_ref(
-        pattern_slug=config.pattern_slug,
-        definition_id=config.definition_id,
-    )
+    active_variant_store = active_variant_store or ACTIVE_PATTERN_VARIANT_STORE
     pack = (
         pack_store.load(config.benchmark_pack_id)
         if config.benchmark_pack_id is not None
@@ -2854,10 +2933,18 @@ def run_pattern_benchmark_search(
     family_policy = DEFAULT_FAMILY_SELECTION_POLICY
     if pack is None:
         raise KeyError(f"Benchmark pack not found: {config.benchmark_pack_id}")
+    supported_timeframes = _filter_candidate_timeframes_for_pack(
+        pack,
+        base_timeframe=get_pattern(config.pattern_slug).timeframe,
+    )
+    if not supported_timeframes:
+        raise ValueError(
+            f"No locally supported candidate timeframes for benchmark pack {pack.benchmark_pack_id}"
+        )
     variants = build_search_variants(
         config.pattern_slug,
         variants=config.variants,
-        candidate_timeframes=pack.candidate_timeframes,
+        candidate_timeframes=supported_timeframes,
         negative_memory_store=negative_memory_store,
         artifact_store=artifact_store,
     )
@@ -2871,7 +2958,7 @@ def run_pattern_benchmark_search(
             "family_selection_policy": family_policy.to_dict(),
         },
         evaluation_protocol={
-            "candidate_timeframes": pack.candidate_timeframes,
+            "candidate_timeframes": supported_timeframes,
             "n_cases": len(pack.cases),
             "min_reference_score": config.min_reference_score,
             "min_holdout_score": config.min_holdout_score,
@@ -2977,6 +3064,25 @@ def run_pattern_benchmark_search(
             "robustness_spread": promotion_report.robustness_spread if promotion_report is not None else None,
             "holdout_passed": promotion_report.holdout_passed if promotion_report is not None else None,
         }
+        active_registry_entry: ActivePatternVariantEntry | None = None
+        if (
+            passed_reference
+            and passed_holdout
+            and promotion_report is not None
+            and promotion_report.decision == "promote_candidate"
+        ):
+            active_registry_entry = _sync_active_variant_registry(
+                store=active_variant_store,
+                pattern_slug=config.pattern_slug,
+                winner=winner,
+                variants=variants,
+                promotion_report=promotion_report,
+                research_run_id=run.research_run_id,
+                baseline_ref=run.baseline_ref,
+            )
+            metrics["active_registry_variant_slug"] = active_registry_entry.variant_slug
+            metrics["active_registry_timeframe"] = active_registry_entry.timeframe
+            metrics["active_registry_watch_phases"] = list(active_registry_entry.watch_phases)
         if passed_reference and passed_holdout:
             rationale = (
                 f"Variant {winner.variant_slug} cleared benchmark-pack search floors "
@@ -3005,6 +3111,15 @@ def run_pattern_benchmark_search(
                         _family_ref(active_family)
                         if promotion_report is not None and promotion_report.decision == "promote_candidate"
                         else None
+                    ),
+                    "active_registry_variant_slug": (
+                        active_registry_entry.variant_slug if active_registry_entry is not None else None
+                    ),
+                    "active_registry_timeframe": (
+                        active_registry_entry.timeframe if active_registry_entry is not None else None
+                    ),
+                    "active_registry_watch_phases": (
+                        list(active_registry_entry.watch_phases) if active_registry_entry is not None else None
                     ),
                 },
                 selection_decision=SelectionDecisionInput(

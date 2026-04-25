@@ -7,9 +7,12 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from patterns.active_variant_registry import ActivePatternVariantEntry
 from research.live_monitor import (
     LiveScanResult,
+    search_pattern_state_similarity,
     scan_universe_live,
+    scan_all_patterns_live,
     print_scan_report,
     WATCH_PHASES,
 )
@@ -126,6 +129,107 @@ class TestScanUniverseLive:
         assert results[0].phase == "ACCUMULATION"
         assert results[1].phase == "REAL_DUMP"
         assert results[2].phase == "ARCH_ZONE"
+
+    def test_scan_all_patterns_live_uses_registry_timeframe(self, monkeypatch):
+        captured: list[tuple[str, str, str]] = []
+
+        monkeypatch.setattr(
+            "research.live_monitor.list_active_pattern_entries",
+            lambda: [
+                ActivePatternVariantEntry(
+                    pattern_slug="tradoor-oi-reversal-v1",
+                    variant_slug="tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m",
+                    timeframe="15m",
+                    watch_phases=["ACCUMULATION", "REAL_DUMP"],
+                    source_kind="benchmark_search",
+                )
+            ],
+        )
+
+        def fake_scan_universe_live(**kwargs):
+            captured.append((kwargs["pattern_slug"], kwargs["variant_slug"], kwargs["timeframe"]))
+            return []
+
+        monkeypatch.setattr("research.live_monitor.scan_universe_live", fake_scan_universe_live)
+
+        results = scan_all_patterns_live(log_to_experiment=False)
+
+        assert results == []
+        assert captured == [
+            (
+                "tradoor-oi-reversal-v1",
+                "tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m",
+                "15m",
+            )
+        ]
+
+    def test_search_pattern_state_similarity_uses_registry_defaults_and_ranks_by_score(self, monkeypatch):
+        klines = self._make_klines()
+        from research import live_monitor
+        monkeypatch.setattr(live_monitor, "load_klines", lambda *a, **kw: klines)
+        monkeypatch.setattr(
+            live_monitor,
+            "ACTIVE_PATTERN_VARIANT_STORE",
+            type(
+                "FakeStore",
+                (),
+                {
+                    "get": lambda self, slug: ActivePatternVariantEntry(
+                        pattern_slug=slug,
+                        variant_slug="tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m",
+                        timeframe="15m",
+                        watch_phases=["ACCUMULATION", "REAL_DUMP"],
+                    ),
+                    "list_effective": lambda self: [],
+                },
+            )(),
+        )
+
+        def fake_evaluate_variant_on_case(pattern, case, **kwargs):
+            from research.pattern_search import VariantCaseResult
+
+            score_by_symbol = {
+                "PTBUSDT": 0.92,
+                "TRADOORUSDT": 0.61,
+                "ALTUSDT": 0.18,
+            }
+            phase_by_symbol = {
+                "PTBUSDT": "BREAKOUT",
+                "TRADOORUSDT": "ACCUMULATION",
+                "ALTUSDT": "ARCH_ZONE",
+            }
+            return VariantCaseResult(
+                case_id=case.case_id,
+                symbol=case.symbol,
+                role=case.role,
+                current_phase=phase_by_symbol[case.symbol],
+                observed_phase_path=["ARCH_ZONE", "REAL_DUMP", phase_by_symbol[case.symbol]],
+                phase_fidelity=0.8,
+                phase_depth_progress=score_by_symbol[case.symbol],
+                entry_hit=case.symbol != "ALTUSDT",
+                target_hit=case.symbol == "PTBUSDT",
+                lead_bars=4,
+                score=score_by_symbol[case.symbol],
+                entry_close=1.0,
+                forward_peak_return_pct=10.0,
+                entry_next_open=1.01,
+                realistic_forward_peak_return_pct=9.5,
+            )
+
+        monkeypatch.setattr(live_monitor, "evaluate_variant_on_case", fake_evaluate_variant_on_case)
+
+        results = search_pattern_state_similarity(
+            "tradoor-oi-reversal-v1",
+            universe=["ALTUSDT", "PTBUSDT", "TRADOORUSDT"],
+            top_k=2,
+            min_similarity_score=0.2,
+        )
+
+        assert [result.symbol for result in results] == ["PTBUSDT", "TRADOORUSDT"]
+        assert all(result.variant_slug == "tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m" for result in results)
+        assert all(result.timeframe == "15m" for result in results)
+        assert results[0].similarity_score == 0.92
+        assert results[1].similarity_score == 0.61
 
 
 class TestPrintScanReport:
