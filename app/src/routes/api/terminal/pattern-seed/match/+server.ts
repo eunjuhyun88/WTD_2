@@ -542,8 +542,8 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
       },
     });
     const artifact = isRecord(benchmarkResult.artifact) ? benchmarkResult.artifact : {};
-    const searchQuerySpec = isRecord(artifact.search_query_spec) ? artifact.search_query_spec : {};
-    const requestedSignals = Array.isArray(searchQuerySpec.must_have_signals)
+    const searchQuerySpec = isRecord(artifact.search_query_spec) ? artifact.search_query_spec : null;
+    const requestedSignals = Array.isArray(searchQuerySpec?.must_have_signals)
       ? searchQuerySpec.must_have_signals.filter(isSeedSignal)
       : dedupeSignals(detectedSignals);
 
@@ -583,6 +583,7 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
           typeof (benchmarkResult.research_run as Record<string, unknown>).research_run_id === 'string'
             ? String((benchmarkResult.research_run as Record<string, unknown>).research_run_id)
             : undefined,
+        searchQuerySpec,
         requestedSignals,
         detectedSignals,
         snapshotCount: body.snapshotNames.length,

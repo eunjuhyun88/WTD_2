@@ -88,58 +88,6 @@ class RawPerpMetricRecord:
 
 
 @dataclass(frozen=True)
-class RawLiquidationEventRecord:
-    provider: str
-    venue: str
-    symbol: str
-    ts: datetime
-    source_ts: datetime
-    ingested_at: datetime
-    freshness_ms: int
-    quality_state: str
-    fallback_state: str
-    event_id: str
-    side: str
-    order_price: float | None
-    average_price: float | None
-    quantity: float | None
-    executed_quantity: float | None
-    quote_quantity: float | None
-    notional_usd: float | None
-    order_type: str | None
-    time_in_force: str | None
-    status: str | None
-
-
-@dataclass(frozen=True)
-class MarketLiquidationWindowRecord:
-    provider: str
-    venue: str
-    symbol: str
-    timeframe: str
-    window_start_ts: datetime
-    window_end_ts: datetime
-    source_start_ts: datetime | None
-    source_end_ts: datetime | None
-    ingested_at: datetime
-    freshness_ms: int
-    quality_state: str
-    fallback_state: str
-    event_count: int
-    short_event_count: int
-    long_event_count: int
-    short_liq_usd: float
-    long_liq_usd: float
-    total_liq_usd: float
-    net_liq_usd: float
-    dominant_side: str
-    dominance_share: float | None
-    imbalance_ratio: float | None
-    largest_event_usd: float | None
-    largest_event_side: str | None
-
-
-@dataclass(frozen=True)
 class MarketSearchIndexRecord:
     provider: str
     source: str
@@ -245,58 +193,6 @@ class CanonicalRawStore:
                   PRIMARY KEY (venue, symbol, timeframe, ts)
                 );
 
-                CREATE TABLE IF NOT EXISTS raw_liquidation_events (
-                  provider TEXT NOT NULL,
-                  venue TEXT NOT NULL,
-                  symbol TEXT NOT NULL,
-                  ts INTEGER NOT NULL,
-                  source_ts INTEGER NOT NULL,
-                  ingested_at INTEGER NOT NULL,
-                  freshness_ms INTEGER NOT NULL,
-                  quality_state TEXT NOT NULL,
-                  fallback_state TEXT NOT NULL,
-                  event_id TEXT NOT NULL,
-                  side TEXT NOT NULL,
-                  order_price REAL,
-                  average_price REAL,
-                  quantity REAL,
-                  executed_quantity REAL,
-                  quote_quantity REAL,
-                  notional_usd REAL,
-                  order_type TEXT,
-                  time_in_force TEXT,
-                  status TEXT,
-                  PRIMARY KEY (venue, symbol, event_id)
-                );
-
-                CREATE TABLE IF NOT EXISTS market_liquidation_windows (
-                  provider TEXT NOT NULL,
-                  venue TEXT NOT NULL,
-                  symbol TEXT NOT NULL,
-                  timeframe TEXT NOT NULL,
-                  window_start_ts INTEGER NOT NULL,
-                  window_end_ts INTEGER NOT NULL,
-                  source_start_ts INTEGER,
-                  source_end_ts INTEGER,
-                  ingested_at INTEGER NOT NULL,
-                  freshness_ms INTEGER NOT NULL,
-                  quality_state TEXT NOT NULL,
-                  fallback_state TEXT NOT NULL,
-                  event_count INTEGER NOT NULL,
-                  short_event_count INTEGER NOT NULL,
-                  long_event_count INTEGER NOT NULL,
-                  short_liq_usd REAL NOT NULL,
-                  long_liq_usd REAL NOT NULL,
-                  total_liq_usd REAL NOT NULL,
-                  net_liq_usd REAL NOT NULL,
-                  dominant_side TEXT NOT NULL,
-                  dominance_share REAL,
-                  imbalance_ratio REAL,
-                  largest_event_usd REAL,
-                  largest_event_side TEXT,
-                  PRIMARY KEY (venue, symbol, timeframe, window_end_ts)
-                );
-
                 CREATE INDEX IF NOT EXISTS idx_raw_market_bars_symbol_time
                   ON raw_market_bars(symbol, timeframe, ts);
 
@@ -305,12 +201,6 @@ class CanonicalRawStore:
 
                 CREATE INDEX IF NOT EXISTS idx_raw_perp_symbol_time
                   ON raw_perp_metrics(symbol, timeframe, ts);
-
-                CREATE INDEX IF NOT EXISTS idx_raw_liquidation_symbol_time
-                  ON raw_liquidation_events(symbol, ts);
-
-                CREATE INDEX IF NOT EXISTS idx_market_liquidation_symbol_time
-                  ON market_liquidation_windows(symbol, timeframe, window_end_ts);
 
                 CREATE TABLE IF NOT EXISTS market_search_index (
                   provider TEXT NOT NULL,
@@ -531,142 +421,6 @@ class CanonicalRawStore:
             )
         return len(unique_rows)
 
-    def upsert_liquidation_events(self, rows: list[RawLiquidationEventRecord]) -> int:
-        if not rows:
-            return 0
-        unique_rows = {
-            (row.venue, row.symbol, row.event_id)
-            for row in rows
-        }
-        with self._connect() as conn:
-            conn.executemany(
-                """
-                INSERT INTO raw_liquidation_events (
-                  provider, venue, symbol, ts, source_ts, ingested_at,
-                  freshness_ms, quality_state, fallback_state,
-                  event_id, side, order_price, average_price, quantity,
-                  executed_quantity, quote_quantity, notional_usd,
-                  order_type, time_in_force, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(venue, symbol, event_id) DO UPDATE SET
-                  provider=excluded.provider,
-                  ts=excluded.ts,
-                  source_ts=excluded.source_ts,
-                  ingested_at=excluded.ingested_at,
-                  freshness_ms=excluded.freshness_ms,
-                  quality_state=excluded.quality_state,
-                  fallback_state=excluded.fallback_state,
-                  side=excluded.side,
-                  order_price=excluded.order_price,
-                  average_price=excluded.average_price,
-                  quantity=excluded.quantity,
-                  executed_quantity=excluded.executed_quantity,
-                  quote_quantity=excluded.quote_quantity,
-                  notional_usd=excluded.notional_usd,
-                  order_type=excluded.order_type,
-                  time_in_force=excluded.time_in_force,
-                  status=excluded.status
-                """,
-                [
-                    (
-                        row.provider,
-                        row.venue,
-                        row.symbol,
-                        _dt_to_ms(row.ts),
-                        _dt_to_ms(row.source_ts),
-                        _dt_to_ms(row.ingested_at),
-                        row.freshness_ms,
-                        row.quality_state,
-                        row.fallback_state,
-                        row.event_id,
-                        row.side,
-                        row.order_price,
-                        row.average_price,
-                        row.quantity,
-                        row.executed_quantity,
-                        row.quote_quantity,
-                        row.notional_usd,
-                        row.order_type,
-                        row.time_in_force,
-                        row.status,
-                    )
-                    for row in rows
-                ],
-            )
-        return len(unique_rows)
-
-    def upsert_liquidation_windows(self, rows: list[MarketLiquidationWindowRecord]) -> int:
-        if not rows:
-            return 0
-        unique_rows = {
-            (row.venue, row.symbol, row.timeframe, _dt_to_ms(row.window_end_ts))
-            for row in rows
-        }
-        with self._connect() as conn:
-            conn.executemany(
-                """
-                INSERT INTO market_liquidation_windows (
-                  provider, venue, symbol, timeframe, window_start_ts, window_end_ts,
-                  source_start_ts, source_end_ts, ingested_at, freshness_ms,
-                  quality_state, fallback_state, event_count, short_event_count,
-                  long_event_count, short_liq_usd, long_liq_usd, total_liq_usd,
-                  net_liq_usd, dominant_side, dominance_share, imbalance_ratio,
-                  largest_event_usd, largest_event_side
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(venue, symbol, timeframe, window_end_ts) DO UPDATE SET
-                  provider=excluded.provider,
-                  window_start_ts=excluded.window_start_ts,
-                  source_start_ts=excluded.source_start_ts,
-                  source_end_ts=excluded.source_end_ts,
-                  ingested_at=excluded.ingested_at,
-                  freshness_ms=excluded.freshness_ms,
-                  quality_state=excluded.quality_state,
-                  fallback_state=excluded.fallback_state,
-                  event_count=excluded.event_count,
-                  short_event_count=excluded.short_event_count,
-                  long_event_count=excluded.long_event_count,
-                  short_liq_usd=excluded.short_liq_usd,
-                  long_liq_usd=excluded.long_liq_usd,
-                  total_liq_usd=excluded.total_liq_usd,
-                  net_liq_usd=excluded.net_liq_usd,
-                  dominant_side=excluded.dominant_side,
-                  dominance_share=excluded.dominance_share,
-                  imbalance_ratio=excluded.imbalance_ratio,
-                  largest_event_usd=excluded.largest_event_usd,
-                  largest_event_side=excluded.largest_event_side
-                """,
-                [
-                    (
-                        row.provider,
-                        row.venue,
-                        row.symbol,
-                        row.timeframe,
-                        _dt_to_ms(row.window_start_ts),
-                        _dt_to_ms(row.window_end_ts),
-                        _dt_to_ms(row.source_start_ts) if row.source_start_ts is not None else None,
-                        _dt_to_ms(row.source_end_ts) if row.source_end_ts is not None else None,
-                        _dt_to_ms(row.ingested_at),
-                        row.freshness_ms,
-                        row.quality_state,
-                        row.fallback_state,
-                        row.event_count,
-                        row.short_event_count,
-                        row.long_event_count,
-                        row.short_liq_usd,
-                        row.long_liq_usd,
-                        row.total_liq_usd,
-                        row.net_liq_usd,
-                        row.dominant_side,
-                        row.dominance_share,
-                        row.imbalance_ratio,
-                        row.largest_event_usd,
-                        row.largest_event_side,
-                    )
-                    for row in rows
-                ],
-            )
-        return len(unique_rows)
-
     def upsert_market_search_index(self, rows: list[MarketSearchIndexRecord]) -> int:
         if not rows:
             return 0
@@ -835,53 +589,20 @@ class CanonicalRawStore:
             row = conn.execute(sql, params).fetchone()
         return int(row["count"]) if row is not None else 0
 
-    def load_liquidation_events(
-        self,
-        *,
-        symbol: str,
-        since: datetime | None = None,
-    ) -> list[sqlite3.Row]:
-        sql = "SELECT * FROM raw_liquidation_events WHERE symbol = ?"
-        params: list[object] = [symbol]
-        if since is not None:
-            sql += " AND ts >= ?"
-            params.append(_dt_to_ms(since))
-        sql += " ORDER BY ts ASC"
+    def delete_symbol_timeframe(self, table: str, *, symbol: str, timeframe: str) -> int:
         with self._connect() as conn:
-            return conn.execute(sql, params).fetchall()
-
-    def delete_symbol_timeframe(self, table: str, *, symbol: str, timeframe: str | None = None) -> int:
-        with self._connect() as conn:
-            if timeframe is None:
-                cursor = conn.execute(
-                    f"DELETE FROM {table} WHERE symbol = ?",
-                    (symbol,),
-                )
-            else:
-                cursor = conn.execute(
-                    f"DELETE FROM {table} WHERE symbol = ? AND timeframe = ?",
-                    (symbol, timeframe),
-                )
+            cursor = conn.execute(
+                f"DELETE FROM {table} WHERE symbol = ? AND timeframe = ?",
+                (symbol, timeframe),
+            )
         return int(cursor.rowcount or 0)
 
-    def latest_timestamp(
-        self,
-        table: str,
-        *,
-        symbol: str,
-        timeframe: str | None = None,
-    ) -> datetime | None:
+    def latest_timestamp(self, table: str, *, symbol: str, timeframe: str) -> datetime | None:
         with self._connect() as conn:
-            if timeframe is None:
-                row = conn.execute(
-                    f"SELECT MAX(ts) AS ts FROM {table} WHERE symbol = ?",
-                    (symbol,),
-                ).fetchone()
-            else:
-                row = conn.execute(
-                    f"SELECT MAX(ts) AS ts FROM {table} WHERE symbol = ? AND timeframe = ?",
-                    (symbol, timeframe),
-                ).fetchone()
+            row = conn.execute(
+                f"SELECT MAX(ts) AS ts FROM {table} WHERE symbol = ? AND timeframe = ?",
+                (symbol, timeframe),
+            ).fetchone()
         if row is None or row["ts"] is None:
             return None
         return _ms_to_dt(int(row["ts"]))

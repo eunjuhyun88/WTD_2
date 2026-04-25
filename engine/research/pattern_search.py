@@ -15,26 +15,14 @@ import pandas as pd
 
 from data_cache.loader import load_klines, load_perp
 from data_cache.resample import tf_string_to_minutes
-from features.canonical_pattern import (
-    extract_canonical_pattern_feature_snapshot,
-    score_canonical_feature_snapshot,
-)
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore
 from ledger.types import PatternLedgerRecord
-from patterns.active_variant_registry import (
-    ACTIVE_PATTERN_VARIANT_STORE,
-    ActivePatternVariantStore,
-    ActivePatternVariantEntry,
-    derive_watch_phases_from_pattern,
-)
+from patterns.definitions import PatternDefinitionService
 from patterns.library import get_pattern
 from patterns.replay import replay_pattern_frames
 from patterns.state_machine import PatternStateMachine
 from patterns.types import PatternObject, PhaseAttemptRecord
-from scanner.feature_calc import (
-    MIN_HISTORY_BARS,
-    compute_features_table,
-)
+from scanner.feature_calc import MIN_HISTORY_BARS, compute_features_table
 
 from .state_store import ResearchRun
 from .worker_control import (
@@ -246,7 +234,6 @@ class VariantCaseResult:
     # delta; informational only (gate still uses forward_peak_return_pct).
     entry_next_open: float | None = None
     realistic_forward_peak_return_pct: float | None = None
-    canonical_feature_snapshot: dict[str, float | bool | None] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -452,11 +439,6 @@ class PromotionReport:
     entry_profitable_rate: float | None = None
     entry_profitable_gate: bool | None = None
     decision_path: str = "rejected"
-    canonical_feature_score: float | None = None
-    reference_canonical_feature_score: float | None = None
-    holdout_canonical_feature_score: float | None = None
-    canonical_feature_scored_case_count: int = 0
-    canonical_feature_summary: dict[str, float | None] = field(default_factory=dict)
     created_at: datetime = field(default_factory=_utcnow)
 
     def to_dict(self) -> dict:
@@ -584,7 +566,7 @@ class BenchmarkPackStore:
         default_id = f"{pattern_slug}__ptb-tradoor-v1"
         existing = self.load(default_id)
         if existing is not None:
-            desired_timeframes = ["15m", "30m", "1h", "4h"]
+            desired_timeframes = ["1h", "4h"]
             if existing.candidate_timeframes != desired_timeframes:
                 existing = ReplayBenchmarkPack(
                     benchmark_pack_id=existing.benchmark_pack_id,
@@ -598,7 +580,7 @@ class BenchmarkPackStore:
         pack = ReplayBenchmarkPack(
             benchmark_pack_id=default_id,
             pattern_slug=pattern_slug,
-            candidate_timeframes=["15m", "30m", "1h", "4h"],
+            candidate_timeframes=["1h", "4h"],
             cases=[
                 BenchmarkCase(
                     symbol="PTBUSDT",
@@ -896,54 +878,20 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
             },
             hypotheses=["favor slower holdout recovery structure", "give reclaim and squeeze more weight"],
         ),
-        PatternVariantSpec(
-            pattern_slug=pattern_slug,
-            variant_slug=f"{pattern_slug}__intraday-dump-cluster",
-            timeframe=base.timeframe,
-            phase_overrides={
-                "REAL_DUMP": {
-                    "required_blocks": ["oi_spike_with_dump", "volume_spike_cluster"],
-                    "optional_blocks": ["volume_spike", "recent_decline", "funding_extreme"],
-                },
-            },
-            hypotheses=[
-                "allow intraday real-dump volume to lead the clearest oi spike by a short cluster window",
-            ],
-        ),
     ]
 
 
 def _supported_candidate_timeframes(candidate_timeframes: list[str], *, base_timeframe: str) -> list[str]:
+    base_minutes = tf_string_to_minutes(base_timeframe)
     supported: list[str] = []
     for timeframe in candidate_timeframes:
+        tf_minutes = tf_string_to_minutes(timeframe)
+        if tf_minutes < base_minutes:
+            continue
         if timeframe not in supported:
             supported.append(timeframe)
     if base_timeframe not in supported:
         supported.insert(0, base_timeframe)
-    return supported
-
-
-def _case_supports_timeframe(case: BenchmarkCase, timeframe: str) -> bool:
-    try:
-        klines = load_klines(case.symbol, timeframe, offline=True)
-    except Exception:
-        return False
-    return klines is not None and not klines.empty
-
-
-def _filter_candidate_timeframes_for_pack(
-    pack: ReplayBenchmarkPack,
-    *,
-    base_timeframe: str,
-) -> list[str]:
-    requested = _supported_candidate_timeframes(
-        pack.candidate_timeframes or [base_timeframe],
-        base_timeframe=base_timeframe,
-    )
-    supported: list[str] = []
-    for timeframe in requested:
-        if all(_case_supports_timeframe(case, timeframe) for case in pack.cases):
-            supported.append(timeframe)
     return supported
 
 
@@ -1631,9 +1579,6 @@ def build_promotion_report(
         winner.case_results,
         min_entry_profit_pct=policy.min_entry_profit_pct,
     )
-    canonical_feature_diagnostics = _canonical_feature_diagnostics_from_cases(
-        winner.case_results
-    )
     holdout_passed_bool = bool((metrics["holdout_passed"] or 0.0) >= 1.0)
     entry_profitable_rate = metrics["entry_profitable_rate"]
 
@@ -1733,100 +1678,7 @@ def build_promotion_report(
         entry_profitable_rate=entry_profitable_rate,
         entry_profitable_gate=entry_profitable_gate,
         decision_path=decision_path,
-        canonical_feature_score=canonical_feature_diagnostics["canonical_feature_score"],
-        reference_canonical_feature_score=canonical_feature_diagnostics["reference_canonical_feature_score"],
-        holdout_canonical_feature_score=canonical_feature_diagnostics["holdout_canonical_feature_score"],
-        canonical_feature_scored_case_count=canonical_feature_diagnostics["canonical_feature_scored_case_count"],
-        canonical_feature_summary=canonical_feature_diagnostics["canonical_feature_summary"],
     )
-
-
-def _mean_or_none(values: list[float]) -> float | None:
-    if not values:
-        return None
-    return round(float(mean(values)), 6)
-
-
-def _canonical_feature_diagnostics_from_cases(
-    case_results: list[VariantCaseResult],
-) -> dict[str, float | int | dict[str, float | None] | None]:
-    all_scores: list[float] = []
-    reference_scores: list[float] = []
-    holdout_scores: list[float] = []
-    summary_buckets: dict[str, list[float]] = {
-        "oi_zscore_mean": [],
-        "funding_rate_zscore_mean": [],
-        "funding_flip_rate": [],
-        "volume_percentile_mean": [],
-        "pullback_depth_pct_mean": [],
-        "cvd_price_divergence_mean": [],
-    }
-
-    for case in case_results:
-        snapshot = case.canonical_feature_snapshot or {}
-        if not snapshot or not any(value is not None for value in snapshot.values()):
-            continue
-
-        case_score = score_canonical_feature_snapshot(snapshot)
-        all_scores.append(case_score)
-        if case.role == "reference":
-            reference_scores.append(case_score)
-        elif case.role == "holdout":
-            holdout_scores.append(case_score)
-
-        oi_zscore = snapshot.get("oi_zscore")
-        if oi_zscore is not None:
-            summary_buckets["oi_zscore_mean"].append(float(oi_zscore))
-
-        funding_rate_zscore = snapshot.get("funding_rate_zscore")
-        if funding_rate_zscore is not None:
-            summary_buckets["funding_rate_zscore_mean"].append(float(funding_rate_zscore))
-
-        funding_flip_flag = snapshot.get("funding_flip_flag")
-        if funding_flip_flag is not None:
-            summary_buckets["funding_flip_rate"].append(1.0 if bool(funding_flip_flag) else 0.0)
-
-        volume_percentile = snapshot.get("volume_percentile")
-        if volume_percentile is not None:
-            summary_buckets["volume_percentile_mean"].append(float(volume_percentile))
-
-        pullback_depth_pct = snapshot.get("pullback_depth_pct")
-        if pullback_depth_pct is not None:
-            summary_buckets["pullback_depth_pct_mean"].append(float(pullback_depth_pct))
-
-        cvd_price_divergence = snapshot.get("cvd_price_divergence")
-        if cvd_price_divergence is not None:
-            summary_buckets["cvd_price_divergence_mean"].append(float(cvd_price_divergence))
-
-    return {
-        "canonical_feature_score": _mean_or_none(all_scores),
-        "reference_canonical_feature_score": _mean_or_none(reference_scores),
-        "holdout_canonical_feature_score": _mean_or_none(holdout_scores),
-        "canonical_feature_scored_case_count": len(all_scores),
-        "canonical_feature_summary": {
-            key: _mean_or_none(values) for key, values in summary_buckets.items()
-        },
-    }
-
-
-def _promotion_feature_payload(
-    promotion_report: PromotionReport | None,
-) -> dict[str, float | int | dict[str, float | None] | None]:
-    if promotion_report is None:
-        return {
-            "canonical_feature_score": None,
-            "reference_canonical_feature_score": None,
-            "holdout_canonical_feature_score": None,
-            "canonical_feature_scored_case_count": 0,
-            "canonical_feature_summary": {},
-        }
-    return {
-        "canonical_feature_score": promotion_report.canonical_feature_score,
-        "reference_canonical_feature_score": promotion_report.reference_canonical_feature_score,
-        "holdout_canonical_feature_score": promotion_report.holdout_canonical_feature_score,
-        "canonical_feature_scored_case_count": promotion_report.canonical_feature_scored_case_count,
-        "canonical_feature_summary": dict(promotion_report.canonical_feature_summary),
-    }
 
 
 def _branch_insight_lookup(artifact: dict | None) -> dict[str, dict]:
@@ -2978,7 +2830,6 @@ def evaluate_variant_on_case(
         forward_peak_return_pct=forward_peak_return_pct,
         entry_next_open=entry_next_open,
         realistic_forward_peak_return_pct=realistic_forward_peak_return_pct,
-        canonical_feature_snapshot=extract_canonical_pattern_feature_snapshot(features.iloc[-1]),
     )
 
 
@@ -3008,48 +2859,6 @@ def evaluate_variant_against_pack(
     )
 
 
-def _find_variant_spec(
-    variants: list[PatternVariantSpec],
-    *,
-    variant_slug: str,
-) -> PatternVariantSpec | None:
-    for variant in variants:
-        if variant.variant_slug == variant_slug:
-            return variant
-    return None
-
-
-def _sync_active_variant_registry(
-    *,
-    store: ActivePatternVariantStore,
-    pattern_slug: str,
-    winner: VariantSearchResult,
-    variants: list[PatternVariantSpec],
-    promotion_report: PromotionReport,
-    research_run_id: str,
-    baseline_ref: str,
-) -> ActivePatternVariantEntry:
-    spec = _find_variant_spec(variants, variant_slug=winner.variant_slug)
-    timeframe = spec.timeframe if spec is not None else get_pattern(pattern_slug).timeframe
-    pattern = (
-        build_variant_pattern(pattern_slug, spec)
-        if spec is not None
-        else get_pattern(pattern_slug)
-    )
-    entry = ActivePatternVariantEntry(
-        pattern_slug=pattern_slug,
-        variant_slug=winner.variant_slug,
-        timeframe=timeframe,
-        watch_phases=derive_watch_phases_from_pattern(pattern),
-        source_kind="benchmark_search",
-        source_ref=baseline_ref,
-        research_run_id=research_run_id,
-        promotion_report_id=promotion_report.promotion_report_id,
-    )
-    store.upsert(entry)
-    return entry
-
-
 def run_pattern_benchmark_search(
     config: PatternBenchmarkSearchConfig,
     *,
@@ -3057,13 +2866,15 @@ def run_pattern_benchmark_search(
     pack_store: BenchmarkPackStore | None = None,
     artifact_store: PatternSearchArtifactStore | None = None,
     negative_memory_store: NegativeSearchMemoryStore | None = None,
-    active_variant_store: ActivePatternVariantStore | None = None,
 ) -> ResearchRun:
     controller = controller or ResearchWorkerController()
     pack_store = pack_store or BenchmarkPackStore()
     artifact_store = artifact_store or PatternSearchArtifactStore()
     negative_memory_store = negative_memory_store or NegativeSearchMemoryStore()
-    active_variant_store = active_variant_store or ACTIVE_PATTERN_VARIANT_STORE
+    definition_ref = _resolve_definition_ref(
+        pattern_slug=config.pattern_slug,
+        definition_id=config.definition_id,
+    )
     pack = (
         pack_store.load(config.benchmark_pack_id)
         if config.benchmark_pack_id is not None
@@ -3072,18 +2883,10 @@ def run_pattern_benchmark_search(
     family_policy = DEFAULT_FAMILY_SELECTION_POLICY
     if pack is None:
         raise KeyError(f"Benchmark pack not found: {config.benchmark_pack_id}")
-    supported_timeframes = _filter_candidate_timeframes_for_pack(
-        pack,
-        base_timeframe=get_pattern(config.pattern_slug).timeframe,
-    )
-    if not supported_timeframes:
-        raise ValueError(
-            f"No locally supported candidate timeframes for benchmark pack {pack.benchmark_pack_id}"
-        )
     variants = build_search_variants(
         config.pattern_slug,
         variants=config.variants,
-        candidate_timeframes=supported_timeframes,
+        candidate_timeframes=pack.candidate_timeframes,
         negative_memory_store=negative_memory_store,
         artifact_store=artifact_store,
     )
@@ -3097,7 +2900,7 @@ def run_pattern_benchmark_search(
             "family_selection_policy": family_policy.to_dict(),
         },
         evaluation_protocol={
-            "candidate_timeframes": supported_timeframes,
+            "candidate_timeframes": pack.candidate_timeframes,
             "n_cases": len(pack.cases),
             "min_reference_score": config.min_reference_score,
             "min_holdout_score": config.min_holdout_score,
@@ -3202,27 +3005,7 @@ def run_pattern_benchmark_search(
             "false_discovery_rate": promotion_report.false_discovery_rate if promotion_report is not None else None,
             "robustness_spread": promotion_report.robustness_spread if promotion_report is not None else None,
             "holdout_passed": promotion_report.holdout_passed if promotion_report is not None else None,
-            **_promotion_feature_payload(promotion_report),
         }
-        active_registry_entry: ActivePatternVariantEntry | None = None
-        if (
-            passed_reference
-            and passed_holdout
-            and promotion_report is not None
-            and promotion_report.decision == "promote_candidate"
-        ):
-            active_registry_entry = _sync_active_variant_registry(
-                store=active_variant_store,
-                pattern_slug=config.pattern_slug,
-                winner=winner,
-                variants=variants,
-                promotion_report=promotion_report,
-                research_run_id=run.research_run_id,
-                baseline_ref=run.baseline_ref,
-            )
-            metrics["active_registry_variant_slug"] = active_registry_entry.variant_slug
-            metrics["active_registry_timeframe"] = active_registry_entry.timeframe
-            metrics["active_registry_watch_phases"] = list(active_registry_entry.watch_phases)
         if passed_reference and passed_holdout:
             rationale = (
                 f"Variant {winner.variant_slug} cleared benchmark-pack search floors "
@@ -3252,16 +3035,6 @@ def run_pattern_benchmark_search(
                         if promotion_report is not None and promotion_report.decision == "promote_candidate"
                         else None
                     ),
-                    "active_registry_variant_slug": (
-                        active_registry_entry.variant_slug if active_registry_entry is not None else None
-                    ),
-                    "active_registry_timeframe": (
-                        active_registry_entry.timeframe if active_registry_entry is not None else None
-                    ),
-                    "active_registry_watch_phases": (
-                        list(active_registry_entry.watch_phases) if active_registry_entry is not None else None
-                    ),
-                    **_promotion_feature_payload(promotion_report),
                 },
                 selection_decision=SelectionDecisionInput(
                     decision_kind="advance",
@@ -3354,7 +3127,6 @@ def run_pattern_benchmark_search(
                     if promotion_report is not None and promotion_report.decision == "promote_candidate"
                     else None
                 ),
-                **_promotion_feature_payload(promotion_report),
             },
             selection_decision=SelectionDecisionInput(
                 decision_kind="dead_end",
