@@ -76,7 +76,7 @@ Contract change
 ## Next Steps
 
 1. Merge PR #322 after required checks pass.
-2. Close stale individual memory/doc PRs: #312, #315, #319, #321, #317.
+2. Close stale individual memory/doc PRs: #312, #315, #317, #319, #321, #324, #326.
 3. Triage PR #285 separately as a research/eval PR.
 
 ## Exit Criteria

@@ -15,3 +15,5 @@
 {"ts": "2026-04-25T18:13:28.459582", "event": "PR #318 merged by eunjuhyun88: docs(agents): 에이전트 1-6 세션 로그 영구 기록", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T18:30:48.389404", "event": "PR #320 merged by eunjuhyun88: docs(agents): Agent 1-6 세션 기록 전체 저장", "tags": ["pr", "merge", "W-0210"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T18:33:36.172736", "event": "PR #313 merged by eunjuhyun88: feat(W-0132): copy trading Phase 1 — leaderboard + subscription MVP", "tags": ["pr", "merge", "W-0132"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T18:45:57.805837", "event": "PR #323 merged by eunjuhyun88: docs(handoff): Agent 3 세션 기록 — Cloud Scheduler + GCP + App CI 수리", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T18:51:31.091635", "event": "PR #325 merged by eunjuhyun88: docs(agents): 에이전트 세션 인덱스 — 가변 번호 체계", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
