@@ -9,6 +9,7 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
+| `W-0164-repo-state-hygiene` | contract | 진행 중 — CURRENT sync + stale checkpoint archive |
 | `W-0132-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
 | `W-0145-operational-seed-search-corpus` | engine | 다음 — 40+차원 corpus 완성 |
 
@@ -16,7 +17,7 @@
 
 ## main SHA
 
-`87f44b0b` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210/W-0211 포함
+`cdefda4d` — origin/main (2026-04-26) — active variant promotion + pattern seed scoring + App CI/governance + W-0201/W-0202/W-0210/W-0211 + indicator defaults 포함
 
 ---
 
@@ -32,6 +33,7 @@
 | **W-0202** canonical features + active registry | PR #291 main 머지 완료 |
 | **W-0210** 4-layer viz | main 머지 완료 |
 | **W-0211** multi-pane chart + Pine Script engine | PR #298 main 머지 완료 (74afaba3) |
+| **Indicator defaults** OI/Funding/Liq 기본 ON | main 머지 완료 (2092ac01) |
 | **W-0203** terminal UX | PR #290 main 머지 완료 |
 | **W-0162** JWT security P0 | PR #253 main 머지 완료 |
 | **엔진 P0-P2 infra** | PR #281 main 머지 완료 |
@@ -54,7 +56,7 @@
 ## 다음 실행 순서 (우선순위 순)
 
 ### 즉시
-- 긴급 항목 없음 — 모든 CI 초록, GCP 정상 (cogotchi-00013-c7n)
+- **W-0164** repo state hygiene 마무리 — 전용 worktree 기준 CURRENT sync + stale checkpoint archive
 
 ### 중기 (설계 필요)
 4. **Layer A 검색 고도화** (40+차원 완성)
@@ -72,9 +74,3 @@
 - [ ] Vercel `EXCHANGE_ENCRYPTION_KEY` (프로덕션)
 - [x] Cloud Scheduler HTTP jobs — 5 jobs 등록 완료 (2026-04-25): feature-materialization-run, db-cleanup-daily, pattern-scan-run, outcome-resolver-run, feature-windows-build
 - [x] `_primary_cache_dir` NameError 수정 — PR #291 main 머지 + GCP cogotchi-00013-c7n 배포 완료 (2026-04-26)
-
----
-
-## 체크포인트 파일
-
-- `work/active/W-app-ci-repair-checkpoint-20260426.md` — 이번 세션 상세 기록
