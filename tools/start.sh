@@ -75,14 +75,28 @@ if [ -x app/scripts/dev/memkraft-session-start.sh ]; then
   bash app/scripts/dev/memkraft-session-start.sh 2>/dev/null | head -10 || true
 fi
 
-# 5. 최근 세션 (jsonl 마지막 3개)
+# 5. 최근 에이전트 이력 (agent별 파일이 있으면 거기서, 없으면 date jsonl에서)
 echo ""
-echo "Recent sessions (last 3):"
-for f in $(ls -t memory/sessions/*.jsonl 2>/dev/null | head -3); do
-  date=$(basename "$f" .jsonl)
-  count=$(wc -l < "$f" | tr -d ' ')
-  echo "  $date ($count events)"
-done
+echo "Recent agents (last 5):"
+LATEST_AGENTS=$(ls -t memory/sessions/agents/*.jsonl 2>/dev/null | head -5)
+if [ -n "$LATEST_AGENTS" ]; then
+  for f in $LATEST_AGENTS; do
+    aid=$(basename "$f" .jsonl)
+    last=$(tail -1 "$f" 2>/dev/null | jq -r '.event // "?"' 2>/dev/null | head -c 70)
+    echo "  $aid — $last"
+  done
+else
+  echo "  (no per-agent records yet — first agent to use ./tools/end.sh creates them)"
+fi
+
+# 내 이력 (NEXT_ID는 새 발번이라 비어있음, 직전 ID 표시)
+PREV_ID=$(printf "A%03d" $((10#${LATEST_ID:-0})))
+PREV_FILE="memory/sessions/agents/${PREV_ID}.jsonl"
+if [ -f "$PREV_FILE" ]; then
+  echo ""
+  echo "Previous agent ($PREV_ID) handoff:"
+  tail -1 "$PREV_FILE" 2>/dev/null | jq -r '"  shipped: \(.shipped // "?")\n  handoff: \(.handoff // "?")"' 2>/dev/null || true
+fi
 
 cat <<EOF
 
@@ -90,7 +104,6 @@ cat <<EOF
 Next:
   ./tools/claim.sh <file-domain>     # 작업 시작 시 lock
   cat spec/PRIORITIES.md             # 자세한 P0/P1 보기
-  ./tools/verify_design.sh           # 코드 머지 전 drift 검사
   ./tools/end.sh "shipped" "handoff" # 세션 종료 시
 ═══════════════════════════════════
 EOF

@@ -21,16 +21,17 @@
 - ✓ W-0204 active_variant_store (PR #292)
 - ✓ W-0205 PromotionReport Gate UI (PR #292)
 - ✓ W-0210 4-layer viz (PR #283)
-- ✓ W-0211 multi-pane chart + Pine Script (PR #308 진행중)
+- ✓ W-0211 multi-pane chart + Pine Script (PR #298 + #302)
+- ✓ W-0132 copy trading Phase 1 (PR #313)
+- ✓ W-0145 operational seed search corpus (main)
 
 ## In Flight
 
 - → Multi-Agent OS v2 (이 PR + Phase 3-4)
-- → W-0145 Search Corpus 40+차원 (P1)
-- → W-0132 Copy Trading Phase 1 (P2)
+- → W-0212 chart UX polish (P2)
+- → W-0114 analysis compare triage (PR #285)
 
 ## Backlog (구현 대기)
 
-- W-0212 chart UX polish (드래그 리사이즈 검증)
 - W-0146 (proposed) 패턴 wiki agent 자동화
 - 인프라: Cloud Build worker trigger, Vercel EXCHANGE_ENCRYPTION_KEY

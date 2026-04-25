@@ -21,32 +21,25 @@ Exit: `./tools/verify_design.sh` PR마다 자동 실행, drift 0 확인.
 
 ## P1 — W-0145 Search Corpus 40+차원
 
-**Owner**: 미할당
-**Branch**: feat/w-0145-search-corpus-40dim
-
-- `engine/search/corpus_builder.py` 40차원 확장
-- OI/funding 2× 가중치
-- recall@10 ≥ 0.7
-
-Spec: `work/active/W-0145-operational-seed-search-corpus.md`
+**Status**: 완료 — main에 구현됨 (`work/active/CURRENT.md` 기준)
+**Next**: 검색 품질 회귀 측정이 필요하면 별도 eval PR로 분리.
 
 ---
 
-## P2 — W-0132 Copy Trading Phase 1
+## P2 — W-0212 Chart UX Polish
 
 **Owner**: 미할당
-**Branch**: feat/w-0132-copy-trading-phase1
+**Branch**: feat/w-0212-chart-ux-polish
 
-- Supabase migration 022 (trader_profiles + copy_subscriptions)
-- `engine/copy_trading/` (leader_score, leaderboard, API route)
-- App `CopyTradingLeaderboard.svelte` + 3 routes
+- 패인 드래그 리사이즈 검증
+- 크로스헤어 값 업데이트
+- KPI 스파크라인 확인
 
-Spec: `work/active/W-0132-copy-trading-phase1.md`
-PRD: `memory/decisions/dec-2026-04-22-copy-trading-prd.md` (있으면)
+Spec: `work/active/CURRENT.md`
 
 ---
 
 ## Frozen / Waiting
 
-- PR #308 (W-0211 multi-pane + Pine Script) — App CI 진행중
+- PR #285 (W-0114 research compare) — stale branch라 재적용/종료 판단 필요
 - 인프라 (사람 작업): GCP worker Cloud Build trigger, Vercel `EXCHANGE_ENCRYPTION_KEY`
