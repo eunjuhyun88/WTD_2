@@ -7,9 +7,16 @@ from fastapi.testclient import TestClient
 
 from api.routes import patterns as pattern_routes
 from api.routes import patterns_thread as ptr
+
 from ledger.types import PatternLedgerFamilyStats, PatternLedgerRecord, PatternOutcome, PatternStats
 
 
+
+def _attach_fake_auth(app, user_id: str = "founder") -> None:
+    @app.middleware("http")
+    async def _inject_test_user_id(request, call_next):
+        request.state.user_id = user_id
+        return await call_next(request)
 class _RegistryEntry:
     def __init__(
         self,
@@ -912,6 +919,7 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     monkeypatch.setattr(ptr, "get_engine", lambda model_key: FakeEngine())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
+    _attach_fake_auth(app)
     client = TestClient(app)
 
     response = client.post(
@@ -1037,6 +1045,7 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
     monkeypatch.setattr(ptr, "get_engine", lambda model_key: FakeEngine())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
+    _attach_fake_auth(app)
     client = TestClient(app)
 
     response = client.post(
@@ -1286,6 +1295,7 @@ def test_record_capture_appends_capture_record(monkeypatch) -> None:
     monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
+    _attach_fake_auth(app)
     client = TestClient(app)
 
     response = client.post(
@@ -1324,6 +1334,7 @@ def test_record_capture_returns_404_for_unknown_pattern(monkeypatch) -> None:
     """POST /{slug}/capture returns 404 if pattern slug is not registered."""
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
+    _attach_fake_auth(app)
     client = TestClient(app)
 
     response = client.post(

@@ -14,6 +14,7 @@ from typing import Literal
 import pandas as pd
 
 from data_cache.loader import load_klines, load_perp
+from exceptions import CacheMiss
 from data_cache.resample import tf_string_to_minutes
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore
 from ledger.types import PatternLedgerRecord
@@ -567,7 +568,7 @@ class BenchmarkPackStore:
         default_id = f"{pattern_slug}__ptb-tradoor-v1"
         existing = self.load(default_id)
         if existing is not None:
-            desired_timeframes = ["1h", "4h"]
+            desired_timeframes = ["15m", "1h", "4h"]
             if existing.candidate_timeframes != desired_timeframes:
                 existing = ReplayBenchmarkPack(
                     benchmark_pack_id=existing.benchmark_pack_id,
@@ -581,7 +582,7 @@ class BenchmarkPackStore:
         pack = ReplayBenchmarkPack(
             benchmark_pack_id=default_id,
             pattern_slug=pattern_slug,
-            candidate_timeframes=["1h", "4h"],
+            candidate_timeframes=["15m", "1h", "4h"],
             cases=[
                 BenchmarkCase(
                     symbol="PTBUSDT",
@@ -835,6 +836,23 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
         ),
         PatternVariantSpec(
             pattern_slug=pattern_slug,
+            variant_slug=f"{pattern_slug}__breakout-range-soft",
+            timeframe=base.timeframe,
+            phase_overrides={
+                "BREAKOUT": {
+                    "required_blocks": [],
+                    "required_any_groups": [
+                        ["post_accumulation_range_breakout", "breakout_from_pullback_range"],
+                    ],
+                    "optional_blocks": ["oi_expansion_confirm", "breakout_volume_confirm"],
+                    "min_bars": 1,
+                    "max_bars": 18,
+                }
+            },
+            hypotheses=["soften breakout trigger — accept either post-accum or pullback-range SOS"],
+        ),
+        PatternVariantSpec(
+            pattern_slug=pattern_slug,
             variant_slug=f"{pattern_slug}__holdout-recovery-bias",
             timeframe=base.timeframe,
             phase_overrides={
@@ -868,12 +886,12 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
     ]
 
 
-def _supported_candidate_timeframes(candidate_timeframes: list[str], *, base_timeframe: str) -> list[str]:
+def _supported_candidate_timeframes(candidate_timeframes: list[str], *, base_timeframe: str, allow_sub_base: bool = False) -> list[str]:
     base_minutes = tf_string_to_minutes(base_timeframe)
     supported: list[str] = []
     for timeframe in candidate_timeframes:
         tf_minutes = tf_string_to_minutes(timeframe)
-        if tf_minutes < base_minutes:
+        if not allow_sub_base and tf_minutes < base_minutes:
             continue
         if timeframe not in supported:
             supported.append(timeframe)
@@ -951,11 +969,13 @@ def expand_variants_across_durations(
 def expand_variants_across_timeframes(
     variants: list[PatternVariantSpec],
     candidate_timeframes: list[str] | None,
+    *,
+    allow_sub_base: bool = False,
 ) -> list[PatternVariantSpec]:
     if not variants:
         return []
     base_timeframe = variants[0].timeframe
-    target_timeframes = _supported_candidate_timeframes(candidate_timeframes or [base_timeframe], base_timeframe=base_timeframe)
+    target_timeframes = _supported_candidate_timeframes(candidate_timeframes or [base_timeframe], base_timeframe=base_timeframe, allow_sub_base=allow_sub_base)
     expanded: dict[str, PatternVariantSpec] = {}
     for variant in variants:
         # avoid tf × duration cross-products: keep duration_family variants at base tf only
@@ -2609,7 +2629,7 @@ def build_search_variants(
     # duration axis expansion stays at base timeframe; timeframe axis leaves
     # duration_family variants untouched. The two axes stay orthogonal.
     with_duration = expand_variants_across_durations(list(deduped.values()))
-    return expand_variants_across_timeframes(with_duration, candidate_timeframes)
+    return expand_variants_across_timeframes(with_duration, candidate_timeframes, allow_sub_base=True)
 
 
 DEFAULT_ENTRY_PROFIT_HORIZON_BARS = 48
@@ -2706,7 +2726,16 @@ def evaluate_variant_on_case(
         from_timeframe=case.timeframe,
         to_timeframe=timeframe,
     )
-    klines, features = _slice_case_frames(case, timeframe=timeframe, warmup_bars=scaled_warmup_bars)
+    try:
+        klines, features = _slice_case_frames(case, timeframe=timeframe, warmup_bars=scaled_warmup_bars)
+    except (CacheMiss, ValueError):
+        return VariantCaseResult(
+            case_id=case.case_id, symbol=case.symbol, role=case.role,
+            observed_phase_path=[], current_phase="DATA_MISSING",
+            phase_fidelity=0.0, phase_depth_progress=0.0,
+            entry_hit=False, target_hit=False, lead_bars=None, score=0.0,
+            failed_reason_counts={"data_missing": 1},
+        )
     attempts: list[PhaseAttemptRecord] = []
     machine = PatternStateMachine(pattern, on_phase_attempt=attempts.append)
     replay = replay_pattern_frames(

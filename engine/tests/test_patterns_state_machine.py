@@ -31,7 +31,7 @@ ARCH_ZONE_BLOCKS = ["sideways_compression"]
 REAL_DUMP_BLOCKS = ["oi_spike_with_dump", "volume_spike"]
 ACCUMULATION_BLOCKS = ["higher_lows_sequence", "positive_funding_bias", "oi_hold_after_spike"]
 BREAKOUT_BLOCKS = [
-    "breakout_from_pullback_range",
+    "post_accumulation_range_breakout",
     "oi_expansion_confirm",
 ]
 

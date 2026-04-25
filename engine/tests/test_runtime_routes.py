@@ -12,6 +12,13 @@ from patterns.registry import PatternRegistryStore
 from runtime.store import RuntimeStateStore
 
 
+
+
+def _attach_fake_auth(app, user_id: str = "founder") -> None:
+    @app.middleware("http")
+    async def _inject_test_user_id(request, call_next):
+        request.state.user_id = user_id
+        return await call_next(request)
 def _client(tmp_path, monkeypatch) -> TestClient:
     runtime_store = RuntimeStateStore(tmp_path / "runtime.sqlite")
     capture_store = CaptureStore(tmp_path / "capture.sqlite")
@@ -37,6 +44,7 @@ def _client(tmp_path, monkeypatch) -> TestClient:
 
     app = FastAPI()
     app.include_router(runtime.router, prefix="/runtime")
+    _attach_fake_auth(app)
     client = TestClient(app)
     client.runtime_store = runtime_store  # type: ignore[attr-defined]
     client.capture_store = capture_store  # type: ignore[attr-defined]

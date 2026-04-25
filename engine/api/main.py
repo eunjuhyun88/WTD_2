@@ -212,7 +212,10 @@ async def jwt_auth_middleware(request: Request, call_next):  # noqa: ANN001
     - Extracts user_id from JWT token in Authorization header
     - Injects request.state.user_id for downstream routes
     - Skips health checks and internal job endpoints
+    - Skips routes authenticated via x-engine-internal-secret (handled by request_id_middleware)
     """
+    if request.headers.get("x-engine-internal-secret", "").strip():
+        return await call_next(request)
     if is_protected_route(request.url.path):
         try:
             user_id = await extract_user_id_from_jwt(request)

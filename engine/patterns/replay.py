@@ -14,6 +14,19 @@ from scanner.feature_calc import compute_features_table
 from scoring.block_evaluator import evaluate_block_masks
 
 
+
+def _referenced_blocks_for_pattern(machine: PatternStateMachine) -> set[str]:
+    refs: set[str] = set()
+    for phase in machine.pattern.phases:
+        refs.update(phase.required_blocks)
+        refs.update(phase.optional_blocks)
+        refs.update(getattr(phase, 'soft_blocks', []))
+        refs.update(phase.disqualifier_blocks)
+        for group in getattr(phase, 'required_any_groups', []):
+            refs.update(group)
+    return refs
+
+
 def _row_snapshot(row: pd.Series) -> dict:
     snapshot: dict[str, float | str | None] = {}
     for key, value in row.items():
@@ -48,7 +61,7 @@ def replay_pattern_frames(
             phase_history=[],
         )
 
-    masks = evaluate_block_masks(features_df, klines_df, symbol)
+    masks = evaluate_block_masks(features_df, klines_df, symbol, requested_blocks=_referenced_blocks_for_pattern(machine))
     end_idx = len(features_df)
     if timestamp_limit is not None:
         matching = features_df.index[features_df.index < timestamp_limit]

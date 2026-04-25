@@ -14,6 +14,13 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from api.routes import patterns_thread
+from capture.store import CaptureStore
+from research.capture_benchmark import (
+    build_benchmark_pack_from_capture,
+    build_and_run_benchmark_search_from_capture,
+    pattern_benchmark_search_payload,
+)
+from research.pattern_search import BenchmarkPackStore, NegativeSearchMemoryStore, PatternSearchArtifactStore
 from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
@@ -26,6 +33,10 @@ from scoring.block_evaluator import _BLOCKS
 
 router = APIRouter()
 _ledger = get_ledger_store()
+_capture_store = CaptureStore()
+_benchmark_pack_store = BenchmarkPackStore()
+_pattern_search_artifact_store = PatternSearchArtifactStore()
+_negative_search_memory_store = NegativeSearchMemoryStore()
 
 
 # ── Request models ───────────────────────────────────────────────────────────
@@ -79,6 +90,16 @@ class _CaptureBody(BaseModel):
     block_scores: dict = {}
     outcome_id: str | None = None
     verdict_id: str | None = None
+
+
+class _BenchmarkPackDraftBody(BaseModel):
+    capture_id: str
+    max_holdouts: int = 4
+
+
+class _BenchmarkSearchBody(BaseModel):
+    capture_id: str
+    max_holdouts: int = 4
 
 
 # ── Library & States ─────────────────────────────────────────────────────────
@@ -427,3 +448,40 @@ async def register_pattern(body: _RegisterPatternBody) -> dict:
 
     PATTERN_LIBRARY[body.slug] = pattern
     return {"ok": True, "slug": body.slug, "n_phases": len(phases)}
+
+
+# ── Benchmark pack and search endpoints ──────────────────────────────────────
+
+@router.post("/{slug}/benchmark-pack-draft")
+async def create_benchmark_pack_draft(slug: str, body: _BenchmarkPackDraftBody) -> dict:
+    """Build a benchmark pack from a capture and save it."""
+    draft = await asyncio.to_thread(
+        build_benchmark_pack_from_capture,
+        capture_id=body.capture_id,
+        pattern_slug=slug,
+        max_holdouts=body.max_holdouts,
+        capture_store=_capture_store,
+        pack_store=_benchmark_pack_store,
+    )
+    return {
+        "ok": True,
+        "source_capture_id": draft.source_capture_id,
+        "pack": draft.pack.to_dict(),
+    }
+
+
+@router.post("/{slug}/benchmark-search-from-capture")
+async def run_benchmark_search_from_capture(slug: str, body: _BenchmarkSearchBody) -> dict:
+    """Build benchmark pack and run a full benchmark search from a capture."""
+    result = await asyncio.to_thread(
+        build_and_run_benchmark_search_from_capture,
+        capture_id=body.capture_id,
+        capture_store=_capture_store,
+        pack_store=_benchmark_pack_store,
+        artifact_store=_pattern_search_artifact_store,
+        negative_memory_store=_negative_search_memory_store,
+    )
+    return {
+        "ok": True,
+        **result.to_dict(),
+    }

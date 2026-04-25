@@ -20,6 +20,13 @@ from research.pattern_search import (
 from research.state_store import ResearchRun
 
 
+
+
+def _attach_fake_auth(app, user_id: str = "founder") -> None:
+    @app.middleware("http")
+    async def _inject_test_user_id(request, call_next):
+        request.state.user_id = user_id
+        return await call_next(request)
 def _client(tmp_path, monkeypatch) -> TestClient:
     capture_store = CaptureStore(tmp_path / "capture.sqlite")
     state_store = PatternStateStore(tmp_path / "runtime.sqlite")
@@ -39,6 +46,7 @@ def _client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setattr(captures, "LEDGER_RECORD_STORE", FakeRecordStore())
     app = FastAPI()
     app.include_router(captures.router, prefix="/captures")
+    _attach_fake_auth(app)
     client = TestClient(app)
     client.capture_store = capture_store  # type: ignore[attr-defined]
     client.state_store = state_store  # type: ignore[attr-defined]
@@ -68,6 +76,7 @@ def _client_with_ledger(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setattr(captures, "LEDGER_RECORD_STORE", FakeRecordStore())
     app = FastAPI()
     app.include_router(captures.router, prefix="/captures")
+    _attach_fake_auth(app)
     client = TestClient(app)
     client.capture_store = capture_store  # type: ignore[attr-defined]
     client.ledger_store = ledger_store  # type: ignore[attr-defined]

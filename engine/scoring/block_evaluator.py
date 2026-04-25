@@ -39,6 +39,8 @@ from building_blocks.triggers.volume_spike import volume_spike
 from building_blocks.triggers.sweep_below_low import sweep_below_low
 from building_blocks.triggers.volume_spike_down import volume_spike_down
 
+from building_blocks.triggers.post_accumulation_range_breakout import post_accumulation_range_breakout
+
 # --- Confirmations ---
 from building_blocks.confirmations.absorption_signal import absorption_signal
 from building_blocks.confirmations.alt_btc_accel_ratio import alt_btc_accel_ratio
@@ -120,6 +122,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("gap_down",                  gap_down),
     ("breakout_above_high",       breakout_above_high),
     ("breakout_from_pullback_range", breakout_from_pullback_range),
+    ("post_accumulation_range_breakout", post_accumulation_range_breakout),
     ("breakout_volume_confirm",   breakout_volume_confirm),
     ("consolidation_then_breakout", consolidation_then_breakout),
     ("sweep_below_low",           sweep_below_low),
@@ -228,12 +231,16 @@ def evaluate_block_masks(
     features_df: pd.DataFrame,
     klines_df: pd.DataFrame,
     symbol: str,
+    *,
+    requested_blocks: set[str] | None = None,
 ) -> dict[str, pd.Series]:
     """Return boolean Series masks for every block over the full features frame."""
     ctx = Context(klines=klines_df, features=features_df, symbol=symbol)
     masks: dict[str, pd.Series] = {}
 
     for name, fn in _BLOCKS:
+        if requested_blocks is not None and name not in requested_blocks:
+            continue
         try:
             result = fn(ctx)
             if isinstance(result, pd.Series):

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import sqlite3
 
 import pandas as pd
 
 from data_cache.raw_ingest import ingest_binance_symbol_raw
+
+_FIXED_INGEST_TS = datetime(2026, 4, 24, 2, 0, 0, tzinfo=timezone.utc)
 from data_cache.raw_store import CanonicalRawStore
 
 
@@ -137,6 +141,7 @@ def test_ingest_binance_symbol_raw_writes_market_orderflow_and_perp(monkeypatch,
         "data_cache.raw_ingest.fetch_coinalyze_liquidation_history",
         lambda symbol, timeframe, limit: _public_liquidation_df(timeframe),
     )
+    monkeypatch.setattr("data_cache.raw_ingest._utcnow", lambda: _FIXED_INGEST_TS)
 
     result = ingest_binance_symbol_raw(
         "BTCUSDT",
@@ -312,6 +317,7 @@ def test_ingest_binance_symbol_raw_replaces_existing_symbol_slice(monkeypatch, t
         "data_cache.raw_ingest.fetch_coinalyze_liquidation_history",
         lambda symbol, timeframe, limit: _public_liquidation_df(timeframe),
     )
+    monkeypatch.setattr("data_cache.raw_ingest._utcnow", lambda: _FIXED_INGEST_TS)
     ingest_binance_symbol_raw(
         "BTCUSDT",
         timeframe="1h",
