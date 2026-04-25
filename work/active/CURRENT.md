@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-26 업데이트)
+# CURRENT — 단일 진실 (2026-04-25)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -16,7 +16,7 @@
 
 ## main SHA
 
-`c1a8072e` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210 포함
+`8d1f1929` — origin/main (2026-04-26) — App CI 초록 + CI governance + W-0201/W-0202/W-0210 포함
 
 ---
 
