@@ -138,7 +138,6 @@ def load_klines(
         if path.exists():
             return _read_klines_cache(path)
         if offline:
-            expected = cache_path(symbol, "1h")
             raise CacheMiss(
                 f"{symbol}_{_CANONICAL_HOURLY_TIMEFRAME} not cached at {path} and offline=True"
             )

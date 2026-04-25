@@ -57,10 +57,12 @@
 | **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
 | **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
 | **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
+| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | canonical raw ingress + persisted market search index + L1/L2 query cache + scheduler refresh + universe query cutover |
 | **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
 | **W-0158** | `W-0158-promotion-feature-diagnostics.md` | 🔴 IN-PROGRESS | canonical feature score/snapshot truth를 promotion report와 refinement report diagnostics에 재사용 |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
+| **W-0160** | `W-0160-pattern-draft-query-transformer-contract.md` | 🔴 IN-PROGRESS | `PatternDraft -> SearchQuerySpec` contract + parser/transformer/agent boundary freeze |
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
@@ -131,8 +133,9 @@
 - engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
 - `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
 - `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
-- active execution lane is `codex/w-0158-promotion-feature-diagnostics`
-- `W-0158` local cut reuses the same canonical feature score family in promotion/search diagnostics, reports reference/holdout breakdown + aggregate summary, and passed targeted `pattern_search` / `live_monitor` / reporting tests
+- `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
+- active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
+- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, process-local + shared Redis query caching, bounded index refresh job, and `/universe?q=` local-search read path
 
 ---
 
@@ -143,9 +146,10 @@
 3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
 4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
 5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
-7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
-8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+6. **W-0160 / Contract lane** — `PatternDraft` / `SearchQuerySpec` + parser/transformer boundary for live agent/search turns
+7. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+8. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
@@ -165,6 +169,7 @@
 | codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
 | codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
 | codex/w-0158-promotion-feature-diagnostics | W-0158 | active engine lane for canonical feature diagnostics in promotion/report artifacts |
+| codex/w-0159-canonical-raw-plane-ingestion | W-0159 | active engine lane for canonical raw plane ingestion and query-driven symbol resolution |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
@@ -176,6 +181,7 @@
 |---|---|---|
 | codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
 | codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0160-pattern-draft-transformer-contract | W-0160 | planned contract lane for parser/search boundary freeze before live agent cutover |
 | codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
