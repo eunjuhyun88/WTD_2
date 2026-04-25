@@ -1267,6 +1267,12 @@ def get_pattern(slug: str) -> PatternObject:
     return PATTERN_LIBRARY[slug]
 
 
+# HTML-reference-derived patterns: patterns tagged with "html_ref"
+HTML_REFERENCE_PATTERNS: list[PatternObject] = [
+    p for p in PATTERN_LIBRARY.values() if "html_ref" in (p.tags or [])
+]
+
+
 # ── Registry seeding ────────────────────────────────────────────────────────
 # On module load, seed the JSON-backed registry from the static library.
 # Only writes entries that don't already exist (preserves user-created patterns).

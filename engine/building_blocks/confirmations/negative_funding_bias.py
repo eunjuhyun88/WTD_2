@@ -38,7 +38,10 @@ def negative_funding_bias(
             f"min_bars must be >= 1 and <= lookback_bars, got {min_bars} vs {lookback_bars}"
         )
 
-    funding = ctx.klines["funding_rate"].astype(float)
+    if "funding_rate" in ctx.features.columns:
+        funding = ctx.features["funding_rate"].astype(float)
+    else:
+        funding = ctx.klines["funding_rate"].astype(float)
 
     # Count negative bars in lookback window
     negative_count = (

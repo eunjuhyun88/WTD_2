@@ -363,3 +363,24 @@ def load_chain_bundle(
     merged = merged.sort_index().ffill(limit=7)
     merged.to_csv(path)
     return merged
+
+
+# ─── Symbol discovery ─────────────────────────────────────────────────────────
+
+def list_cached_symbols(*, require_perp: bool = True) -> list[str]:
+    """Return all symbols that have a 1h klines CSV in the cache directory.
+
+    Args:
+        require_perp: if True (default), only return symbols that also have a
+            perp CSV (i.e. futures symbols). If False, return all symbols with
+            a 1h CSV regardless of perp availability.
+    """
+    if not CACHE_DIR.exists():
+        return []
+    symbols = []
+    for path in sorted(CACHE_DIR.glob("*_1h.csv")):
+        symbol = path.stem.removesuffix("_1h")
+        if require_perp and not perp_cache_path(symbol).exists():
+            continue
+        symbols.append(symbol)
+    return symbols

@@ -297,6 +297,21 @@ def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SC
             print(f"    {r.symbol}  fwd_peak={fwd}  realistic={real}")
 
 
+def resolve_live_variant_slug(pattern_slug: str, variant_slug: str | None = None) -> str:
+    """Resolve a variant slug for a given pattern_slug.
+
+    If variant_slug is provided and non-empty, return it as-is.
+    Otherwise look up the first promoted variant for the pattern_slug.
+    Falls back to "{pattern_slug}__canonical" if none is registered.
+    """
+    if variant_slug:
+        return variant_slug
+    for pat_slug, var_slug, _ in PROMOTED_PATTERNS:
+        if pat_slug == pattern_slug:
+            return var_slug
+    return f"{pattern_slug}__canonical"
+
+
 if __name__ == "__main__":
     results = scan_universe_live()
     print_scan_report(results)

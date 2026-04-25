@@ -54,8 +54,11 @@ def volume_surge_bear(
             f"taker_sell_threshold must be in (0, 1), got {taker_sell_threshold}"
         )
 
-    tsv = ctx.klines["taker_sell_base_volume"].astype(float)
     vol = ctx.klines["volume"].astype(float)
+    if "taker_sell_base_volume" in ctx.klines.columns:
+        tsv = ctx.klines["taker_sell_base_volume"].astype(float)
+    else:
+        tsv = (vol - ctx.klines["taker_buy_base_volume"].astype(float)).clip(lower=0)
 
     # Per-bar taker-sell ratio; treat zero-volume bars as neutral (0.5)
     per_bar_ratio = (tsv / vol.replace(0, float("nan"))).fillna(0.5)

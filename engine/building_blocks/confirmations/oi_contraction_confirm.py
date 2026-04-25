@@ -39,18 +39,14 @@ def oi_contraction_confirm(
             f"min_decline_pct must be in (0, 1), got {min_decline_pct}"
         )
 
-    oi = ctx.klines["open_interest"].astype(float)
-
-    # Prior OI (lookback_bars ago)
-    prior_oi = oi.shift(lookback_bars)
-
-    # Current OI
-    current_oi = oi
-
-    # Decline as fraction
-    oi_change = (current_oi - prior_oi) / prior_oi.replace(0, float("nan"))
-
-    # True where OI declined >= min_decline_pct
-    contracting = oi_change <= -min_decline_pct
+    # Prefer pre-computed oi_change_24h from features table if available
+    if "oi_change_24h" in ctx.features.columns:
+        oi_change = ctx.features["oi_change_24h"].astype(float)
+        contracting = oi_change <= -min_decline_pct
+    else:
+        oi = ctx.klines["open_interest"].astype(float)
+        prior_oi = oi.shift(lookback_bars)
+        oi_change = (oi - prior_oi) / prior_oi.replace(0, float("nan"))
+        contracting = oi_change <= -min_decline_pct
 
     return contracting.reindex(ctx.features.index, fill_value=False).astype(bool)
