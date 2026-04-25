@@ -10,3 +10,4 @@
 {"ts": "2026-04-25T17:31:16.590054", "event": "PR #302 merged by eunjuhyun88: fix(chart): OI/Funding/Liq default ON", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T17:39:37.488130", "event": "PR #292 merged by eunjuhyun88: feat(W-0203/W-0204): active variant auto-promotion + pattern seed 3-layer scoring", "tags": ["pr", "merge", "W-0203", "W-0204"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T17:49:54.100018", "event": "PR #305 merged by eunjuhyun88: chore(work): align repo state hygiene", "tags": ["pr", "merge", "W-0164"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T18:33:36.172736", "event": "PR #313 merged by eunjuhyun88: feat(W-0132): copy trading Phase 1 — leaderboard + subscription MVP", "tags": ["pr", "merge", "W-0132"], "importance": "high", "entity": "", "task": "", "decision": ""}
