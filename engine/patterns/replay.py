@@ -76,7 +76,7 @@ def replay_pattern_frames(
         features_df,
         klines_df,
         symbol,
-        requested_blocks=_referenced_blocks_for_pattern(machine),
+        block_names=_pattern_block_names(machine),
     )
     end_idx = len(features_df)
     if timestamp_limit is not None:

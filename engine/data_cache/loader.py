@@ -39,93 +39,6 @@ _SUPPORTED_TIMEFRAMES = SUPPORTED_TF_STRINGS
 _CANONICAL_HOURLY_TIMEFRAME = "1h"
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _resolve_git_worktree_shared_cache_dir() -> Path | None:
-    git_meta = _repo_root() / ".git"
-    if not git_meta.is_file():
-        return None
-    try:
-        payload = git_meta.read_text().strip()
-    except OSError:
-        return None
-    prefix = "gitdir:"
-    if not payload.startswith(prefix):
-        return None
-    gitdir = Path(payload[len(prefix):].strip())
-    if not gitdir.is_absolute():
-        gitdir = (_repo_root() / gitdir).resolve()
-    if gitdir.parent.name != "worktrees":
-        return None
-    common_git_dir = gitdir.parent.parent
-    main_root = common_git_dir.parent
-    shared_cache_dir = main_root / "engine" / "data_cache" / "cache"
-    if shared_cache_dir == CACHE_DIR:
-        return None
-    return shared_cache_dir
-
-
-def _configured_shared_cache_dir() -> Path | None:
-    override = os.getenv("WTD_SHARED_CACHE_DIR")
-    if override:
-        return Path(override).expanduser()
-    if CACHE_DIR != Path(__file__).parent / "cache":
-        return None
-    return _resolve_git_worktree_shared_cache_dir()
-
-
-def _primary_cache_dir() -> Path:
-    return _configured_shared_cache_dir() or CACHE_DIR
-
-
-def _cache_search_dirs() -> list[Path]:
-    candidates = [_primary_cache_dir(), CACHE_DIR]
-    unique: list[Path] = []
-    for path in candidates:
-        if path not in unique:
-            unique.append(path)
-    return unique
-
-
-def _find_existing_cache_path(filename: str) -> Path | None:
-    for base_dir in _cache_search_dirs():
-        path = base_dir / filename
-        if path.exists():
-            return path
-    return None
-
-
-def list_cached_symbols(*, require_perp: bool = False, timeframe: str = "1h") -> list[str]:
-    """Return symbols that already have cached market data.
-
-    Discovers symbols from the canonical cache search dirs. For now we only
-    inventory the 1h base cache because higher timeframes are derived from it.
-    """
-    tf_string_to_minutes(timeframe)
-    if timeframe != "1h":
-        raise ValueError("list_cached_symbols currently supports timeframe='1h' only")
-
-    symbols: set[str] = set()
-    perp_symbols: set[str] = set()
-    for base_dir in _cache_search_dirs():
-        if not base_dir.exists():
-            continue
-        for path in base_dir.glob("*_1h.csv"):
-            symbol = path.name.removesuffix("_1h.csv")
-            if symbol:
-                symbols.add(symbol)
-        for path in base_dir.glob("*_perp.csv"):
-            symbol = path.name.removesuffix("_perp.csv")
-            if symbol:
-                perp_symbols.add(symbol)
-    ordered = sorted(symbols)
-    if require_perp:
-        ordered = [symbol for symbol in ordered if symbol in perp_symbols]
-    return ordered
-
-
 def cache_path(symbol: str, timeframe: str) -> Path:
     """Return the CSV path for (symbol, timeframe) — does NOT check existence."""
     return _primary_cache_dir() / f"{symbol}_{timeframe}.csv"
@@ -220,29 +133,16 @@ def load_klines(
     # Validate the timeframe string early; unknown values raise ValueError.
     tf_min = tf_string_to_minutes(timeframe)
 
-    if timeframe == "1h":
-        path = _find_existing_cache_path(f"{symbol}_1h.csv")
-        if path is not None:
-            df = pd.read_csv(path, index_col="timestamp", parse_dates=True)
-            if df.index.tz is None:
-                df.index = df.index.tz_localize("UTC")
-            return df
+    if timeframe == _CANONICAL_HOURLY_TIMEFRAME:
+        path = cache_path(symbol, _CANONICAL_HOURLY_TIMEFRAME)
+        if path.exists():
+            return _read_klines_cache(path)
         if offline:
             expected = cache_path(symbol, "1h")
             raise CacheMiss(
-                f"{symbol}_1h not cached under {_cache_search_dirs()} and offline=True (primary {expected})"
+                f"{symbol}_{_CANONICAL_HOURLY_TIMEFRAME} not cached at {path} and offline=True"
             )
-        write_path = cache_path(symbol, "1h")
-        write_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            df = fetch_klines_max(symbol, "1h")
-        except RuntimeError as exc:
-            spot_error = str(exc)
-            if "Invalid symbol" not in spot_error and "no klines returned" not in spot_error:
-                raise
-            df = fetch_futures_klines_max(symbol, "1h")
-        df.to_csv(write_path)
-        return df
+        return _fetch_and_cache_klines(symbol, _CANONICAL_HOURLY_TIMEFRAME, path)
 
     if tf_min < tf_string_to_minutes(_CANONICAL_HOURLY_TIMEFRAME):
         path = cache_path(symbol, timeframe)
