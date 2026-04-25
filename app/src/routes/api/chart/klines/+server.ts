@@ -2,19 +2,15 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getChartSeries } from '$lib/server/chart/chartSeriesService';
 import { chartKlinesLimiter } from '$lib/server/rateLimit';
-import { getRequestIp } from '$lib/server/requestIp';
 
-export const GET: RequestHandler = async ({ url, fetch, request, getClientAddress }) => {
-  const ip = getRequestIp({ request, getClientAddress });
-  if (!chartKlinesLimiter.check(ip)) {
+export const GET: RequestHandler = async ({ url, fetch, getClientAddress }) => {
+  if (!chartKlinesLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
-  const symbol    = url.searchParams.get('symbol') ?? 'BTCUSDT';
-  const tf        = url.searchParams.get('tf') ?? '1h';
-  const limit     = Math.min(parseInt(url.searchParams.get('limit') ?? '500'), 1000);
-  const emaTf     = url.searchParams.get('emaTf')?.trim() ?? '';
-  const stRaw     = url.searchParams.get('startTime');
-  const startTime = stRaw ? parseInt(stRaw) : undefined;
+  const symbol = url.searchParams.get('symbol') ?? 'BTCUSDT';
+  const tf = url.searchParams.get('tf') ?? '1h';
+  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '500'), 1000);
+  const emaTf = url.searchParams.get('emaTf')?.trim() ?? '';
 
   try {
     const { payload, cacheStatus } = await getChartSeries({

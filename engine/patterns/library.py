@@ -239,10 +239,6 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 # cvd_buying: taker order-flow is net-buy while we await squeeze.
                 # Mirrors ALPHA TERMINAL S1 "CVD from multiple exchanges aligning".
                 "cvd_buying",
-                # absorption_signal: carry-over from COMPRESSION — if buying is still
-                # being absorbed by remaining sell-walls in ENTRY_ZONE, squeeze is
-                # even more imminent when the wall finally exhausts.
-                "absorption_signal",
             ],
             disqualifier_blocks=[],
             score_weights={
@@ -253,7 +249,6 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 "volume_dryup": 0.05,
                 "oi_expansion_confirm": 0.10,
                 "cvd_buying": 0.08,
-                "absorption_signal": 0.08,
             },
             phase_score_threshold=0.70,
             transition_window_bars=12,
