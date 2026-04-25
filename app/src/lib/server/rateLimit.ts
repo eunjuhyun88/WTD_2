@@ -145,6 +145,9 @@ export const terminalReadLimiter = createRateLimiter({ windowMs: 60_000, max: 20
 /** Market microstructure routes: 20 per minute per IP */
 export const marketMicroLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
+/** Combined terminal microstructure poll: one visible tab polls every ~10s, allow dev/browser bursts */
+export const marketMicrostructureLimiter = createRateLimiter({ windowMs: 60_000, max: 90 });
+
 /** Analyze route (engine + fan-out): 18 per minute per IP */
 export const analyzeLimiter = createRateLimiter({ windowMs: 60_000, max: 18 });
 

@@ -10,6 +10,7 @@ import type {
   DexOverviewPayload,
   OnchainBackdropPayload,
 } from '$lib/contracts/cogochiDataPlane';
+import type { MarketMicrostructurePayload, MarketMicrostructureResponse } from '$lib/contracts/marketMicrostructure';
 import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
 import type { ConfluenceResult } from '$lib/confluence/types';
 import type {
@@ -91,6 +92,8 @@ export interface ChartSeriesPayload {
   }>;
   indicators: Record<string, unknown>;
 }
+
+export type { MarketMicrostructurePayload };
 
 export async function fetchTerminalBundle(args: {
   symbol: string;
@@ -206,6 +209,22 @@ export async function fetchCogochiWorkspaceBundle(args: {
     dexOverview: null,
     workspaceEnvelope: null,
   };
+}
+
+function symbolToUsdtPair(symbol: string): string {
+  const compact = symbol.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const base = compact.endsWith('USDT') ? compact.slice(0, -4) : compact;
+  return `${base}/USDT`;
+}
+
+export async function fetchMarketMicrostructure(symbol: string, tf: string): Promise<MarketMicrostructurePayload | null> {
+  const pair = symbolToUsdtPair(symbol);
+  const res = await fetch(
+    `/api/market/microstructure?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(tf)}&limit=300`,
+  );
+  if (!res.ok) return null;
+  const payload = await readJson<MarketMicrostructureResponse>(res);
+  return payload?.ok ? payload.data ?? null : null;
 }
 
 export async function fetchFlowBias(pair: string, tf: string): Promise<'LONG' | 'SHORT' | 'NEUTRAL'> {

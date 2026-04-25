@@ -88,6 +88,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0203** | `W-0203-terminal-uiux-action-overhaul.md` | 🟢 IMPLEMENTED | PR/merge review only |
 | **W-0201** | `W-0201-core-loop-contract-hardening.md` | 🟡 ACTIVE — 구현/타깃 검증 완료 | PR diff review + optional terminal smoke |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
@@ -163,6 +164,7 @@
 ## 현재 브랜치 상태
 
 - `codex/w-0201-core-loop-contract-hardening`: core loop contract hardening (이번 세션 작업)
+- `codex/w-0203-terminal-uiux-overhaul`: `/cogochi` action-by-action UIUX overhaul implemented; review/PR pending
 - `claude/strange-proskuriakova`: architecture improvements (이번 세션 작업, PR 대기)
 - main: 18187dcf (모든 PR 머지 완료)
 

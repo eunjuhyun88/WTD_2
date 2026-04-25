@@ -73,6 +73,8 @@
     onTfChange?:    (tf: string) => void;
     /** full = slim book/liq/quant rails; chart = candle + indicator panes only (context in right rail / Flow tab). */
     contextMode?: 'full' | 'chart';
+    /** default = classic terminal pane set; velo = TradingView/Velo-style stacked market panes. */
+    surfaceStyle?: 'default' | 'velo';
     /** Alpha phase markers — rendered as chart markers on the candle series. */
     alphaMarkers?: Array<{
       timestamp: number;  // unix seconds
@@ -110,6 +112,7 @@
     onCaptureSaved,
     onTfChange,
     contextMode = 'full',
+    surfaceStyle = 'default',
     alphaMarkers = undefined,
     onCandleClose,
     gammaPin = null,
@@ -130,6 +133,7 @@
   let volEl        = $state<HTMLDivElement | undefined>(undefined);
   let rsiEl        = $state<HTMLDivElement | undefined>(undefined);
   let macdEl       = $state<HTMLDivElement | undefined>(undefined);
+  let fundingEl    = $state<HTMLDivElement | undefined>(undefined);
   let oiEl         = $state<HTMLDivElement | undefined>(undefined);
   let cvdEl        = $state<HTMLDivElement | undefined>(undefined);
   let liqEl        = $state<HTMLDivElement | undefined>(undefined);
@@ -278,6 +282,7 @@
   let derivativesOnMain = $derived($chartIndicators.derivativesOverlay);
   // W-0210 Layer 3: comparison overlay (BTC or benchmark symbol)
   let showComparison = $derived($chartIndicators.comparison);
+  let isVeloSurface = $derived(surfaceStyle === 'velo');
 
   let chartMode = $state<'candle' | 'line'>('candle');
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
@@ -414,6 +419,7 @@
   let volChart:  IChartApi | null = null;
   let rsiChart:  IChartApi | null = null;
   let macdChart: IChartApi | null = null;
+  let fundingChart: IChartApi | null = null;
   let oiChart:   IChartApi | null = null;
   let cvdChart:  IChartApi | null = null;
   let liqChart:  IChartApi | null = null;
@@ -636,9 +642,59 @@
   let viewportWidth = $state<number | null>(null);
   let PANE_VOL_H = $derived(viewportWidth && viewportWidth < 768 ? 48 : 60);
   let PANE_SUB_H = $derived(viewportWidth && viewportWidth < 768 ? 64 : 80);
+  let PANE_FUNDING_H = $derived(viewportWidth && viewportWidth < 768 ? 70 : 92);
   let PANE_OI_H = $derived(viewportWidth && viewportWidth < 768 ? 56 : 72);
   let PANE_CVD_H = $derived(viewportWidth && viewportWidth < 768 ? 64 : 84);
   let PANE_LIQ_H = $derived(viewportWidth && viewportWidth < 768 ? 56 : 72);
+
+  const volumeProfileRows = $derived.by(() => {
+    const bars = chartData?.klines?.slice(-180) ?? [];
+    if (bars.length < 8) return [];
+    const high = Math.max(...bars.map((bar) => bar.high));
+    const low = Math.min(...bars.map((bar) => bar.low));
+    const span = Math.max(1e-9, high - low);
+    const bucketCount = 22;
+    const buckets = Array.from({ length: bucketCount }, (_, index) => ({
+      price: high - (span * index) / Math.max(1, bucketCount - 1),
+      bid: 0,
+      ask: 0,
+      total: 0,
+    }));
+
+    for (const bar of bars) {
+      const idx = Math.max(0, Math.min(bucketCount - 1, Math.floor(((high - bar.close) / span) * bucketCount)));
+      const closePos = Math.max(0, Math.min(1, (bar.close - bar.low) / Math.max(1e-9, bar.high - bar.low)));
+      const ask = bar.volume * (0.3 + closePos * 0.58);
+      const bid = Math.max(0, bar.volume - ask);
+      buckets[idx].bid += bid;
+      buckets[idx].ask += ask;
+      buckets[idx].total += bar.volume;
+    }
+
+    const maxTotal = Math.max(1, ...buckets.map((bucket) => bucket.total));
+    return buckets.map((bucket) => ({
+      price: bucket.price,
+      bidWidth: `${Math.max(2, Math.min(100, (bucket.bid / maxTotal) * 100))}%`,
+      askWidth: `${Math.max(2, Math.min(100, (bucket.ask / maxTotal) * 100))}%`,
+      opacity: 0.24 + Math.min(0.76, bucket.total / maxTotal),
+      isPoc: bucket.total === maxTotal,
+    }));
+  });
+
+  const veloCaption = $derived.by(() => {
+    const bars = chartData?.klines ?? [];
+    const last = bars[bars.length - 1];
+    const prev = bars[bars.length - 2];
+    if (!last) return null;
+    const change = prev?.close ? ((last.close - prev.close) / prev.close) * 100 : 0;
+    return {
+      o: last.open,
+      h: last.high,
+      l: last.low,
+      c: last.close,
+      change,
+    };
+  });
 
   function formatCaptureTime(ts: number): string {
     return new Date(ts * 1000).toLocaleString('en-US', {
@@ -852,9 +908,11 @@
 
   function renderCharts(data: ChartSeriesPayload) {
     if (!mainEl || !volEl || !oiEl) return;
-    if (showMACD && !macdEl) return;
-    if (!showMACD && !rsiEl) return;
-    if (showCVD && !cvdEl) return;
+    const velo = isVeloSurface;
+    if (velo && !fundingEl) return;
+    if (!velo && showMACD && !macdEl) return;
+    if (!velo && !showMACD && !rsiEl) return;
+    if (!velo && showCVD && !cvdEl) return;
     destroyCharts();
 
     let candleSeriesRef: ISeriesApi<'Candlestick'> | null = null;
@@ -1174,8 +1232,34 @@
       color: k.close >= k.open ? 'rgba(38,166,154,0.45)' : 'rgba(239,83,80,0.45)',
     }))));
 
-    // ── RSI or MACD ───────────────────────────────────────────────────────────
-    if (showMACD && macdContainer) {
+    // ── Funding / oscillator pane ────────────────────────────────────────────
+    if (velo && fundingEl) {
+      fundingChart = createChart(fundingEl, {
+        ...baseTheme,
+        width: w,
+        height: PANE_FUNDING_H,
+        rightPriceScale: {
+          ...baseTheme.rightPriceScale,
+          scaleMargins: { top: 0.08, bottom: 0.08 },
+        },
+        timeScale: { ...baseTheme.timeScale, visible: false },
+      });
+      const fSeries = fundingChart.addSeries(HistogramSeries, {
+        priceFormat: { type: 'price' as const, precision: 4, minMove: 0.0001 },
+      });
+      fSeries.setData(toHisto((fundingBars ?? []).map((bar) => ({
+        time: bar.time,
+        value: bar.value,
+        color: bar.value >= 0 ? 'rgba(34,197,94,0.82)' : 'rgba(234,88,12,0.82)',
+      }))));
+      fSeries.createPriceLine({
+        price: 0,
+        color: 'rgba(177,181,189,0.35)',
+        lineWidth: 1,
+        lineStyle: 2,
+        title: '',
+      });
+    } else if (showMACD && macdContainer) {
       macdChart = createChart(macdContainer, {
         ...baseTheme, width: w, height: PANE_SUB_H,
         timeScale: { ...baseTheme.timeScale, visible: false },
@@ -1205,14 +1289,14 @@
       rsiS.createPriceLine({ price: 30, color: 'rgba(38,166,154,0.45)', lineWidth: 1, lineStyle: 2, title: '' });
     }
 
-    // ── OI Δ% pane (funding on main when overlay — here OI hist only) ───────
+    // ── OI Δ% pane / Velo OI index pane ─────────────────────────────────────
     if (oiEl) {
       const fundInOiPane =
-        !hasFundingOverlay && fundingBars != null && fundingBars.length > 0;
+        !velo && !hasFundingOverlay && fundingBars != null && fundingBars.length > 0;
       oiChart = createChart(oiEl, {
         ...baseTheme,
         width: w,
-        height: PANE_OI_H,
+        height: velo ? Math.max(PANE_OI_H, 112) : PANE_OI_H,
         leftPriceScale: {
           visible: fundInOiPane,
           borderColor: BORDER,
@@ -1224,7 +1308,32 @@
         },
         timeScale: { ...baseTheme.timeScale, visible: true },
       });
-      if (oiBars?.length) {
+      if (velo && oiBars?.length) {
+        let index = 100;
+        const oiIndex = oiBars.map((bar) => {
+          index *= 1 + bar.value / 100;
+          return { time: bar.time, value: index };
+        });
+        const oiLine = oiChart.addSeries(LineSeries, {
+          priceScaleId: 'right',
+          color: 'rgba(34,197,94,0.92)',
+          lineWidth: 2,
+          priceFormat: { type: 'price' as const, precision: 2, minMove: 0.01 },
+          lastValueVisible: true,
+          priceLineVisible: false,
+        });
+        oiLine.setData(toLine(oiIndex));
+        const oiDelta = oiChart.addSeries(HistogramSeries, {
+          priceScaleId: 'left',
+          color: 'rgba(34,197,94,0.24)',
+          priceFormat: { type: 'price' as const, precision: 3, minMove: 0.001 },
+        });
+        oiDelta.setData(toHisto(oiBars.map((bar) => ({
+          time: bar.time,
+          value: bar.value,
+          color: bar.value >= 0 ? 'rgba(34,197,94,0.34)' : 'rgba(234,88,12,0.34)',
+        }))));
+      } else if (oiBars?.length) {
         const oiS = oiChart.addSeries(HistogramSeries, {
           priceScaleId: 'right',
           color: 'rgba(99,179,237,0.55)',
@@ -1246,7 +1355,7 @@
     }
 
     // ── CVD pane: Δ vol histogram + cumulative (always lives here now) ───────
-    if (cvdEl && showCVD) {
+    if (!velo && cvdEl && showCVD) {
       const cumInCvdPane = true;
       cvdChart = createChart(cvdEl, {
         ...baseTheme,
@@ -1428,7 +1537,7 @@
     const subs = [volChart, rsiChart, macdChart, oiChart].filter(
       (c): c is IChartApi => c !== null
     );
-    const subsAll = [...subs, cvdChart, liqChart].filter(
+    const subsAll = [...subs, fundingChart, cvdChart, liqChart].filter(
       (c): c is IChartApi => c !== null
     );
     mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -1499,8 +1608,8 @@
     // Detach Layer 1 primitive before removing chart (W-0086 / W-0117)
     detachDragHandlers();
     detachRangePrimitive();
-    [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart, liqChart].forEach(c => c?.remove());
-    mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = liqChart = null;
+    [mainChart, volChart, rsiChart, macdChart, fundingChart, oiChart, cvdChart, liqChart].forEach(c => c?.remove());
+    mainChart = volChart = rsiChart = macdChart = fundingChart = oiChart = cvdChart = liqChart = null;
     priceSeries = null;
     candleMarkerApi = null;
     candleSeriesForAnnotations = null;
@@ -1524,7 +1633,9 @@
     volChart?.resize(w, vh);
     rsiChart?.resize(w, sh);
     macdChart?.resize(w, sh);
-    const oih = oiEl && oiEl.clientHeight > 24 ? oiEl.clientHeight : PANE_OI_H;
+    const fh = fundingEl && fundingEl.clientHeight > 24 ? fundingEl.clientHeight : PANE_FUNDING_H;
+    fundingChart?.resize(w, fh);
+    const oih = oiEl && oiEl.clientHeight > 24 ? oiEl.clientHeight : (isVeloSurface ? Math.max(PANE_OI_H, 112) : PANE_OI_H);
     oiChart?.resize(w, oih);
     const cvdh = cvdEl && cvdEl.clientHeight > 24 ? cvdEl.clientHeight : PANE_CVD_H;
     cvdChart?.resize(w, cvdh);
@@ -1755,6 +1866,7 @@
   bind:this={containerEl}
   data-context={contextMode}
   data-deriv-overlay={derivativesOnMain ? '1' : '0'}
+  data-surface={surfaceStyle}
 >
 
   <!-- ── ChartToolbar (TF selector + export) ────── -->
@@ -1911,50 +2023,96 @@
     {#if metricStripItems.length > 0}
       <ChartMetricStrip items={metricStripItems} />
     {/if}
-    <div class="pane-main"  bind:this={mainEl}></div>
+    <div class="pane-main"  bind:this={mainEl}>
+      {#if isVeloSurface}
+        <div class="velo-chart-caption" aria-hidden="true">
+          <span>{symbol}, {tf.toUpperCase()}, Binance-Futures</span>
+          {#if veloCaption}
+            <strong class:up={veloCaption.change >= 0} class:down={veloCaption.change < 0}>
+              O{veloCaption.o.toFixed(2)}
+              H{veloCaption.h.toFixed(2)}
+              L{veloCaption.l.toFixed(2)}
+              C{veloCaption.c.toFixed(2)}
+              {veloCaption.change >= 0 ? '+' : ''}{veloCaption.change.toFixed(2)}%
+            </strong>
+          {/if}
+        </div>
+        <div class="volume-profile-overlay" aria-label="Volume profile overlay">
+          {#each volumeProfileRows as row}
+            <div class="vp-row" class:poc={row.isPoc} style:opacity={row.opacity}>
+              <span class="vp-bid" style:width={row.bidWidth}></span>
+              <span class="vp-ask" style:width={row.askWidth}></span>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
 
     <!-- Indicator panes (Vol, MACD/RSI, OI, CVD) ────────────────────────────── -->
     <IndicatorPaneStack {showMACD} {showCVD} onHidePane={hidePane}>
       <div class="pane-label">VOL</div>
       <div class="pane-vol"   bind:this={volEl}></div>
 
-      {#if showMACD}
-        <div class="pane-label">MACD</div>
-        <div class="pane-sub"  bind:this={macdEl}></div>
-      {:else}
-        <div class="pane-label">RSI 14</div>
-        <div class="pane-sub"  bind:this={rsiEl}></div>
-      {/if}
-
-      <div class="pane-label pane-label-split">
-        <span>OI Δ%</span>
-        <span class="pane-hint">hist</span>
-        <span class="pane-hint pane-hint-gold">Fund %</span>
-      </div>
-      <div class="pane-oi"    bind:this={oiEl}></div>
-
-      {#if showCVD}
+      {#if isVeloSurface}
         <div class="pane-label pane-label-split">
-          <span>CVD</span>
-          <span class="pane-hint">Δ vol</span>
-          <span class="pane-hint pane-hint-mint">cum</span>
-          <button
-            type="button"
-            class="pane-close"
-            aria-label="Hide CVD pane"
-            onclick={() => hidePane('cvd')}
-          >×</button>
+          <span>&lt;Velo&gt; Aggregated Funding Rate (%)</span>
+          <span class="pane-hint pane-hint-mint">8h weighted average</span>
         </div>
-        <div class="pane-cvd" bind:this={cvdEl}></div>
-      {/if}
+        <div class="pane-funding" bind:this={fundingEl}></div>
 
-      <!-- Liquidation sub-pane: green = short liq (fuel), red = long liq (cascade) -->
-      <div class="pane-label pane-label-split">
-        <span>Liquidations</span>
-        <span class="pane-hint pane-hint-mint">Short liq</span>
-        <span class="pane-hint" style="color:rgba(248,113,113,0.8)">Long liq</span>
-      </div>
-      <div class="pane-liq" bind:this={liqEl}></div>
+        <!-- Liquidation sub-pane: green = short liq (fuel), red = long liq (cascade) -->
+        <div class="pane-label pane-label-split">
+          <span>&lt;Velo&gt; Aggregated Liquidations</span>
+          <span class="pane-hint pane-hint-mint">Short liq</span>
+          <span class="pane-hint" style="color:rgba(248,113,113,0.8)">Long liq</span>
+        </div>
+        <div class="pane-liq" bind:this={liqEl}></div>
+
+        <div class="pane-label pane-label-split">
+          <span>&lt;Velo&gt; Aggregated Open Interest Δ Index</span>
+          <span class="pane-hint pane-hint-mint">OI curve</span>
+          <span class="pane-hint">Δ bars</span>
+        </div>
+        <div class="pane-oi pane-oi--velo" bind:this={oiEl}></div>
+      {:else}
+        {#if showMACD}
+          <div class="pane-label">MACD</div>
+          <div class="pane-sub"  bind:this={macdEl}></div>
+        {:else}
+          <div class="pane-label">RSI 14</div>
+          <div class="pane-sub"  bind:this={rsiEl}></div>
+        {/if}
+
+        <div class="pane-label pane-label-split">
+          <span>OI Δ%</span>
+          <span class="pane-hint">hist</span>
+          <span class="pane-hint pane-hint-gold">Fund %</span>
+        </div>
+        <div class="pane-oi"    bind:this={oiEl}></div>
+
+        {#if showCVD}
+          <div class="pane-label pane-label-split">
+            <span>CVD</span>
+            <span class="pane-hint">Δ vol</span>
+            <span class="pane-hint pane-hint-mint">cum</span>
+            <button
+              type="button"
+              class="pane-close"
+              aria-label="Hide CVD pane"
+              onclick={() => hidePane('cvd')}
+            >×</button>
+          </div>
+          <div class="pane-cvd" bind:this={cvdEl}></div>
+        {/if}
+
+        <!-- Liquidation sub-pane: green = short liq (fuel), red = long liq (cascade) -->
+        <div class="pane-label pane-label-split">
+          <span>Liquidations</span>
+          <span class="pane-hint pane-hint-mint">Short liq</span>
+          <span class="pane-hint" style="color:rgba(248,113,113,0.8)">Long liq</span>
+        </div>
+        <div class="pane-liq" bind:this={liqEl}></div>
+      {/if}
     </IndicatorPaneStack>
     </div>
     <SaveStrip
@@ -2782,6 +2940,7 @@
     flex: 1 1 58%;
     min-height: 260px;
     height: auto;
+    position: relative;
   }
   .chart-board[data-deriv-overlay='1'] .pane-main {
     min-height: 300px;
@@ -2791,8 +2950,101 @@
   }
   .pane-vol  { flex-shrink: 0; height: 60px; min-height: 60px; }
   .pane-sub  { flex-shrink: 0; height: 80px; min-height: 80px; }
+  .pane-funding { flex-shrink: 0; height: 92px; min-height: 92px; }
   .pane-oi   { flex-shrink: 0; height: 72px; min-height: 72px; }
   .pane-cvd  { flex-shrink: 0; height: 84px; min-height: 84px; }
+  .chart-board[data-surface='velo'] .pane-main {
+    flex-basis: 54%;
+    min-height: min(42vh, 520px);
+  }
+  .chart-board[data-surface='velo'] .pane-vol {
+    height: 52px;
+    min-height: 52px;
+  }
+  .chart-board[data-surface='velo'] .pane-funding {
+    height: 92px;
+    min-height: 92px;
+  }
+  .chart-board[data-surface='velo'] .pane-liq {
+    height: 104px;
+    min-height: 104px;
+  }
+  .chart-board[data-surface='velo'] .pane-oi {
+    height: 118px;
+    min-height: 118px;
+  }
+  .chart-board[data-surface='velo'] :global(.indicator-pane-stack) {
+    gap: 0;
+    background: #0f131d;
+    border-top-color: rgba(255,255,255,0.09);
+  }
+  .velo-chart-caption {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: rgba(19,23,34,0.42);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    line-height: 1.2;
+    color: rgba(239,242,247,0.86);
+  }
+  .velo-chart-caption strong {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .velo-chart-caption strong.up {
+    color: #22c55e;
+  }
+  .velo-chart-caption strong.down {
+    color: #ef5350;
+  }
+  .volume-profile-overlay {
+    position: absolute;
+    top: 9%;
+    right: 0;
+    bottom: 8%;
+    z-index: 7;
+    width: min(28%, 320px);
+    display: grid;
+    grid-template-rows: repeat(22, minmax(0, 1fr));
+    gap: 1px;
+    padding-right: 4px;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .vp-row {
+    min-height: 3px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0;
+  }
+  .vp-bid,
+  .vp-ask {
+    height: 100%;
+    max-height: 16px;
+  }
+  .vp-bid {
+    background: linear-gradient(90deg, rgba(232,184,106,0.12), rgba(232,184,106,0.72));
+  }
+  .vp-ask {
+    background: linear-gradient(90deg, rgba(80,178,232,0.72), rgba(80,178,232,0.20));
+  }
+  .vp-row.poc .vp-bid {
+    background: linear-gradient(90deg, rgba(244,67,54,0.2), rgba(244,67,54,0.92));
+  }
+  .vp-row.poc .vp-ask {
+    background: linear-gradient(90deg, rgba(244,67,54,0.92), rgba(244,67,54,0.26));
+  }
   .save-toast {
     position: fixed;
     bottom: calc(var(--sc-consent-reserved-h, 0px) + 20px);

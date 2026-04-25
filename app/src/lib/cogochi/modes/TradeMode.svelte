@@ -1,14 +1,30 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import { fetchCogochiWorkspaceBundle } from '$lib/api/terminalBackend';
+  import {
+    fetchAnalyze,
+    fetchAnalyzeAndChart,
+    fetchAlphaWorldModel,
+    fetchConfluenceCurrent,
+    fetchConfluenceHistory,
+    fetchFundingFlip,
+    fetchFundingHistory,
+    fetchIndicatorContext,
+    fetchLiqClusters,
+    fetchMarketMicrostructure,
+    fetchOptionsSnapshot,
+    fetchRecentCaptures,
+    fetchRvCone,
+    fetchSsr,
+    fetchVenueDivergence,
+    submitTradeOutcome,
+    type ConfluenceHistoryEntry,
+    type RecentCaptureSummary,
+    type TradeOutcomeResult,
+  } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
-  import type {
-    CogochiWorkspaceEnvelope,
-    DexOverviewPayload,
-    OnchainBackdropPayload,
-  } from '$lib/contracts/cogochiDataPlane';
-  import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
-  import type { TabState } from '$lib/cogochi/shell.store';
+  import type { ChartSeriesPayload, MarketMicrostructurePayload } from '$lib/api/terminalBackend';
+  import type { FootprintBucket, MarketDepthLevel, MarketTradePrint } from '$lib/contracts/marketMicrostructure';
+  import type { ShellWorkMode, TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
   import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
   import WorkspacePresetPicker from '$lib/cogochi/WorkspacePresetPicker.svelte';
@@ -31,20 +47,11 @@
     type FundingHistoryPayload,
   } from '$lib/indicators/adapter';
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
-  import {
-    getAnalyzePanelsByZone,
-    isAnalyzeComparePinned,
-    isAnalyzePanelCollapsed,
-    moveAnalyzeComparePanel,
-    moveAnalyzePanel as moveAnalyzePanelLayout,
-    normalizeAnalyzeCompareIds,
-    normalizeAnalyzePanelLayout,
-    setAnalyzePanelZone,
-    toggleAnalyzeComparePanel,
-    toggleAnalyzePanelCollapsed,
-    type AnalyzePanelId,
-  } from '$lib/contracts/cogochiPanelLayout';
+
+  type ChartBar = ChartSeriesPayload['klines'][number];
+  type MicroOrderbook = MarketMicrostructurePayload['orderbook'];
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -53,6 +60,7 @@
     symbol?: string;
     timeframe?: string;
     mobileView?: 'chart' | 'analyze' | 'scan' | 'judge';
+    workMode?: ShellWorkMode;
     setMobileView?: (v: 'chart' | 'analyze' | 'scan' | 'judge') => void;
     setMobileSymbol?: (sym: string) => void;
     onSymbolTap?: () => void;
@@ -60,7 +68,7 @@
     isPaneFocused?: boolean;
   }
 
-  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView, setMobileSymbol, onSymbolTap, onTFChange, isPaneFocused = true }: Props = $props();
+  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, workMode = 'analyze', setMobileView, setMobileSymbol, onSymbolTap, onTFChange, isPaneFocused = true }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
@@ -73,58 +81,161 @@
   // chartPayload is only for ChartBoard's initialData; ChartBoard owns live updates via DataFeed.
   // analyzeData is refreshed on candle close via ChartBoard's onCandleClose callback.
   let chartPayload = $state<ChartSeriesPayload | null>(null);
+  let microstructurePayload = $state<MarketMicrostructurePayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
-  let workspaceEnvelopeState = $state<CogochiWorkspaceEnvelope | null>(null);
   let chartLoading = $state(false);
+  let microstructureLoading = $state(false);
+  let microWsState = $state<'idle' | 'connecting' | 'live' | 'error' | 'closed'>('idle');
+  let microWsUpdatedAt = $state<number | null>(null);
+  let liveOrderbook = $state<MicroOrderbook | null>(null);
+  let liveTrades = $state<MarketTradePrint[]>([]);
   let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
 
-  async function refreshWorkspaceBundleFor(sym: string, tf: string, includeChart = false) {
-    const bundle = await fetchCogochiWorkspaceBundle({ symbol: sym, tf, includeChart });
-    if (symbol !== sym || timeframe !== tf) return;
-    analyzeData = bundle.analyze ?? null;
-    confluence = bundle.confluence ?? null;
-    venueDivergence = bundle.venueDivergence ?? null;
-    liqClusters = bundle.liqClusters ?? null;
-    optionsSnapshot = bundle.optionsSnapshot ?? null;
-    if (bundle.indicatorContext) indicatorContext = bundle.indicatorContext;
-    if (bundle.ssr) ssr = bundle.ssr;
-    if (bundle.rvCone) rvCone = bundle.rvCone;
-    if (bundle.fundingFlip) fundingFlip = bundle.fundingFlip;
-    onchainBackdrop = bundle.onchainBackdrop ?? null;
-    dexOverview = bundle.dexOverview ?? null;
-    workspaceEnvelopeState = bundle.workspaceEnvelope ?? null;
-    if (includeChart) {
-      chartPayload = bundle.chartPayload ?? null;
-      if (bundle.chartPayload?.klines?.length) {
-        lastCandleTime = bundle.chartPayload.klines[bundle.chartPayload.klines.length - 1].time;
-      }
-    }
-  }
-
-  // Fetch initial workspace bundle (single route for analyze/chart/summary studies)
+  // Fetch initial bundle (one-shot per symbol/tf)
   $effect(() => {
     const sym = symbol;
     const tf = timeframe;
+    let cancelled = false;
     chartLoading = true;
+    microstructureLoading = true;
     lastCandleTime = null;
-    void refreshWorkspaceBundleFor(sym, tf, true).finally(() => {
-      if (symbol === sym && timeframe === tf) chartLoading = false;
-    });
+
+    fetchAnalyzeAndChart({ symbol: sym, tf })
+      .then(result => {
+        if (cancelled) return;
+        chartPayload = result.chartPayload ?? null;
+        analyzeData = result.analyze ?? null;
+        chartLoading = false;
+        if (result.chartPayload?.klines?.length) {
+          lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
+        }
+      })
+      .catch(() => {
+        if (!cancelled) chartLoading = false;
+      });
+
+    const refreshMicrostructure = () => {
+      fetchMarketMicrostructure(sym, tf)
+        .then(payload => {
+          if (!cancelled) microstructurePayload = payload;
+        })
+        .catch(() => {
+          if (!cancelled) microstructurePayload = null;
+        })
+        .finally(() => {
+          if (!cancelled) microstructureLoading = false;
+        });
+    };
+
+    refreshMicrostructure();
+    const microTimer = window.setInterval(refreshMicrostructure, 10_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(microTimer);
+    };
   });
+
+  // Browser live layer: REST snapshot is the boot/fallback, WS is the live surface.
+  $effect(() => {
+    const sym = toBinanceFuturesStreamSymbol(symbol);
+    if (typeof WebSocket === 'undefined' || !sym) return;
+
+    let closed = false;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: number | null = null;
+
+    const connect = () => {
+      if (closed) return;
+      microWsState = 'connecting';
+      ws = new WebSocket(`wss://fstream.binance.com/stream?streams=${sym}@aggTrade/${sym}@depth20@100ms`);
+
+      ws.onopen = () => {
+        if (!closed) microWsState = 'live';
+      };
+
+      ws.onmessage = (event) => {
+        if (closed) return;
+        try {
+          const message = JSON.parse(String(event.data));
+          const data = message?.data ?? message;
+          if (data?.e === 'aggTrade') {
+            const trade = toLiveTrade(data);
+            if (!trade) return;
+            liveTrades = [trade, ...liveTrades.filter((row) => row.id !== trade.id)].slice(0, 120);
+            microWsUpdatedAt = Date.now();
+            microWsState = 'live';
+          } else if (data?.e === 'depthUpdate' && Array.isArray(data.b) && Array.isArray(data.a)) {
+            liveOrderbook = buildLiveOrderbook(data.b, data.a, liveTrades[0]?.price ?? microstructurePayload?.currentPrice ?? null);
+            microWsUpdatedAt = Date.now();
+            microWsState = 'live';
+          }
+        } catch {
+          // Keep REST snapshot active; malformed stream packets should not blank the UI.
+        }
+      };
+
+      ws.onerror = () => {
+        if (!closed) microWsState = 'error';
+      };
+
+      ws.onclose = () => {
+        if (closed) return;
+        microWsState = liveTrades.length > 0 || liveOrderbook ? 'closed' : 'error';
+        reconnectTimer = window.setTimeout(connect, 3_000);
+      };
+    };
+
+    liveTrades = [];
+    liveOrderbook = null;
+    microWsUpdatedAt = null;
+    connect();
+
+    return () => {
+      closed = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      ws?.close();
+    };
+  });
+
+  function toBinanceFuturesStreamSymbol(rawSymbol: string): string {
+    const compact = rawSymbol.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!compact) return '';
+    return compact.endsWith('usdt') ? compact : `${compact}usdt`;
+  }
 
   // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
   // On candle close, refresh analyze only — chart live updates are handled inside ChartBoard.
   async function handleCandleClose(bar: { time: number }) {
     if (lastCandleTime === bar.time) return; // dedup duplicate fires
     lastCandleTime = bar.time;
-    await refreshWorkspaceBundleFor(symbol, timeframe, false);
+    try {
+      const nextAnalyze = await fetchAnalyze(symbol, timeframe);
+      if (nextAnalyze) analyzeData = nextAnalyze;
+    } catch { /* retry on next candle */ }
+    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
+    // in lock-step with analyze on candle close.
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
+    void refreshConfluence();
   }
 
   // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
   let venueDivergence = $state<VenueDivergencePayload | null>(null);
 
+  async function refreshVenueDivergence() {
+    try {
+      venueDivergence = await fetchVenueDivergence(symbol);
+    } catch { /* tolerate: next refresh will retry */ }
+  }
+
   // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
   let liqClusters = $state<LiqClusterPayload | null>(null);
+
+  async function refreshLiqClusters() {
+    try {
+      liqClusters = await fetchLiqClusters(symbol, '4h');
+    } catch { /* tolerate */ }
+  }
 
   // ── Rolling Percentile Context (W-0122 rolling percentile) ───────────
   // 30d distribution data: OI deltas + funding history → real percentiles.
@@ -141,8 +252,6 @@
   let ssr = $state<SsrPayload | null>(null);
   let rvCone = $state<RvConePayload | null>(null);
   let fundingFlip = $state<FundingFlipPayload | null>(null);
-  let onchainBackdrop = $state<OnchainBackdropPayload | null>(null);
-  let dexOverview = $state<DexOverviewPayload | null>(null);
 
   async function refreshSsr() {
     try {
@@ -183,9 +292,24 @@
   // ── Pillar 2: Options snapshot (W-0122-C1) ───────────────────────────
   let optionsSnapshot = $state<OptionsSnapshotPayload | null>(null);
 
+  async function refreshOptionsSnapshot() {
+    // Deribit supports BTC and ETH currencies.
+    const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
+    if (!currency) { optionsSnapshot = null; return; }
+    try {
+      optionsSnapshot = await fetchOptionsSnapshot(currency);
+    } catch { /* tolerate */ }
+  }
+
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
   let confluence = $state<ConfluenceResult | null>(null);
   let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
+
+  async function refreshConfluence() {
+    try {
+      confluence = await fetchConfluenceCurrent(symbol, timeframe);
+    } catch { /* tolerate */ }
+  }
 
   async function refreshConfluenceHistory() {
     try {
@@ -198,42 +322,46 @@
   // every 5m since its server cache TTL is 10m. SSR/RV/flip are slower still.
   $effect(() => {
     void symbol;
-    void timeframe;
     venueDivergence = null;
     liqClusters = null;
     indicatorContext = null;
     ssr = null;
     rvCone = null;
     fundingFlip = null;
-    onchainBackdrop = null;
-    dexOverview = null;
     fundingHistory = null;
     optionsSnapshot = null;
     confluence = null;
     confluenceHistory = [];
-    workspaceEnvelopeState = null;
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
     void refreshIndicatorContext();
     void refreshSsr();
     void refreshRvCone();
     void refreshFundingFlip();
     void refreshFundingHistory();
+    void refreshOptionsSnapshot();
+    void refreshConfluence();
     void refreshConfluenceHistory();
     void refreshPastCaptures();
     const fastIv = setInterval(() => {
-      void refreshWorkspaceBundleFor(symbol, timeframe, false);
+      void refreshVenueDivergence();
+      void refreshLiqClusters();
+      void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
       void refreshConfluenceHistory(); // pull updated sparkline entries
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
-    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min.
+    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
     const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
     const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
     const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
+    const optIv = setInterval(() => void refreshOptionsSnapshot(), 5 * 60_000);
     return () => {
       clearInterval(fastIv);
       clearInterval(slowIv);
       clearInterval(flipIv);
       clearInterval(ssrIv);
       clearInterval(rvIv);
+      clearInterval(optIv);
     };
   });
 
@@ -250,24 +378,16 @@
     optionsSnapshot,
   }));
 
-  const workspaceEnvelope = $derived(
-    workspaceEnvelopeState ?? buildCogochiWorkspaceEnvelope({
-      symbol,
-      timeframe,
-      analyze: analyzeData,
-      chartPayload,
-      confluence,
-      venueDivergence,
-      liqClusters,
-      optionsSnapshot,
-      indicatorContext,
-      ssr,
-      rvCone,
-      fundingFlip,
-      onchainBackdrop,
-      dexOverview,
-    })
-  );
+  const workspaceEnvelope = $derived(buildCogochiWorkspaceEnvelope({
+    symbol,
+    timeframe,
+    analyze: analyzeData,
+    chartPayload,
+    confluence,
+    venueDivergence,
+    liqClusters,
+    optionsSnapshot,
+  }));
 
   const workspaceStudyMap = $derived.by(() => buildStudyMap(workspaceEnvelope.studies));
   const workspaceSummaryCards = $derived.by(() => {
@@ -275,7 +395,6 @@
     return summaryIds
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study))
-      .sort((a, b) => a.displayPriority - b.displayPriority)
       .slice(0, 4)
       .map((study) => {
         const primary = study.summary[0];
@@ -292,227 +411,6 @@
         };
       });
   });
-
-  const workspaceBackdropStudies = $derived.by(() => {
-    const detailIds = workspaceEnvelope.sections.find((section) => section.id === 'detail-workspace')?.studyIds ?? [];
-    const target = new Set([
-      'stablecoin-liquidity',
-      'realized-volatility',
-      'funding-regime',
-      'onchain-cycle',
-      'dex-liquidity',
-      'dex-whale-flow',
-    ]);
-    return detailIds
-      .map((id) => workspaceStudyMap[id])
-      .filter((study): study is NonNullable<typeof study> => Boolean(study) && target.has(study.id))
-      .sort((a, b) => a.displayPriority - b.displayPriority);
-  });
-
-  function formatFreshness(ms: number | null | undefined): string {
-    if (ms == null || !Number.isFinite(ms)) return 'live';
-    if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
-    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
-    return `${Math.round(ms / 3_600_000)}h`;
-  }
-
-  function formatSourceRefs(refs: Array<{ provider: string }>): string {
-    return refs.map((ref) => ref.provider.toUpperCase()).join(' · ');
-  }
-
-  function formatUsdCompact(v: number | null | undefined): string {
-    if (v == null || !Number.isFinite(v)) return '—';
-    const abs = Math.abs(v);
-    if (abs >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
-    if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-    if (abs >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
-    return `$${v.toFixed(0)}`;
-  }
-
-  function formatPctCompact(v: number | null | undefined, digits = 1): string {
-    if (v == null || !Number.isFinite(v)) return '—';
-    return `${v >= 0 ? '+' : ''}${v.toFixed(digits)}%`;
-  }
-
-  function formatCountCompact(v: number | null | undefined): string {
-    if (v == null || !Number.isFinite(v)) return '—';
-    return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : String(Math.round(v));
-  }
-
-  function isDexOverviewPayload(payload: unknown): payload is DexOverviewPayload {
-    return Boolean(
-      payload &&
-      typeof payload === 'object' &&
-      'pairCount' in payload &&
-      'topPairs' in payload &&
-      Array.isArray((payload as DexOverviewPayload).topPairs)
-    );
-  }
-
-  function isOnchainBackdropPayload(payload: unknown): payload is OnchainBackdropPayload {
-    return Boolean(
-      payload &&
-      typeof payload === 'object' &&
-      'asset' in payload &&
-      'source' in payload &&
-      'metrics' in payload
-    );
-  }
-
-  const dexDetailPayload = $derived.by(() => {
-    const payload = workspaceStudyMap['dex-liquidity']?.payload;
-    return isDexOverviewPayload(payload) ? payload : null;
-  });
-
-  const onchainDetailPayload = $derived.by(() => {
-    const payload = workspaceStudyMap['onchain-cycle']?.payload;
-    return isOnchainBackdropPayload(payload) ? payload : null;
-  });
-
-  function buildStudyAIDetailLines(study: NonNullable<(typeof workspaceBackdropStudies)[number]>): string[] {
-    const summary = study.summary
-      .filter((row) => row.value != null && row.value !== '')
-      .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`);
-    const lines = [`- ${study.title}: ${summary.join(' / ') || '—'}`];
-
-    if (study.id === 'dex-liquidity' && isDexOverviewPayload(study.payload)) {
-      const dex = study.payload;
-      if (dex.chainBreakdown.length) {
-        lines.push(`  - Chains: ${dex.chainBreakdown.slice(0, 3).map((chain) => `${chain.chainLabel} liq ${formatUsdCompact(chain.liquidityUsd)} / TVL ${formatUsdCompact(chain.chainTvlUsd)} / vol share ${formatPctCompact(chain.volumeSharePct)}`).join(' | ')}`);
-      }
-      if (dex.topPairs.length) {
-        lines.push(`  - Top pairs: ${dex.topPairs.slice(0, 3).map((pair) => `${pair.label} on ${pair.dexId} (${pair.chainId}) vol ${formatUsdCompact(pair.volume24hUsd)} liq ${formatUsdCompact(pair.liquidityUsd)}`).join(' | ')}`);
-      }
-    }
-
-    if (study.id === 'onchain-cycle' && isOnchainBackdropPayload(study.payload)) {
-      const onchain = study.payload;
-      lines.push(
-        `  - Cycle detail: MVRV ${onchain.metrics?.mvrv?.toFixed(2) ?? '—'} / NUPL ${onchain.metrics?.nupl?.toFixed(3) ?? '—'} / SOPR ${onchain.metrics?.sopr?.toFixed(3) ?? '—'} / netflow ${formatUsdCompact(onchain.exchangeReserve?.netflow24h)}`,
-      );
-    }
-
-    lines.push(`  - Trust: ${study.trust.tier} · Sources: ${formatSourceRefs(study.sourceRefs)}${study.methodology ? ` · ${study.methodology.label}` : ''}`);
-    return lines;
-  }
-
-  const ANALYZE_PANEL_META: Record<AnalyzePanelId, { kicker: string; copy: string }> = {
-    thesis: {
-      kicker: 'THESIS',
-      copy: '오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널',
-    },
-    'live-stack': {
-      kicker: 'LIVE STACK',
-      copy: '펀딩·OI·볼륨의 현재값과 스택 해석',
-    },
-    options: {
-      kicker: 'OPTIONS',
-      copy: 'Deribit 스냅샷 기반 감마/스큐 컨텍스트',
-    },
-    'venue-divergence': {
-      kicker: 'VENUE DIVERGENCE',
-      copy: '거래소 간 흐름 차이와 포지션 비대칭',
-    },
-    'verified-backdrop': {
-      kicker: 'ON-CHAIN / DEX / VOL',
-      copy: '실데이터 기반 backdrop 지표와 source/trust/methodology',
-    },
-    'dex-market-structure': {
-      kicker: 'DEX MARKET STRUCTURE',
-      copy: '실제 top pairs, 체인 집중도, TVL backdrop 을 같은 payload로 본다',
-    },
-    'onchain-cycle-detail': {
-      kicker: 'ON-CHAIN CYCLE DETAIL',
-      copy: 'cycle proxy 의 raw metrics 를 직접 확인한다',
-    },
-    'evidence-log': {
-      kicker: 'EVIDENCE LOG',
-      copy: '판단에 사용한 근거 항목을 빠르게 확인',
-    },
-    'execution-board': {
-      kicker: 'EXECUTION BOARD',
-      copy: '청산 밀도와 주문 계획을 같이 본다',
-    },
-  };
-
-  const ANALYZE_PANEL_STUDIES: Record<AnalyzePanelId, string[]> = {
-    thesis: ['confluence', 'price-structure'],
-    'live-stack': ['funding', 'open-interest', 'cvd'],
-    options: ['options'],
-    'venue-divergence': ['venue-divergence'],
-    'verified-backdrop': ['stablecoin-liquidity', 'realized-volatility', 'funding-regime', 'onchain-cycle', 'dex-liquidity', 'dex-whale-flow'],
-    'dex-market-structure': ['dex-liquidity', 'dex-whale-flow'],
-    'onchain-cycle-detail': ['onchain-cycle'],
-    'evidence-log': ['confluence', 'funding', 'open-interest', 'onchain-cycle', 'dex-liquidity', 'venue-divergence'],
-    'execution-board': ['execution', 'liquidity'],
-  };
-
-  const analyzePanelLayout = $derived(normalizeAnalyzePanelLayout(tabState.analyzeLayout));
-
-  function updateAnalyzePanelLayout(
-    updater: (layout: ReturnType<typeof normalizeAnalyzePanelLayout>) => ReturnType<typeof normalizeAnalyzePanelLayout>,
-  ) {
-    updateTabState((state) => ({
-      ...state,
-      analyzeLayout: updater(normalizeAnalyzePanelLayout(state.analyzeLayout)),
-    }));
-  }
-
-  function moveAnalyzePanel(id: AnalyzePanelId, direction: 'backward' | 'forward') {
-    updateAnalyzePanelLayout((layout) => moveAnalyzePanelLayout(layout, id, direction));
-  }
-
-  function toggleAnalyzePanelDock(id: AnalyzePanelId) {
-    const currentZone = analyzePanelLayout.items.find((item) => item.id === id)?.zone ?? 'main';
-    updateAnalyzePanelLayout((layout) => setAnalyzePanelZone(layout, id, currentZone === 'main' ? 'side' : 'main'));
-  }
-
-  function toggleAnalyzePanelSection(id: AnalyzePanelId) {
-    updateAnalyzePanelLayout((layout) => toggleAnalyzePanelCollapsed(layout, id));
-  }
-
-  function analyzePanelIsCollapsed(id: AnalyzePanelId): boolean {
-    return isAnalyzePanelCollapsed(analyzePanelLayout, id);
-  }
-
-  function analyzePanelVisible(id: AnalyzePanelId): boolean {
-    switch (id) {
-      case 'options':
-        return Boolean(indicatorValues.put_call_ratio || indicatorValues.options_skew_25d);
-      case 'verified-backdrop':
-        return workspaceBackdropStudies.length > 0;
-      case 'dex-market-structure':
-        return Boolean(dexDetailPayload);
-      case 'onchain-cycle-detail':
-        return Boolean(onchainDetailPayload);
-      default:
-        return true;
-    }
-  }
-
-  const analyzeMainPanelIds = $derived(
-    getAnalyzePanelsByZone(analyzePanelLayout, 'main').filter((id) => analyzePanelVisible(id))
-  );
-
-  const analyzeSidePanelIds = $derived(
-    getAnalyzePanelsByZone(analyzePanelLayout, 'side').filter((id) => analyzePanelVisible(id))
-  );
-
-  const analyzeComparePanelIds = $derived(
-    normalizeAnalyzeCompareIds(analyzePanelLayout).filter((id) => analyzePanelVisible(id))
-  );
-
-  function toggleAnalyzeCompare(id: AnalyzePanelId) {
-    updateAnalyzePanelLayout((layout) => toggleAnalyzeComparePanel(layout, id));
-  }
-
-  function moveComparePanel(id: AnalyzePanelId, direction: 'backward' | 'forward') {
-    updateAnalyzePanelLayout((layout) => moveAnalyzeComparePanel(layout, id, direction));
-  }
-
-  function analyzePanelPinned(id: AnalyzePanelId): boolean {
-    return isAnalyzeComparePinned(analyzePanelLayout, id);
-  }
 
   // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
   // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
@@ -554,98 +452,52 @@
     updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'analyze' }));
   }
 
-  function openAnalyzeAIDetail(panelId?: AnalyzePanelId) {
-    const selectedIds = panelId
-      ? ANALYZE_PANEL_STUDIES[panelId].filter((id) => workspaceStudyMap[id])
-      : workspaceEnvelope.aiContext.selectedStudyIds;
+  function openWorkspaceTab(tab: 'analyze' | 'scan' | 'judge') {
+    if (mobileView !== undefined && setMobileView) {
+      setMobileView(tab);
+      return;
+    }
+    updateTabState(s => ({ ...s, peekOpen: true, drawerTab: tab }));
+  }
 
-    const selectedStudies = selectedIds
+  function startSaveSetup() {
+    chartSaveMode.enterRangeMode();
+  }
+
+  function openCompareWorkspace() {
+    openWorkspaceTab('scan');
+  }
+
+  function openJudgeWorkspace() {
+    openWorkspaceTab('judge');
+  }
+
+  function openAnalyzeAIDetail() {
+    const selectedStudies = workspaceEnvelope.aiContext.selectedStudyIds
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study));
 
-    const panelMeta = panelId ? ANALYZE_PANEL_META[panelId] : null;
-    const userText = panelMeta
-      ? `${symbol} ${timeframe} ${panelMeta.kicker} detail 설명해줘`
-      : `${symbol} ${timeframe} analyze detail 설명해줘`;
-    const extraLines =
-      panelId === 'evidence-log'
-        ? evidenceItems.map((item) => `- Evidence: ${item.k} ${item.v}${item.note ? ` · ${item.note}` : ''}`)
-        : panelId === 'execution-board'
-          ? proposal.map((item) => `- ${item.label}: ${item.val}${item.hint ? ` · ${item.hint}` : ''}`)
-          : [];
+    const userText = `${symbol} ${timeframe} analyze detail 설명해줘`;
     const assistantText = [
-      `**${symbol} · ${timeframe} ${panelMeta?.kicker ?? 'ANALYZE DETAIL'}**`,
+      `**${symbol} · ${timeframe} ANALYZE DETAIL**`,
       workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
       `- Selected studies: ${selectedStudies.map((study) => study.title).join(', ') || '—'}`,
       ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
       '',
       '**Study Summary**',
-      ...selectedStudies.flatMap((study) => buildStudyAIDetailLines(study)),
-      ...extraLines,
+      ...selectedStudies.map((study) => {
+        const parts = study.summary
+          .filter((row) => row.value != null && row.value !== '')
+          .slice(0, 3)
+          .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`);
+        return `- ${study.title}: ${parts.join(' / ') || '—'}`;
+      }),
     ]
       .filter((line): line is string => Boolean(line))
       .join('\n');
 
     window.dispatchEvent(new CustomEvent('cogochi:cmd', {
       detail: { id: 'open_ai_detail', userText, assistantText },
-    }));
-  }
-
-  function collectPanelStudies(panelId: AnalyzePanelId) {
-    return ANALYZE_PANEL_STUDIES[panelId]
-      .map((id) => workspaceStudyMap[id])
-      .filter((study): study is NonNullable<typeof study> => Boolean(study));
-  }
-
-  const compareShelfPanels = $derived.by(() =>
-    analyzeComparePanelIds.map((panelId) => {
-      const studies = collectPanelStudies(panelId);
-      const summary = studies
-        .flatMap((study) =>
-          study.summary
-            .slice(0, 2)
-            .filter((row) => row.value != null && row.value !== '')
-            .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`),
-        )
-        .slice(0, 3);
-      return {
-        id: panelId,
-        kicker: ANALYZE_PANEL_META[panelId].kicker,
-        copy: ANALYZE_PANEL_META[panelId].copy,
-        studies,
-        summary,
-      };
-    }),
-  );
-
-  function openAnalyzeCompareDetail() {
-    const comparePanels = compareShelfPanels;
-    const compareStudies = comparePanels.flatMap((panel) => panel.studies);
-    const dedupedStudies = compareStudies.filter(
-      (study, index) => compareStudies.findIndex((candidate) => candidate.id === study.id) === index,
-    );
-    const assistantText = [
-      `**${symbol} · ${timeframe} ANALYZE COMPARE SHELF**`,
-      workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
-      `- Pinned panels: ${comparePanels.map((panel) => panel.kicker).join(', ') || '—'}`,
-      ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
-      '',
-      '**Panel Compare**',
-      ...comparePanels.flatMap((panel) => [
-        `- ${panel.kicker}: ${panel.summary.join(' / ') || '—'}`,
-        ...panel.studies.flatMap((study) => buildStudyAIDetailLines(study).map((line) => `  ${line}`)),
-      ]),
-    ]
-      .filter((line): line is string => Boolean(line))
-      .join('\n');
-
-    window.dispatchEvent(new CustomEvent('cogochi:cmd', {
-      detail: {
-        id: 'open_ai_detail',
-        userText: `${symbol} ${timeframe} pinned analyze panels 비교 설명해줘`,
-        assistantText,
-        compareStudyIds: dedupedStudies.map((study) => study.id),
-      },
     }));
   }
 
@@ -659,7 +511,8 @@
   const drawerTab = $derived(tabState.drawerTab);
   const peekHeight = $derived(tabState.peekHeight);
   const analyzeDetailOpen = $derived(peekOpen && drawerTab === 'analyze');
-  let sidebarAnalyzeDockCollapsed = $state(false);
+  let sidebarAnalyzeDockCollapsed = $state(true);
+  let microstructureView = $state<'candle' | 'heatmap' | 'footprint'>('heatmap');
 
   // ── Scan core loop state ────────────────────────────────────────────────
   // scanState/scanProgress are used by the live SCAN tab UI.
@@ -843,6 +696,124 @@
     if (v == null || v === 0) return '—';
     return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v.toFixed(4);
   }
+
+  function toLiveTrade(data: any): MarketTradePrint | null {
+    const price = Number.parseFloat(data?.p);
+    const qty = Number.parseFloat(data?.q);
+    const id = Number(data?.a);
+    const time = Number(data?.T);
+    if (!Number.isFinite(price) || !Number.isFinite(qty) || !Number.isFinite(id) || !Number.isFinite(time)) return null;
+    const isBuyerMaker = Boolean(data?.m);
+    return {
+      id,
+      time,
+      price,
+      qty,
+      notional: price * qty,
+      side: isBuyerMaker ? 'SELL' : 'BUY',
+      isBuyerMaker,
+    };
+  }
+
+  function normalizeDepthLevels(rawLevels: any[], maxNotional: number): MarketDepthLevel[] {
+    return rawLevels
+      .slice(0, 20)
+      .map((row) => {
+        const price = Number.parseFloat(row?.[0]);
+        const qty = Number.parseFloat(row?.[1]);
+        return { price, qty, notional: price * qty };
+      })
+      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0)
+      .slice(0, 12)
+      .map((level) => ({
+        ...level,
+        weight: level.notional / Math.max(1, maxNotional),
+      }));
+  }
+
+  function buildLiveOrderbook(bidsRaw: any[], asksRaw: any[], current: number | null): MicroOrderbook {
+    const parsedBids = bidsRaw
+      .slice(0, 20)
+      .map((row) => {
+        const price = Number.parseFloat(row?.[0]);
+        const qty = Number.parseFloat(row?.[1]);
+        return { price, qty, notional: price * qty };
+      })
+      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
+    const parsedAsks = asksRaw
+      .slice(0, 20)
+      .map((row) => {
+        const price = Number.parseFloat(row?.[0]);
+        const qty = Number.parseFloat(row?.[1]);
+        return { price, qty, notional: price * qty };
+      })
+      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
+    const maxNotional = Math.max(1, ...parsedBids.map((level) => level.notional), ...parsedAsks.map((level) => level.notional));
+    const bids = normalizeDepthLevels(bidsRaw, maxNotional);
+    const asks = normalizeDepthLevels(asksRaw, maxNotional);
+    const bidNotional = bids.reduce((sum, level) => sum + level.notional, 0);
+    const askNotional = asks.reduce((sum, level) => sum + level.notional, 0);
+    const bestBid = bids[0]?.price ?? null;
+    const bestAsk = asks[0]?.price ?? null;
+    const refPrice = current ?? (bestBid != null && bestAsk != null ? (bestBid + bestAsk) / 2 : null);
+
+    return {
+      bestBid,
+      bestAsk,
+      spreadBps: bestBid != null && bestAsk != null && refPrice != null && refPrice > 0 ? ((bestAsk - bestBid) / refPrice) * 10_000 : null,
+      imbalanceRatio: askNotional > 0 ? bidNotional / askNotional : null,
+      bidNotional,
+      askNotional,
+      bids,
+      asks,
+    };
+  }
+
+  function buildFootprintBucketsFromTrades(trades: MarketTradePrint[], current: number | null): FootprintBucket[] {
+    if (trades.length === 0) return [];
+    const prices = trades.map((trade) => trade.price);
+    const high = Math.max(...prices);
+    const low = Math.min(...prices);
+    const base = current && current > 0 ? current : prices.reduce((sum, price) => sum + price, 0) / prices.length;
+    const bucketSize = Math.max(base * 0.0001, (high - low) / 10, 0.0001);
+    const buckets = new Map<number, FootprintBucket>();
+
+    for (const trade of trades) {
+      const bucketKey = Math.floor(trade.price / bucketSize);
+      const priceLow = bucketKey * bucketSize;
+      const existing = buckets.get(bucketKey) ?? {
+        price: priceLow + bucketSize / 2,
+        priceLow,
+        priceHigh: priceLow + bucketSize,
+        buyQty: 0,
+        sellQty: 0,
+        buyNotional: 0,
+        sellNotional: 0,
+        deltaQty: 0,
+        deltaNotional: 0,
+        totalNotional: 0,
+        tradeCount: 0,
+        weight: 0,
+      };
+      if (trade.side === 'BUY') {
+        existing.buyQty += trade.qty;
+        existing.buyNotional += trade.notional;
+      } else {
+        existing.sellQty += trade.qty;
+        existing.sellNotional += trade.notional;
+      }
+      existing.tradeCount += 1;
+      existing.totalNotional += trade.notional;
+      existing.deltaQty = existing.buyQty - existing.sellQty;
+      existing.deltaNotional = existing.buyNotional - existing.sellNotional;
+      buckets.set(bucketKey, existing);
+    }
+
+    const rows = [...buckets.values()].sort((a, b) => b.price - a.price);
+    const maxNotional = Math.max(1, ...rows.map((bucket) => bucket.totalNotional));
+    return rows.map((bucket) => ({ ...bucket, weight: bucket.totalNotional / maxNotional }));
+  }
+
   // ── Confidence ───────────────────────────────────────────────────────────
   const confidence = $derived(
     analyzeData?.entryPlan?.confidencePct ??
@@ -936,6 +907,455 @@
   const evidencePos = $derived(analyzeEvidenceItems.filter(e => e.pos).length);
   const evidenceNeg = $derived(analyzeEvidenceItems.filter(e => !e.pos).length);
 
+  const currentPhase = $derived.by(() => {
+    const haystack = [
+      analyzeDetailThesis,
+      analyzeData?.deep?.verdict,
+      analyzeData?.ensemble?.reason,
+      analyzeData?.riskPlan?.bias,
+      analyzeData?.snapshot?.regime,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    if (haystack.includes('breakout') || haystack.includes('돌파')) return 'BREAKOUT WATCH';
+    if (haystack.includes('accum') || haystack.includes('축적')) return 'ACCUMULATION';
+    if (haystack.includes('dump') || haystack.includes('flush')) return 'REAL DUMP';
+    if (haystack.includes('range') || haystack.includes('arch')) return 'ARCH ZONE';
+    return analyzeData?.snapshot?.regime ?? 'STRUCTURE';
+  });
+
+  const marketBias = $derived.by(() => {
+    const raw = analyzeData?.riskPlan?.bias ?? analyzeData?.ensemble?.direction ?? analyzeDetailDirection;
+    const normalized = String(raw || '').toLowerCase();
+    if (normalized.includes('short') || normalized.includes('bear') || normalized.includes('숏')) return 'BEAR';
+    if (normalized.includes('long') || normalized.includes('bull') || normalized.includes('롱')) return 'BULL';
+    return raw ? String(raw).toUpperCase() : 'NEUTRAL';
+  });
+
+  const hudStateRows = $derived.by(() => [
+    { label: 'Pattern', value: analyzeData?.mode ?? 'Tradoor v2' },
+    { label: 'Phase', value: currentPhase },
+    { label: 'Bias', value: marketBias },
+    { label: 'TF', value: timeframe.toUpperCase() },
+  ]);
+
+  const hudEvidenceItems = $derived.by(() => analyzeEvidenceItems.slice(0, 3));
+
+  const riskItems = $derived.by(() => {
+    const items = [
+      analyzeData?.riskPlan?.invalidation ? `Invalidation · ${analyzeData.riskPlan.invalidation}` : null,
+      analyzeData?.riskPlan?.riskTrigger ? `Trigger risk · ${analyzeData.riskPlan.riskTrigger}` : null,
+      analyzeData?.riskPlan?.crowding ? `Crowding · ${analyzeData.riskPlan.crowding}` : null,
+      analyzeData?.riskPlan?.avoid ? `Avoid · ${analyzeData.riskPlan.avoid}` : null,
+      ...analyzeDetailWarnings,
+    ]
+      .filter((item): item is string => Boolean(item))
+      .filter((item, idx, arr) => arr.indexOf(item) === idx)
+      .slice(0, 3);
+
+    return items.length > 0 ? items : ['Breakout confirmation required', 'Fresh low break invalidates setup'];
+  });
+
+  const phaseTimeline = $derived.by(() => {
+    const labels = ['FAKE DUMP', 'ARCH ZONE', 'REAL DUMP', 'ACCUMULATION', 'BREAKOUT'];
+    const phase = currentPhase.toLowerCase();
+    const activeIndex = phase.includes('breakout')
+      ? 4
+      : phase.includes('accum')
+        ? 3
+        : phase.includes('dump')
+          ? 2
+          : phase.includes('arch')
+            ? 1
+            : 0;
+
+    return labels.map((label, index) => ({
+      label,
+      state: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'pending',
+    }));
+  });
+
+  const evidenceTableRows = $derived.by(() => {
+    const rows = analyzeEvidenceItems.map((item) => ({
+      feature: item.k,
+      value: item.v,
+      threshold: item.pos ? 'pass zone' : 'watch',
+      status: item.pos ? 'PASS' : 'FAIL',
+      why: item.note || 'engine evidence',
+      pos: item.pos,
+    }));
+
+    if (rows.length > 0) return rows.slice(0, 8);
+
+    return [
+      { feature: 'OI', value: '—', threshold: 'context', status: 'WAIT', why: 'open interest pane', pos: true },
+      { feature: 'Funding', value: '—', threshold: 'flip/overheat', status: 'WAIT', why: 'funding pane', pos: true },
+      { feature: 'CVD', value: '—', threshold: 'divergence', status: 'WAIT', why: 'flow pane', pos: true },
+    ];
+  });
+
+  const compareCards = $derived.by(() => [
+    {
+      label: 'Current vs TRADOOR',
+      value: `${scanCandidates.length} live`,
+      note: 'world-model candidates',
+      action: openCompareWorkspace,
+    },
+    {
+      label: 'Current vs Saved',
+      value: `${pastCaptures.length} saved`,
+      note: 'recent capture memory',
+      action: openCompareWorkspace,
+    },
+    {
+      label: 'Near Miss',
+      value: scanSelected ? scanSelected.replace('USDT', '') : 'select',
+      note: 'failure-case compare',
+      action: openCompareWorkspace,
+    },
+  ]);
+
+  const ledgerStats = $derived.by(() => {
+    const outcomeReady = pastCaptures.filter((capture) => capture.status === 'outcome_ready').length;
+    const verdictReady = pastCaptures.filter((capture) => capture.status === 'verdict_ready').length;
+    return [
+      { label: 'Saved', value: String(pastCaptures.length), note: 'captures' },
+      { label: 'Outcome', value: String(outcomeReady), note: 'ready' },
+      { label: 'Verdict', value: String(verdictReady), note: 'ready' },
+    ];
+  });
+
+  const judgmentOptions = [
+    { label: 'Valid', tone: 'pos' },
+    { label: 'Invalid', tone: 'neg' },
+    { label: 'Too Early', tone: 'warn' },
+    { label: 'Too Late', tone: 'warn' },
+    { label: 'Near Miss', tone: 'neutral' },
+  ];
+
+  const microBars = $derived.by<ChartBar[]>(() => {
+    const realBars = chartPayload?.klines ?? [];
+    if (realBars.length > 0) return realBars;
+
+    const base = currentPrice > 0
+      ? currentPrice
+      : symbol.startsWith('BTC')
+        ? 64280
+        : symbol.startsWith('ETH')
+          ? 3160
+          : 100;
+    const now = Math.floor(Date.now() / 1000);
+    const stepSec = timeframe.endsWith('m')
+      ? Number.parseInt(timeframe, 10) * 60
+      : timeframe.endsWith('h')
+        ? Number.parseInt(timeframe, 10) * 3600
+        : 86400;
+
+    return Array.from({ length: 36 }, (_, index) => {
+      const wave = Math.sin(index * 0.78) * 0.006 + Math.cos(index * 0.31) * 0.004;
+      const drift = (index - 18) * 0.00042;
+      const close = base * (1 + wave + drift);
+      const open = base * (1 + Math.sin((index - 1) * 0.78) * 0.0055 + (index - 19) * 0.00038);
+      const spread = base * (0.0016 + Math.abs(Math.sin(index * 0.47)) * 0.0018);
+      const high = Math.max(open, close) + spread;
+      const low = Math.min(open, close) - spread;
+      const volume = 720 + Math.abs(Math.sin(index * 0.9)) * 2200 + (index % 7 === 0 ? 1800 : 0);
+
+      return {
+        time: now - (36 - index) * stepSec,
+        open,
+        high,
+        low,
+        close,
+        volume,
+      };
+    });
+  });
+
+  const activeOrderbook = $derived<MicroOrderbook | null>(liveOrderbook ?? microstructurePayload?.orderbook ?? null);
+  const activeTrades = $derived<MarketTradePrint[]>(liveTrades.length > 0 ? liveTrades : microstructurePayload?.tradeTape.trades ?? []);
+  const activeCurrentMicroPrice = $derived.by(() => {
+    if (activeTrades[0]?.price) return activeTrades[0].price;
+    if (microstructurePayload?.currentPrice) return microstructurePayload.currentPrice;
+    const book = activeOrderbook;
+    if (book?.bestBid != null && book?.bestAsk != null) return (book.bestBid + book.bestAsk) / 2;
+    return currentPrice > 0 ? currentPrice : microBars[microBars.length - 1]?.close ?? null;
+  });
+  const activeFootprintBuckets = $derived.by(() => {
+    if (liveTrades.length > 0) return buildFootprintBucketsFromTrades(liveTrades, activeCurrentMicroPrice);
+    return microstructurePayload?.footprint.buckets ?? [];
+  });
+  const activeHeatmapBands = $derived.by(() => {
+    const book = activeOrderbook;
+    if (!book) return microstructurePayload?.heatmap.bands ?? [];
+    return [
+      ...book.asks.map((level) => ({ price: level.price, side: 'ask' as const, notional: level.notional, intensity: level.weight })),
+      ...book.bids.map((level) => ({ price: level.price, side: 'bid' as const, notional: level.notional, intensity: level.weight })),
+    ].sort((a, b) => b.price - a.price);
+  });
+
+  const microStats = $derived.by(() => {
+    if (liveTrades.length > 0 || liveOrderbook) {
+      const book = activeOrderbook;
+      const trades = activeTrades;
+      const bidNotional = book?.bidNotional ?? 0;
+      const askNotional = book?.askNotional ?? 0;
+      const totalDepth = bidNotional + askNotional;
+      const imbalancePct = totalDepth > 0 ? ((bidNotional - askNotional) / totalDepth) * 100 : 0;
+      const spanMs = trades.length > 1 ? Math.max(1, trades[0].time - trades[trades.length - 1].time) : 0;
+      const tradesPerMinute = spanMs > 0 ? (trades.length / spanMs) * 60_000 : null;
+      const recentNotional = trades.reduce((sum, trade) => sum + trade.notional, 0);
+      const topDepthNotional =
+        (book?.bids.slice(0, 3).reduce((sum, level) => sum + level.notional, 0) ?? 0) +
+        (book?.asks.slice(0, 3).reduce((sum, level) => sum + level.notional, 0) ?? 0);
+      const absorptionPct = topDepthNotional + recentNotional > 0
+        ? (topDepthNotional / (topDepthNotional + recentNotional)) * 100
+        : null;
+
+      return {
+        spreadBps: book?.spreadBps != null ? `${book.spreadBps.toFixed(1)} bps` : '—',
+        imbalancePct,
+        imbalanceLabel: `${imbalancePct >= 0 ? '+' : ''}${imbalancePct.toFixed(0)}%`,
+        tapeSpeed: tradesPerMinute != null ? `${tradesPerMinute.toFixed(0)}/m` : '—',
+        absorptionLabel: absorptionPct != null ? `${absorptionPct.toFixed(0)}%` : '—',
+      };
+    }
+
+    const realStats = microstructurePayload?.stats;
+    if (realStats) {
+      const imbalancePct = realStats.imbalancePct ?? 0;
+      const tradesPerMinute = realStats.tradesPerMinute;
+      return {
+        spreadBps: realStats.spreadBps != null ? `${realStats.spreadBps.toFixed(1)} bps` : '—',
+        imbalancePct,
+        imbalanceLabel: `${imbalancePct >= 0 ? '+' : ''}${imbalancePct.toFixed(0)}%`,
+        tapeSpeed: tradesPerMinute != null ? `${tradesPerMinute.toFixed(0)}/m` : '—',
+        absorptionLabel: realStats.absorptionPct != null ? `${realStats.absorptionPct.toFixed(0)}%` : '—',
+      };
+    }
+
+    const bars = microBars;
+    const last = bars[bars.length - 1];
+    const prev = bars[bars.length - 2];
+    const price = analyzeData?.price ?? last?.close ?? 0;
+    const spreadBps = price > 0 && last
+      ? Math.max(0.6, ((last.high - last.low) / price) * 10000 * 0.08)
+      : 0;
+    const recent = bars.slice(-24);
+    const upVolume = recent.reduce((sum, bar) => sum + (bar.close >= bar.open ? bar.volume : 0), 0);
+    const downVolume = recent.reduce((sum, bar) => sum + (bar.close < bar.open ? bar.volume : 0), 0);
+    const total = Math.max(1, upVolume + downVolume);
+    const imbalancePct = ((upVolume - downVolume) / total) * 100;
+    const tapeSpeed = recent.reduce((sum, bar) => sum + bar.volume, 0) / Math.max(1, recent.length);
+    const absorption = prev && last
+      ? Math.abs(last.close - last.open) / Math.max(1e-9, last.high - last.low)
+      : 0;
+    return {
+      spreadBps: spreadBps ? `${spreadBps.toFixed(1)} bps` : '—',
+      imbalancePct,
+      imbalanceLabel: `${imbalancePct >= 0 ? '+' : ''}${imbalancePct.toFixed(0)}%`,
+      tapeSpeed: tapeSpeed > 1000 ? `${(tapeSpeed / 1000).toFixed(1)}k` : tapeSpeed.toFixed(0),
+      absorptionLabel: `${Math.round((1 - Math.min(1, absorption)) * 100)}%`,
+    };
+  });
+
+  const domLadderRows = $derived.by(() => {
+    const orderbook = activeOrderbook;
+    if (orderbook && (orderbook.bids.length > 0 || orderbook.asks.length > 0)) {
+      const asks = orderbook.asks.slice(0, 6).reverse().map((level) => ({
+        price: _fmtNum(level.price),
+        bid: '—',
+        ask: level.notional > 1000 ? `${(level.notional / 1000).toFixed(1)}k` : level.notional.toFixed(0),
+        bidWidth: '0%',
+        askWidth: `${Math.max(8, Math.min(100, level.weight * 100))}%`,
+        delta: -level.notional,
+        isMid: false,
+      }));
+      const midpoint =
+        orderbook.bestBid != null && orderbook.bestAsk != null
+          ? (orderbook.bestBid + orderbook.bestAsk) / 2
+          : activeCurrentMicroPrice ?? 0;
+      const mid = {
+        price: midpoint > 0 ? _fmtNum(midpoint) : '—',
+        bid: 'MID',
+        ask: orderbook.spreadBps != null ? `${orderbook.spreadBps.toFixed(1)}bps` : 'MID',
+        bidWidth: '28%',
+        askWidth: '28%',
+        delta: 0,
+        isMid: true,
+      };
+      const bids = orderbook.bids.slice(0, 6).map((level) => ({
+        price: _fmtNum(level.price),
+        bid: level.notional > 1000 ? `${(level.notional / 1000).toFixed(1)}k` : level.notional.toFixed(0),
+        ask: '—',
+        bidWidth: `${Math.max(8, Math.min(100, level.weight * 100))}%`,
+        askWidth: '0%',
+        delta: level.notional,
+        isMid: false,
+      }));
+      return [...asks, mid, ...bids];
+    }
+
+    const bars = microBars;
+    const last = bars[bars.length - 1];
+    const price = analyzeData?.price ?? last?.close ?? 0;
+    const step = price > 0 ? Math.max(price * 0.00045, 0.0001) : 10;
+    const recentVolume = Math.max(1, bars.slice(-24).reduce((sum, bar) => sum + bar.volume, 0) / 24);
+    const levels = Array.from({ length: 13 }, (_, i) => i - 6).reverse();
+
+    return levels.map((offset) => {
+      const levelPrice = price > 0 ? price + offset * step : offset * step;
+      const distance = Math.abs(offset);
+      const sideBias = offset < 0 ? 1.18 : offset > 0 ? 0.86 : 1;
+      const base = Math.max(0.16, 1 - distance / 8);
+      const wave = 0.72 + Math.abs(Math.sin((levelPrice || offset) * 0.013)) * 0.7;
+      const bid = recentVolume * base * sideBias * wave;
+      const ask = recentVolume * base * (2 - sideBias) * (1.52 - wave * 0.36);
+      const max = Math.max(bid, ask, 1);
+      const delta = bid - ask;
+
+      return {
+        price: _fmtNum(levelPrice),
+        bid: bid > 1000 ? `${(bid / 1000).toFixed(1)}k` : bid.toFixed(0),
+        ask: ask > 1000 ? `${(ask / 1000).toFixed(1)}k` : ask.toFixed(0),
+        bidWidth: `${Math.max(8, Math.min(100, (bid / max) * 100))}%`,
+        askWidth: `${Math.max(8, Math.min(100, (ask / max) * 100))}%`,
+        delta,
+        isMid: offset === 0,
+      };
+    });
+  });
+
+  const timeSalesRows = $derived.by(() => {
+    const trades = activeTrades;
+    if (trades.length > 0) {
+      const maxNotional = Math.max(1, ...trades.slice(0, 18).map((trade) => trade.notional));
+      return trades.slice(0, 18).map((trade) => ({
+        time: new Date(trade.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+        side: trade.side,
+        price: _fmtNum(trade.price),
+        size: trade.notional > 1000 ? `${(trade.notional / 1000).toFixed(1)}k` : trade.notional.toFixed(0),
+        intensity: `${Math.max(12, Math.min(100, (trade.notional / maxNotional) * 100))}%`,
+      }));
+    }
+
+    const bars = microBars;
+    return bars.slice(-18).reverse().map((bar) => {
+      const body = Math.abs(bar.close - bar.open);
+      const range = Math.max(1e-9, bar.high - bar.low);
+      const directional = body / range;
+      const isBuy = bar.close >= bar.open;
+      const size = bar.volume * (0.45 + directional * 0.55);
+      return {
+        time: new Date(bar.time * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        side: isBuy ? 'BUY' : 'SELL',
+        price: _fmtNum(bar.close),
+        size: size > 1000 ? `${(size / 1000).toFixed(1)}k` : size.toFixed(0),
+        intensity: `${Math.max(14, Math.min(100, directional * 100))}%`,
+      };
+    });
+  });
+
+  const footprintRows = $derived.by(() => {
+    const buckets = activeFootprintBuckets;
+    if (buckets.length > 0) {
+      return buckets.slice(0, 12).map((bucket) => ({
+        price: _fmtNum(bucket.price),
+        bid: bucket.sellNotional > 1000 ? `${(bucket.sellNotional / 1000).toFixed(1)}k` : bucket.sellNotional.toFixed(0),
+        ask: bucket.buyNotional > 1000 ? `${(bucket.buyNotional / 1000).toFixed(1)}k` : bucket.buyNotional.toFixed(0),
+        deltaLabel: `${bucket.deltaNotional >= 0 ? '+' : ''}${Math.abs(bucket.deltaNotional) > 1000 ? `${(bucket.deltaNotional / 1000).toFixed(1)}k` : bucket.deltaNotional.toFixed(0)}`,
+        delta: bucket.deltaNotional,
+        width: `${Math.max(8, Math.min(100, bucket.weight * 100))}%`,
+      }));
+    }
+
+    const bars = microBars;
+    const sample = bars.slice(-12).reverse();
+    const maxVolume = Math.max(1, ...sample.map((bar) => bar.volume));
+    return sample.map((bar) => {
+      const range = Math.max(1e-9, bar.high - bar.low);
+      const closePos = Math.max(0, Math.min(1, (bar.close - bar.low) / range));
+      const buy = bar.volume * (0.32 + closePos * 0.56);
+      const sell = Math.max(0, bar.volume - buy);
+      const delta = buy - sell;
+      return {
+        price: _fmtNum(bar.close),
+        bid: sell > 1000 ? `${(sell / 1000).toFixed(1)}k` : sell.toFixed(0),
+        ask: buy > 1000 ? `${(buy / 1000).toFixed(1)}k` : buy.toFixed(0),
+        deltaLabel: `${delta >= 0 ? '+' : ''}${delta > 1000 || delta < -1000 ? `${(delta / 1000).toFixed(1)}k` : delta.toFixed(0)}`,
+        delta,
+        width: `${Math.max(8, Math.min(100, (bar.volume / maxVolume) * 100))}%`,
+      };
+    });
+  });
+
+  const heatmapRows = $derived.by(() => {
+    const realBands = activeHeatmapBands;
+    const trades = activeTrades;
+    if (realBands.length > 0) {
+      const sortedBands = [...realBands].sort((a, b) => b.price - a.price);
+      const bandStep = Math.max(1, Math.floor(sortedBands.length / 7));
+      const selectedBands = sortedBands.filter((_, index) => index % bandStep === 0).slice(0, 7);
+      const tapeCells = trades.length > 0
+        ? trades.slice(0, 18).reverse()
+        : selectedBands.map((band, index) => ({
+            price: band.price,
+            side: band.side === 'bid' ? 'BUY' : 'SELL',
+            notional: band.notional,
+            id: index,
+            time: Date.now(),
+            qty: 0,
+            isBuyerMaker: band.side !== 'bid',
+          }));
+      const prices = tapeCells.map((trade) => trade.price);
+      const span = Math.max(1e-9, Math.max(...prices) - Math.min(...prices));
+      const maxNotional = Math.max(1, ...tapeCells.map((trade) => trade.notional));
+
+      return selectedBands.map((band) => ({
+        price: _fmtNum(band.price),
+        cells: tapeCells.map((trade) => {
+          const distance = Math.min(1, Math.abs(trade.price - band.price) / span);
+          const intensity = Math.max(0.04, Math.min(1, band.intensity * 0.55 + (trade.notional / maxNotional) * 0.3 + (1 - distance) * 0.2));
+          return {
+            intensity,
+            side: trade.side === 'BUY' ? 'buy' : 'sell',
+            label: `${_fmtNum(trade.price)} · ${Math.round(intensity * 100)}%`,
+          };
+        }),
+      }));
+    }
+
+    const bars = microBars.slice(-18);
+    const highs = bars.map((bar) => bar.high);
+    const lows = bars.map((bar) => bar.low);
+    const high = Math.max(...highs, analyzeData?.price ?? 1);
+    const low = Math.min(...lows, analyzeData?.price ?? 1);
+    const span = Math.max(1e-9, high - low);
+    const volumeMax = Math.max(1, ...bars.map((bar) => bar.volume));
+    const fallbackBands = Array.from({ length: 7 }, (_, band) => {
+      const pct = band / 6;
+      const price = high - span * pct;
+      return {
+        price: _fmtNum(price),
+        cells: bars.map((bar, index) => {
+          const inRange = price <= bar.high && price >= bar.low;
+          const distance = Math.abs(price - bar.close) / span;
+          const liq = chartPayload?.liqBars?.[chartPayload.liqBars.length - bars.length + index];
+          const liqBoost = liq ? Math.min(1, (liq.longUsd + liq.shortUsd) / 2_500_000) : 0;
+          const volumeBoost = Math.min(1, bar.volume / volumeMax);
+          const intensity = inRange
+            ? Math.max(0.16, Math.min(1, volumeBoost * 0.72 + liqBoost * 0.38 + (1 - distance) * 0.22))
+            : Math.max(0.04, (1 - distance) * 0.12);
+          return {
+            intensity,
+            side: bar.close >= bar.open ? 'buy' : 'sell',
+            label: `${_fmtNum(bar.close)} · ${Math.round(intensity * 100)}%`,
+          };
+        }),
+      };
+    });
+    return fallbackBands;
+  });
+
   // ── RR bar widths ─────────────────────────────────────────────────────
   const rrLossPct = $derived((() => {
     const rr = analyzeData?.entryPlan?.riskReward ?? 4.2;
@@ -950,7 +1370,7 @@
 <!-- Side-effect: push toast on divergenceStreak rising edge (≥3). No visual output. -->
 <DivergenceAlertToast value={confluence} />
 
-<div bind:this={containerEl} class="trade-mode">
+<div bind:this={containerEl} class="trade-mode" class:observe-mode={workMode === 'observe'} class:analyze-mode={workMode === 'analyze'} class:execute-mode={workMode === 'execute'}>
   {#if mobileView !== undefined}
     <!-- ── MOBILE: chart on top, tab strip, scrollable panel ── -->
     <div class="mobile-chart-section" class:mobile-chart-fullscreen={mobileView === 'chart'} role="region" aria-label="Chart display">
@@ -1137,17 +1557,19 @@
     </div>
     {/if}
   {:else}
-  <nav class="layout-strip" aria-label="Workspace controls">
-    <span class="ls-label" id="layout-group-label">WORKSPACE</span>
-    <div class="ls-static" aria-live="polite">
-      <span class="ls-id">C</span>
-      <span class="ls-name">SIDEBAR</span>
-      <span class="ls-desc">· 단일 레이아웃</span>
-    </div>
-    <span class="spacer"></span>
-    <WorkspacePresetPicker />
-    <span class="ls-hint" role="status" aria-live="polite">ANALYZE 접기 가능</span>
-  </nav>
+  {#if workMode !== 'observe'}
+    <nav class="layout-strip" aria-label="Workspace controls">
+      <span class="ls-label" id="layout-group-label">WORKSPACE</span>
+      <div class="ls-static" aria-live="polite">
+        <span class="ls-id">C</span>
+        <span class="ls-name">SIDEBAR</span>
+        <span class="ls-desc">· 단일 레이아웃</span>
+      </div>
+      <span class="spacer"></span>
+      <WorkspacePresetPicker />
+      <span class="ls-hint" role="status" aria-live="polite">ANALYZE 접기 가능</span>
+    </nav>
+  {/if}
 
   <!-- ═══ LAYOUT C · Chart + peek bar + sidebar (merged C+D) ═══════════════ -->
   <div class="layout-c">
@@ -1181,6 +1603,29 @@
           >{tog.label}</button>
         {/each}
       </div>
+      <div class="micro-toggle" role="group" aria-label="Chart microstructure view">
+        <button
+          class="micro-toggle-btn"
+          class:active={microstructureView === 'candle'}
+          type="button"
+          aria-pressed={microstructureView === 'candle'}
+          onclick={() => microstructureView = 'candle'}
+        >CANDLE</button>
+        <button
+          class="micro-toggle-btn"
+          class:active={microstructureView === 'heatmap'}
+          type="button"
+          aria-pressed={microstructureView === 'heatmap'}
+          onclick={() => microstructureView = 'heatmap'}
+        >HEATMAP</button>
+        <button
+          class="micro-toggle-btn"
+          class:active={microstructureView === 'footprint'}
+          type="button"
+          aria-pressed={microstructureView === 'footprint'}
+          onclick={() => microstructureView = 'footprint'}
+        >FOOTPRINT</button>
+      </div>
       <span class="spacer"></span>
       <div class="evidence-badge">
         <span class="ev-pos">{evidencePos}</span><span class="ev-sep">/</span><span class="ev-neg">{evidenceNeg}</span>
@@ -1189,6 +1634,7 @@
         <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
         <span class="conf-val">{confidenceAlpha}</span>
       </div>
+      <button class="chart-save-compact" type="button" onclick={startSaveSetup}>SAVE RANGE</button>
     </div>
     <div class="chart-body">
       <div class="chart-live">
@@ -1196,12 +1642,58 @@
           {symbol}
           tf={timeframe}
           initialData={chartPayload ?? undefined}
+          surfaceStyle="velo"
           verdictLevels={verdictLevels}
           change24hPct={analyzeData?.change24h ?? null}
           contextMode="chart"
           onCandleClose={handleCandleClose}
           {gammaPin}
         />
+      </div>
+    </div>
+
+    <div class="microstructure-belt" data-view={microstructureView} aria-label="Market microstructure belt">
+      <div class="micro-belt-title">
+        <span class="micro-kicker">
+          {microWsState === 'live'
+            ? 'BINANCE WS LIVE'
+            : microWsState === 'connecting'
+              ? 'CONNECTING WS'
+              : microstructurePayload
+                ? 'BINANCE SNAPSHOT'
+                : microstructureLoading
+                  ? 'LOADING DEPTH'
+                  : 'FALLBACK SHELL'}
+        </span>
+        <strong>{microstructureView.toUpperCase()}</strong>
+      </div>
+      <div class="micro-belt-stats" aria-label="Market depth summary">
+        <span class="micro-stat"><b>Spread</b>{microStats.spreadBps}</span>
+        <span class="micro-stat" class:buy={microStats.imbalancePct >= 0} class:sell={microStats.imbalancePct < 0}>
+          <b>Imbalance</b>{microStats.imbalanceLabel}
+        </span>
+        <span class="micro-stat"><b>Tape</b>{microStats.tapeSpeed}</span>
+        <span class="micro-stat"><b>Absorb</b>{microStats.absorptionLabel}</span>
+      </div>
+      <div class="micro-heat-strip" class:active={microstructureView === 'heatmap'} aria-label="Liquidity heat strip">
+        {#each (heatmapRows[3]?.cells ?? []).slice(-16) as cell}
+          <span
+            class="micro-heat-cell"
+            class:buy={cell.side === 'buy'}
+            class:sell={cell.side === 'sell'}
+            style:opacity={0.18 + cell.intensity * 0.82}
+            title={cell.label}
+          ></span>
+        {/each}
+      </div>
+      <div class="micro-depth-strip" class:active={microstructureView === 'footprint'} aria-label="DOM depth strip">
+        {#each domLadderRows.slice(4, 9) as row}
+          <div class="micro-depth-row" class:mid={row.isMid}>
+            <span class="depth-bid" style:width={row.bidWidth}></span>
+            <span class="depth-price">{row.price}</span>
+            <span class="depth-ask" style:width={row.askWidth}></span>
+          </div>
+        {/each}
       </div>
     </div>
 
@@ -1321,392 +1813,239 @@
         <!-- Drawer content -->
         <div class="drawer-content">
           {#if drawerTab === 'analyze'}
-            <div class="analyze-body">
-              <div class="analyze-overview">
-                {#each workspaceSummaryCards as item}
-                  <div class="analyze-overview-card" class:tone-pos={item.tone === 'pos'} class:tone-neg={item.tone === 'neg'}>
-                    <span class="analyze-overview-label">{item.label}</span>
-                    <span class="analyze-overview-value">{item.value}</span>
-                    <span class="analyze-overview-note">{item.note}</span>
-                  </div>
-                {/each}
-              </div>
-              <div class="compare-shelf">
-                <div class="compare-shelf-head">
-                  <div class="compare-shelf-copy">
-                    <span class="compare-shelf-kicker">COMPARE SHELF</span>
-                    <span class="compare-shelf-sub">Claude-style pinned panels · 추가 fetch 없이 같은 workspace payload 재사용</span>
-                  </div>
-                  <div class="compare-shelf-actions">
-                    <button class="analyze-panel-btn" type="button" onclick={openAnalyzeCompareDetail} disabled={compareShelfPanels.length === 0}>
-                      AI COMPARE
-                    </button>
+            <div class="workspace-body">
+              <section class="workspace-hero" aria-label="Analyze thesis and phase path">
+                <div class="workspace-hero-copy">
+                  <span class="workspace-kicker">PHASE TIMELINE</span>
+                  <div class="workspace-thesis">
+                    <span class="bull">{analyzeDetailDirection} view ·</span>
+                    {' '}{analyzeDetailThesis}
                   </div>
                 </div>
-                <div class="compare-shelf-grid">
-                  {#if compareShelfPanels.length === 0}
-                    <div class="compare-shelf-empty">
-                      패널 헤더의 <code>PIN</code> 으로 비교 shelf 에 올릴 수 있습니다.
-                    </div>
-                  {:else}
-                    {#each compareShelfPanels as panel, compareIndex}
-                      <div class="compare-card">
-                        <div class="compare-card-head">
-                          <div>
-                            <div class="compare-card-title">{panel.kicker}</div>
-                            <div class="compare-card-copy">{panel.copy}</div>
-                          </div>
-                          <div class="compare-card-actions">
-                            <button class="analyze-panel-btn" type="button" onclick={() => moveComparePanel(panel.id, 'backward')} disabled={compareIndex === 0}>↑</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => moveComparePanel(panel.id, 'forward')} disabled={compareIndex === compareShelfPanels.length - 1}>↓</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panel.id)}>AI</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panel.id)}>UNPIN</button>
-                          </div>
-                        </div>
-                        <div class="compare-card-lines">
-                          {#each panel.summary as line}
-                            <div class="compare-card-line">{line}</div>
-                          {/each}
-                        </div>
-                      </div>
-                    {/each}
-                  {/if}
-                </div>
-              </div>
-              <div class="analyze-columns">
-                <!-- Left: detailed reading workspace -->
-                <div class="analyze-left">
-                  {#if confluence}
-                    <ConfluenceBanner value={confluence} history={confluenceHistory} />
-                  {/if}
-                  {#each analyzeMainPanelIds as panelId, panelIndex}
-                    <div class="analyze-section">
-                      <div class="analyze-section-head">
-                        <div class="analyze-head-copy">
-                          <span class="analyze-kicker">{ANALYZE_PANEL_META[panelId].kicker}</span>
-                          <span class="analyze-section-copy">{ANALYZE_PANEL_META[panelId].copy}</span>
-                        </div>
-                        <div class="analyze-panel-actions">
-                          <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeMainPanelIds.length - 1}>↓</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>DOCK</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panelId)}>
-                              {analyzePanelPinned(panelId) ? 'UNPIN' : 'PIN'}
-                            </button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
-                              {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
-                            </button>
-                        </div>
-                      </div>
-                      {#if !analyzePanelIsCollapsed(panelId)}
-                        {#if panelId === 'thesis'}
-                          <div class="narrative">
-                            <span class="bull">{narrativeDir} 진입 권장 ·</span>
-                            {' '}{narrativeBias ?? '분석 완료'}
-                            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-                              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
-                            {/if}
-                          </div>
-                        {:else if panelId === 'live-stack'}
-                          <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-                        {:else if panelId === 'options'}
-                          <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-                        {:else if panelId === 'venue-divergence'}
-                          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-                        {:else if panelId === 'verified-backdrop'}
-                          <div class="study-grid">
-                            {#each workspaceBackdropStudies as study}
-                              <div class="study-card">
-                                <div class="study-card-head">
-                                  <div>
-                                    <div class="study-card-title">{study.title}</div>
-                                    <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
-                                  </div>
-                                  <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
-                                </div>
-                                <div class="study-card-metrics">
-                                  {#each study.summary as row}
-                                    <div class="study-metric">
-                                      <span class="study-metric-label">{row.label}</span>
-                                      <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
-                                        {row.value ?? '—'}
-                                      </span>
-                                      {#if row.note}
-                                        <span class="study-metric-note">{row.note}</span>
-                                      {/if}
-                                    </div>
-                                  {/each}
-                                </div>
-                                {#if study.methodology}
-                                  <div class="study-card-method">{study.methodology.label}</div>
-                                {/if}
-                              </div>
-                            {/each}
-                          </div>
-                        {:else if panelId === 'dex-market-structure' && dexDetailPayload}
-                          <div class="dex-strip">
-                            <div class="dex-strip-item">
-                              <span class="dex-strip-label">TOTAL DEFI TVL</span>
-                              <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.totalDefiTvlUsd)}</span>
-                              <span class="dex-strip-note">{formatPctCompact(dexDetailPayload.totalDefiTvlChange24hPct)}</span>
-                            </div>
-                            <div class="dex-strip-item">
-                              <span class="dex-strip-label">DEX SHARE</span>
-                              <span class="dex-strip-value">{formatPctCompact(dexDetailPayload.topDexSharePct)}</span>
-                              <span class="dex-strip-note">{dexDetailPayload.coverage.mode} coverage</span>
-                            </div>
-                            <div class="dex-strip-item">
-                              <span class="dex-strip-label">AVG TRADE</span>
-                              <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.avgTradeSizeUsd)}</span>
-                              <span class="dex-strip-note">{formatCountCompact(dexDetailPayload.txns24h)} txns / 24h</span>
-                            </div>
-                          </div>
-                          {#if dexDetailPayload.chainBreakdown.length}
-                            <div class="dex-chain-grid">
-                              {#each dexDetailPayload.chainBreakdown as chain}
-                                <div class="dex-chain-card">
-                                  <div class="dex-chain-head">
-                                    <span class="dex-chain-name">{chain.chainLabel}</span>
-                                    <span class="dex-chain-share">{formatPctCompact(chain.liquiditySharePct)}</span>
-                                  </div>
-                                  <div class="dex-chain-meta">
-                                    <span>TVL {formatUsdCompact(chain.chainTvlUsd)}</span>
-                                    <span>{formatPctCompact(chain.chainTvlChange1dPct)}</span>
-                                  </div>
-                                  <div class="dex-chain-meta">
-                                    <span>Vol {formatUsdCompact(chain.volume24hUsd)}</span>
-                                    <span>Liq {formatUsdCompact(chain.liquidityUsd)}</span>
-                                  </div>
-                                </div>
-                              {/each}
-                            </div>
-                          {/if}
-                          <div class="dex-table-wrap">
-                            <table class="dex-table">
-                              <thead>
-                                <tr>
-                                  <th>Pair</th>
-                                  <th>DEX</th>
-                                  <th>Chain</th>
-                                  <th>24H Vol</th>
-                                  <th>Liq</th>
-                                  <th>Txns</th>
-                                  <th>Δ24H</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {#each dexDetailPayload.topPairs.slice(0, 6) as pair}
-                                  <tr>
-                                    <td>{pair.label}</td>
-                                    <td>{pair.dexId}</td>
-                                    <td>{pair.chainId}</td>
-                                    <td>{formatUsdCompact(pair.volume24hUsd)}</td>
-                                    <td>{formatUsdCompact(pair.liquidityUsd)}</td>
-                                    <td>{formatCountCompact(pair.txns24h)}</td>
-                                    <td class:tone-bull={(pair.priceChange24hPct ?? 0) >= 0} class:tone-bear={(pair.priceChange24hPct ?? 0) < 0}>
-                                      {formatPctCompact(pair.priceChange24hPct)}
-                                    </td>
-                                  </tr>
-                                {/each}
-                              </tbody>
-                            </table>
-                          </div>
-                        {:else if panelId === 'onchain-cycle-detail' && onchainDetailPayload}
-                          <div class="dex-chain-grid onchain-metric-grid">
-                            <div class="dex-chain-card">
-                              <div class="dex-chain-head">
-                                <span class="dex-chain-name">NETFLOW 24H</span>
-                                <span class:tone-bull={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) < 0} class:tone-bear={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) > 0}>
-                                  {formatUsdCompact(onchainDetailPayload.exchangeReserve?.netflow24h)}
-                                </span>
-                              </div>
-                              <div class="dex-chain-meta"><span>7D change</span><span>{formatPctCompact(onchainDetailPayload.exchangeReserve?.change7dPct)}</span></div>
-                            </div>
-                            <div class="dex-chain-card">
-                              <div class="dex-chain-head">
-                                <span class="dex-chain-name">MVRV</span>
-                                <span>{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
-                              </div>
-                              <div class="dex-chain-meta"><span>NUPL</span><span>{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span></div>
-                            </div>
-                            <div class="dex-chain-card">
-                              <div class="dex-chain-head">
-                                <span class="dex-chain-name">SOPR</span>
-                                <span>{onchainDetailPayload.metrics?.sopr != null ? onchainDetailPayload.metrics.sopr.toFixed(3) : '—'}</span>
-                              </div>
-                              <div class="dex-chain-meta"><span>Puell</span><span>{onchainDetailPayload.metrics?.puellMultiple != null ? onchainDetailPayload.metrics.puellMultiple.toFixed(2) : '—'}</span></div>
-                            </div>
-                            <div class="dex-chain-card">
-                              <div class="dex-chain-head">
-                                <span class="dex-chain-name">WHALE</span>
-                                <span>{formatCountCompact(onchainDetailPayload.whale?.whaleCount)}</span>
-                              </div>
-                              <div class="dex-chain-meta"><span>ratio</span><span>{onchainDetailPayload.whale?.exchangeWhaleRatio != null ? formatPctCompact(onchainDetailPayload.whale.exchangeWhaleRatio * 100) : '—'}</span></div>
-                            </div>
-                          </div>
-                        {:else if panelId === 'evidence-log'}
-                          <div class="evidence-grid">
-                            {#each evidenceItems as item}
-                              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
-                                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
-                                <span class="ev-key">{item.k}</span>
-                                <span class="ev-val">{item.v}</span>
-                                <span class="ev-note">{item.note}</span>
-                              </div>
-                            {/each}
-                          </div>
-                        {:else if panelId === 'execution-board'}
-                          {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
-                            <div style="margin-bottom: 8px;">
-                              <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
-                            </div>
-                          {/if}
-                          <div class="proposal-label">PROPOSAL</div>
-                          {#each proposal as p}
-                            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                              <span class="prop-l">{p.label}</span>
-                              <span class="prop-v">{p.val}</span>
-                              <span class="prop-h">{p.hint}</span>
-                            </div>
-                          {/each}
-                        {/if}
-                      {/if}
+                <div class="phase-timeline" role="list" aria-label="Pattern phase timeline">
+                  {#each phaseTimeline as phase}
+                    <div class="phase-node" class:done={phase.state === 'done'} class:active={phase.state === 'active'} role="listitem">
+                      <span class="phase-dot"></span>
+                      <span class="phase-label">{phase.label}</span>
                     </div>
                   {/each}
                 </div>
-                <!-- Right: execution board -->
-                <div class="analyze-right">
-                  <div class="analyze-side-stack">
-                    {#if analyzeSidePanelIds.length === 0}
-                      <div class="analyze-side-empty">
-                        상세 패널을 `DOCK` 하면 이 inspector rail 에 배치됩니다.
-                      </div>
-                    {/if}
-                    {#each analyzeSidePanelIds as panelId, panelIndex}
-                      <div class="analyze-sidebox">
-                        <div class="analyze-section-head compact">
-                          <div class="analyze-head-copy">
-                            <span class="analyze-kicker">{ANALYZE_PANEL_META[panelId].kicker}</span>
-                            <span class="analyze-section-copy">{ANALYZE_PANEL_META[panelId].copy}</span>
-                          </div>
-                          <div class="analyze-panel-actions">
-                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeSidePanelIds.length - 1}>↓</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>MAIN</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panelId)}>
-                              {analyzePanelPinned(panelId) ? 'UNPIN' : 'PIN'}
-                            </button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
-                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
-                              {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
-                            </button>
-                          </div>
-                        </div>
-                        {#if !analyzePanelIsCollapsed(panelId)}
-                          {#if panelId === 'execution-board'}
-                            {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
-                              <div style="margin-bottom: 8px;">
-                                <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
-                              </div>
-                            {/if}
-                            <div class="proposal-label">PROPOSAL</div>
-                            {#each proposal as p}
-                              <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                                <span class="prop-l">{p.label}</span>
-                                <span class="prop-v">{p.val}</span>
-                                <span class="prop-h">{p.hint}</span>
-                              </div>
-                            {/each}
-                          {:else if panelId === 'verified-backdrop'}
-                            <div class="study-grid side-grid">
-                              {#each workspaceBackdropStudies as study}
-                                <div class="study-card">
-                                  <div class="study-card-head">
-                                    <div>
-                                      <div class="study-card-title">{study.title}</div>
-                                      <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
-                                    </div>
-                                    <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
-                                  </div>
-                                  <div class="study-card-metrics">
-                                    {#each study.summary.slice(0, 2) as row}
-                                      <div class="study-metric">
-                                        <span class="study-metric-label">{row.label}</span>
-                                        <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
-                                          {row.value ?? '—'}
-                                        </span>
-                                      </div>
-                                    {/each}
-                                  </div>
-                                </div>
-                              {/each}
-                            </div>
-                          {:else if panelId === 'live-stack'}
-                            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-                          {:else if panelId === 'options'}
-                            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-                          {:else if panelId === 'venue-divergence'}
-                            <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-                          {:else if panelId === 'thesis'}
-                            <div class="narrative compact">
-                              <span class="bull">{narrativeDir} ·</span>
-                              {' '}{narrativeBias ?? '분석 완료'}
-                            </div>
-                          {:else if panelId === 'evidence-log'}
-                            <div class="evidence-grid compact-grid">
-                              {#each evidenceItems.slice(0, 4) as item}
-                                <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
-                                  <span class="ev-key">{item.k}</span>
-                                  <span class="ev-val">{item.v}</span>
-                                </div>
-                              {/each}
-                            </div>
-                          {:else if panelId === 'dex-market-structure' && dexDetailPayload}
-                            <div class="dex-strip compact-strip">
-                              <div class="dex-strip-item">
-                                <span class="dex-strip-label">24H Vol</span>
-                                <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.volume24hUsd)}</span>
-                              </div>
-                              <div class="dex-strip-item">
-                                <span class="dex-strip-label">Liq</span>
-                                <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.liquidityUsd)}</span>
-                              </div>
-                            </div>
-                            {#if dexDetailPayload.topPairs[0]}
-                              <div class="dex-side-pair">{dexDetailPayload.topPairs[0].label} · {dexDetailPayload.topPairs[0].dexId} · {formatUsdCompact(dexDetailPayload.topPairs[0].volume24hUsd)}</div>
-                            {/if}
-                          {:else if panelId === 'onchain-cycle-detail' && onchainDetailPayload}
-                            <div class="dex-strip compact-strip">
-                              <div class="dex-strip-item">
-                                <span class="dex-strip-label">MVRV</span>
-                                <span class="dex-strip-value">{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
-                              </div>
-                              <div class="dex-strip-item">
-                                <span class="dex-strip-label">NUPL</span>
-                                <span class="dex-strip-value">{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span>
-                              </div>
-                            </div>
-                          {/if}
-                        {/if}
+              </section>
+
+              <div class="market-depth-grid" aria-label="Market microstructure workspace">
+                <section class="workspace-panel depth-panel dom-ladder-panel" class:selected={microstructureView === 'footprint'} aria-label="DOM ladder">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">DOM LADDER</span>
+                    <span class="workspace-panel-copy">bid depth · ask depth · mid liquidity</span>
+                  </div>
+                  <div class="dom-ladder" role="table" aria-label="Depth of market ladder">
+                    <div class="dom-row dom-head" role="row">
+                      <span role="columnheader">BID</span>
+                      <span role="columnheader">PRICE</span>
+                      <span role="columnheader">ASK</span>
+                    </div>
+                    {#each domLadderRows as row}
+                      <div class="dom-row" class:mid={row.isMid} class:bid-heavy={row.delta > 0} class:ask-heavy={row.delta < 0} role="row">
+                        <span class="dom-side bid" role="cell">
+                          <span class="dom-bar bid" style:width={row.bidWidth}></span>
+                          <span class="dom-val">{row.bid}</span>
+                        </span>
+                        <span class="dom-price" role="cell">{row.price}</span>
+                        <span class="dom-side ask" role="cell">
+                          <span class="dom-bar ask" style:width={row.askWidth}></span>
+                          <span class="dom-val">{row.ask}</span>
+                        </span>
                       </div>
                     {/each}
                   </div>
-                  <div class="analyze-actions">
-                    <button class="analyze-action-btn ai" type="button" onclick={openAnalyzeAIDetail}>
-                      <span class="analyze-action-k">AI</span>
-                      <span class="analyze-action-t">AI로 상세 해설 보기</span>
-                    </button>
-                    <button class="analyze-action-btn" type="button" onclick={() => setDrawerTab('judge')}>
-                      <span class="analyze-action-k">04</span>
-                      <span class="analyze-action-t">JUDGE로 이동</span>
-                    </button>
-                    <button class="analyze-action-btn" type="button" onclick={() => setDrawerTab('scan')}>
-                      <span class="analyze-action-k">03</span>
-                      <span class="analyze-action-t">SCAN 비교 보기</span>
-                    </button>
+                </section>
+
+                <section class="workspace-panel depth-panel tape-panel" aria-label="Time and sales">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">TIME & SALES</span>
+                    <span class="workspace-panel-copy">aggressor side and print intensity</span>
                   </div>
-                </div>
+                  <div class="tape-list" aria-label="Recent trade tape">
+                    {#each timeSalesRows as row}
+                      <div class="tape-row" class:buy={row.side === 'BUY'} class:sell={row.side === 'SELL'}>
+                        <span class="tape-time">{row.time}</span>
+                        <span class="tape-side">{row.side}</span>
+                        <span class="tape-price">{row.price}</span>
+                        <span class="tape-size">{row.size}</span>
+                        <span class="tape-intensity"><span style:width={row.intensity}></span></span>
+                      </div>
+                    {/each}
+                    {#if timeSalesRows.length === 0}
+                      <div class="depth-empty">waiting for trade tape payload</div>
+                    {/if}
+                  </div>
+                </section>
+
+                <section class="workspace-panel depth-panel footprint-panel" class:selected={microstructureView === 'footprint'} aria-label="Footprint table">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">FOOTPRINT</span>
+                    <span class="workspace-panel-copy">bid x ask delta by price bucket</span>
+                  </div>
+                  <div class="footprint-table" role="table" aria-label="Footprint buckets">
+                    <div class="footprint-row footprint-head" role="row">
+                      <span role="columnheader">BID</span>
+                      <span role="columnheader">PRICE</span>
+                      <span role="columnheader">ASK</span>
+                      <span role="columnheader">DELTA</span>
+                    </div>
+                    {#each footprintRows as row}
+                      <div class="footprint-row" class:buy={row.delta >= 0} class:sell={row.delta < 0} role="row">
+                        <span role="cell">{row.bid}</span>
+                        <span role="cell">{row.price}</span>
+                        <span role="cell">{row.ask}</span>
+                        <span role="cell">{row.deltaLabel}</span>
+                        <span class="footprint-volume" style:width={row.width}></span>
+                      </div>
+                    {/each}
+                  </div>
+                </section>
+
+                <section class="workspace-panel depth-panel heatmap-panel" class:selected={microstructureView === 'heatmap'} aria-label="Liquidity heatmap">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">LIQ HEATMAP</span>
+                    <span class="workspace-panel-copy">volume/liquidation concentration bands</span>
+                  </div>
+                  <div class="heatmap-grid" aria-label="Liquidity heatmap matrix">
+                    {#each heatmapRows as band}
+                      <div class="heatmap-row">
+                        <span class="heat-price">{band.price}</span>
+                        <span class="heat-cells">
+                          {#each band.cells as cell}
+                            <span
+                              class="heat-cell"
+                              class:buy={cell.side === 'buy'}
+                              class:sell={cell.side === 'sell'}
+                              style:opacity={0.16 + cell.intensity * 0.84}
+                              title={cell.label}
+                            ></span>
+                          {/each}
+                        </span>
+                      </div>
+                    {/each}
+                  </div>
+                </section>
+              </div>
+
+              <div class="workspace-grid">
+                <section class="workspace-panel evidence-table-panel" aria-label="Feature evidence table">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">EVIDENCE TABLE</span>
+                    <span class="workspace-panel-copy">raw values and threshold status stay here, not in the HUD</span>
+                  </div>
+                  <div class="evidence-table" role="table" aria-label="Evidence table">
+                    <div class="evidence-table-row header" role="row">
+                      <span role="columnheader">Feature</span>
+                      <span role="columnheader">Value</span>
+                      <span role="columnheader">Threshold</span>
+                      <span role="columnheader">Status</span>
+                      <span role="columnheader">Why</span>
+                    </div>
+                    {#each evidenceTableRows as row}
+                      <div class="evidence-table-row" class:pass={row.pos} class:fail={!row.pos} role="row">
+                        <span role="cell">{row.feature}</span>
+                        <span role="cell">{row.value}</span>
+                        <span role="cell">{row.threshold}</span>
+                        <span role="cell">{row.status}</span>
+                        <span role="cell">{row.why}</span>
+                      </div>
+                    {/each}
+                  </div>
+                </section>
+
+                <section class="workspace-panel compare-panel" aria-label="Compare workspace">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">COMPARE</span>
+                    <span class="workspace-panel-copy">pattern-object comparisons</span>
+                  </div>
+                  <div class="compare-card-stack">
+                    {#each compareCards as card}
+                      <button class="compare-card" type="button" onclick={card.action}>
+                        <span class="compare-label">{card.label}</span>
+                        <span class="compare-value">{card.value}</span>
+                        <span class="compare-note">{card.note}</span>
+                      </button>
+                    {/each}
+                  </div>
+                  <button class="workspace-primary-action" type="button" onclick={openCompareWorkspace}>Open Compare Workspace</button>
+                </section>
+              </div>
+
+              <div class="workspace-bottom-grid">
+                <section class="workspace-panel ledger-panel" aria-label="Pattern ledger">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">LEDGER</span>
+                    <span class="workspace-panel-copy">saved evidence memory</span>
+                  </div>
+                  <div class="ledger-stats">
+                    {#each ledgerStats as stat}
+                      <div class="ledger-stat">
+                        <span class="ledger-label">{stat.label}</span>
+                        <span class="ledger-value">{stat.value}</span>
+                        <span class="ledger-note">{stat.note}</span>
+                      </div>
+                    {/each}
+                  </div>
+                </section>
+
+                <section class="workspace-panel judgment-panel" aria-label="User refinement judgment">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">JUDGMENT</span>
+                    <span class="workspace-panel-copy">turn reading into refinement data</span>
+                  </div>
+                  <div class="judgment-options">
+                    {#each judgmentOptions as option}
+                      <button
+                        class="judgment-option"
+                        class:tone-pos={option.tone === 'pos'}
+                        class:tone-neg={option.tone === 'neg'}
+                        class:tone-warn={option.tone === 'warn'}
+                        type="button"
+                        onclick={() => {
+                          if (option.label === 'Valid') judgeVerdict = 'agree';
+                          if (option.label === 'Invalid') judgeVerdict = 'disagree';
+                          openJudgeWorkspace();
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    {/each}
+                  </div>
+                </section>
+
+                <section class="workspace-panel execution-panel" aria-label="Execution handoff">
+                  <div class="workspace-panel-head">
+                    <span class="workspace-kicker">EXECUTION</span>
+                    <span class="workspace-panel-copy">isolated from decision HUD</span>
+                  </div>
+                  <div class="execution-mini-grid">
+                    {#each analyzeExecutionProposal as p}
+                      <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                        <span class="prop-l">{p.label}</span>
+                        <span class="prop-v">{p.val}</span>
+                      </div>
+                    {/each}
+                  </div>
+                </section>
+              </div>
+
+              <div class="workspace-action-strip">
+                <button class="analyze-action-btn ai" type="button" onclick={openAnalyzeAIDetail}>
+                  <span class="analyze-action-k">AI</span>
+                  <span class="analyze-action-t">Explain current workspace</span>
+                </button>
+                <button class="analyze-action-btn" type="button" onclick={startSaveSetup}>
+                  <span class="analyze-action-k">SAVE</span>
+                  <span class="analyze-action-t">Select range and save setup</span>
+                </button>
+                <button class="analyze-action-btn" type="button" onclick={openJudgeWorkspace}>
+                  <span class="analyze-action-k">04</span>
+                  <span class="analyze-action-t">Move to Judge</span>
+                </button>
               </div>
             </div>
           {:else if drawerTab === 'scan'}
@@ -1974,8 +2313,9 @@
             title="ANALYZE 펼치기"
           >
             <span class="lc-rail-accent" aria-hidden="true"></span>
-            <span class="lc-rail-step">02</span>
+            <span class="lc-rail-step">{fmtConf}</span>
           </button>
+          <span class="lc-rail-phase">{marketBias}</span>
           <button
             class="lc-rail-handle"
             type="button"
@@ -1987,11 +2327,11 @@
           </button>
         </div>
       {:else}
-      <div class="lcs-section">
-        <div class="lcs-header">
+      <div class="decision-hud" id="sidebar-analyze-body" role="region" aria-label="Decision HUD">
+        <div class="lcs-header decision-hud-header">
           <div class="lcs-headline" role="heading" aria-level="2">
             <span class="lcs-step">02</span>
-            <span class="lcs-title">ANALYZE</span>
+            <span class="lcs-title">DECISION HUD</span>
             <span class="lcs-meta">{confidenceAlpha}</span>
           </div>
           <button
@@ -2000,126 +2340,77 @@
             onclick={() => (sidebarAnalyzeDockCollapsed = true)}
             aria-expanded={!sidebarAnalyzeDockCollapsed}
             aria-controls="sidebar-analyze-body"
-            title="ANALYZE를 오른쪽으로 접기"
+            title="HUD를 오른쪽으로 접기"
           >
             <span aria-hidden="true">▾</span>
           </button>
         </div>
-        <div class="lcs-body" id="sidebar-analyze-body" role="region" aria-label="Analysis details">
-          {#if confluence}
-            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
-          {/if}
-          <div class="conf-inline small" style="margin-bottom: 6px;">
+
+        <section class="hud-card hud-current-state" aria-label="Current pattern state">
+          <div class="hud-card-head">
+            <span class="hud-card-kicker">CURRENT STATE</span>
+            <span class="hud-confidence">{fmtConf}</span>
+          </div>
+          <div class="hud-state-grid">
+            {#each hudStateRows as row}
+              <div class="hud-state-row">
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+            {/each}
+          </div>
+          <div class="conf-inline small">
             <span class="conf-label">CONFIDENCE</span>
             <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
             <span class="conf-val">{fmtConf}</span>
           </div>
-          <div class="narrative" style="font-size: 9px; line-height: 1.6;" role="region" aria-label="Trade bias">
-            <span class="bull">{analyzeDetailDirection} 권장 ·</span>
-            {' '}{analyzeDetailThesis}
-            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
-            {/if}
+        </section>
+
+        <section class="hud-card" aria-label="Top evidence">
+          <div class="hud-card-head">
+            <span class="hud-card-kicker">TOP EVIDENCE</span>
+            <span class="hud-card-count">{hudEvidenceItems.length}</span>
           </div>
-          <div class="lcs-summary-grid" role="list" aria-label="Analyze summary">
-            {#each workspaceSummaryCards as item}
-              <div class="lcs-summary-card" class:tone-pos={item.tone === 'pos'} class:tone-neg={item.tone === 'neg'} role="listitem">
-                <span class="lcs-summary-label">{item.label}</span>
-                <span class="lcs-summary-value">{item.value}</span>
-                <span class="lcs-summary-note">{item.note}</span>
+          <div class="hud-evidence-list" role="list">
+            {#each hudEvidenceItems as item}
+              <div class="hud-evidence-item" class:pos={item.pos} class:neg={!item.pos} role="listitem">
+                <span class="hud-evidence-mark">{item.pos ? '✓' : '!'}</span>
+                <span class="hud-evidence-copy">{item.k}</span>
+                <strong>{item.v}</strong>
               </div>
             {/each}
           </div>
-          <div class="lcs-mini-evidence" role="list" aria-label="Top evidence preview">
-            {#each analyzeEvidenceItems.slice(0, 3) as item}
-              <div class="ev-chip compact" class:pos={item.pos} class:neg={!item.pos} role="listitem">
-                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
-                <span class="ev-key">{item.k}</span>
-                <span class="ev-val">{item.v}</span>
-              </div>
+        </section>
+
+        <section class="hud-card" aria-label="Risks">
+          <div class="hud-card-head">
+            <span class="hud-card-kicker">RISK</span>
+            <span class="hud-card-count">{riskItems.length}</span>
+          </div>
+          <div class="hud-risk-list">
+            {#each riskItems as risk}
+              <div class="hud-risk-item">{risk}</div>
             {/each}
           </div>
-          <div class="lcs-bridge">
-            <div class="lcs-bridge-actions">
-              <button
-                class="lcs-open-detail"
-                class:active={analyzeDetailOpen}
-                type="button"
-                onclick={openAnalyze}
-                aria-pressed={analyzeDetailOpen}
-              >
-                <span class="lcs-open-label">DETAIL PANEL</span>
-                <span class="lcs-open-state">{analyzeDetailOpen ? 'OPEN' : 'OPEN ↗'}</span>
-              </button>
-              <button
-                class="lcs-open-detail ai"
-                type="button"
-                onclick={openAnalyzeAIDetail}
-              >
-                <span class="lcs-open-label">AI DETAIL</span>
-                <span class="lcs-open-state">OPEN ↗</span>
-              </button>
-            </div>
-            <div class="lcs-bridge-copy">
-              LIVE · OPTIONS · VENUE · LIQ · PROPOSAL은 하단 ANALYZE에 통합
-            </div>
+        </section>
+
+        <section class="hud-card hud-actions-card" aria-label="Actions">
+          <div class="hud-card-head">
+            <span class="hud-card-kicker">ACTIONS</span>
+            <span class="hud-card-note">route detail down</span>
           </div>
-        </div>
-      </div>
-      <div class="lcs-divider"></div>
-      <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">03</span><span class="lcs-title">SCAN</span><span class="lcs-meta">{scanCandidates.length} found</span></div>
-        <div class="lcs-body" role="list" aria-label="Scan candidates">
-          {#each scanCandidates as x}
-            {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-            <button
-              class="scan-row"
-              class:active={scanSelected === x.id}
-              onclick={() => scanSelected = x.id}
-              aria-label="{x.symbol}: α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
-              aria-current={scanSelected === x.id ? 'true' : 'false'}
-            >
-              <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
-              <span class="sr-tf">{x.tf}</span>
-              <div class="sr-bar" aria-hidden="true"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
-              <span class="sr-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-      <div class="lcs-divider"></div>
-      <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
-        <div class="lcs-body">
-          <div role="region" aria-label="Trade proposal">
-            {#each analyzeExecutionProposal as p}
-              <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
-                <span class="prop-l">{p.label}</span>
-                <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
-              </div>
-            {/each}
+          <div class="hud-actions">
+            <button class="hud-action primary" type="button" onclick={startSaveSetup}>Save Setup</button>
+            <button class="hud-action" class:active={analyzeDetailOpen} type="button" onclick={openAnalyze}>Open Workspace</button>
+            <button class="hud-action" type="button" onclick={openCompareWorkspace}>Compare</button>
+            <button class="hud-action" type="button" onclick={openJudgeWorkspace}>Judge</button>
+            <button class="hud-action ai" type="button" onclick={openAnalyzeAIDetail}>Explain</button>
           </div>
-          <div class="judge-btns" style="margin-top: 8px; gap: 4px;" role="group" aria-label="Verdict options">
-            <button
-              class="judge-btn agree"
-              class:active={judgeVerdict === 'agree'}
-              onclick={() => judgeVerdict = 'agree'}
-              aria-pressed={judgeVerdict === 'agree'}
-              title="Press Y or click to agree (Y key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
-            </button>
-            <button
-              class="judge-btn disagree"
-              class:active={judgeVerdict === 'disagree'}
-              onclick={() => judgeVerdict = 'disagree'}
-              aria-pressed={judgeVerdict === 'disagree'}
-              title="Press N or click to skip (N key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">SKIP</span></div>
-            </button>
-          </div>
-        </div>
+        </section>
+
+        <p class="hud-routing-note">
+          Raw metrics, venue detail, liquidity, proposal, compare, and ledger stay in the bottom workspace.
+        </p>
       </div>
       {/if}
     </div>
@@ -2239,6 +2530,36 @@
     border-color: rgba(122,162,224,0.4);
     color: #7aa2e0;
   }
+  .micro-toggle {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 0.5px solid var(--g4);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--g1) 84%, transparent);
+  }
+  .micro-toggle-btn {
+    padding: 3px 7px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--g5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.11em;
+    cursor: pointer;
+  }
+  .micro-toggle-btn:hover {
+    color: var(--g8);
+    background: var(--g2);
+  }
+  .micro-toggle-btn.active {
+    color: #d9edf8;
+    background: linear-gradient(135deg, rgba(74,187,142,0.22), rgba(122,162,224,0.18));
+    box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--pos) 38%, var(--g4));
+  }
 
   .evidence-badge {
     display: flex;
@@ -2292,6 +2613,243 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+  }
+  .indicator-lane-stack {
+    min-height: 66px;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 0.5px solid rgba(255,255,255,0.055);
+    border-bottom: 0.5px solid rgba(255,255,255,0.05);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.018), rgba(0,0,0,0.12)),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 48px),
+      #0b0f17;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .indicator-lane {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+    padding: 7px 10px 6px;
+    border-right: 0.5px solid rgba(255,255,255,0.07);
+    position: relative;
+    overflow: hidden;
+  }
+  .indicator-lane::before {
+    content: '';
+    position: absolute;
+    inset: auto 10px 50% 112px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+    opacity: 0.42;
+    pointer-events: none;
+  }
+  .indicator-lane[data-mode='heatmap']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 86% 45%, rgba(232,184,106,0.13), transparent 48%);
+    pointer-events: none;
+  }
+  .indicator-lane-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    position: relative;
+    z-index: 1;
+  }
+  .indicator-lane-meta span {
+    color: var(--g5);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+  .indicator-lane-meta strong {
+    color: var(--g9);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .indicator-lane-meta em {
+    color: var(--g5);
+    font-size: 7px;
+    font-style: normal;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .indicator-lane[data-tone='buy'] .indicator-lane-meta strong { color: #5bd2aa; }
+  .indicator-lane[data-tone='sell'] .indicator-lane-meta strong { color: #ff7373; }
+  .indicator-lane[data-tone='warn'] .indicator-lane-meta strong { color: #e8b86a; }
+  .indicator-lane[data-tone='info'] .indicator-lane-meta strong { color: #7aa2e0; }
+  .indicator-lane-plot {
+    min-width: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(2px, 1fr);
+    gap: 2px;
+    align-items: end;
+    position: relative;
+    z-index: 1;
+  }
+  .indicator-cell {
+    width: 100%;
+    min-height: 2px;
+    align-self: end;
+    border-radius: 2px 2px 0 0;
+    background: rgba(166,176,196,0.42);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.025) inset;
+  }
+  .indicator-cell[data-tone='buy'] {
+    background: linear-gradient(180deg, rgba(91,210,170,0.94), rgba(91,210,170,0.2));
+  }
+  .indicator-cell[data-tone='sell'] {
+    background: linear-gradient(180deg, rgba(255,115,115,0.94), rgba(255,115,115,0.18));
+  }
+  .indicator-cell[data-tone='warn'] {
+    background: linear-gradient(180deg, rgba(232,184,106,0.96), rgba(232,184,106,0.16));
+  }
+  .indicator-cell[data-tone='info'] {
+    background: linear-gradient(180deg, rgba(122,162,224,0.94), rgba(122,162,224,0.16));
+  }
+  .indicator-cell.active {
+    filter: saturate(1.25);
+    box-shadow: 0 0 10px rgba(255,255,255,0.14);
+  }
+  .microstructure-belt {
+    min-height: 54px;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 150px minmax(300px, 0.8fr) minmax(180px, 0.55fr) minmax(220px, 0.65fr);
+    gap: 8px;
+    align-items: stretch;
+    padding: 6px 10px;
+    border-top: 0.5px solid rgba(255,255,255,0.05);
+    border-bottom: 0.5px solid var(--g4);
+    background:
+      linear-gradient(90deg, rgba(74,187,142,0.055), transparent 36%),
+      radial-gradient(circle at 86% 50%, rgba(122,162,224,0.09), transparent 34%),
+      var(--g0);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .micro-belt-title {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 0 10px;
+    border: 0.5px solid var(--g4);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.018);
+  }
+  .micro-kicker {
+    color: var(--g5);
+    font-size: 7px;
+    letter-spacing: 0.18em;
+  }
+  .micro-belt-title strong {
+    color: var(--g9);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
+  .micro-belt-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .micro-stat {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 7px;
+    border: 0.5px solid var(--g4);
+    border-radius: 5px;
+    color: var(--g8);
+    background: rgba(0,0,0,0.18);
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .micro-stat b {
+    color: var(--g5);
+    font-size: 7px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .micro-stat.buy { color: var(--pos); }
+  .micro-stat.sell { color: var(--neg); }
+  .micro-heat-strip,
+  .micro-depth-strip {
+    min-width: 0;
+    border: 0.5px solid var(--g4);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.22);
+    overflow: hidden;
+  }
+  .micro-heat-strip {
+    display: grid;
+    grid-template-columns: repeat(16, minmax(4px, 1fr));
+    gap: 2px;
+    padding: 7px;
+  }
+  .micro-heat-cell {
+    border-radius: 2px;
+    background: #7aa2e0;
+    box-shadow: 0 0 16px currentColor;
+  }
+  .micro-heat-cell.buy { color: var(--pos); background: var(--pos); }
+  .micro-heat-cell.sell { color: var(--neg); background: var(--neg); }
+  .micro-depth-strip {
+    display: grid;
+    grid-template-rows: repeat(5, 1fr);
+    gap: 2px;
+    padding: 5px;
+  }
+  .micro-depth-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 70px 1fr;
+    align-items: center;
+    gap: 5px;
+    min-height: 7px;
+    color: var(--g5);
+    font-size: 7px;
+  }
+  .micro-depth-row.mid {
+    color: var(--g9);
+    font-weight: 800;
+  }
+  .depth-bid,
+  .depth-ask {
+    height: 5px;
+    border-radius: 999px;
+    opacity: 0.8;
+  }
+  .depth-bid {
+    justify-self: end;
+    background: linear-gradient(90deg, transparent, rgba(74,187,142,0.72));
+  }
+  .depth-ask {
+    justify-self: start;
+    background: linear-gradient(90deg, rgba(226,91,91,0.72), transparent);
+  }
+  .depth-price {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .micro-heat-strip.active,
+  .micro-depth-strip.active {
+    border-color: color-mix(in srgb, var(--amb) 48%, var(--g4));
+    box-shadow: inset 0 0 0 1px rgba(232,184,106,0.08);
   }
 
   /* PEEK bar */
@@ -2452,246 +3010,7 @@
     min-height: 0;
   }
 
-  /* ANALYZE body */
-  .analyze-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    overflow: hidden;
-    min-height: 0;
-  }
-  .analyze-overview {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    padding: 12px 14px 10px;
-    border-bottom: 0.5px solid var(--g4);
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.1));
-    flex-shrink: 0;
-  }
-  .analyze-overview-card {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    padding: 8px 10px;
-    border-radius: 4px;
-    border: 0.5px solid var(--g4);
-    background: var(--g1);
-  }
-  .analyze-overview-card.tone-pos {
-    border-color: color-mix(in srgb, var(--pos) 45%, var(--g4));
-    background: color-mix(in srgb, var(--pos) 10%, var(--g1));
-  }
-  .analyze-overview-card.tone-neg {
-    border-color: color-mix(in srgb, var(--neg) 45%, var(--g4));
-    background: color-mix(in srgb, var(--neg) 10%, var(--g1));
-  }
-  .analyze-overview-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    letter-spacing: 0.16em;
-    color: var(--g5);
-  }
-  .analyze-overview-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--g9);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .analyze-overview-note {
-    font-size: 9px;
-    color: var(--g6);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .compare-shelf {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px 14px;
-    border-bottom: 0.5px solid var(--g4);
-    background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.12));
-    flex-shrink: 0;
-  }
-  .compare-shelf-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .compare-shelf-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
-  .compare-shelf-kicker {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    color: var(--amb);
-    letter-spacing: 0.18em;
-    font-weight: 700;
-  }
-  .compare-shelf-sub {
-    font-size: 10px;
-    color: var(--g6);
-    line-height: 1.5;
-  }
-  .compare-shelf-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .compare-shelf-empty {
-    grid-column: 1 / -1;
-    padding: 12px;
-    border: 0.5px dashed var(--g4);
-    border-radius: 5px;
-    background: rgba(255,255,255,0.01);
-    color: var(--g5);
-    font-size: 10px;
-    line-height: 1.6;
-  }
-  .compare-shelf-empty code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--g9);
-  }
-  .compare-card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    border-radius: 5px;
-    border: 0.5px solid var(--g4);
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
-  }
-  .compare-card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .compare-card-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--g9);
-    letter-spacing: 0.08em;
-  }
-  .compare-card-copy {
-    margin-top: 2px;
-    font-size: 9px;
-    color: var(--g6);
-    line-height: 1.45;
-  }
-  .compare-card-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-  .compare-card-lines {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .compare-card-line {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--g7);
-    line-height: 1.45;
-  }
-  @media (max-width: 1180px) {
-    .compare-shelf-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  .analyze-columns {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    overflow: hidden;
-  }
-  .analyze-left {
-    flex: 1.3;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px 14px;
-    overflow: auto;
-    min-width: 0;
-    border-right: 0.5px solid var(--g4);
-  }
-  .analyze-section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-bottom: 2px;
-  }
-  .analyze-section-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .analyze-head-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    flex: 1;
-  }
-  .analyze-section-head.compact {
-    margin-bottom: 6px;
-  }
-  .analyze-panel-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-  }
-  .analyze-panel-btn {
-    padding: 4px 6px;
-    border-radius: 3px;
-    border: 0.5px solid var(--g4);
-    background: var(--g1);
-    color: var(--g6);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-    transition: border-color 0.12s, color 0.12s, background 0.12s;
-  }
-  .analyze-panel-btn:hover:not(:disabled) {
-    border-color: var(--tc);
-    color: var(--g9);
-    background: color-mix(in srgb, var(--tc) 6%, var(--g1));
-  }
-  .analyze-panel-btn:disabled {
-    opacity: 0.35;
-    cursor: default;
-  }
-  .analyze-kicker {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    color: var(--brand);
-    letter-spacing: 0.18em;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .analyze-section-copy {
-    font-size: 10px;
-    color: var(--g6);
-    line-height: 1.4;
-  }
+  /* ANALYZE workspace shared primitives */
   .narrative {
     font-family: 'Geist', sans-serif;
     font-size: 12px;
@@ -2699,224 +3018,6 @@
     line-height: 1.7;
   }
   .narrative .bull { color: var(--pos); font-weight: 600; }
-  .analyze-warning-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 6px;
-  }
-  .narrative .warn {
-    color: var(--amb);
-    background: var(--amb-dd);
-    padding: 1px 6px;
-    border-radius: 2px;
-    border: 0.5px solid var(--amb-d);
-    font-size: 11px;
-  }
-  .study-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .study-grid.side-grid {
-    grid-template-columns: 1fr;
-  }
-  .study-card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    border-radius: 5px;
-    border: 0.5px solid var(--g4);
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
-  }
-  .study-card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .study-card-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--g9);
-    letter-spacing: 0.08em;
-  }
-  .study-card-sub {
-    margin-top: 2px;
-    font-size: 9px;
-    color: var(--g6);
-    line-height: 1.4;
-  }
-  .study-card-trust {
-    flex-shrink: 0;
-    padding: 2px 6px;
-    border-radius: 999px;
-    border: 0.5px solid var(--g4);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    color: var(--g7);
-    text-transform: uppercase;
-  }
-  .study-card-trust[data-tier='core'],
-  .study-card-trust[data-tier='verified'] {
-    border-color: color-mix(in srgb, var(--pos) 35%, var(--g4));
-    color: var(--pos);
-    background: color-mix(in srgb, var(--pos) 12%, transparent);
-  }
-  .study-card-trust[data-tier='experimental'] {
-    border-color: color-mix(in srgb, var(--amb) 35%, var(--g4));
-    color: var(--amb);
-    background: color-mix(in srgb, var(--amb) 12%, transparent);
-  }
-  .study-card-trust[data-tier='deferred'] {
-    color: var(--g5);
-    background: var(--g1);
-  }
-  .study-card-metrics {
-    display: grid;
-    gap: 6px;
-  }
-  .study-metric {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .study-metric-label {
-    min-width: 58px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--g6);
-  }
-  .study-metric-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--g9);
-    font-weight: 600;
-  }
-  .study-metric-value.tone-bull { color: var(--pos); }
-  .study-metric-value.tone-bear { color: var(--neg); }
-  .study-metric-value.tone-warn { color: var(--amb); }
-  .study-metric-note {
-    font-size: 9px;
-    color: var(--g6);
-  }
-  .study-card-method {
-    font-size: 9px;
-    color: var(--g5);
-    line-height: 1.4;
-  }
-  .dex-strip {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .dex-strip.compact-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .dex-strip-item,
-  .dex-chain-card {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-    padding: 10px;
-    border-radius: 5px;
-    border: 0.5px solid var(--g4);
-    background: var(--g1);
-  }
-  .dex-strip-label,
-  .dex-chain-name {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    color: var(--g5);
-    letter-spacing: 0.12em;
-  }
-  .dex-strip-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--g9);
-  }
-  .dex-strip-note,
-  .dex-chain-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 9px;
-    color: var(--g6);
-  }
-  .dex-chain-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .onchain-metric-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .dex-chain-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--g9);
-  }
-  .dex-chain-share {
-    color: var(--amb);
-    font-size: 10px;
-  }
-  .dex-table-wrap {
-    border: 0.5px solid var(--g4);
-    border-radius: 5px;
-    overflow: auto;
-    background: var(--bg);
-  }
-  .dex-table {
-    width: 100%;
-    min-width: 620px;
-    border-collapse: collapse;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-  }
-  .dex-table th,
-  .dex-table td {
-    padding: 8px 9px;
-    border-bottom: 0.5px solid var(--g3);
-    text-align: left;
-    white-space: nowrap;
-  }
-  .dex-table th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--g1);
-    color: var(--g5);
-    font-size: 8px;
-    letter-spacing: 0.14em;
-  }
-  .dex-table td {
-    color: var(--g8);
-  }
-  .dex-table tbody tr:hover td {
-    background: rgba(255,255,255,0.02);
-  }
-  .dex-side-pair {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--g7);
-    line-height: 1.5;
-  }
-  @media (max-width: 1100px) {
-    .dex-strip,
-    .dex-chain-grid,
-    .onchain-metric-grid {
-      grid-template-columns: 1fr;
-    }
-  }
   .evidence-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2937,48 +3038,6 @@
   .ev-chip.neg .ev-mark { color: var(--neg); }
   .ev-key { font-size: 10px; color: var(--g7); width: 80px; }
   .ev-val { font-size: 11px; color: var(--g9); font-weight: 600; }
-  .ev-note { font-size: 10px; color: var(--g6); margin-left: auto; font-family: 'Geist', sans-serif; }
-  .evidence-grid.compact-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .analyze-right {
-    width: 240px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px 14px;
-    overflow: auto;
-  }
-  .analyze-side-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .analyze-side-empty {
-    padding: 12px;
-    border: 0.5px dashed var(--g4);
-    border-radius: 4px;
-    color: var(--g5);
-    font-size: 10px;
-    line-height: 1.6;
-    background: rgba(255,255,255,0.01);
-  }
-  .analyze-sidebox {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 10px;
-    border-radius: 4px;
-    border: 0.5px solid var(--g4);
-    background: linear-gradient(180deg, var(--g1), rgba(0,0,0,0.12));
-  }
-  .analyze-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
   .analyze-action-btn {
     display: flex;
     align-items: center;
@@ -3442,6 +3501,16 @@
     color: var(--g8);
     transform: translateX(2px);
   }
+  .lc-rail-phase {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    color: var(--g6);
+    text-transform: uppercase;
+    margin: 4px 0;
+  }
   .lc-rail-handle {
     height: 42px;
     border-radius: 4px;
@@ -3455,11 +3524,6 @@
       border-right: 0.5px solid var(--g4);
       border-radius: 6px;
     }
-  }
-  .lcs-section {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
   }
   .lcs-header {
     display: flex;
@@ -3506,111 +3570,1045 @@
     flex-shrink: 0;
   }
   .lcs-toggle:hover { color: var(--g9); border-color: var(--g5); }
-  .lcs-body { padding: 8px 12px; }
-  .lcs-divider { height: 0.5px; background: var(--g3); flex-shrink: 0; }
-  .prop-cell.compact { padding: 3px 0; }
-  .lcs-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 8px;
-  }
-  .lcs-summary-card {
+
+  /* ── Decision HUD: right rail owns conclusions only ───────────────────── */
+  .decision-hud {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    padding: 7px 8px;
-    border-radius: 4px;
+    gap: 8px;
+    min-height: 100%;
+    padding-bottom: 10px;
+  }
+  .decision-hud-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .hud-card {
+    margin: 0 10px;
+    padding: 10px;
     border: 0.5px solid var(--g4);
-    background: var(--g2);
+    border-radius: 8px;
+    background: linear-gradient(180deg, var(--g1), rgba(0,0,0,0.14));
   }
-  .lcs-summary-card.tone-pos {
-    border-color: color-mix(in srgb, var(--pos) 40%, var(--g4));
-    background: color-mix(in srgb, var(--pos) 10%, var(--g2));
+  .hud-current-state {
+    border-color: color-mix(in srgb, var(--amb) 30%, var(--g4));
+    background:
+      radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--amb) 12%, transparent), transparent 36%),
+      linear-gradient(180deg, var(--g1), rgba(0,0,0,0.16));
   }
-  .lcs-summary-card.tone-neg {
-    border-color: color-mix(in srgb, var(--neg) 40%, var(--g4));
-    background: color-mix(in srgb, var(--neg) 10%, var(--g2));
-  }
-  .lcs-summary-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    letter-spacing: 0.16em;
-    color: var(--g5);
-  }
-  .lcs-summary-value {
-    font-size: 11px;
-    color: var(--g9);
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .lcs-summary-note {
-    font-size: 8px;
-    color: var(--g6);
-    line-height: 1.35;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .lcs-mini-evidence {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 8px;
-  }
-  .lcs-bridge {
-    margin-top: 8px;
-    padding: 8px;
-    border-radius: 4px;
-    border: 0.5px solid var(--g4);
-    background: linear-gradient(180deg, var(--g2), rgba(0,0,0,0.16));
-  }
-  .lcs-bridge-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .lcs-open-detail {
-    width: 100%;
+  .hud-card-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
-    padding: 8px;
-    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .hud-card-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    letter-spacing: 0.18em;
+    color: var(--g6);
+    font-weight: 700;
+  }
+  .hud-card-count,
+  .hud-card-note,
+  .hud-confidence {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--amb);
+  }
+  .hud-confidence {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+  }
+  .hud-state-grid {
+    display: grid;
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+  .hud-state-row {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 8px;
+    align-items: baseline;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hud-state-row span {
+    font-size: 7px;
+    color: var(--g5);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .hud-state-row strong {
+    min-width: 0;
+    font-size: 10px;
+    color: var(--g9);
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .hud-evidence-list,
+  .hud-risk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .hud-evidence-item {
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    gap: 7px;
+    align-items: center;
+    padding: 7px 8px;
+    border-radius: 5px;
+    background: var(--g0);
     border: 0.5px solid var(--g4);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hud-evidence-item.pos { border-color: color-mix(in srgb, var(--pos) 28%, var(--g4)); }
+  .hud-evidence-item.neg { border-color: color-mix(in srgb, var(--neg) 28%, var(--g4)); }
+  .hud-evidence-mark {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--pos);
+  }
+  .hud-evidence-item.neg .hud-evidence-mark { color: var(--neg); }
+  .hud-evidence-copy {
+    min-width: 0;
+    font-size: 9px;
+    color: var(--g7);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hud-evidence-item strong {
+    font-size: 9px;
+    color: var(--g9);
+  }
+  .hud-risk-item {
+    padding: 7px 8px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--amb) 8%, var(--g0));
+    border: 0.5px solid color-mix(in srgb, var(--amb) 22%, var(--g4));
+    color: var(--g8);
+    font-size: 9px;
+    line-height: 1.45;
+  }
+  .hud-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .hud-action {
+    min-height: 30px;
+    border: 0.5px solid var(--g4);
+    border-radius: 5px;
+    background: var(--g0);
+    color: var(--g8);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .hud-action:hover,
+  .hud-action.active {
+    background: var(--g2);
+    border-color: var(--brand);
+    color: var(--g9);
+  }
+  .hud-action.primary {
+    grid-column: 1 / -1;
+    background: color-mix(in srgb, var(--pos) 12%, var(--g0));
+    border-color: color-mix(in srgb, var(--pos) 38%, var(--g4));
+    color: var(--pos);
+    font-weight: 700;
+  }
+  .hud-action.ai {
+    border-color: color-mix(in srgb, var(--amb) 34%, var(--g4));
+    color: var(--amb);
+  }
+  .hud-routing-note {
+    margin: 0 12px;
+    font-size: 8px;
+    line-height: 1.55;
+    color: var(--g5);
+  }
+
+  /* ── Analyze workspace: bottom owns verification/comparison/refinement ── */
+  .workspace-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(122,162,224,0.08), transparent 28%),
+      linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.12));
+  }
+  .workspace-hero,
+  .workspace-panel {
+    border: 0.5px solid var(--g4);
+    border-radius: 8px;
+    background: rgba(10,12,16,0.72);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
+  }
+  .workspace-hero {
+    display: grid;
+    grid-template-columns: minmax(210px, 0.75fr) minmax(420px, 1.25fr);
+    gap: 14px;
+    align-items: center;
+    padding: 12px 14px;
+    flex-shrink: 0;
+  }
+  .workspace-hero-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+  }
+  .workspace-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--brand);
+    letter-spacing: 0.2em;
+    font-weight: 800;
+  }
+  .workspace-thesis {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--g8);
+    min-width: 0;
+  }
+  .workspace-thesis .bull { color: var(--pos); font-weight: 700; }
+  .phase-timeline {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 4px;
+  }
+  .phase-node {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    min-height: 48px;
+    border: 0.5px solid var(--g4);
+    border-radius: 6px;
+    background: var(--g0);
+  }
+  .phase-node.done {
+    border-color: color-mix(in srgb, var(--brand) 28%, var(--g4));
+    background: color-mix(in srgb, var(--brand) 7%, var(--g0));
+  }
+  .phase-node.active {
+    border-color: color-mix(in srgb, var(--amb) 55%, var(--g4));
+    background: color-mix(in srgb, var(--amb) 11%, var(--g0));
+  }
+  .phase-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--g5);
+  }
+  .phase-node.done .phase-dot { background: var(--brand); }
+  .phase-node.active .phase-dot { background: var(--amb); box-shadow: 0 0 0 4px var(--amb-dd); }
+  .phase-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g7);
+    letter-spacing: 0.07em;
+  }
+  .phase-node.active .phase-label { color: var(--g9); font-weight: 700; }
+  .workspace-grid {
+    display: grid;
+    grid-template-columns: minmax(460px, 1.6fr) minmax(240px, 0.8fr);
+    gap: 10px;
+    min-height: 0;
+  }
+  .workspace-bottom-grid {
+    display: grid;
+    grid-template-columns: 0.8fr 1.25fr 1fr;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .workspace-panel {
+    padding: 10px;
+    min-width: 0;
+  }
+  .workspace-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .workspace-panel-copy {
+    font-size: 9px;
+    color: var(--g6);
+    line-height: 1.4;
+    text-align: right;
+  }
+  .market-depth-grid {
+    display: grid;
+    grid-template-columns: minmax(210px, 0.82fr) minmax(250px, 1fr) minmax(260px, 1.1fr) minmax(280px, 1.2fr);
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .depth-panel {
+    min-height: 212px;
+    border-color: color-mix(in srgb, var(--g4) 72%, #7aa2e0);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.02), transparent),
+      rgba(5,7,10,0.82);
+  }
+  .depth-panel.selected {
+    border-color: color-mix(in srgb, var(--amb) 58%, var(--g4));
+    box-shadow: inset 0 0 0 1px rgba(232,184,106,0.075), 0 0 22px rgba(232,184,106,0.035);
+  }
+  .dom-ladder,
+  .tape-list,
+  .footprint-table,
+  .heatmap-grid {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dom-ladder {
+    display: grid;
+    gap: 2px;
+  }
+  .dom-row {
+    display: grid;
+    grid-template-columns: minmax(58px, 1fr) 72px minmax(58px, 1fr);
+    align-items: center;
+    min-height: 12px;
+    gap: 5px;
+    color: var(--g7);
+    font-size: 8px;
+  }
+  .dom-head {
+    color: var(--g5);
+    font-size: 7px;
+    letter-spacing: 0.14em;
+  }
+  .dom-row.mid {
+    min-height: 16px;
+    border-block: 0.5px solid color-mix(in srgb, var(--amb) 32%, var(--g4));
+    color: var(--g9);
+    background: rgba(232,184,106,0.055);
+  }
+  .dom-side {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 12px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.018);
+  }
+  .dom-side.bid { justify-content: flex-end; }
+  .dom-side.ask { justify-content: flex-start; }
+  .dom-bar {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    border-radius: 3px;
+    opacity: 0.76;
+  }
+  .dom-bar.bid {
+    right: 0;
+    background: linear-gradient(90deg, rgba(74,187,142,0.05), rgba(74,187,142,0.72));
+  }
+  .dom-bar.ask {
+    left: 0;
+    background: linear-gradient(90deg, rgba(226,91,91,0.72), rgba(226,91,91,0.05));
+  }
+  .dom-val {
+    position: relative;
+    z-index: 1;
+    padding: 0 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .dom-price {
+    text-align: center;
+    color: var(--g8);
+    font-variant-numeric: tabular-nums;
+  }
+  .dom-row.bid-heavy .dom-price { color: var(--pos); }
+  .dom-row.ask-heavy .dom-price { color: var(--neg); }
+  .tape-list {
+    display: grid;
+    gap: 3px;
+  }
+  .tape-row {
+    display: grid;
+    grid-template-columns: 38px 34px minmax(58px, 1fr) 42px 48px;
+    gap: 6px;
+    align-items: center;
+    min-height: 14px;
+    padding: 2px 3px;
+    border-radius: 3px;
+    color: var(--g7);
+    font-size: 8px;
+    background: rgba(255,255,255,0.012);
+  }
+  .tape-row.buy { color: var(--pos); background: rgba(74,187,142,0.035); }
+  .tape-row.sell { color: var(--neg); background: rgba(226,91,91,0.035); }
+  .tape-time,
+  .tape-size {
+    color: var(--g5);
+  }
+  .tape-side {
+    font-weight: 900;
+    letter-spacing: 0.08em;
+  }
+  .tape-price,
+  .tape-size {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .tape-intensity {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .tape-intensity span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0.76;
+  }
+  .footprint-table {
+    display: grid;
+    gap: 3px;
+  }
+  .footprint-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(44px, 0.8fr) minmax(64px, 1fr) minmax(44px, 0.8fr) minmax(48px, 0.8fr);
+    align-items: center;
+    gap: 6px;
+    min-height: 14px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    overflow: hidden;
+    color: var(--g7);
+    font-size: 8px;
+    background: rgba(255,255,255,0.014);
+  }
+  .footprint-head {
+    color: var(--g5);
+    font-size: 7px;
+    letter-spacing: 0.12em;
+    background: transparent;
+  }
+  .footprint-row.buy span:nth-child(4) { color: var(--pos); font-weight: 900; }
+  .footprint-row.sell span:nth-child(4) { color: var(--neg); font-weight: 900; }
+  .footprint-row span {
+    position: relative;
+    z-index: 1;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .footprint-row span:nth-child(2) { color: var(--g8); text-align: center; }
+  .footprint-volume {
+    position: absolute !important;
+    left: 0;
+    top: 1px;
+    bottom: 1px;
+    z-index: 0 !important;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(122,162,224,0.18), transparent);
+  }
+  .heatmap-grid {
+    display: grid;
+    gap: 4px;
+  }
+  .heatmap-row {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    align-items: center;
+    gap: 6px;
+  }
+  .heat-price {
+    color: var(--g5);
+    font-size: 8px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .heat-cells {
+    display: grid;
+    grid-template-columns: repeat(18, minmax(4px, 1fr));
+    gap: 2px;
+    min-height: 16px;
+  }
+  .heat-cell {
+    min-height: 16px;
+    border-radius: 2px;
+    background: #7aa2e0;
+    box-shadow: 0 0 18px currentColor;
+  }
+  .heat-cell.buy {
+    color: var(--pos);
+    background: linear-gradient(180deg, rgba(74,187,142,0.95), rgba(74,187,142,0.32));
+  }
+  .heat-cell.sell {
+    color: var(--neg);
+    background: linear-gradient(180deg, rgba(226,91,91,0.95), rgba(226,91,91,0.3));
+  }
+  .depth-empty {
+    padding: 18px 8px;
+    border: 0.5px dashed var(--g4);
+    border-radius: 6px;
+    color: var(--g5);
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .evidence-table {
+    display: grid;
+    gap: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .evidence-table-row {
+    display: grid;
+    grid-template-columns: minmax(84px, 1.2fr) minmax(58px, 0.75fr) minmax(72px, 0.85fr) 56px minmax(120px, 1.4fr);
+    gap: 8px;
+    align-items: center;
+    min-height: 28px;
+    padding: 5px 7px;
+    border: 0.5px solid var(--g3);
+    border-radius: 4px;
+    background: var(--g0);
+    color: var(--g7);
+    font-size: 8px;
+  }
+  .evidence-table-row.header {
+    min-height: 22px;
+    color: var(--g5);
+    background: transparent;
+    border-color: transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .evidence-table-row.pass span:nth-child(4) { color: var(--pos); font-weight: 800; }
+  .evidence-table-row.fail span:nth-child(4) { color: var(--neg); font-weight: 800; }
+  .evidence-table-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .compare-card-stack {
+    display: grid;
+    gap: 7px;
+  }
+  .compare-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label value"
+      "note note";
+    gap: 3px 8px;
+    padding: 9px 10px;
+    text-align: left;
+    border: 0.5px solid var(--g4);
+    border-radius: 6px;
     background: var(--g0);
     color: var(--g8);
     cursor: pointer;
   }
-  .lcs-open-detail.ai {
-    border-color: color-mix(in srgb, var(--amb) 28%, var(--g4));
-    background: color-mix(in srgb, var(--amb) 8%, var(--g0));
+  .compare-card:hover { border-color: #7aa2e0; background: var(--g2); }
+  .compare-label {
+    grid-area: label;
+    font-size: 10px;
+    font-weight: 700;
   }
-  .lcs-open-detail:hover,
-  .lcs-open-detail.active {
-    border-color: color-mix(in srgb, var(--brand) 48%, var(--g4));
-    color: var(--g9);
+  .compare-value {
+    grid-area: value;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: #7aa2e0;
   }
-  .lcs-open-detail.ai:hover {
-    border-color: color-mix(in srgb, var(--amb) 48%, var(--g4));
+  .compare-note {
+    grid-area: note;
+    font-size: 9px;
+    color: var(--g6);
   }
-  .lcs-open-label {
+  .workspace-primary-action {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 5px;
+    border: 0.5px solid color-mix(in srgb, #7aa2e0 42%, var(--g4));
+    background: color-mix(in srgb, #7aa2e0 10%, var(--g0));
+    color: #9bbcf0;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+  .ledger-stats,
+  .execution-mini-grid {
+    display: grid;
+    gap: 6px;
+  }
+  .ledger-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ledger-stat {
+    padding: 8px;
+    border-radius: 6px;
+    background: var(--g0);
+    border: 0.5px solid var(--g4);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ledger-label,
+  .ledger-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--g5);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .ledger-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--g9);
+    font-weight: 800;
+  }
+  .judgment-options {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .judgment-option {
+    min-height: 34px;
+    padding: 6px 5px;
+    border-radius: 6px;
+    border: 0.5px solid var(--g4);
+    background: var(--g0);
+    color: var(--g8);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+  .judgment-option:hover { background: var(--g2); color: var(--g9); }
+  .judgment-option.tone-pos { border-color: color-mix(in srgb, var(--pos) 40%, var(--g4)); color: var(--pos); }
+  .judgment-option.tone-neg { border-color: color-mix(in srgb, var(--neg) 40%, var(--g4)); color: var(--neg); }
+  .judgment-option.tone-warn { border-color: color-mix(in srgb, var(--amb) 40%, var(--g4)); color: var(--amb); }
+  .workspace-action-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Visual salvage pass: less card noise, more trading-terminal density. */
+  .trade-mode {
+    background:
+      radial-gradient(circle at 50% -18%, rgba(232,184,106,0.055), transparent 34%),
+      linear-gradient(180deg, #050608 0%, #030405 100%);
+  }
+  .layout-c {
+    background:
+      linear-gradient(90deg, rgba(232,184,106,0.04), transparent 18%, transparent 82%, rgba(122,162,224,0.025)),
+      #050608;
+  }
+  .layout-c .chart-section.lc-main {
+    margin: 4px 0 4px 4px;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+    background: #06080b;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.025), 0 20px 60px rgba(0,0,0,0.28);
+  }
+  .lc-sidebar {
+    width: 232px;
+    margin: 4px 4px 4px 0;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-left: 1px solid rgba(255,255,255,0.045);
+    border-radius: 0 10px 10px 0;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(232,184,106,0.08), transparent 30%),
+      rgba(5,7,10,0.94);
+    box-shadow: inset 1px 0 0 rgba(255,255,255,0.02);
+  }
+  .chart-header {
+    min-height: 46px;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.055);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008)),
+      #07090d;
+  }
+  .symbol {
+    font-size: 15px;
+    letter-spacing: 0.005em;
+  }
+  .timeframe {
+    color: var(--g7);
+  }
+  .pattern,
+  .hd-chip,
+  .evidence-badge,
+  .micro-toggle {
+    border-color: rgba(255,255,255,0.065);
+    background: rgba(255,255,255,0.026);
+  }
+  .micro-toggle-btn {
+    color: var(--g5);
+  }
+  .micro-toggle-btn.active {
+    color: #f3d58d;
+    background: rgba(232,184,106,0.105);
+    box-shadow: inset 0 0 0 1px rgba(232,184,106,0.22);
+  }
+  .chart-body {
+    background:
+      linear-gradient(180deg, rgba(122,162,224,0.025), transparent 16%),
+      #080b11;
+  }
+  .microstructure-belt {
+    min-height: 38px;
+    grid-template-columns: 120px minmax(260px, 0.78fr) minmax(280px, 1fr);
+    gap: 7px;
+    padding: 5px 9px;
+    border-top: 1px solid rgba(255,255,255,0.052);
+    border-bottom: 1px solid rgba(255,255,255,0.052);
+    background:
+      linear-gradient(90deg, rgba(74,187,142,0.045), transparent 28%),
+      rgba(3,5,8,0.96);
+  }
+  .micro-belt-title,
+  .micro-stat,
+  .micro-heat-strip,
+  .micro-depth-strip {
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.018);
+    border-radius: 5px;
+  }
+  .micro-belt-title {
+    padding: 0 8px;
+  }
+  .micro-kicker {
+    color: #6f7a89;
     letter-spacing: 0.14em;
   }
-  .lcs-open-state {
-    font-size: 9px;
-    color: var(--brand);
+  .micro-belt-title strong {
+    font-size: 10px;
+    color: #dbe4ee;
   }
-  .lcs-bridge-copy {
-    margin-top: 6px;
+  .micro-belt-stats {
+    gap: 4px;
+  }
+  .micro-stat {
+    padding: 5px 7px;
+    font-size: 9px;
+    box-shadow: none;
+  }
+  .micro-stat b {
+    font-size: 6.5px;
+    color: #68717c;
+  }
+  .micro-heat-strip {
+    padding: 6px;
+  }
+  .micro-depth-strip {
+    display: none;
+  }
+  .peek-bar {
+    height: 28px;
+    border-top: 1px solid rgba(255,255,255,0.055);
+    background: #050608;
+  }
+  .pb-tab {
+    border-left-color: rgba(255,255,255,0.045);
+    border-bottom-width: 1px;
+  }
+  .pb-tab:hover,
+  .pb-tab.active {
+    background: rgba(255,255,255,0.028);
+  }
+  .peek-overlay {
+    bottom: 28px;
+    background:
+      linear-gradient(180deg, rgba(9,12,17,0.965), rgba(4,6,9,0.985)),
+      #050608;
+    border-top: 1px solid rgba(232,184,106,0.20);
+    box-shadow: 0 -30px 80px rgba(0,0,0,0.82);
+  }
+  .drawer-header {
+    height: 30px;
+    border-bottom-color: rgba(255,255,255,0.055);
+    background: rgba(4,5,7,0.95);
+  }
+  .dh-tab {
+    border-right-color: rgba(255,255,255,0.045);
+  }
+  .dh-tab:hover,
+  .dh-tab.active {
+    background: rgba(255,255,255,0.026);
+  }
+  .workspace-body {
+    padding: 8px;
+    gap: 8px;
+    background:
+      radial-gradient(circle at 12% -6%, rgba(232,184,106,0.045), transparent 28%),
+      #05070a;
+  }
+  .workspace-hero,
+  .workspace-panel {
+    border-color: rgba(255,255,255,0.065);
+    background: rgba(255,255,255,0.018);
+    box-shadow: none;
+  }
+  .workspace-hero {
+    grid-template-columns: minmax(190px, 0.58fr) minmax(420px, 1.42fr);
+    padding: 8px 10px;
+  }
+  .phase-node {
+    min-height: 34px;
+    padding: 6px 7px;
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.018);
+  }
+  .phase-node.active {
+    background: rgba(232,184,106,0.105);
+  }
+  .market-depth-grid {
+    grid-template-columns: minmax(190px, 0.84fr) minmax(230px, 1fr) minmax(230px, 1.02fr) minmax(250px, 1.1fr);
+    gap: 8px;
+  }
+  .workspace-panel {
+    padding: 8px;
+    border-radius: 7px;
+  }
+  .workspace-panel-head {
+    margin-bottom: 6px;
+  }
+  .depth-panel {
+    min-height: 178px;
+    background: rgba(3,5,8,0.70);
+    border-color: rgba(122,162,224,0.10);
+  }
+  .dom-row,
+  .tape-row,
+  .footprint-row {
+    min-height: 13px;
+  }
+  .hud-card {
+    margin: 0 8px;
+    padding: 8px;
+    border-color: rgba(255,255,255,0.065);
+    background: rgba(255,255,255,0.018);
+    border-radius: 7px;
+    box-shadow: none;
+  }
+  .hud-current-state {
+    border-color: rgba(232,184,106,0.24);
+    background:
+      radial-gradient(circle at 100% 0%, rgba(232,184,106,0.105), transparent 40%),
+      rgba(255,255,255,0.018);
+  }
+  .hud-evidence-item,
+  .hud-risk-item,
+  .hud-action {
+    border-color: rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.22);
+  }
+  .hud-evidence-item.pos {
+    border-left: 2px solid rgba(74,187,142,0.65);
+  }
+  .hud-evidence-item.neg {
+    border-left: 2px solid rgba(226,91,91,0.65);
+  }
+  .hud-risk-item {
+    color: var(--g7);
+    border-left: 2px solid rgba(232,184,106,0.52);
+  }
+  .hud-action.primary {
+    background: rgba(74,187,142,0.09);
+  }
+
+  .chart-save-compact {
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid rgba(74,187,142,0.28);
+    border-radius: 5px;
+    background: rgba(74,187,142,0.075);
+    color: #76d8ba;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+  }
+
+  .chart-save-compact:hover {
+    border-color: rgba(74,187,142,0.56);
+    background: rgba(74,187,142,0.13);
+    color: #a8f1dc;
+  }
+
+  .observe-mode .layout-c .chart-section.lc-main {
+    margin: 3px 0 3px 3px;
+    border-color: rgba(255,255,255,0.045);
+    border-radius: 8px 0 0 8px;
+  }
+
+  .observe-mode .chart-header {
+    min-height: 38px;
+    padding: 6px 12px;
+    gap: 9px;
+  }
+
+  .observe-mode .pattern {
+    opacity: 0.52;
+  }
+
+  .observe-mode .ind-label-hdr {
+    display: none;
+  }
+
+  .observe-mode .evidence-badge,
+  .observe-mode .conf-inline {
+    opacity: 0.62;
+  }
+
+  .observe-mode .micro-toggle {
+    margin-left: 4px;
+  }
+
+  .observe-mode :global(.chart-live .chart-toolbar),
+  .observe-mode :global(.chart-live .chart-header--tv) {
+    display: none !important;
+  }
+
+  .observe-mode :global(.chart-live .chart-board) {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #0f131d !important;
+  }
+
+  .observe-mode .indicator-lane-stack {
+    min-height: 52px;
+  }
+
+  .observe-mode .indicator-lane {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 6px;
+    padding: 5px 8px;
+  }
+
+  .observe-mode .indicator-lane::before {
+    left: 94px;
+  }
+
+  .observe-mode .indicator-lane-meta span {
+    font-size: 7px;
+  }
+
+  .observe-mode .indicator-lane-meta strong {
+    font-size: 10px;
+  }
+
+  .observe-mode .indicator-lane-meta em {
+    display: none;
+  }
+
+  .observe-mode .indicator-lane-plot {
+    gap: 1.5px;
+  }
+
+  .observe-mode .microstructure-belt {
+    min-height: 32px;
+    grid-template-columns: 126px minmax(300px, 0.72fr) minmax(360px, 1fr);
+    padding: 4px 8px;
+  }
+
+  .observe-mode .micro-belt-title {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .observe-mode .micro-belt-title strong {
     font-size: 8px;
-    line-height: 1.5;
-    color: var(--g6);
+  }
+
+  .observe-mode .micro-stat {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 7px;
+  }
+
+  .observe-mode .micro-stat b {
+    font-size: 6px;
+  }
+
+  .observe-mode .peek-bar {
+    height: 24px;
+  }
+
+  .observe-mode .peek-overlay {
+    bottom: 24px;
+  }
+
+  .observe-mode .pb-tab {
+    padding: 0 12px;
+  }
+
+  .observe-mode .pb-label {
+    font-size: 9px;
+  }
+  @media (max-width: 1120px) {
+    .indicator-lane-stack {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      min-height: 112px;
+    }
+    .indicator-lane:nth-child(2n) {
+      border-right: none;
+    }
+    .microstructure-belt {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+    .micro-belt-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .workspace-hero,
+    .market-depth-grid,
+    .workspace-grid,
+    .workspace-bottom-grid {
+      grid-template-columns: 1fr;
+    }
+    .phase-timeline {
+      grid-template-columns: repeat(5, minmax(96px, 1fr));
+      overflow-x: auto;
+    }
+    .judgment-options {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .workspace-action-strip {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── Mobile layout ── */
