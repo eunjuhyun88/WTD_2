@@ -2,6 +2,7 @@
 
 > 에이전트 번호: **Agent 2**
 > 기준 main SHA: `cdefda4d`
+> 인계 받은 시점: Agent 1이 W-0201/W-0202/W-0203/W-0204/W-0205 완료 후 (PR #292 머지, main=`cdefda4d`) 종료 → Agent 2 시작
 
 ---
 
