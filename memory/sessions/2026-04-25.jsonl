@@ -1,2 +1,3 @@
 {"ts": "2026-04-25T16:19:57.418152", "event": "MemKraft initialized in wtd-v2 engine", "tags": ["setup", "memkraft"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T16:20:36.380083", "event": "PR #276 merged: W-0162 corpus upsert + W-0160 ledger dual-write + W-0151 auto-promote + W-0124 JWT RS256", "tags": ["pr", "merge", "W-0162", "W-0160", "W-0151", "W-0124"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T16:33:39.783595", "event": "PR #278 merged by claude: feat(memory): MemKraft v2.0 — 에이전트 장기 기억 + 협업 프로토콜", "tags": ["pr", "merge", "W-0162", "W-0160"], "importance": "high", "entity": "", "task": "", "decision": ""}

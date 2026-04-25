@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-25 B)
+# CURRENT — 단일 진실 (2026-04-25)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -7,12 +7,13 @@
 
 ## main SHA
 
-`bf34e913` — current local `origin/main` ref after PR #217
+`00ce1e63` — current local `origin/main` ref after PR #217
 
 ## 완료 (이번 세션 — 아키텍처 개선)
 
 | 변경 | 내용 |
 |---|---|
+| #278 | feat(memory): MemKraft v2.0 — 에이전트 장기 기억 + 협업 프로토콜 |
 | `cloudbuild.yaml` | `--min-instances 1` 추가 — API cold start 제거 |
 | `cloudbuild.worker.yaml` | `--concurrency 1` + `--timeout 900` 추가 — job 중복 방지 |
 | `engine/search/similar.py` | W-0162 Layer A 업그레이드: feature_snapshot 우선 사용 (3→40+ dims) + FeatureWindowStore batch enrichment |
