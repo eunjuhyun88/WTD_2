@@ -24,7 +24,7 @@
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload, MarketMicrostructurePayload } from '$lib/api/terminalBackend';
   import type { FootprintBucket, MarketDepthLevel, MarketTradePrint } from '$lib/contracts/marketMicrostructure';
-  import type { TabState } from '$lib/cogochi/shell.store';
+  import type { ShellWorkMode, TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
   import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
   import WorkspacePresetPicker from '$lib/cogochi/WorkspacePresetPicker.svelte';
@@ -60,6 +60,7 @@
     symbol?: string;
     timeframe?: string;
     mobileView?: 'chart' | 'analyze' | 'scan' | 'judge';
+    workMode?: ShellWorkMode;
     setMobileView?: (v: 'chart' | 'analyze' | 'scan' | 'judge') => void;
     setMobileSymbol?: (sym: string) => void;
     onSymbolTap?: () => void;
@@ -67,7 +68,7 @@
     isPaneFocused?: boolean;
   }
 
-  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView, setMobileSymbol, onSymbolTap, onTFChange, isPaneFocused = true }: Props = $props();
+  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, workMode = 'analyze', setMobileView, setMobileSymbol, onSymbolTap, onTFChange, isPaneFocused = true }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
@@ -1369,7 +1370,7 @@
 <!-- Side-effect: push toast on divergenceStreak rising edge (≥3). No visual output. -->
 <DivergenceAlertToast value={confluence} />
 
-<div bind:this={containerEl} class="trade-mode">
+<div bind:this={containerEl} class="trade-mode" class:observe-mode={workMode === 'observe'} class:analyze-mode={workMode === 'analyze'} class:execute-mode={workMode === 'execute'}>
   {#if mobileView !== undefined}
     <!-- ── MOBILE: chart on top, tab strip, scrollable panel ── -->
     <div class="mobile-chart-section" class:mobile-chart-fullscreen={mobileView === 'chart'} role="region" aria-label="Chart display">
@@ -1556,17 +1557,19 @@
     </div>
     {/if}
   {:else}
-  <nav class="layout-strip" aria-label="Workspace controls">
-    <span class="ls-label" id="layout-group-label">WORKSPACE</span>
-    <div class="ls-static" aria-live="polite">
-      <span class="ls-id">C</span>
-      <span class="ls-name">SIDEBAR</span>
-      <span class="ls-desc">· 단일 레이아웃</span>
-    </div>
-    <span class="spacer"></span>
-    <WorkspacePresetPicker />
-    <span class="ls-hint" role="status" aria-live="polite">ANALYZE 접기 가능</span>
-  </nav>
+  {#if workMode !== 'observe'}
+    <nav class="layout-strip" aria-label="Workspace controls">
+      <span class="ls-label" id="layout-group-label">WORKSPACE</span>
+      <div class="ls-static" aria-live="polite">
+        <span class="ls-id">C</span>
+        <span class="ls-name">SIDEBAR</span>
+        <span class="ls-desc">· 단일 레이아웃</span>
+      </div>
+      <span class="spacer"></span>
+      <WorkspacePresetPicker />
+      <span class="ls-hint" role="status" aria-live="polite">ANALYZE 접기 가능</span>
+    </nav>
+  {/if}
 
   <!-- ═══ LAYOUT C · Chart + peek bar + sidebar (merged C+D) ═══════════════ -->
   <div class="layout-c">
@@ -1631,6 +1634,7 @@
         <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
         <span class="conf-val">{confidenceAlpha}</span>
       </div>
+      <button class="chart-save-compact" type="button" onclick={startSaveSetup}>SAVE RANGE</button>
     </div>
     <div class="chart-body">
       <div class="chart-live">
@@ -4327,6 +4331,111 @@
   }
   .hud-action.primary {
     background: rgba(74,187,142,0.09);
+  }
+
+  .chart-save-compact {
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid rgba(74,187,142,0.28);
+    border-radius: 5px;
+    background: rgba(74,187,142,0.075);
+    color: #76d8ba;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+  }
+
+  .chart-save-compact:hover {
+    border-color: rgba(74,187,142,0.56);
+    background: rgba(74,187,142,0.13);
+    color: #a8f1dc;
+  }
+
+  .observe-mode .layout-c .chart-section.lc-main {
+    margin: 3px 0 3px 3px;
+    border-color: rgba(255,255,255,0.045);
+    border-radius: 8px 0 0 8px;
+  }
+
+  .observe-mode .chart-header {
+    min-height: 38px;
+    padding: 6px 12px;
+    gap: 9px;
+  }
+
+  .observe-mode .pattern {
+    opacity: 0.52;
+  }
+
+  .observe-mode .ind-label-hdr {
+    display: none;
+  }
+
+  .observe-mode .evidence-badge,
+  .observe-mode .conf-inline {
+    opacity: 0.62;
+  }
+
+  .observe-mode .micro-toggle {
+    margin-left: 4px;
+  }
+
+  .observe-mode :global(.chart-live .chart-toolbar),
+  .observe-mode :global(.chart-live .chart-header--tv) {
+    display: none !important;
+  }
+
+  .observe-mode :global(.chart-live .chart-board) {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #0f131d !important;
+  }
+
+  .observe-mode .microstructure-belt {
+    min-height: 32px;
+    grid-template-columns: 126px minmax(300px, 0.72fr) minmax(360px, 1fr);
+    padding: 4px 8px;
+  }
+
+  .observe-mode .micro-belt-title {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .observe-mode .micro-belt-title strong {
+    font-size: 8px;
+  }
+
+  .observe-mode .micro-stat {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 7px;
+  }
+
+  .observe-mode .micro-stat b {
+    font-size: 6px;
+  }
+
+  .observe-mode .peek-bar {
+    height: 24px;
+  }
+
+  .observe-mode .peek-overlay {
+    bottom: 24px;
+  }
+
+  .observe-mode .pb-tab {
+    padding: 0 12px;
+  }
+
+  .observe-mode .pb-label {
+    font-size: 9px;
   }
   @media (max-width: 1120px) {
     .microstructure-belt {

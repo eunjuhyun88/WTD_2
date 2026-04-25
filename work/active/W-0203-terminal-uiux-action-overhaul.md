@@ -86,6 +86,7 @@ Product surface change
 - Visual salvage pass는 기본 진입을 chart-first로 돌린다: left library와 AI panel은 default closed, bottom workspace는 명시적으로 열 때만 노출한다.
 - Microstructure belt는 차트 하단의 얇은 live status strip으로 낮추고, 세부 DOM/Tape/Footprint/Heatmap은 bottom workspace에만 둔다.
 - 기본 work mode는 `observe`로 전환하고 right Decision HUD도 slim rail로 시작한다. 차트/가격축/레벨/체결흐름이 1순위이며 판단/검증은 사용자가 열 때만 확장한다.
+- Observe mode에서는 workspace pane header, layout strip, ChartBoard 내부 toolbar/header를 숨기고 TradeMode의 단일 chart control row만 남긴다.
 
 ## Behavior Contract
 
@@ -119,6 +120,7 @@ Product surface change
 - Playwright Chrome smoke — bottom workspace에 실제 trade side가 포함된 `DOM LADDER`, `TIME & SALES`, `FOOTPRINT`, `LIQ HEATMAP` 노출 확인.
 - Symbol normalization smoke — `BTCUSDT`/`BTC/USDT` 모두 `BTC/USDT` API pair와 `btcusdt` stream key로 변환되는 코드 경로 확인.
 - Playwright visual smoke after clearing shell localStorage — default first screen is chart-first: left library closed, AI panel closed, right Decision HUD slim, bottom workspace closed, microstructure strip remains attached to chart.
+- Playwright interaction smoke — `ANALYZE`를 열면 차트가 상단에 계속 남고, DOM/Tape/Footprint/Liq Heatmap workspace가 하단 overlay로만 확장된다.
 - Local dev degraded notes — `DATABASE_URL` 없음으로 capture API 401와 engine fallback 로그가 있었으나 UIUX 변경과 무관한 dev env 제약이다.
 
 ## Exit Criteria

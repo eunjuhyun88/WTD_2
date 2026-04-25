@@ -126,6 +126,7 @@
               updateTabState={(updater) => shellStore.updateTabStateFor(tab.id, updater)}
               symbol={tab.tabState.symbol ?? 'BTCUSDT'}
               timeframe={tab.tabState.timeframe ?? '4h'}
+              {workMode}
               isPaneFocused={tab.id === activeTabId}
               onSymbolTap={onSymbolPickerOpen ? () => onSymbolPickerOpen!(tab.id) : undefined}
               onTFChange={(tf) => shellStore.setTimeframe(tf, tab.id)}
@@ -146,7 +147,12 @@
   </div>
 {/snippet}
 
-<div class="workspace-stage" data-mode={workspaceMode} class:workspace-stage--immersive={Boolean(workspaceImmersivePaneId)}>
+<div
+  class="workspace-stage"
+  data-mode={workspaceMode}
+  class:workspace-stage--immersive={Boolean(workspaceImmersivePaneId)}
+  class:workspace-stage--observe={workMode === 'observe' && workspaceMode === 'single' && !workspaceImmersivePaneId}
+>
   {#if workspaceImmersivePaneId}
     <div class="workspace-stage-single workspace-stage-single--immersive">
       {@render paneSurface(paneTab(workspaceImmersivePaneId), immersiveSlotIndex(), true)}
@@ -364,6 +370,23 @@
     display: flex;
     overflow: auto;
     scrollbar-gutter: stable;
+  }
+
+  .workspace-stage--observe {
+    background:
+      radial-gradient(circle at 50% -18%, rgba(232,184,106,0.055), transparent 32%),
+      #030405;
+  }
+
+  .workspace-stage--observe .workspace-pane,
+  .workspace-stage--observe .workspace-pane.active {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .workspace-stage--observe .workspace-pane-head {
+    display: none;
   }
 
   .workspace-empty {
