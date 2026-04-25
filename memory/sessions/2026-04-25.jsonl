@@ -20,3 +20,4 @@
 {"ts": "2026-04-25T19:01:52.410841", "event": "PR #327 merged by eunjuhyun88: feat(infra): Multi-Agent OS v2 — Phase 0-2 (MemKraft + state/spec/design/tools)", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T19:08:30.993429", "event": "PR #329 merged by eunjuhyun88: feat(infra): per-agent session jsonl files", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
 {"ts": "2026-04-25T19:16:07.515580", "event": "PR #285 merged by eunjuhyun88: research(branding): Claude vs Gemma 분석 비교 스크립트", "tags": ["pr", "merge", "W-0114"], "importance": "high", "entity": "", "task": "", "decision": ""}
+{"ts": "2026-04-25T19:24:24.469467", "event": "PR #332 merged by eunjuhyun88: fix(memory): always dispatch queue required checks", "tags": ["pr", "merge"], "importance": "high", "entity": "", "task": "", "decision": ""}
