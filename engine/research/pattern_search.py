@@ -22,6 +22,7 @@ from patterns.library import get_pattern
 from patterns.replay import replay_pattern_frames
 from patterns.state_machine import PatternStateMachine
 from patterns.types import PatternObject, PhaseAttemptRecord
+from features.canonical_pattern import score_canonical_feature_snapshot
 from scanner.feature_calc import MIN_HISTORY_BARS, compute_features_table
 
 from .state_store import ResearchRun
@@ -234,6 +235,7 @@ class VariantCaseResult:
     # delta; informational only (gate still uses forward_peak_return_pct).
     entry_next_open: float | None = None
     realistic_forward_peak_return_pct: float | None = None
+    canonical_feature_snapshot: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -439,6 +441,12 @@ class PromotionReport:
     entry_profitable_rate: float | None = None
     entry_profitable_gate: bool | None = None
     decision_path: str = "rejected"
+    # W-0158: canonical feature diagnostics — populated when case results have snapshots
+    canonical_feature_scored_case_count: int = 0
+    canonical_feature_score: float | None = None
+    reference_canonical_feature_score: float | None = None
+    holdout_canonical_feature_score: float | None = None
+    canonical_feature_summary: dict = field(default_factory=dict)
     created_at: datetime = field(default_factory=_utcnow)
 
     def to_dict(self) -> dict:
@@ -878,6 +886,23 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
                 },
             },
             hypotheses=["favor slower holdout recovery structure", "give reclaim and squeeze more weight"],
+        ),
+        PatternVariantSpec(
+            pattern_slug=pattern_slug,
+            variant_slug=f"{pattern_slug}__intraday-dump-cluster",
+            timeframe=base.timeframe,
+            phase_overrides={
+                "REAL_DUMP": {
+                    "required_blocks": ["oi_spike_with_dump"],
+                    "optional_blocks": ["volume_spike", "recent_decline"],
+                    "max_bars": 6,
+                },
+                "ACCUMULATION": {
+                    "phase_score_threshold": 0.60,
+                    "transition_window_bars": 12,
+                },
+            },
+            hypotheses=["fast intraday dump cluster structure", "tighter real dump window for clustered dumps"],
         ),
     ]
 
@@ -1657,6 +1682,44 @@ def build_promotion_report(
                     f"entry_profitable_rate {entry_profitable_rate:.3f} < floor {policy.min_entry_profitable_rate:.3f}"
                 )
 
+    # W-0158: canonical feature diagnostics — aggregate snapshots across cases
+    ref_snapshots = [
+        c.canonical_feature_snapshot
+        for c in winner.case_results
+        if c.role == "reference" and c.canonical_feature_snapshot
+    ]
+    hold_snapshots = [
+        c.canonical_feature_snapshot
+        for c in winner.case_results
+        if c.role == "holdout" and c.canonical_feature_snapshot
+    ]
+    all_snapshots = ref_snapshots + hold_snapshots
+    canonical_feature_scored_case_count = len(all_snapshots)
+
+    if canonical_feature_scored_case_count > 0:
+        # Per-role averages then combined mean
+        ref_score = round(mean(score_canonical_feature_snapshot(s) for s in ref_snapshots), 6) if ref_snapshots else None
+        hold_score = round(mean(score_canonical_feature_snapshot(s) for s in hold_snapshots), 6) if hold_snapshots else None
+        scored = [s for s in [ref_score, hold_score] if s is not None]
+        canonical_feature_score = round(mean(scored), 6) if scored else None
+
+        # Summary: per-key stats across all snapshots.
+        # Float/int keys → "{key}_mean"; bool keys → strip "_flag" suffix then add "_rate".
+        canonical_feature_summary: dict = {}
+        all_keys = sorted({k for snap in all_snapshots for k in snap})
+        for k in all_keys:
+            values = [snap[k] for snap in all_snapshots if k in snap and snap[k] is not None]
+            if not values:
+                continue
+            if isinstance(values[0], bool):
+                summary_key = (k[: -len("_flag")] if k.endswith("_flag") else k) + "_rate"
+                canonical_feature_summary[summary_key] = round(mean(float(v) for v in values), 6)
+            elif isinstance(values[0], (int, float)):
+                canonical_feature_summary[f"{k}_mean"] = round(mean(float(v) for v in values), 6)
+    else:
+        ref_score = hold_score = canonical_feature_score = None
+        canonical_feature_summary = {}
+
     return PromotionReport(
         promotion_report_id=report_id or str(uuid.uuid4()),
         pattern_slug=pattern_slug,
@@ -1675,6 +1738,11 @@ def build_promotion_report(
         entry_profitable_rate=entry_profitable_rate,
         entry_profitable_gate=entry_profitable_gate,
         decision_path=decision_path,
+        canonical_feature_scored_case_count=canonical_feature_scored_case_count,
+        canonical_feature_score=canonical_feature_score,
+        reference_canonical_feature_score=ref_score,
+        holdout_canonical_feature_score=hold_score,
+        canonical_feature_summary=canonical_feature_summary,
     )
 
 
@@ -2863,6 +2931,7 @@ def run_pattern_benchmark_search(
     pack_store: BenchmarkPackStore | None = None,
     artifact_store: PatternSearchArtifactStore | None = None,
     negative_memory_store: NegativeSearchMemoryStore | None = None,
+    active_variant_store: "Any | None" = None,
 ) -> ResearchRun:
     controller = controller or ResearchWorkerController()
     pack_store = pack_store or BenchmarkPackStore()
@@ -3008,6 +3077,31 @@ def run_pattern_benchmark_search(
                 f"Variant {winner.variant_slug} cleared benchmark-pack search floors "
                 f"(reference={winner.reference_score:.3f}, holdout={winner.holdout_score if winner.holdout_score is not None else 'n/a'})."
             )
+            # W-0151: sync gate-cleared winner to active variant registry
+            active_registry_variant_slug: str | None = None
+            if active_variant_store is not None and promotion_report is not None and promotion_report.decision == "promote_candidate":
+                try:
+                    pattern = get_pattern(config.pattern_slug)
+                    from patterns.active_variant_registry import derive_watch_phases_from_pattern
+                    watch_phases = derive_watch_phases_from_pattern(pattern)
+                except Exception:
+                    watch_phases = []
+                from patterns.active_variant_registry import ActivePatternVariantEntry
+                _winner_spec = next((v for v in variants if v.variant_slug == winner.variant_slug), None)
+                _winner_timeframe = _winner_spec.timeframe if _winner_spec is not None else "1h"
+                entry = ActivePatternVariantEntry(
+                    pattern_slug=config.pattern_slug,
+                    variant_slug=winner.variant_slug,
+                    timeframe=_winner_timeframe,
+                    watch_phases=watch_phases,
+                    source_kind="benchmark_search",
+                    source_ref=f"pattern-search:{run.research_run_id}",
+                    research_run_id=run.research_run_id,
+                    promotion_report_id=promotion_report.promotion_report_id,
+                )
+                active_variant_store.upsert(entry)
+                active_registry_variant_slug = winner.variant_slug
+
             return ResearchJobResult(
                 disposition="no_op",
                 winner_variant_ref=winner.variant_slug,
@@ -3032,6 +3126,14 @@ def run_pattern_benchmark_search(
                         if promotion_report is not None and promotion_report.decision == "promote_candidate"
                         else None
                     ),
+                    # W-0151: active variant registry sync result
+                    "active_registry_variant_slug": active_registry_variant_slug,
+                    # W-0158: canonical feature diagnostics
+                    "canonical_feature_score": promotion_report.canonical_feature_score if promotion_report is not None else None,
+                    "reference_canonical_feature_score": promotion_report.reference_canonical_feature_score if promotion_report is not None else None,
+                    "holdout_canonical_feature_score": promotion_report.holdout_canonical_feature_score if promotion_report is not None else None,
+                    "canonical_feature_scored_case_count": promotion_report.canonical_feature_scored_case_count if promotion_report is not None else 0,
+                    "canonical_feature_summary": promotion_report.canonical_feature_summary if promotion_report is not None else {},
                 },
                 selection_decision=SelectionDecisionInput(
                     decision_kind="advance",
