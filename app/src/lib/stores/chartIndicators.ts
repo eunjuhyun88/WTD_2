@@ -59,14 +59,14 @@ const DEFAULT_STATE: ChartIndicatorState = {
   cvd: true,
   macd: false,
   rsi: false,
-  oi: false,
-  funding: false,
-  liq: false,
+  oi: true,
+  funding: true,
+  liq: true,
   volume: true,
   comparison: false,
 };
 
-const STORAGE_KEY = 'wtd.chart.indicators.v1';
+const STORAGE_KEY = 'wtd.chart.indicators.v2';
 
 function loadPersisted(): ChartIndicatorState {
   if (!browser) return { ...DEFAULT_STATE };
