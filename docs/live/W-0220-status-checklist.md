@@ -47,7 +47,7 @@
 - [ ] **A-03-app** UI — 텍스트 입력 + Parse 버튼 + Draft 미리보기 → 저장 → capture [M] — spec: W-0227 §A-03-app
 
 ### F-1 5-cat Verdict (F-02)
-- [x] **F-02** `engine/ledger/types.py:54` + `captures.py:66` + `verdict.py`. AC: 5값 200 / 기존 3값 호환 [S, Q1 결정 후] — **MERGED PR #370 (main: 1cfac2e3)**
+- [ ] **F-02** `engine/ledger/types.py:54` + `captures.py:66` + `verdict.py`. AC: 5값 200 / 기존 3값 호환 [S, Q1 결정 후] — engine MERGED PR #370 (1cfac2e3), F-02-app pending
 - [ ] **F-02-app** UI — VerdictInboxPanel `.card-actions` 3 → 5 button (too_late/unclear 추가) [S, 단일 파일] — spec: W-0227 §F-02-app
 - [ ] **L-04** Verdict Inbox 5-cat 버튼 UI 추가 (= F-02-app과 동일, 중복 항목)
 - [ ] **F-2-test** end-to-end: UI submit → DB → stats → wiki → refinement 통합 테스트

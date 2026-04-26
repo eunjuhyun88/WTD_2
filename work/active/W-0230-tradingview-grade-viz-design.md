@@ -44,7 +44,7 @@ Process / coordination + Product surface (multi-phase)
 | `docs/_archive/superseded_domains/verdict-inbox-ux.md` | **Verdict UX** — 3-button (5-button F-02 후) |
 | `work/completed/W-0210-terminal-data-visualization-layers.md` | **4 viz layer** ($0 추가 비용) — Wyckoff/CVD/whale/news |
 
-## Scope (본 PR — 설계만)
+## Scope
 
 본 PR이 **만드는 것** (코드 변경 0):
 
@@ -60,7 +60,7 @@ Process / coordination + Product surface (multi-phase)
 - Whale identity layer (별도 work item)
 - charter / PRIORITIES 변경 (정합성만 확인)
 
-## Non-Goals (영구 또는 후순위)
+## Non-Goals
 
 - ❌ TradingView Pine Script 호환 (별도 라이브러리, 비경쟁)
 - ❌ 사용자가 indicator 수식 직접 편집 (Registry Phase 4 이후)
