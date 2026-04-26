@@ -58,12 +58,34 @@ Do not read these unless explicitly required:
 - Move durable findings, assumptions, and rejected hypotheses into the active work item tracked from `work/active/CURRENT.md`.
 - Preserve source attribution for key decisions so another agent can continue without chat replay.
 
+## Branch Naming — MANDATORY
+
+**Before creating any branch**, look up the Issue ID in `docs/live/feature-implementation-map.md`.
+
+Branch name format: `feat/{Issue-ID}-{kebab-desc}`
+
+Examples:
+- `feat/F02-verdict-5cat`
+- `feat/A03-ai-parser-engine`
+- `feat/D03-watch-engine`
+
+**NEVER** create branches with auto-generated names:
+- `claude/*` — forbidden
+- `codex/*` — forbidden
+- Any name without a Feature ID prefix — forbidden
+
+If no matching Issue ID exists in `feature-implementation-map.md`, **stop and ask the user** before creating a branch. Do not invent a new branch name.
+
+The pre-push hook at `.githooks/pre-push` will block `claude/*` and `codex/*` pushes.
+
 ## Branch and Worktree Operating Rules
 
-- Do all non-trivial work on a task branch in a dedicated worktree, not on `main`.
-- Use one active task branch per agent to avoid cross-agent contamination.
+- One agent = one worktree = one branch = one issue. Never mix.
+- Worktree path: `.claude/worktrees/feat-{Issue-ID}/`
+- Create worktree: `git worktree add .claude/worktrees/feat-{ID} -b feat/{ID}-{desc} main`
+- Delete worktree after PR merge: `git worktree remove .claude/worktrees/feat-{ID}`
+- Work only inside your own worktree path. Never edit files in another agent's worktree.
 - Do not push or merge without explicit user approval.
-- Prefer PR-based integration to keep review boundaries clear.
 - If unrelated or unexpected diffs appear, pause and confirm before continuing.
 
 ## Branch-Thread Rules
@@ -72,7 +94,6 @@ Do not read these unless explicitly required:
 - Do not create a new branch just because a new chat message arrived.
 - Split commits first; split branches only for a new merge unit.
 - If the branch changes but the work item does not, continue on the same thread after explicit confirmation.
-- If the work item changes, start a new thread or explicitly rebind the thread to the new branch.
 
 ## Vercel Deploy Guardrail
 

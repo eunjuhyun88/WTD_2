@@ -123,7 +123,13 @@ if [ $QUIET -eq 1 ]; then
   exit 0
 fi
 
-# 3. 부팅 출력 헤더
+# 3. 브랜치 명명 규칙 경고
+BRANCH_BLOCKED=0
+if echo "$CURRENT_BRANCH" | grep -qE '^(claude/|codex/)'; then
+  BRANCH_BLOCKED=1
+fi
+
+# 4. 부팅 출력 헤더
 cat <<EOF
 ═══════════════════════════════════
 You are Agent ${NEXT_ID}
@@ -136,6 +142,25 @@ EOF
 
 jq -r '.open_prs[] | "  #\(.number) — \(.title) [\(.mergeable // "?")]"' state/state.json 2>/dev/null \
   | head -10 || echo "  (none or gh CLI unavailable)"
+
+# ── 브랜치 명명 규칙 경고 ─────────────────────────────────────────────────────
+if [ "$BRANCH_BLOCKED" -eq 1 ]; then
+  echo ""
+  echo "══════════════════════════════════════════════════"
+  echo "  BRANCH WARNING: '$CURRENT_BRANCH' is FORBIDDEN"
+  echo "══════════════════════════════════════════════════"
+  echo "  'claude/*' and 'codex/*' branches are not allowed."
+  echo ""
+  echo "  Before doing any work:"
+  echo "  1. Check docs/live/feature-implementation-map.md for your Issue ID"
+  echo "  2. Run: git checkout -b feat/{Issue-ID}-{desc} main"
+  echo ""
+  echo "  Allowed formats:"
+  echo "    feat/F02-verdict-5cat"
+  echo "    feat/A03-ai-parser-engine"
+  echo "    chore/cleanup-stale-branches"
+  echo "══════════════════════════════════════════════════"
+fi
 
 echo ""
 echo "Live agents (now):"

@@ -6,3 +6,4 @@
 
 | Agent | Domain | Branch | Started |
 |---|---|---|---|
+| A026 | .git/hooks/, tools/, .github/workflows/, work/active/W-0221-* | docs/agent8-session-20260426 | 11:42 |
