@@ -166,8 +166,29 @@ echo ""
 echo "Live agents (now):"
 "$SCRIPT_DIR/live.sh" show 2>/dev/null || echo "  (none)"
 
+# GitHub Issue assignee = primary mutex (CHARTER §Coordination)
+# 다른 에이전트가 잡은 Issue 즉시 표시. 못 부르면 graceful skip.
 echo ""
-echo "Active locks (claimed domains):"
+echo "🎯 Active GitHub Issues (assignee = mutex):"
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  ASSIGNED=$(gh issue list --state open --assignee "*" \
+    --json number,title,assignees --limit 20 2>/dev/null \
+    | jq -r '.[] | "  #\(.number) [\((.assignees | map(.login) | join(",")) // "?")] \(.title[:60])"' 2>/dev/null)
+  UNASSIGNED=$(gh issue list --state open --search "no:assignee" \
+    --json number,title --limit 10 2>/dev/null \
+    | jq -r '.[] | "  #\(.number) [unassigned] \(.title[:60])"' 2>/dev/null)
+  if [ -n "$ASSIGNED" ] || [ -n "$UNASSIGNED" ]; then
+    [ -n "$ASSIGNED" ] && echo "$ASSIGNED"
+    [ -n "$UNASSIGNED" ] && echo "$UNASSIGNED"
+  else
+    echo "  (no open issues)"
+  fi
+else
+  echo "  (gh CLI 미인증 — \`gh auth login\` 후 활성화)"
+fi
+
+echo ""
+echo "Active locks (legacy CONTRACTS.md — DEPRECATED):"
 if [ -f spec/CONTRACTS.md ]; then
   grep -E "^\| A[0-9]+" spec/CONTRACTS.md 2>/dev/null \
     | sed 's/^/  /' \
@@ -247,8 +268,15 @@ fi
 cat <<EOF
 
 ═══════════════════════════════════
-Slash commands:
-  /claim "<file-domain>"      lock 후 작업 시작
+GitHub Issue mutex (primary — CHARTER §Coordination):
+  gh issue list --search "no:assignee" --state open    비어있는 일감
+  gh issue edit N --add-assignee @me                   mutex 획득
+  git checkout -b feat/issue-N-slug                    branch ↔ Issue
+  PR body에 "Closes #N"                                 머지 = 자동 해제
+  세부: docs/runbooks/multi-agent-coordination.md
+
+Slash commands (legacy/보조):
+  /claim "<file-domain>"      file-domain lock (CONTRACTS.md, deprecated)
   /save "<다음에 할 일>"       세션 중간 체크포인트
   /end "shipped" "handoff"    세션 종료
   /agent-status               현재 상태 한눈에
