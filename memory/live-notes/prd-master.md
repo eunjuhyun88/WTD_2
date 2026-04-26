@@ -1,8 +1,10 @@
-# Product PRD Master (Live Note)
+---
+source: manual
+tier: core
+updated: "2026-04-26"
+---
 
-**Tier:** core
-**Source:** work/active/W-0220-product-prd-master.md
-**Updated:** 2026-04-26
+# Product PRD Master (Live Note)
 **Version:** v2.2 (CTO+AI Researcher Edition + feature-implementation-map v3.0 통합)
 
 ## Current State

@@ -1,9 +1,11 @@
-# Feature Implementation Map (Live Note)
+---
+source: docs/live/feature-implementation-map.md
+tier: core
+updated: "2026-04-26"
+version: "v3.0 (code-verified, A023)"
+---
 
-**Tier:** core
-**Source:** docs/live/feature-implementation-map.md
-**Updated:** 2026-04-26
-**Version:** v3.0 (code-verified, A023)
+# Feature Implementation Map (Live Note)
 
 ## Current State
 
@@ -49,5 +51,4 @@
 
 ## See Also
 
-- `prd-master.md` (live-note)
 - `telegram-refs.md` (live-note) — F-60 메시지 schema는 N-05 작업 시 참조
