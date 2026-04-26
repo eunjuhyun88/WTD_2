@@ -52,7 +52,10 @@
     }
   }
 
-  async function submitVerdict(captureId: string, verdict: 'valid' | 'invalid' | 'missed') {
+  async function submitVerdict(
+    captureId: string,
+    verdict: 'valid' | 'invalid' | 'missed' | 'too_late' | 'unclear',
+  ) {
     submitting = { ...submitting, [captureId]: true };
     try {
       const res = await fetch(`/api/captures/${captureId}/verdict`, {
@@ -160,11 +163,23 @@
               title="Setup was wrong"
             >✗ Invalid</button>
             <button
+              class="verdict-btn verdict-too-late"
+              onclick={() => submitVerdict(cap.capture_id, 'too_late')}
+              disabled={busy}
+              title="Setup was valid but entry timing too late"
+            >⏰ Too Late</button>
+            <button
               class="verdict-btn verdict-missed"
               onclick={() => submitVerdict(cap.capture_id, 'missed')}
               disabled={busy}
               title="Missed the entry"
             >~ Missed</button>
+            <button
+              class="verdict-btn verdict-unclear"
+              onclick={() => submitVerdict(cap.capture_id, 'unclear')}
+              disabled={busy}
+              title="Outcome unclear / cannot label"
+            >? Unclear</button>
           </div>
         </div>
       {/each}
@@ -359,12 +374,34 @@
   }
   .verdict-invalid:hover { background: rgba(242,54,69,0.2); }
 
-  .verdict-missed {
-    background: rgba(239,192,80,0.1);
-    border-color: rgba(239,192,80,0.25);
-    color: #EFC050;
+  .verdict-too-late {
+    background: rgba(250,204,21,0.1);
+    border-color: rgba(250,204,21,0.25);
+    color: #facc15;
   }
-  .verdict-missed:hover { background: rgba(239,192,80,0.2); }
+  .verdict-too-late:hover { background: rgba(250,204,21,0.2); }
+
+  .verdict-missed {
+    background: rgba(102,102,102,0.1);
+    border-color: rgba(102,102,102,0.3);
+    color: rgba(247,242,234,0.7);
+  }
+  .verdict-missed:hover { background: rgba(102,102,102,0.2); }
+
+  .verdict-unclear {
+    background: rgba(72,72,72,0.1);
+    border-color: rgba(72,72,72,0.3);
+    color: rgba(247,242,234,0.55);
+  }
+  .verdict-unclear:hover { background: rgba(72,72,72,0.2); }
 
   .verdict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* 5-button row needs flex-wrap on narrow screens */
+  .card-actions {
+    flex-wrap: wrap;
+  }
+  .verdict-btn {
+    min-width: 60px;
+  }
 </style>
