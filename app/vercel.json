@@ -5,7 +5,9 @@
   "installCommand": "npm ci",
   "outputDirectory": ".vercel/output",
   "devCommand": "npm run dev",
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
   "git": {
     "deploymentEnabled": {
       "main": false,
@@ -18,5 +20,6 @@
   },
   "github": {
     "silent": false
-  }
+  },
+  "ignoreCommand": "\\! git log -1 --pretty=%B | grep -qF \"[deploy]\""
 }

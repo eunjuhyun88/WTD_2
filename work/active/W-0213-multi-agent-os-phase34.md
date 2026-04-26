@@ -13,7 +13,6 @@ A009 (초안) → A010 (구현)
 - Phase 3: `.gitattributes` merge driver 설정 (CURRENT.md, PRIORITIES.md union merge)
 - Phase 4: Design invariants 확장 (현재 9개 → 15개 목표)
 - Agent handoff 프로토콜 강화 — `agent-handoff` MemKraft CI 연동
-- Agent boot MemKraft integration smoke fix — `tools/start.sh` lock reservation regression
 
 ## Non-Goals
 
@@ -34,7 +33,6 @@ A009 (초안) → A010 (구현)
 - 현재 design invariants 9개 (spec/INVARIANTS.md).
 - CURRENT.md 충돌은 여전히 수동 해결 필요 (merge driver 미설정).
 - MemKraft `agent-handoff` 커맨드 존재하지만 CI 연동 안 됨.
-- 2026-04-26 수정: `./tools/start.sh` lock 획득 판정 + sandbox fallback 적용 후 smoke에서 MemKraft open-loops/dream 출력 정상.
 
 ## Assumptions
 
@@ -48,14 +46,14 @@ A009 (초안) → A010 (구현)
 
 ## Decisions
 
-- Agent ID state는 git common dir가 writable이면 `.git/agent-os`, sandbox가 `.git` mkdir을 막으면 `memory/.memkraft/agents` fallback을 사용한다.
 - (pending) merge driver 전략 선택: union vs custom script.
 
 ## Next Steps
 
 1. `.gitattributes`에 CURRENT.md, PRIORITIES.md merge=union 추가
 2. `spec/INVARIANTS.md` — 9→15개 invariants 정의
-3. `agent-handoff` 출력/CI 연동 방식 확정
+3. `tools/start.sh` — `agent-handoff` 출력 포함 검증
+4. Contract CI pass 확인
 
 ## Exit Criteria
 
