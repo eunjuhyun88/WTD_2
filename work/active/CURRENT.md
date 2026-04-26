@@ -9,20 +9,14 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0132-copy-trading-phase1` | engine + app | PR #313 — CI 대기 중 |
+| `W-0132-copy-trading-phase1` | engine + app | ✅ PR #313 머지 완료 (`e9014e5c`) |
 | `W-0145-operational-seed-search-corpus` | engine | ✅ 완료 — main에 이미 구현됨 (14 tests pass) |
 
 ---
 
 ## main SHA
 
-`092a50de` — origin/main (2026-04-26) — fix/indicator-defaults + worktree 정리 완료 (46→5개) + W-0211 PR #308 오픈
-
-## 진행 중 PR
-
-| PR | 내용 | 상태 |
-|---|---|---|
-| [#313](https://github.com/eunjuhyun88/WTD_2/pull/313) | W-0132 카피트레이딩 Phase 1 | CI 대기 |
+`c0ab48dc` — origin/main (2026-04-26) — PR #335 머지 (Multi-Agent OS slash commands)
 
 ---
 
@@ -49,6 +43,7 @@
 | **W-0205** PromotionReport Gate 카드 UI | PR #292 main 머지 완료 |
 | **W-0164** repo state hygiene | PR #305 main 머지 완료 |
 | **worktree 정리** 46→5개 | claude/.codex/.worktrees /tmp 전부 정리 완료 (2026-04-26) |
+| **W-0132** 카피트레이딩 Phase 1 | PR #313 main 머지 완료 (`e9014e5c`) — Agent 2 |
 
 ---
 
