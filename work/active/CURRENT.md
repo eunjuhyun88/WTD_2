@@ -13,8 +13,9 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| **W-0220** Product PRD v2.2 (canonical) | contract | docs/live/W-0220-* landed (PR #362) |
-| **W-0223** Wave 1 execution design + checklist invariant | contract | 본 PR 진행 중 |
+| `W-0223-wave1-execution-design` | contract | 본 PR 진행 중 |
+
+> W-0220 PRD v2.2는 `docs/live/W-0220-product-prd-master.md`로 canonical (PR #362 머지). work item 파일은 별도 안 둠.
 
 ## 활성 Wave 1 Issues (4 독립)
 
