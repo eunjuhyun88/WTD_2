@@ -1494,6 +1494,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/captures/{capture_id}/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Watch Capture
+         * @description Mark a capture as watching. Idempotent — calling twice is safe.
+         */
+        post: operations["watch_capture_captures__capture_id__watch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/captures/{capture_id}": {
         parameters: {
             query?: never;
@@ -7049,6 +7069,7 @@ export interface operations {
                 pattern_slug?: string | null;
                 symbol?: string | null;
                 status?: string | null;
+                watching?: boolean | null;
                 limit?: number;
             };
             header?: never;
@@ -7308,6 +7329,39 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    watch_capture_captures__capture_id__watch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
