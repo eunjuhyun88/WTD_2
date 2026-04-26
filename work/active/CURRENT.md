@@ -41,3 +41,8 @@
 ## Frozen
 
 - Copy Trading Phase 2+, MemKraft/Multi-Agent OS 추가 개발, Chart UX polish, 자동매매 실행.
+
+## 활성 Work Items
+
+현재 활성 work item 없음 — Wave 1+2+3 전체 완료.
+다음 Wave 설계 후 갱신 예정.
