@@ -26,8 +26,9 @@
 
 ## 활성 Work Items
 
-현재 활성 work item 없음 — Wave 1+2+3 전체 완료.
-다음 Wave 설계 후 갱신 예정.
+| Work Item | 상태 | 비고 |
+|-----------|------|------|
+| `W-0231-f30-ledger-4table-split` | 🔄 Phase 3 대기 | backfill PR 미완 — dual-write 기간 후 착수 |
 
 ---
 
@@ -43,7 +44,6 @@
 ## 다음 후보 (미설계)
 
 - Wave 4 설계 필요 (spec/PRIORITIES.md 참조)
-- F-30 Phase 3 backfill PR
 
 ## Frozen
 
