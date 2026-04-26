@@ -69,24 +69,57 @@
 
 ## 즉시 다음 단계 (Next agent 첫 5분)
 
-1. **Read order**:
-   ```
-   AGENTS.md
-   → work/active/CURRENT.md
-   → work/active/W-0214-session-checkpoint-2026-04-27.md
-   → work/active/W-0214-mm-hunter-core-theory-and-validation.md (v1.3)
-   → memory/decisions/dec-2026-04-27-w-0214-mm-hunter-framing-d1-d8-lockin.md
-   ```
+### ⚠️ Step 0 — main sync 필수 (그 전엔 /닫기 작동 안 함)
 
-2. **PR #396 머지 확인** — main에 W-0214 반영 여부 확인 (https://github.com/eunjuhyun88/WTD_2/pull/396)
+이 worktree는 옛 main 기준으로 만들어져 `spec/` `tools/end.sh` 부재. main에는 이미 있음 (W-0220 PRD master + W-0214 머지됨). **첫 작업으로 sync 필수**:
 
-3. **Week 1 V-00 작업 시작**:
-   - `engine/research/pattern_search.py` 3283줄 read
-   - 함수 시그니처 inventory 작성 (markdown 표)
-   - validation/cv.py / phase_eval.py / ablation.py 등에서 wrapping 가능 매핑
-   - W-0214 §14 Appendix B 채움
+```bash
+cd /Users/ej/Projects/wtd-v2/.claude/worktrees/upbeat-hodgkin
+git checkout claude/upbeat-hodgkin
+git fetch origin main
+git merge origin/main --no-edit       # 또는 rebase
+git push origin claude/upbeat-hodgkin
 
-4. **γ library audit**: 53 PatternObject 중 production hit > 0인 top 5 선정
+# 검증
+ls tools/end.sh tools/start.sh        # 존재해야 함
+ls spec/PRIORITIES.md spec/CHARTER.md  # 존재해야 함
+./tools/start.sh                       # Agent ID + 활성 issue 출력 확인
+```
+
+**왜 필요한가**: `/닫기` `/열기` `/save` 등 모든 슬래시 명령어가 `tools/*.sh` + `spec/*.md` 의존. sync 안 하면 매번 수동 종료 + 다음 agent도 같은 함정에 빠짐.
+
+**향후 패턴**: 모든 새 worktree는 `git worktree add ... origin/main`로 만들어야 자동 inheritance.
+
+### Step 1 — Read order (sync 후)
+
+```
+AGENTS.md
+→ work/active/CURRENT.md
+→ work/active/W-0214-session-handoff-2026-04-27.md (본 문서)
+→ work/active/W-0214-session-checkpoint-2026-04-27.md
+→ work/active/W-0214-mm-hunter-core-theory-and-validation.md (v1.3)
+→ memory/decisions/dec-2026-04-27-w-0214-mm-hunter-framing-d1-d8-lockin.md
+→ work/active/W-0215-pattern-search-py-audit.md (다음 work item)
+```
+
+### Step 2 — 상태 확인
+
+- **PR #396 머지 확인**: main = `45ca2d21` (Apr 27 18:46 UTC, 이미 머지됨)
+- `spec/PRIORITIES.md` Wave 2.5 / Wave 3 우선순위 확인
+- `./tools/start.sh` 출력에서 Agent ID 발번 + 활성 issue 보기
+
+### Step 3 — Week 1 V-00 작업 시작 (W-0215)
+
+- `engine/research/pattern_search.py` 3283줄 read
+- 함수 시그니처 inventory 작성 (markdown 표)
+- validation/cv.py / phase_eval.py / ablation.py 등에서 wrapping 가능 매핑
+- W-0214 §14 Appendix B 채움
+- W-0215 Exit Criteria 7개 통과 시 PR 작성
+
+### Step 4 — γ library audit (병렬)
+
+- 53 PatternObject 중 production hit > 0인 top 5 선정
+- W-0214 §3.6 8 gates 측정 대상 확정
 
 ---
 
