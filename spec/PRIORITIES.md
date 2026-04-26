@@ -2,42 +2,40 @@
 
 > 활성 P0/P1/P2만. 총 ≤ 50 lines. 50 lines 넘으면 archive로 이전.
 > Charter 정합성: `spec/CHARTER.md` In-Scope 안에 들어가야 함. Non-Goal 진입 금지.
+> Wave 전환 조건: 현재 Wave Exit 항목 전체 체크 + Engine CI + App CI green → 다음 Wave 시작.
 
 ---
 
-## P0 — Ledger durability (L6 코어)
+## ✅ Wave 1 — 완료 (PR #370~#373)
 
-**Owner**: 미할당  |  **Branch**: `feat/w-0215-ledger-supabase-cutover`
-**Charter**: L6 ⚠️ (JSON files → Cloud Run 재시작 시 소실 = judgment ledger 손실 = 코어 해자 1번 깨짐)
-- `engine/ledger/store.py` Supabase write path 기본 활성화
-- 기존 `ledger_data/{slug}/*.json` → Supabase backfill 스크립트
-- W-0126 머지된 `supabase_record_store.py` hot path 검증
-Exit: Cloud Run 재시작 후 ledger 데이터 손실 0건 + Engine CI pass
+F-02 / A-03-eng / A-04-eng / D-03-eng 전부 main.
 
-## P1 — Verdict loop (L7 코어)
+## ✅ Wave 2 — 완료 (PR #377~#392)
 
-**Owner**: 미할당  |  **Branch**: `feat/w-0216-verdict-loop`
-**Charter**: L7 ❌ (verdict loop 미완성 = 학습 자산 비활성)
-- user verdict UI 노출
-- `pattern_ledger_records.outcome` → ledger split (entry/score/outcome/verdict)
-- 다음 단계 LambdaRank Reranker(P3) 선행조건
+H-07 / A-03-app / A-04-app / D-03-app / H-08 / F-17 / F-30 / L-3 전부 main.
 
-## P2 — L3 registry-backed patterns
+## ✅ Wave 3 — 완료
 
-**Owner**: 미할당  |  **Branch**: `feat/w-0160-pattern-definition` (W-0160 후속)
-**Charter**: L3 ⚠️ (hardcoded library.py → registry-backed)
-- `engine/patterns/library.py` 16패턴 → registry 통합
-- `definition_id` versioning (W-0160 부분 머지됨)
+H-08 / F-30 / F-17 Wave 2 내 병렬 완료.
+
+## P0 — MM Hunter (현재)
+
+| Work Item | Feature | 상태 |
+|---|---|---|
+| W-0214 | MM Hunter design D1~D8 LOCKED-IN | ✅ main (#396) |
+| W-0215 | `pattern_search.py` audit (V-00) | 🟡 다음 — 즉시 시작 가능 |
+| W-0216 | `validation/` 모듈 구현 | ⬜ W-0215 완료 후 |
 
 ---
 
 ## Frozen / Non-Goals (CHARTER §Frozen 참조)
 
-- ❌ W-0132 Copy Trading Phase 2+ (Non-Goal: 대중형 소셜/카피)
-- ❌ W-0212 Chart UX polish (Polish 동결)
-- ❌ MemKraft / Multi-Agent OS 추가 개발 (메타 도구 동결)
-- ❌ 새 slash command / agent handoff 고도화
-- ❌ PR #285 (W-0114 research compare) — stale, 종료 판단 필요
+- ❌ Copy Trading (대중형 소셜/카피)
+- ❌ Chart UX polish / TradingView feature parity
+- ❌ MemKraft / Multi-Agent OS 추가 개발
+- ❌ AI 차트 분석 툴 / 범용 스크리너 / 자동매매 실행
 
-## 인프라 (사람 작업)
-- GCP cogotchi-worker Cloud Build trigger; Vercel `EXCHANGE_ENCRYPTION_KEY` production.
+## 확정된 결정 (D/Q)
+
+Q1 missed vs too_late: **분리** | Q3 드래그 UI: **실제 드래그** | Q4 Parser 입력: **자유 텍스트** | Q5 Parser 모델: **Sonnet 4.5** | D8 5-cat verdict: **P0 즉시**
+D1 Hunter framing(옵션4) | D2 4h horizon | D3 15bps cost | D4 5개측정+48개보존 | D5 Layer A AND B | D6 9주 | D7 전체공개+Glossary | D8 default Wyckoff
