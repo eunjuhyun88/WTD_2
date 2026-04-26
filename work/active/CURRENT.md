@@ -24,6 +24,13 @@
 
 ---
 
+## 활성 Work Items
+
+현재 활성 work item 없음 — Wave 1+2+3 전체 완료.
+다음 Wave 설계 후 갱신 예정.
+
+---
+
 ## 잔여 운영 작업 (사람이 직접)
 
 - [ ] Supabase migration 023 실행 (`capture_records_is_watching`)
@@ -41,8 +48,3 @@
 ## Frozen
 
 - Copy Trading Phase 2+, MemKraft/Multi-Agent OS 추가 개발, Chart UX polish, 자동매매 실행.
-
-## 활성 Work Items
-
-현재 활성 work item 없음 — Wave 1+2+3 전체 완료.
-다음 Wave 설계 후 갱신 예정.
