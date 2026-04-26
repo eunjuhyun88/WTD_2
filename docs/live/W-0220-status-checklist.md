@@ -54,7 +54,7 @@
 
 ### F-2 Search Result List + 1-click Watch (D-03)
 - [ ] **D-03-eng** `POST /captures/{id}/watch` — monitoring row 생성, idempotent [M]
-- [ ] **D-03-app** Watch 버튼 (Verdict Inbox 카드) [S] — spec: W-0227 §D-03-app
+- [x] **D-03-app** Watch corner toggle (VerdictInboxPanel) [S] — spec: W-0230 §D-03-app
 - [ ] **F-2-list** Search result top 10~20 + similarity score + 차트 미리보기 + 1-click Watch UX
 
 ### F-3 Telegram → Verdict deep link
