@@ -1,43 +1,56 @@
 # Active Priorities
 
-> 활성 P0/P1/P2만. 총 ≤ 50 lines. 50 lines 넘으면 archive로 이전.
-> Charter 정합성: `spec/CHARTER.md` In-Scope 안에 들어가야 함. Non-Goal 진입 금지.
+> 활성 P0/P1/P2만. 총 ≤ 50 lines.
+> Charter 정합성: `spec/CHARTER.md` In-Scope.
+> 단일 진실: `docs/live/W-0220-status-checklist.md`
 
 ---
 
-## P0 — Ledger durability (L6 코어)
+## P0 — Wave 1: 입구 + 라벨 (4 독립, 즉시 병렬)
 
-**Owner**: 미할당  |  **Branch**: `feat/w-0215-ledger-supabase-cutover`
-**Charter**: L6 ⚠️ (JSON files → Cloud Run 재시작 시 소실 = judgment ledger 손실 = 코어 해자 1번 깨짐)
-- `engine/ledger/store.py` Supabase write path 기본 활성화
-- 기존 `ledger_data/{slug}/*.json` → Supabase backfill 스크립트
-- W-0126 머지된 `supabase_record_store.py` hot path 검증
-Exit: Cloud Run 재시작 후 ledger 데이터 손실 0건 + Engine CI pass
+| Issue | Feature | Branch | 선행 |
+|---|---|---|---|
+| **#364** | F-02 Verdict 5-cat (valid/invalid/missed/too_late/unclear) | `feat/F02-verdict-5cat` | — |
+| **#365** | A-03-eng AI Parser engine (POST /patterns/parse) | `feat/A03-ai-parser-engine` | — |
+| **#366** | A-04-eng Chart Drag engine (POST /patterns/draft-from-range) | `feat/A04-chart-drag-engine` | — |
+| **#367** | D-03-eng 1-click Watch engine (POST /captures/{id}/watch) | `feat/D03-watch-engine` | — |
 
-## P1 — Verdict loop (L7 코어)
-
-**Owner**: 미할당  |  **Branch**: `feat/w-0216-verdict-loop`
-**Charter**: L7 ❌ (verdict loop 미완성 = 학습 자산 비활성)
-- user verdict UI 노출
-- `pattern_ledger_records.outcome` → ledger split (entry/score/outcome/verdict)
-- 다음 단계 LambdaRank Reranker(P3) 선행조건
-
-## P2 — L3 registry-backed patterns
-
-**Owner**: 미할당  |  **Branch**: `feat/w-0160-pattern-definition` (W-0160 후속)
-**Charter**: L3 ⚠️ (hardcoded library.py → registry-backed)
-- `engine/patterns/library.py` 16패턴 → registry 통합
-- `definition_id` versioning (W-0160 부분 머지됨)
+**Charter 매핑**: F-0a/F-0b/F-1/F-2 (PRD v2.2 §8 P0).
+**결정 lock-in**: D8(5-cat 즉시 P0) · Q1(missed/too_late 분리) · Q3(실제 드래그) · Q4(자유 텍스트) · Q5(Sonnet 4.5+).
 
 ---
 
-## Frozen / Non-Goals (CHARTER §Frozen 참조)
+## P1 — Wave 2 (Wave 1 머지 후)
 
-- ❌ W-0132 Copy Trading Phase 2+ (Non-Goal: 대중형 소셜/카피)
-- ❌ W-0212 Chart UX polish (Polish 동결)
-- ❌ MemKraft / Multi-Agent OS 추가 개발 (메타 도구 동결)
-- ❌ 새 slash command / agent handoff 고도화
-- ❌ PR #285 (W-0114 research compare) — stale, 종료 판단 필요
+- **A-03-app** AI Parser UI (선행 #365)
+- **A-04-app** Chart Drag UI 실제 드래그 (선행 #366)
+- **D-03-app** 1-click Watch 버튼 (선행 #367)
+- **H-07** F-60 Gate API + UI (선행 #364)
+- **H-08** per-user verdict accuracy (선행 #364)
+- **F-3** Telegram → Verdict deep link (선행 #364)
 
-## 인프라 (사람 작업)
-- GCP cogotchi-worker Cloud Build trigger; Vercel `EXCHANGE_ENCRYPTION_KEY` production.
+## P2 — Wave 3 (별도 설계)
+
+- **F-30** Ledger 4-table 분리 + materialized view
+- **F-31** LightGBM Reranker 1차 학습 (verdict 50+)
+- **F-12** DESIGN_V3.1 features (kimchi_premium, session_*, oi_normalized_cvd)
+- **F-17** Visualization Intent Router (6 intent × 6 template)
+- **F-39** Screener Sprint 2
+
+---
+
+## Frozen / Non-Goals (CHARTER §Frozen)
+
+- ❌ Copy Trading Phase 1+ (N-05 marketplace는 F-60 gate 후 별도 ADR)
+- ❌ AI 차트 분석 툴 / TradingView 대체
+- ❌ **신규** dispatcher / OS / handoff framework 빌드
+- ❌ Chart UX polish (W-0212류)
+
+→ Issue/assignee/Project 사용은 ✅ Allowed (CHARTER §Coordination)
+
+## 운영 프로토콜
+
+- 부팅: `gh issue list --search "no:assignee" --state open` → assignee 분배
+- 충돌 차단: PR #361 (Issue mutex) + PR #362 (pre-commit gate)
+- 체크리스트 토글은 PR diff에서만 (CI invariant)
+- 상세: `docs/live/wave-execution-plan.md`

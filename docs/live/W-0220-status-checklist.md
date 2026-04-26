@@ -17,7 +17,7 @@
 - [ ] **D5** IDE split-pane (free-form canvas 폐기)
 - [ ] **D6** L6 1-table 유지 (4-table 분리 P2)
 - [ ] **D7** L3 file-first 유지 (DB-first 보류)
-- [ ] **D8** 5-cat verdict 즉시 P0
+- [x] **D8** 5-cat verdict 즉시 P0 (lock-in 2026-04-26 W-0223)
 - [ ] **D9** Wiki = L7 ledger-driven job
 - [ ] **D10** DESIGN_V3.1 features 즉시 P1
 - [ ] **D11** Forward search tool (복기 X)
@@ -28,11 +28,11 @@
 
 ### Q — 개발 전 확정 (5)
 
-- [ ] **Q1** missed vs too_late: **분리** (권고)
+- [x] **Q1** missed vs too_late: **분리** (lock-in 2026-04-26 W-0223 — 학습 노이즈 다름)
 - [ ] **Q2** F-60 accuracy threshold: **0.55** (권고, 90일 후 조정)
-- [ ] **Q3** Drag UI: **실제 드래그** (form fallback)
-- [ ] **Q4** Parser 입력: **자유 텍스트**
-- [ ] **Q5** Parser 모델: **Sonnet 4.5**
+- [x] **Q3** Drag UI: **실제 드래그** (lock-in 2026-04-26 W-0223 — form fallback)
+- [x] **Q4** Parser 입력: **자유 텍스트** (lock-in 2026-04-26 W-0223 — telegram refs 4채널 기반)
+- [x] **Q5** Parser 모델: **claude-sonnet-4-6** (lock-in 2026-04-26 W-0223 — function calling)
 
 ---
 
