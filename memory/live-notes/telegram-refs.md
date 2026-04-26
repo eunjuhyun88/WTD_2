@@ -1,10 +1,8 @@
----
-source: manual
-tier: core
-updated: "2026-04-26"
----
-
 # Telegram Refs Analysis (Live Note)
+
+**Tier:** core
+**Source:** work/active/W-0220-telegram-refs-analysis.md
+**Updated:** 2026-04-26
 **Refs:** tmp/telegram_refs/ 4채널 (Alpha Hunter v1.0 / Alpha Terminal v4 / 시그널 레이더 v3 / 나혼자매매 Alpha Flow by 아카)
 
 ## Current State
@@ -33,10 +31,5 @@ updated: "2026-04-26"
 
 ## See Also
 
+- `prd-master.md` (live-note)
 - `feature-impl-map.md` (live-note) — N-05 / N-06 Marketplace 항목
-
----
-
-## Timeline
-
-- **2026-04-26** | telegram-refs live note initialized [Source: manual]
