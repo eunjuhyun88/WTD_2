@@ -17,9 +17,37 @@ if [ $# -lt 1 ]; then
 fi
 
 DOMAIN="$1"
+FORCE=0
+[ "${2:-}" = "--force" ] && FORCE=1
+
 AGENT="$(cat state/current_agent.txt 2>/dev/null || echo unknown)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 NOW="$(date -u +%H:%M)"
+
+# ── Non-Goal / Frozen gate (CHARTER.md §Frozen) ─────────────────
+# 매칭되면 확인 프롬프트. --force로 통과 가능 (사유 기록).
+NONGOAL_REGEX='copy[._ ]?trad|copy_trading|leaderboard.*sub|memkraft|multi[._ -]?agent|chart[._ ]?polish|w-0212|session[._ ]?handoff[._ ]?upgrade|new[._ ]?slash'
+COMBINED="$DOMAIN $BRANCH"
+if echo "$COMBINED" | grep -iE "$NONGOAL_REGEX" >/dev/null 2>&1; then
+  MATCH=$(echo "$COMBINED" | grep -iEo "$NONGOAL_REGEX" | head -1)
+  echo "⚠️  Non-Goal / Frozen domain 감지: '$MATCH'"
+  echo "   spec/CHARTER.md §Frozen 참조 — 이 작업은 코어가 아닙니다."
+  echo ""
+  if [ -f spec/CHARTER.md ]; then
+    awk '/^## 🚫 Frozen/,/^## 🛡/' spec/CHARTER.md | head -20 | sed 's/^/   /'
+    echo ""
+  fi
+  if [ "$FORCE" -ne 1 ]; then
+    echo "계속하려면 --force 플래그 + 사유:"
+    echo "  ./tools/claim.sh \"$DOMAIN\" --force"
+    echo ""
+    echo "또는 코어 작업으로 변경 (spec/PRIORITIES.md 참조)."
+    exit 2
+  fi
+  echo "[FORCE] Non-Goal claim 통과. 사유는 PR 본문에 명시 필수."
+  echo "$(date -u +%FT%TZ) | $AGENT | force-claimed: $DOMAIN | branch: $BRANCH" \
+    >> state/nongoal_force_log.txt 2>/dev/null || true
+fi
 
 # CONTRACTS.md 없으면 생성
 if [ ! -f spec/CONTRACTS.md ]; then

@@ -1,45 +1,50 @@
 # Active Priorities
 
 > 활성 P0/P1/P2만. 총 ≤ 50 lines. 50 lines 넘으면 archive로 이전.
-> 진행중 작업 = 자기 P0 자기가 maintain. 완료 = 다음 priority promotion.
+> Charter 정합성: `spec/CHARTER.md` In-Scope 안에 들어가야 함. Non-Goal 진입 금지.
 
 ---
 
-## P0 — Multi-Agent OS v2 적용 (Phase 3-4)
+## P0 — Ledger durability (L6 코어)
 
-**Owner**: A008
-**Branch**: feat/multi-agent-os-slash-commands
-**Spec**: `design/proposed/multi-agent-os-v2.md`
+**Owner**: 미할당  |  **Branch**: `feat/w-0215-ledger-supabase-cutover`
+**Charter**: L6 ⚠️ (JSON files → Cloud Run 재시작 시 소실 = judgment ledger 손실 = 코어 해자 1번 깨짐)
 
-Status: PR #335에서 구현 중.
+- `engine/ledger/store.py` Supabase write path 기본 활성화
+- 기존 `ledger_data/{slug}/*.json` → Supabase backfill 스크립트
+- W-0126 머지된 `supabase_record_store.py` hot path 검증
 
-- Phase 3: `design/current/invariants.yml` + `tools/verify_design.sh` + CI gate
-- Phase 4: `.gitattributes` merge policy + MemKraft wrapper/hook hardening
-- Agent boot/end: `Design status` 표시 및 drift 검증
+Exit: Cloud Run 재시작 후 ledger 데이터 손실 0건 + Engine CI pass
 
-Exit: `./tools/verify_design.sh`, MemKraft health, PR checks 모두 pass.
+## P1 — Verdict loop (L7 코어)
 
-## P1 — W-0145 Search Corpus 40+차원
+**Owner**: 미할당  |  **Branch**: `feat/w-0216-verdict-loop`
+**Charter**: L7 ❌ (verdict loop 미완성 = 학습 자산 비활성)
 
-**Status**: 완료 — main에 구현됨 (`work/active/CURRENT.md` 기준)
-**Next**: 검색 품질 회귀 측정이 필요하면 별도 eval PR로 분리.
+- user verdict UI 노출
+- `pattern_ledger_records.outcome` → ledger split (entry/score/outcome/verdict)
+- 다음 단계 LambdaRank Reranker(P3) 선행조건
 
----
+## P2 — L3 registry-backed patterns
 
-## P2 — W-0212 Chart UX Polish
+**Owner**: 미할당  |  **Branch**: `feat/w-0160-pattern-definition` (W-0160 후속)
+**Charter**: L3 ⚠️ (hardcoded library.py → registry-backed)
 
-**Owner**: 미할당
-**Branch**: feat/w-0212-chart-ux-polish
-
-- 패인 드래그 리사이즈 검증
-- 크로스헤어 값 업데이트
-- KPI 스파크라인 확인
-
-Spec: `work/active/CURRENT.md`
+- `engine/patterns/library.py` 16패턴 → registry 통합
+- `definition_id` versioning (W-0160 부분 머지됨)
 
 ---
 
-## Frozen / Waiting
+## Frozen / Non-Goals (CHARTER §Frozen 참조)
 
-- PR #285 (W-0114 research compare) — stale branch라 재적용/종료 판단 필요
-- 인프라 (사람 작업): GCP worker Cloud Build trigger, Vercel `EXCHANGE_ENCRYPTION_KEY`
+- ❌ W-0132 Copy Trading Phase 2+ (Non-Goal: 대중형 소셜/카피)
+- ❌ W-0212 Chart UX polish (Polish 동결)
+- ❌ MemKraft / Multi-Agent OS 추가 개발 (메타 도구 동결)
+- ❌ 새 slash command / agent handoff 고도화
+- ❌ PR #285 (W-0114 research compare) — stale, 종료 판단 필요
+
+## 인프라 (사람 작업)
+
+- GCP cogotchi-worker Cloud Build trigger
+- Vercel `EXCHANGE_ENCRYPTION_KEY` (프로덕션)
+- `app/vercel.json` 브랜치 가드레일

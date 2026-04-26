@@ -38,19 +38,32 @@ fi
 LATEST_ID=${LATEST_ID:-0}
 GIT_COMMON_DIR="$(git rev-parse --git-common-dir)"
 AGENT_STATE_DIR="$GIT_COMMON_DIR/agent-os"
+FALLBACK_AGENT_STATE_DIR="$REPO_ROOT/memory/.memkraft/agents"
+mkdir -p "$AGENT_STATE_DIR" 2>/dev/null || true
+
+PROBE_DIR="$AGENT_STATE_DIR/.write-probe.$$.$RANDOM"
+if mkdir "$PROBE_DIR" 2>/dev/null; then
+  rmdir "$PROBE_DIR" 2>/dev/null || true
+else
+  # Codex sandbox can read .git but reject new lock dirs inside it.
+  AGENT_STATE_DIR="$FALLBACK_AGENT_STATE_DIR"
+  mkdir -p "$AGENT_STATE_DIR"
+fi
+
 COUNTER_FILE="$AGENT_STATE_DIR/next_agent_number"
 LOCK_DIR="$AGENT_STATE_DIR/agent-id.lock"
-mkdir -p "$AGENT_STATE_DIR"
 
+LOCK_ACQUIRED=0
 for _ in $(seq 1 100); do
   if mkdir "$LOCK_DIR" 2>/dev/null; then
+    LOCK_ACQUIRED=1
     trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
     break
   fi
   sleep 0.05
 done
 
-if [ ! -d "$LOCK_DIR" ]; then
+if [ "$LOCK_ACQUIRED" -ne 1 ]; then
   echo "✗ Could not reserve Agent ID lock: $LOCK_DIR" >&2
   exit 1
 fi
@@ -136,6 +149,22 @@ if [ -f spec/CONTRACTS.md ]; then
     | head -10 || echo "  (none)"
 else
   echo "  (none)"
+fi
+
+echo ""
+echo "🎯 Core (spec/CHARTER.md §In-Scope):"
+if [ -f spec/CHARTER.md ]; then
+  awk '/^## ✅ In-Scope/,/^---/' spec/CHARTER.md \
+    | grep -E "^\| L[0-9]|^- " | head -8 | sed 's/^/  /'
+else
+  echo "  (spec/CHARTER.md not yet created)"
+fi
+
+echo ""
+echo "🧊 Frozen / Non-Goals (CHARTER §Frozen):"
+if [ -f spec/CHARTER.md ]; then
+  awk '/^## 🚫 Frozen/,/^## 🛡/' spec/CHARTER.md \
+    | grep -E "^- ❌" | head -6 | sed 's/^/  /'
 fi
 
 echo ""

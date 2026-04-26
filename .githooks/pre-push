@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# pre-push hook — verify design invariants before pushing
+# Install: git config core.hooksPath .githooks  (or run app/scripts/dev/install-git-hooks.sh)
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+if [ -f "$REPO_ROOT/tools/verify_design.sh" ]; then
+  echo "-> Verifying design invariants..."
+  if ! bash "$REPO_ROOT/tools/verify_design.sh" --summary; then
+    echo ""
+    echo "x Design drift detected. Run ./tools/verify_design.sh for details."
+    echo "  Fix the drift before pushing."
+    exit 1
+  fi
+fi
