@@ -40,7 +40,7 @@
 
 ### F-0a Chart Drag → PatternDraft (A-04)
 - [ ] **A-04-eng** `POST /patterns/draft-from-range` — 12 features 추출 (oi_change, funding, cvd, liq_volume, price, volume, btc_corr, higher_lows, lower_highs, compression, smart_money, venue_div) [M]
-- [ ] **A-04-app** UI — anchor click → SaveSetupModal 'Draft from Range' → form prefill [S-M, **80% 재사용**] — spec: W-0227 §A-04-app
+- [x] **A-04-app** UI — anchor click → DraftFromRangePanel → form prefill (SaveSetupModal full integration follow-up) [S-M, **80% 재사용**] — spec: W-0230 §A-04-app
 
 ### F-0b AI Parser (A-03)
 - [ ] **A-03-eng** `POST /patterns/parse` — ContextAssembler → Claude Sonnet → PatternDraftBody. **스키마/Assembler/downstream 이미 있음** [M, 3-4일]
