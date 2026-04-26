@@ -92,6 +92,17 @@ def _load_cogochi_section(section_marker: str) -> str:
 # ── Context dataclasses ────────────────────────────────────────────────────
 
 @dataclass
+class ParseTextContext:
+    """Context for text-to-PatternDraft parse calls.
+
+    Used by POST /patterns/parse. Contains only the system prompt and the
+    user's raw text — no user_id or symbol required.
+    """
+    system_prompt: str = ""
+    token_estimate: int = 0
+
+
+@dataclass
 class ParserContext:
     """Context for Parser agent (~10K tokens).
 
@@ -185,6 +196,73 @@ class ContextAssembler:
         judge_ctx  = ctx.for_judge(user_id="u1", capture_id="cap-xyz")
         refine_ctx = ctx.for_refinement(pattern_slug="whale-accumulation-reversal-v1")
     """
+
+    def for_parse_text(self, symbol: str | None = None) -> ParseTextContext:
+        """Build system prompt for POST /patterns/parse (free-text → PatternDraftBody).
+
+        Token budget: ~10K. Returns a ParseTextContext with a ready-to-use
+        system prompt string and an estimated token count.
+        """
+        budget = _BUDGET_PARSER
+        ctx = ParseTextContext()
+
+        symbol_hint = f"\nSymbol hint (if available): {symbol}" if symbol else ""
+
+        system_prompt = f"""You are a crypto trading pattern analyst. Your task is to parse a free-text trading memo and extract a structured PatternDraftBody JSON.
+
+Output ONLY valid JSON that matches this exact schema — no markdown fences, no extra text:
+
+{{
+  "schema_version": 1,
+  "pattern_family": "<string — short slug like 'oi-spike-price-divergence'>",
+  "pattern_label": "<string | null — human-readable name>",
+  "source_type": "text",
+  "source_text": "<the original input text verbatim>",
+  "symbol_candidates": ["<symbol if mentioned, e.g. BTCUSDT>"],
+  "timeframe": "<e.g. '1h', '4h', '1d' | null>",
+  "thesis": ["<key market thesis, 1–3 sentences>"],
+  "phases": [
+    {{
+      "phase_id": "PHASE_0",
+      "label": "<short label>",
+      "sequence_order": 0,
+      "description": "<what happens in this phase>",
+      "timeframe": null,
+      "signals_required": ["<signal name>"],
+      "signals_preferred": [],
+      "signals_forbidden": [],
+      "directional_belief": "<'bullish' | 'bearish' | 'neutral' | null>",
+      "evidence_text": null,
+      "time_hint": null,
+      "importance": 0.8
+    }}
+  ],
+  "trade_plan": {{
+    "entry_condition": "<entry trigger description>",
+    "disqualifiers": ["<condition that cancels the setup>"]
+  }},
+  "search_hints": {{
+    "must_have_signals": [],
+    "preferred_timeframes": [],
+    "exclude_patterns": [],
+    "similarity_focus": [],
+    "symbol_scope": []
+  }},
+  "confidence": 0.7,
+  "ambiguities": ["<anything unclear in the input>"]
+}}
+
+Rules:
+- `phases` MUST have at least one entry. If the input describes no explicit phases, infer at least one phase from the text.
+- `phase_sequence` means the ordered list of phases — ensure `sequence_order` is 0-indexed and strictly increasing.
+- `pattern_family` must be a lowercase kebab-case slug (no spaces).
+- If the input text is in Korean, parse the intent fully. Korean trading terms: OI=미결제약정, 롱=long, 숏=short, 급등=spike, 하락=decline.
+- Do not add fields not in the schema.
+- Confidence should reflect how well the text maps to a tradeable pattern (0.0–1.0).{symbol_hint}
+"""
+        ctx.system_prompt = _truncate_to_budget(system_prompt, budget)
+        ctx.token_estimate = _estimate_tokens(system_prompt)
+        return ctx
 
     def for_parser(
         self,

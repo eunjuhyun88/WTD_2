@@ -9,11 +9,17 @@ alert-policy PUT, register) stay on the async route without offloading.
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
+import os
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from api.routes import patterns_thread
+from api.schemas_pattern_draft import PatternDraftBody
+
+log = logging.getLogger("engine.api.routes.patterns")
 from capture.store import CaptureStore
 from research.capture_benchmark import (
     build_benchmark_pack_from_capture,
@@ -102,6 +108,84 @@ class _BenchmarkPackDraftBody(BaseModel):
 class _BenchmarkSearchBody(BaseModel):
     capture_id: str
     max_holdouts: int = 4
+
+
+class ParseRequest(BaseModel):
+    text: str
+    symbol: str | None = None
+
+
+# ── AI Parser ────────────────────────────────────────────────────────────────
+
+def _validate_draft(data: dict) -> PatternDraftBody:
+    """Validate a dict as PatternDraftBody; raises ValueError on failure."""
+    try:
+        draft = PatternDraftBody.model_validate(data)
+    except ValidationError as exc:
+        raise ValueError(f"draft validation failed: {exc}") from exc
+    if not draft.phases:
+        raise ValueError("draft must have at least one phase (phase_sequence empty)")
+    return draft
+
+
+async def _call_claude(system_prompt: str, user_text: str) -> PatternDraftBody:
+    """Call Claude Sonnet 4.5 and parse the response into PatternDraftBody.
+
+    Retries up to 2 times on JSON parse or validation failure.
+    """
+    import anthropic  # lazy import — not required for non-parser routes
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY not configured")
+
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    last_error: Exception | None = None
+
+    for attempt in range(3):  # 1 initial + 2 retries
+        try:
+            message = await client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_text}],
+            )
+            raw = message.content[0].text.strip()
+
+            # Strip markdown fences if the model wraps output anyway
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+                raw = raw.rsplit("```", 1)[0].strip()
+
+            parsed = json.loads(raw)
+            return _validate_draft(parsed)
+
+        except (json.JSONDecodeError, ValueError) as exc:
+            last_error = exc
+            log.warning("parse attempt %d failed: %s", attempt + 1, exc)
+            if attempt < 2:
+                continue
+        except anthropic.APIError as exc:
+            raise HTTPException(status_code=502, detail=f"Claude API error: {exc}") from exc
+
+    raise HTTPException(
+        status_code=422,
+        detail=f"Failed to parse pattern after 3 attempts. Last error: {last_error}",
+    )
+
+
+@router.post("/parse", response_model=PatternDraftBody)
+async def parse_pattern_text(body: ParseRequest) -> PatternDraftBody:
+    """Parse free-text trading memo → PatternDraftBody JSON via Claude Sonnet 4.5.
+
+    AC: POST {"text": "OI가 급등하면서 가격이 하락했다"} → PatternDraftBody JSON
+    """
+    from agents.context import get_assembler
+
+    ctx = await asyncio.to_thread(get_assembler().for_parse_text, body.symbol)
+    return await _call_claude(ctx.system_prompt, body.text)
 
 
 # ── Library & States ─────────────────────────────────────────────────────────
