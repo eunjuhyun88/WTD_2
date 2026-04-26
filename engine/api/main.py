@@ -24,7 +24,7 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
-from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes
+from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users
 from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
@@ -285,6 +285,7 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(refinement.router, prefix="/refinement", tags=["refinement"])
     target.include_router(features.router, prefix="/features", tags=["features"])
     target.include_router(auth_routes.router, tags=["auth"])
+    target.include_router(users.router, prefix="/users", tags=["users"])
 
 
 def _include_worker_control_routes(target: FastAPI) -> None:
