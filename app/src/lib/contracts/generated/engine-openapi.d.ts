@@ -984,6 +984,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/draft-from-range": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft From Range
+         * @description Extract 12 features from a chart range and return a PatternDraftBody.
+         *
+         *     Accepts (symbol, start_ts, end_ts) and computes features over that window.
+         *     Features unavailable from a single-symbol window (btc_corr, venue_div)
+         *     are returned as null — this is not an error per spec.
+         */
+        post: operations["draft_from_range_patterns_draft_from_range_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/scan": {
         parameters: {
             query?: never;
@@ -3629,6 +3653,20 @@ export interface components {
         RagVectorResponse: {
             /** Embedding */
             embedding: number[];
+        };
+        /** RangeRequest */
+        RangeRequest: {
+            /** Symbol */
+            symbol: string;
+            /** Start Ts */
+            start_ts: number;
+            /** End Ts */
+            end_ts: number;
+            /**
+             * Timeframe
+             * @default 1h
+             */
+            timeframe: string;
         };
         /** ResearchContextBody */
         ResearchContextBody: {
@@ -6454,6 +6492,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    draft_from_range_patterns_draft_from_range_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternDraftBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
