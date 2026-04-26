@@ -73,5 +73,4 @@ updated: "2026-04-26"
 
 ## See Also
 
-- `prd-master.md` (live-note)
 - `feature-impl-map.md` (live-note) — N-05 / N-06 Marketplace 항목
