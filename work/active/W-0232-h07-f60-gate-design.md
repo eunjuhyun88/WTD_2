@@ -22,7 +22,7 @@ PRD v2.2 §F-60: "검증된 PatternObject (verdict accuracy ≥X% × 200+ verdic
 - D8 + Q1: 5-cat verdict 즉시 P0 (PR #370 머지 + F-02-app PR #381 머지)
 - 카피시그널 marketplace = N-05 (별도 W-0233+, frozen 회색지대 — 사용자 confirm 필요)
 
-## Scope (본 PR — 설계만)
+## Scope
 
 | # | 파일 | 용도 |
 |---|---|---|
