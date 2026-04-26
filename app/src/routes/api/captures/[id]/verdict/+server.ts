@@ -4,7 +4,7 @@
  * Apply user verdict to a resolved capture.
  * Proxies to engine POST /captures/{id}/verdict.
  *
- * Body: { verdict: 'valid' | 'invalid' | 'missed', user_note?: string }
+ * Body: { verdict: 'valid' | 'invalid' | 'missed' | 'too_late' | 'unclear', user_note?: string }
  */
 
 import { error } from '@sveltejs/kit';
