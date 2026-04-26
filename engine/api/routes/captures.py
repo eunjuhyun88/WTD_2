@@ -695,6 +695,15 @@ async def get_chart_annotations(
 
 # ── Single + list (MUST be after /chart-annotations to avoid collision) ──────
 
+@router.post("/{capture_id}/watch")
+async def watch_capture(capture_id: str) -> dict:
+    """Mark a capture as watching. Idempotent — calling twice is safe."""
+    found = _capture_store.set_watching(capture_id, True)
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    return {"ok": True, "status": "watching", "capture_id": capture_id}
+
+
 @router.get("/{capture_id}")
 async def get_capture(capture_id: str) -> dict:
     capture = _capture_store.load(capture_id)
@@ -709,6 +718,7 @@ async def list_captures(
     pattern_slug: str | None = None,
     symbol: str | None = None,
     status: str | None = None,
+    watching: bool | None = None,
     limit: int = Query(default=100, ge=1, le=500),
 ) -> dict:
     captures = _capture_store.list(
@@ -716,6 +726,7 @@ async def list_captures(
         pattern_slug=pattern_slug,
         symbol=symbol,
         status=status,
+        is_watching=watching,
         limit=limit,
     )
     return {

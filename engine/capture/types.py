@@ -50,6 +50,7 @@ class CaptureRecord:
     verdict_id: str | None = None
     outcome_id: str | None = None
     status: CaptureStatus = "pending_outcome"
+    is_watching: bool = False
 
     def __post_init__(self) -> None:
         resolved_ref = build_definition_ref(
@@ -91,4 +92,5 @@ class CaptureRecord:
             "verdict_id": self.verdict_id,
             "outcome_id": self.outcome_id,
             "status": self.status,
+            "is_watching": self.is_watching,
         }
