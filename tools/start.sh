@@ -1,6 +1,7 @@
 #!/bin/bash
-# start.sh — Multi-agent boot 통합
-# MemKraft + state + spec를 한 번에 보여줌. 다음 에이전트가 30-50초 안에 컨텍스트 확보.
+# start.sh — Multi-agent boot (memkraft 통합)
+# MemKraft brief + open-loops + state + spec를 한 번에 보여줌.
+# 다음 에이전트가 30-50초 안에 컨텍스트 확보.
 #
 # 사용:
 #   ./tools/start.sh                # 일반 부팅
@@ -11,6 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
+MK="$SCRIPT_DIR/mk.sh"
 
 QUIET=0
 [ "${1:-}" = "--quiet" ] && QUIET=1
@@ -21,11 +23,13 @@ QUIET=0
 MAIN_SHA="$(jq -r .main_sha state/state.json 2>/dev/null || echo unknown)"
 CURRENT_BRANCH="$(jq -r .current_branch state/state.json 2>/dev/null || echo unknown)"
 
-# 2. 다음 Agent ID 발번 (가변, 제한 없음)
-# memory/sessions/*.jsonl에서 가장 큰 A### 찾고 +1
-LATEST_ID=$(grep -hoE '"id":"A[0-9]+"' memory/sessions/*.jsonl 2>/dev/null \
-            | sed 's/.*A\([0-9]*\).*/\1/' \
-            | sort -n | tail -1 || true)
+# 2. 다음 Agent ID 발번 (가변, 제한 없음) — agent별 jsonl에서 가장 큰 번호 +1
+LATEST_ID=0
+if [ -d memory/sessions/agents ]; then
+  LATEST_ID=$(ls memory/sessions/agents/A*.jsonl 2>/dev/null \
+              | sed -E 's|.*/A([0-9]+)\.jsonl|\1|' \
+              | sort -n | tail -1 || echo 0)
+fi
 LATEST_ID=${LATEST_ID:-0}
 NEXT_NUM=$((10#${LATEST_ID} + 1))
 NEXT_ID=$(printf "A%03d" $NEXT_NUM)
@@ -36,7 +40,7 @@ if [ $QUIET -eq 1 ]; then
   exit 0
 fi
 
-# 3. 부팅 출력
+# 3. 부팅 출력 헤더
 cat <<EOF
 ═══════════════════════════════════
 You are Agent ${NEXT_ID}
@@ -68,17 +72,21 @@ else
   echo "  (spec/PRIORITIES.md not yet created)"
 fi
 
-# 4. MemKraft session-start (있으면 실행)
-if [ -x app/scripts/dev/memkraft-session-start.sh ]; then
+# 4. memkraft 통합 — open loops + dream 시그널
+if [ -x "$MK" ] && [ -d memory ]; then
   echo ""
-  echo "MemKraft signals:"
-  bash app/scripts/dev/memkraft-session-start.sh 2>/dev/null | head -10 || true
+  echo "Open loops (memkraft):"
+  "$MK" open-loops --dry-run 2>/dev/null | head -8 | sed 's/^/  /' || echo "  (none)"
+
+  echo ""
+  echo "Memory health (memkraft dream):"
+  "$MK" dream --dry-run 2>/dev/null | head -5 | sed 's/^/  /' || true
 fi
 
-# 5. 최근 에이전트 이력 (agent별 파일이 있으면 거기서, 없으면 date jsonl에서)
+# 5. 최근 5개 에이전트 (per-agent jsonl 기준)
 echo ""
 echo "Recent agents (last 5):"
-LATEST_AGENTS=$(ls -t memory/sessions/agents/*.jsonl 2>/dev/null | head -5)
+LATEST_AGENTS=$(ls -t memory/sessions/agents/A*.jsonl 2>/dev/null | head -5)
 if [ -n "$LATEST_AGENTS" ]; then
   for f in $LATEST_AGENTS; do
     aid=$(basename "$f" .jsonl)
@@ -86,24 +94,32 @@ if [ -n "$LATEST_AGENTS" ]; then
     echo "  $aid — $last"
   done
 else
-  echo "  (no per-agent records yet — first agent to use ./tools/end.sh creates them)"
+  echo "  (no per-agent records yet)"
 fi
 
-# 내 이력 (NEXT_ID는 새 발번이라 비어있음, 직전 ID 표시)
+# 6. 직전 에이전트 handoff
 PREV_ID=$(printf "A%03d" $((10#${LATEST_ID:-0})))
 PREV_FILE="memory/sessions/agents/${PREV_ID}.jsonl"
 if [ -f "$PREV_FILE" ]; then
   echo ""
   echo "Previous agent ($PREV_ID) handoff:"
-  tail -1 "$PREV_FILE" 2>/dev/null | jq -r '"  shipped: \(.shipped // "?")\n  handoff: \(.handoff // "?")"' 2>/dev/null || true
+  tail -1 "$PREV_FILE" 2>/dev/null \
+    | jq -r '"  shipped: \(.shipped // "?")\n  handoff: \(.handoff // .next // "?")"' 2>/dev/null \
+    || true
 fi
 
 cat <<EOF
 
 ═══════════════════════════════════
-Next:
-  ./tools/claim.sh <file-domain>     # 작업 시작 시 lock
-  cat spec/PRIORITIES.md             # 자세한 P0/P1 보기
-  ./tools/end.sh "shipped" "handoff" # 세션 종료 시
+Slash commands:
+  /claim "<file-domain>"      lock 후 작업 시작
+  /save "<다음에 할 일>"       세션 중간 체크포인트
+  /end "shipped" "handoff"    세션 종료
+  /agent-status               현재 상태 한눈에
+
+MemKraft direct:
+  ./tools/mk.sh retro              일일 회고 (Well/Bad/Next 자동 추출)
+  ./tools/mk.sh search "query"     메모리 검색
+  ./tools/mk.sh lookup "query"     entity/decision/incident 조회
 ═══════════════════════════════════
 EOF

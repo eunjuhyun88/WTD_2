@@ -2,7 +2,7 @@
 
 **Tier: core**
 
-> 🔄 Auto-tracked — updates automatically as new information arrives
+> Auto-tracked — updates automatically as new information arrives
 
 ## Tracking Config
 - **Type:** concept

@@ -1,0 +1,2 @@
+memory/sessions/*.jsonl merge=union
+memory/sessions/**/*.jsonl merge=union

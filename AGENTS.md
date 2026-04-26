@@ -9,31 +9,51 @@ Execution rules for humans and coding agents.
 3. Contracts define app-engine coupling.
 4. Work continues via `work/active/*.md`, not chat history.
 
-## Bootstrap (Multi-Agent OS v2)
+## Bootstrap (Multi-Agent OS v2 + MemKraft)
 
-Every session starts with:
-
+세션 흐름:
 ```bash
-./tools/start.sh
+./tools/start.sh                                      # 또는 /start
+./tools/claim.sh "engine/X, app/Y"                    # 또는 /claim "..."
+./tools/save.sh "다음에 할 일"                          # 또는 /save "..."   (중간)
+./tools/end.sh "PR #N" "handoff" [lesson]             # 또는 /end ...     (종료)
 ```
 
-This auto-issues your Agent ID (A###), refreshes derived state, and shows
-active locks, P0/P1 priorities, and MemKraft signals in <50 seconds.
-`work/active/CURRENT.md` remains the human-maintained source of truth;
-`state/` is derived and must not replace it.
+`/start`가 자동:
+- Agent ID 발번 (`memory/sessions/agents/A###.jsonl` 기반, 가변)
+- `state/` 갱신 (main SHA, open PRs, worktrees)
+- memkraft 통합 (open-loops, dream)
+- 직전 에이전트 handoff 표시
 
-When claiming a file-domain (engine/X, app/Y), run:
-```bash
-./tools/claim.sh "engine/X, app/Y"
-```
-Other agents on same domain get rejected → no parallel-merge collisions.
+### MemKraft 슬래시 커맨드
 
-When ending a session:
-```bash
-./tools/end.sh "PR #N" "next handoff command" [optional lesson]
-```
+| 슬래시 | 기능 | memkraft 명령 |
+|---|---|---|
+| `/start` | 세션 시작 | `dream --dry-run`, `open-loops --dry-run` |
+| `/save` | 중간 체크포인트 | `log --event "..."` ×2 (done/next) |
+| `/end` | 세션 종료 | `log --event "session ended"` + `retro --dry-run` |
+| `/claim` | 영역 lock | `spec/CONTRACTS.md` (memkraft 외부) |
+| `/agent-status` | 현재 상태 | (read-only 합본) |
+| `/retro` | 일일 회고 | `retro` (Well/Bad/Next 자동 추출) |
+| `/decision` | 결정 기록 | `log --decision` |
+| `/incident` | 사고 기록 | `mk.incident_record()` |
+| `/open-loops` | 미해결 항목 | `open-loops` |
+| `/search` | 메모리 검색 | `search --fuzzy` |
 
-Reference: `design/proposed/multi-agent-os-v2.md`
+### MemKraft 작동 원칙 (중요)
+
+- **모든 MemKraft CLI 명령은 `./tools/mk.sh`로 실행** — 전역 `memkraft`와 `cd memory && memkraft` 금지
+- wrapper가 `MEMKRAFT_DIR=./memory`와 engine uv 환경의 MemKraft 버전을 고정함
+- entity 시드: `./tools/track_repo.sh` (W-번호, Agent ID, 모듈 자동 등록)
+- `memory/RESOLVER.md` — 새 정보 저장 전 분류 결정 트리 참조
+- `memory/.memkraft/` — auto-cache, .gitignore
+
+### 핵심 파일
+
+- 설계: `design/proposed/multi-agent-os-v2.md`, `design/proposed/memkraft-full-integration.md`
+- spec: `spec/PRIORITIES.md` (P0/P1/P2), `spec/CONTRACTS.md` (locks)
+- state (자동): `state/state.json`, `state/current_agent.txt`
+- ledger: `memory/sessions/{date}.jsonl` (timeline), `memory/sessions/agents/A###.jsonl` (per-agent)
 
 ## Default Read Scope
 

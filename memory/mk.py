@@ -18,20 +18,20 @@ _instance: Any | None = None
 
 
 def _load_memkraft() -> type[Any]:
+    for site_packages in (_ROOT / "engine" / ".venv" / "lib").glob("python*/site-packages"):
+        sys.path.insert(0, str(site_packages))
+        try:
+            from memkraft import MemKraft
+
+            return MemKraft
+        except ImportError:
+            continue
+
     try:
         from memkraft import MemKraft
 
         return MemKraft
     except ImportError as first_error:
-        for site_packages in (_ROOT / "engine" / ".venv" / "lib").glob("python*/site-packages"):
-            sys.path.insert(0, str(site_packages))
-            try:
-                from memkraft import MemKraft
-
-                return MemKraft
-            except ImportError:
-                continue
-
         raise RuntimeError(
             "MemKraft is not importable. Run `cd engine && uv sync`, then retry the memory protocol."
         ) from first_error
