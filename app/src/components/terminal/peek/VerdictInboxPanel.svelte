@@ -6,6 +6,8 @@
    * User labels each as valid / invalid / missed to close the feedback loop.
    */
 
+  import WatchToggle from '../WatchToggle.svelte';
+
   interface OutcomeItem {
     capture: {
       capture_id: string;
@@ -15,6 +17,7 @@
       timeframe: string;
       captured_at_ms: number;
       user_note: string | null;
+      is_watching?: boolean;
     };
     outcome: {
       outcome: string | null;        // 'target_hit' | 'stop_hit' | 'expired' | null
@@ -133,6 +136,12 @@
             <span class="card-phase phase-{cap.phase.toLowerCase()}">{cap.phase}</span>
             <span class="card-tf">{cap.timeframe.toUpperCase()}</span>
             <span class="card-age">{timeAgo(cap.captured_at_ms)}</span>
+            <span class="card-watch">
+              <WatchToggle
+                captureId={cap.capture_id}
+                isWatching={cap.is_watching ?? false}
+              />
+            </span>
           </div>
 
           <div class="card-outcome">
@@ -272,6 +281,11 @@
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
+  }
+  .card-watch {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
   }
   .card-sym {
     font-family: var(--sc-font-mono, monospace);
