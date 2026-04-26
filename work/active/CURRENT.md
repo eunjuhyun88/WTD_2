@@ -18,7 +18,7 @@
 
 ## main SHA
 
-`3ce9cf5d` — origin/main (2026-04-26) — PR #346 머지 (W-0145 search corpus 40+dim)
+`9003d39c` — origin/main (2026-04-26) — PR #346 머지 (W-0145 search corpus 40+dim)
 
 ---
 
