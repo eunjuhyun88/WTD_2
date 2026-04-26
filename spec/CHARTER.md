@@ -54,16 +54,48 @@
 
 ### 메타 도구 동결 (야크쉐이빙 차단)
 
-- ❌ **MemKraft 추가 개발** (`memkraft`, `mk.py` 외 신규 메모리 시스템)
-- ❌ **Multi-Agent OS / 운영체제 신규 기능** (`multi.agent`, `multi-agent-os`, agent dispatcher 류)
-- ❌ **새 slash command / 새 도구 시스템 확장** (현재 set 충분)
-- ❌ **agent handoff / session 고도화** (현재 jsonl + CONTRACTS.md 충분)
-- ❌ **worktree 정리 자동화 대규모 시스템** (수동 cleanup으로 충분)
+- ❌ **신규** MemKraft 대체/확장 시스템 (별도 메모리 stack 빌드)
+- ❌ **신규** agent dispatcher / orchestration OS / handoff framework 빌드
+- ❌ **신규** slash command 시스템 (현재 set 충분)
+- ❌ **신규** worktree 정리 자동화 대규모 시스템 (수동 cleanup으로 충분)
+
+→ 핵심: **새 도구를 빌드하는 것**이 frozen. 기존 도구 사용·안정화는 별개 (§Coordination 참조).
 
 ### Polish 동결 (코어 미완성 동안)
 
 - ❌ **Chart UX polish** (`chart.polish`, W-0212 류) — W-0210/W-0211 머지로 충분
 - ❌ **Pine Script LLM-only 생성** — W-0211 Phase 1로 충분
+
+---
+
+## 🤝 Coordination — 멀티 에이전트 충돌 방지
+
+**원칙: 도구 빌드 ❌ vs 도구 사용 ✅** — frozen은 "새 OS/dispatcher 만들기" 금지일 뿐, GitHub의 기본 기능 활용은 권장.
+
+### ✅ Allowed (도구 사용)
+
+- **GitHub Issue + assignee = mutex** — 1 work item = 1 Issue = 1 assignee. 다른 에이전트가 부팅 시 `gh issue list --assignee "*"` 으로 누가 뭐하나 즉시 확인.
+- **GitHub Project v2** (필요시) — Issue 시각화, status board. 기본 기능 사용.
+- **Branch naming `feat/issue-N-slug`** — branch ↔ Issue 자명 연결.
+- **PR body `Closes #N`** — 머지 시 Issue 자동 close = lock 자동 해제.
+- 기존 `tools/start.sh`, `tools/claim.sh`, `tools/end.sh` **안정화·버그 수정**.
+
+### ❌ Frozen (도구 빌드)
+
+- 자체 dispatcher / orchestration OS / handoff framework 신규 빌드.
+- MemKraft 대체 메모리 시스템 신규 빌드.
+- 250줄 넘는 신규 coordination 도구 stack.
+
+### 운영 프로토콜 (요약)
+
+```
+부팅:  gh issue list --state open --json number,title,assignees    # 누가 뭐하나
+claim: gh issue edit N --add-assignee @me                            # mutex 획득
+work:  git checkout -b feat/issue-N-slug                             # branch ↔ Issue
+PR:    body에 "Closes #N"                                            # 머지 = 자동 close = lock 해제
+```
+
+상세: `docs/runbooks/multi-agent-coordination.md`
 
 ---
 
@@ -73,10 +105,12 @@
 
 ```
 copy.trad | copy_trading | leaderboard.*sub
-memkraft | multi.agent | multi-agent-os | agent.dispatcher
+new.memkraft | new.multi.agent | new.dispatcher | new.handoff.framework
 chart.polish | chart.ux.polish | w-0212
-session.handoff.upgrade | new.slash.command
+new.slash.command | new.coordination.stack
 ```
+
+→ Issue/assignee/Project 사용 자체는 게이트 대상 아님 (§Coordination Allowed).
 
 `--force` 플래그로 통과 가능하지만 사유를 prompt함.
 

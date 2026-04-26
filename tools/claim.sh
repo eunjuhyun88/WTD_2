@@ -1,8 +1,13 @@
 #!/bin/bash
-# claim.sh — file-domain ownership lock
-# 다른 에이전트가 같은 domain 잡고 있으면 거절 (병렬 머지 충돌 차단)
+# claim.sh — file-domain ownership lock + GitHub Issue assignee mutex
 #
-# 사용: ./tools/claim.sh "engine/search/, app/copy-trading/"
+# 사용:
+#   ./tools/claim.sh "engine/search/, app/copy-trading/"          # legacy (file-domain만)
+#   ./tools/claim.sh "engine/search/" --issue 358                 # +Issue assignee mutex (권장)
+#   ./tools/claim.sh "engine/search/" --issue 358 --force         # frozen gate 통과
+#
+# CHARTER §Coordination: GitHub Issue assignee = primary mutex.
+# 자세한 내용: docs/runbooks/multi-agent-coordination.md
 
 set -euo pipefail
 
@@ -11,18 +16,61 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
 if [ $# -lt 1 ]; then
-  echo "Usage: $0 \"<file-domain>\""
-  echo "Example: $0 \"engine/search/, app/copy-trading/\""
+  echo "Usage: $0 \"<file-domain>\" [--issue N] [--force]"
+  echo "Example: $0 \"engine/search/, app/copy-trading/\" --issue 358"
   exit 1
 fi
 
 DOMAIN="$1"
+shift
 FORCE=0
-[ "${2:-}" = "--force" ] && FORCE=1
+ISSUE_NUM=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --force) FORCE=1; shift ;;
+    --issue) ISSUE_NUM="${2:-}"; shift 2 ;;
+    *) shift ;;
+  esac
+done
 
 AGENT="$(cat state/current_agent.txt 2>/dev/null || echo unknown)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 NOW="$(date -u +%H:%M)"
+
+# ── GitHub Issue assignee 통합 (primary mutex, CHARTER §Coordination) ──
+# --issue N 지정 시 Issue assignee를 먼저 획득 → file-domain claim 진행.
+# Issue 미지정/gh 미인증이면 graceful skip — legacy file-domain only.
+if [ -n "$ISSUE_NUM" ]; then
+  if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+    echo "✗ --issue $ISSUE_NUM 지정됐지만 gh CLI 미인증." >&2
+    echo "  \`gh auth login\` 후 다시 시도하거나, --issue 빼고 legacy claim." >&2
+    exit 1
+  fi
+  # Issue 존재 여부 + 다른 assignee 점검
+  ISSUE_INFO=$(gh issue view "$ISSUE_NUM" --json state,assignees,title 2>/dev/null || true)
+  if [ -z "$ISSUE_INFO" ]; then
+    echo "✗ Issue #$ISSUE_NUM 없거나 접근 불가." >&2
+    exit 1
+  fi
+  ISSUE_STATE=$(echo "$ISSUE_INFO" | jq -r '.state')
+  if [ "$ISSUE_STATE" != "OPEN" ]; then
+    echo "✗ Issue #$ISSUE_NUM 상태가 $ISSUE_STATE — claim 불가." >&2
+    exit 1
+  fi
+  OTHER_ASSIGNEES=$(echo "$ISSUE_INFO" | jq -r '.assignees | map(.login) | join(",")')
+  ME=$(gh api user --jq .login 2>/dev/null || echo "")
+  if [ -n "$OTHER_ASSIGNEES" ] && [ "$OTHER_ASSIGNEES" != "$ME" ]; then
+    echo "⚠️  Issue #$ISSUE_NUM 이미 [$OTHER_ASSIGNEES] assigned. 같은 작업 중복 위험."
+    if [ "$FORCE" -ne 1 ]; then
+      echo "조정 후 그쪽이 \`gh issue edit $ISSUE_NUM --remove-assignee\` 해제하거나"
+      echo "다른 Issue 선택. 강제 진행은 --force."
+      exit 2
+    fi
+  fi
+  # Issue mutex 획득 (idempotent)
+  gh issue edit "$ISSUE_NUM" --add-assignee @me >/dev/null 2>&1 || true
+  echo "✓ Issue #$ISSUE_NUM mutex acquired (assignee: @me)"
+fi
 
 # ── Non-Goal / Frozen gate (CHARTER.md §Frozen) ─────────────────
 # 매칭되면 확인 프롬프트. --force로 통과 가능 (사유 기록).
@@ -84,4 +132,9 @@ echo "| $AGENT | $DOMAIN | $BRANCH | $NOW |" >> spec/CONTRACTS.md
 "$SCRIPT_DIR/live.sh" update "$DOMAIN" 2>/dev/null || true
 
 echo "✓ $AGENT locked: $DOMAIN"
-echo "  released by: ./tools/end.sh"
+if [ -n "$ISSUE_NUM" ]; then
+  echo "  GitHub Issue: #$ISSUE_NUM (assignee: @me)"
+  echo "  released by: PR merge with \`Closes #$ISSUE_NUM\` (auto), or ./tools/end.sh"
+else
+  echo "  released by: ./tools/end.sh"
+fi
