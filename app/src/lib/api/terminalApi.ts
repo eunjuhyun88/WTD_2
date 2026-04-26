@@ -460,3 +460,37 @@ export async function draftPatternFromRange(
   }
   return payload as PatternDraftBodyShape;
 }
+
+// ─── AI Parser (A-03-app) ──────────────────────────────────────
+
+export interface AIParserHints {
+  pattern_family?: string;
+  symbol?: string;
+}
+
+/**
+ * POST /api/patterns/parse — A-03-app entry point.
+ *
+ * 자유 텍스트 메모를 PatternDraftBody로 변환 (engine: Claude Sonnet 4.6).
+ * Engine: ContextAssembler.for_parser() + Anthropic SDK + Tool Use.
+ */
+export async function parsePatternFromText(
+  text: string,
+  hints: AIParserHints = {},
+  signal?: AbortSignal,
+): Promise<PatternDraftBodyShape> {
+  const res = await fetch('/api/patterns/parse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, context_hints: hints }),
+    signal: signal ?? AbortSignal.timeout(25_000),
+  });
+  const payload: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(parseErrorMessage(payload, res.status));
+  }
+  if (!isRecord(payload)) {
+    throw new Error(`Invalid parse response (${res.status})`);
+  }
+  return payload as PatternDraftBodyShape;
+}

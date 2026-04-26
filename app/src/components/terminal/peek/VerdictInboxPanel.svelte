@@ -7,6 +7,7 @@
    */
 
   import WatchToggle from '../WatchToggle.svelte';
+  import AIParserModal from '../AIParserModal.svelte';
 
   interface OutcomeItem {
     capture: {
@@ -39,6 +40,7 @@
   let error = $state<string | null>(null);
   let submitting = $state<Record<string, boolean>>({});
   let dismissed = $state<Set<string>>(new Set());
+  let parserOpen = $state(false);
 
   async function load() {
     loading = true;
@@ -111,8 +113,19 @@
   <div class="inbox-header">
     <span class="inbox-title">REVIEW INBOX</span>
     <span class="inbox-count">{items.length} pending</span>
+    <button
+      class="parser-btn"
+      onclick={() => { parserOpen = true; }}
+      title="자유 텍스트 메모로 패턴 만들기 (AI Parser)"
+    >📝 Memo → Pattern</button>
     <button class="reload-btn" onclick={load} disabled={loading} title="Reload">↺</button>
   </div>
+
+  <AIParserModal
+    open={parserOpen}
+    onClose={() => { parserOpen = false; }}
+    onSaved={() => { load(); }}
+  />
 
   {#if loading}
     <div class="inbox-empty">Loading…</div>
@@ -228,8 +241,25 @@
     background: rgba(99,179,237,0.15);
     color: rgba(131,188,255,0.9);
   }
-  .reload-btn {
+  .parser-btn {
     margin-left: auto;
+    background: rgba(219, 154, 159, 0.10);
+    border: 1px solid rgba(219, 154, 159, 0.35);
+    color: #db9a9f;
+    border-radius: 3px;
+    padding: 3px 8px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .parser-btn:hover {
+    background: rgba(219, 154, 159, 0.20);
+    color: #f7f2ea;
+  }
+  .reload-btn {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.1);
     color: rgba(247,242,234,0.5);
