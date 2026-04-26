@@ -9,8 +9,22 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
+| `W-0214-mm-hunter-core-theory-and-validation` | Research × Product | **v1.3 LOCKED-IN (2026-04-27)** — D1~D8 confirmed. Week 1 V-00 작업 시작 가능 |
 | `W-0132-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
 | `W-0145-operational-seed-search-corpus` | engine | 다음 — 40+차원 corpus 완성 |
+
+### W-0214 핵심 결정 요약 (2026-04-27)
+
+- D1 Hunter framing lock-in (옵션 4 — User as MM Hunter)
+- D2 horizon: 4h primary, 1h+24h 보조
+- D3 cost: 15 bps round-trip
+- D4 P0 패턴: 5개 측정 + 나머지 48개 보존
+- D5 F-60 gate: Layer A AND Layer B
+- D6 일정: 7주 → 9주
+- D7 UI: 전체 공개 + Glossary
+- D8 phase taxonomy: 둘 다 측정, default Wyckoff
+
+상세: `work/active/W-0214-session-checkpoint-2026-04-27.md`
 
 ---
 
