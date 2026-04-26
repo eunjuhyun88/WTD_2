@@ -31,6 +31,14 @@ cd "$REPO_ROOT"
 ADDED=0
 SKIPPED=0
 
+normalize_live_notes() {
+  perl -pi -e 's/^> .*Auto-tracked.*\n//; s/^- \*\*Type:\*\* .*\n//; s/^- \*\*Started:\*\* .*\n//; s/^- \*\*Last Update:\*\* .*\n//; s/^- \*\*Update Count:\*\* .*\n//; s/^\(Latest information accumulates here\)\n//; s/^\(Key points are automatically summarized here\)\n//; s/^\(Links auto-populated as relationships are discovered\)\n//; s/^- \[ \] Initial setup .*\n//; s/^- \*\*[0-9]{4}-[0-9]{2}-[0-9]{2}\*\* \| Tracking started.*\n//; s/^- \*\*[0-9]{4}-[0-9]{2}-[0-9]{2}\*\* \| Live note created.*\n//; s/^- \*\*Source:\*\* (.+)$/- Source path: $1 [Source: $1]/' "$REPO_ROOT"/memory/live-notes/*.md
+}
+
+is_tracked() {
+  "$MK" list 2>/dev/null | awk '{print $2}' | grep -Fx "$1" >/dev/null
+}
+
 # 1. W-번호 → concept
 echo "Tracking W-numbers..."
 for f in "$REPO_ROOT"/work/active/W-*.md; do
@@ -39,12 +47,13 @@ for f in "$REPO_ROOT"/work/active/W-*.md; do
   # W-XXXX prefix만 추출 (W-XXXX-foo-bar → W-XXXX)
   wnum=$(echo "$basename" | grep -oE '^W-[0-9]+' || true)
   [ -z "$wnum" ] && continue
+  entity=$(echo "$wnum" | tr '[:upper:]' '[:lower:]')
 
   # already tracked?
-  if "$MK" list 2>/dev/null | grep -q "$wnum"; then
+  if is_tracked "$entity"; then
     SKIPPED=$((SKIPPED + 1))
   else
-    "$MK" track "$wnum" --type concept --source "work/active/${basename}.md" >/dev/null 2>&1 \
+    "$MK" track "$entity" --type concept --source "work/active/${basename}.md" >/dev/null 2>&1 \
       && ADDED=$((ADDED + 1)) || true
   fi
 done
@@ -54,10 +63,11 @@ echo "Tracking agents..."
 for f in "$REPO_ROOT"/memory/sessions/agents/A*.jsonl; do
   [ -f "$f" ] || continue
   aid=$(basename "$f" .jsonl)
-  if "$MK" list 2>/dev/null | grep -q "$aid"; then
+  entity=$(echo "$aid" | tr '[:upper:]' '[:lower:]')
+  if is_tracked "$entity"; then
     SKIPPED=$((SKIPPED + 1))
   else
-    "$MK" track "$aid" --type person --source "memory/sessions/agents/${aid}.jsonl" >/dev/null 2>&1 \
+    "$MK" track "$entity" --type person --source "memory/sessions/agents/${aid}.jsonl" >/dev/null 2>&1 \
       && ADDED=$((ADDED + 1)) || true
   fi
 done
@@ -67,7 +77,7 @@ echo "Tracking modules..."
 for mod in copy_trading search features patterns memory; do
   modpath="engine/${mod}"
   if [ -d "$REPO_ROOT/$modpath" ]; then
-    if "$MK" list 2>/dev/null | grep -q "$mod"; then
+    if is_tracked "$mod"; then
       SKIPPED=$((SKIPPED + 1))
     else
       "$MK" track "$mod" --type topic --source "${modpath}/" >/dev/null 2>&1 \
@@ -77,6 +87,7 @@ for mod in copy_trading search features patterns memory; do
 done
 
 # 4. 인덱스 재빌드
+normalize_live_notes
 "$MK" index >/dev/null 2>&1 || true
 
 echo "✓ Tracked: +${ADDED} new, ${SKIPPED} already-existed"
