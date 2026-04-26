@@ -105,3 +105,34 @@ async function runSearch(config) {
 4. W-0205 API 엔드포인트 → Svelte 연동 → 커밋
 5. PR → 머지 → CURRENT.md 업데이트
 ```
+
+---
+
+## 에이전트별 작업 이력 (2026-04-26)
+
+| Agent | 주요 작업 | PR | main SHA |
+|---|---|---|---|
+| **A001** | App CI 127→0 TS 에러 수리 (19 파일) | PR #293 | `c1a8072e` |
+| **A001** | Supabase feature_windows corpus backfill 197→138,915행 | (inline script) | `87f44b0b` |
+| **A002** | W-0132 copy trading Phase 1 — DB schema (migration 022) + engine/copy_trading/ + App API + Leaderboard UI | PR #313 | `e9014e5c` |
+| **A002** | W-0145 main 완료 확인 (14 tests pass) | — | — |
+| **A003** | Cloud Scheduler 5 jobs + GCP cogotchi-00013-c7n + App CI 수리 기록 | PR #323 | — |
+| **A004** | W-0203/W-0204/W-0205 완료 — active_variant_store + 3-layer scoring + Gate UI | PR #292 | `cdefda4d` |
+| **A005** | 브랜치 53개 정리 + PR #287~#290 머지 + CI 수리 + 설계문서(PR #311) | PR #311 | `b942f346` |
+| **A006** | worktree 50→5개 정리 + PR #308(W-0211) 리베이스+오픈 + App CI 수리 + PR #314 머지 | PR #314 | `ff5282a2` |
+| **A007** | W-0211 차트 리팩토링 기록 + session index | PR #325 | — |
+| **A008** | Multi-Agent OS Phase 0-4 + MemKraft 전체 도입 + design verify CI gate | PR #335 | `c0ab48dc` |
+
+### Multi-Agent OS 운영 규칙 (PR #335 이후)
+
+```
+./tools/start.sh     → Agent ID 발번 + session 기록 + handoff + lock + P0/P1 + open-loops + design status
+./tools/claim.sh     → file-domain lock 획득
+./tools/save.sh      → 중간 체크포인트 저장 (MemKraft)
+./tools/end.sh       → 세션 종료 + handoff 기록
+```
+
+- 모든 에이전트는 반드시 `./tools/start.sh`로 시작
+- 작업 단위: 하나의 Work Item = 하나의 브랜치 = 하나의 PR
+- 에이전트 번호는 `memory/sessions/agents/A*.jsonl`에 기록
+- 설계문서 변경은 반드시 커밋 → PR → 머지 (직접 main push 금지)
