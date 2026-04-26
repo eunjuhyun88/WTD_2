@@ -57,6 +57,35 @@ Process / coordination change (코드 영향 최소 — 1 CI workflow + 4 markdo
 - Wave 2/3 구현 (운영 가이드만 작성, 실제 시작은 Wave 1 머지 후)
 - AI Parser/Chart Drag/Watch/Verdict 5-cat 코드 직접 수정
 
+## Canonical Files
+
+- `work/active/W-0223-wave1-execution-design.md` (this)
+- `spec/PRIORITIES.md` — Wave 1/2/3 P0/P1/P2 정렬
+- `spec/CHARTER.md` — In-Scope / Frozen / §Coordination
+- `work/active/CURRENT.md` — 활성 work item index
+- `docs/live/W-0220-status-checklist.md` — 단일 진실 (체크리스트)
+- `docs/live/wave-execution-plan.md` — 운영 가이드 (NEW)
+- `docs/live/W-0220-product-prd-master.md` — PRD v2.2 canonical
+- `.github/workflows/checklist-sync.yml` — 1:1:1:1 invariant CI
+- `.github/workflows/scripts/verify_checklist_sync.py` — 검증 로직
+
+## Facts
+
+1. main = `ee2060f9` (PR #361 W-0222 multi-agent coordination 머지). PR #362 W-0221 F-7 pre-commit gate 이미 머지.
+2. Wave 1 4개 GitHub Issues 등록됨: #364 F-02, #365 A-03-eng, #366 A-04-eng, #367 D-03-eng.
+3. `engine/ledger/types.py:54` `user_verdict: Literal["valid", "invalid", "missed"]` (3값 이미 있음, 추가 필요 = `"too_late"`, `"unclear"`).
+4. `engine/api/routes/captures.py:436` POST `/captures/{id}/verdict` 이미 동작 중.
+5. `pattern_outcomes.user_verdict` DB 컬럼 = `text` (migration 0014:20) → 마이그 불필요.
+6. `engine/agents/context.py:189` `ContextAssembler.for_parser()` 이미 존재.
+7. `engine/branding/kol_style_engine.py:25-127` Anthropic SDK 사용 패턴 참조.
+
+## Assumptions
+
+1. Wave 1 4개 작업은 서로 다른 모듈/엔드포인트 → 머지 충돌 없음.
+2. PR #361 Issue assignee mutex가 작동해서 4명 에이전트가 동시 시작해도 같은 Issue 잡지 않음.
+3. `gh` CLI는 모든 worktree에서 사용 가능 (Codex sandbox 포함, graceful fallback).
+4. `claude-sonnet-4-6` model ID는 시스템 prompt 명시된 latest이므로 안정 사용 가능.
+
 ## Decisions (lock-in)
 
 권고대로 채택. 변경 사항 있으면 본 문서 검토 시 알려주세요.
