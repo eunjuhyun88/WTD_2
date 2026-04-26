@@ -22,7 +22,7 @@
 
 ## main SHA
 
-`c0ab48dc` — origin/main (2026-04-26) — PR #335 머지 (Multi-Agent OS v2 + MemKraft 도입)
+`9a76b3dd` — origin/main (2026-04-26) — PR #335 머지 (Multi-Agent OS v2 + MemKraft 도입)
 
 ---
 
