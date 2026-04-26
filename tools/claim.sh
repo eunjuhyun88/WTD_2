@@ -34,10 +34,11 @@ if [ ! -f spec/CONTRACTS.md ]; then
 EOF
 fi
 
-# 충돌 검사 — 같은 domain 키워드가 이미 있는지
+# 충돌 검사 — lock table row만 검사한다. 설명 문구/예시 텍스트에서
+# domain 문자열이 발견되어 false-positive가 나는 것을 막는다.
 for d in $(echo "$DOMAIN" | tr ',' '\n' | sed 's/^ *//;s/ *$//'); do
-  if grep -F "$d" spec/CONTRACTS.md >/dev/null 2>&1; then
-    EXISTING=$(grep -F "$d" spec/CONTRACTS.md | head -1)
+  if grep -E '^\| A[0-9]+' spec/CONTRACTS.md | grep -F "$d" >/dev/null 2>&1; then
+    EXISTING=$(grep -E '^\| A[0-9]+' spec/CONTRACTS.md | grep -F "$d" | head -1)
     echo "✗ Domain '$d' already claimed:"
     echo "  $EXISTING"
     echo ""

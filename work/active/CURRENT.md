@@ -9,9 +9,20 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0163-ci-agent-governance` | contract | PR #322 — memory sync 큐 통합 + stale PR 정리 |
+| `W-0163-ci-agent-governance` | contract | P0 — PR #335 Multi-Agent OS v2 + MemKraft + design verify |
 | `W-0132-copy-trading-phase1` | engine + app | ✅ 완료 — PR #313 main 머지 완료 |
 | `W-0145-operational-seed-search-corpus` | engine | ✅ 완료 — main에 이미 구현됨 (14 tests pass) |
+
+---
+
+## 현재 P0
+
+**Multi-Agent OS v2 적용** — `design/proposed/multi-agent-os-v2.md`
+
+- 구현 PR: [#335](https://github.com/eunjuhyun88/WTD_2/pull/335)
+- 실제 운영 entrypoint: `./tools/start.sh`, `./tools/claim.sh`, `./tools/save.sh`, `./tools/end.sh`
+- 상태: Phase 0-4 구현 완료, PR checks pass, merge 대기
+- 보조 source: `spec/PRIORITIES.md`
 
 ---
 
@@ -23,6 +34,7 @@
 
 | PR | 내용 | 상태 |
 |---|---|---|
+| [#335](https://github.com/eunjuhyun88/WTD_2/pull/335) | MemKraft + Multi-Agent OS foundation + design verify | merge 대기 |
 | [#322](https://github.com/eunjuhyun88/WTD_2/pull/322) | memory sync 큐 통합 + workflow/script 개선 | 검증 대기 |
 | [#285](https://github.com/eunjuhyun88/WTD_2/pull/285) | W-0114 research compare script | triage 대기 |
 
@@ -72,9 +84,10 @@
 ## 다음 실행 순서 (우선순위 순)
 
 ### 즉시
-1. **PR #322 검증/머지** — memory sync 큐 통합, KST 날짜, 중복 이벤트 방지
-2. **stale PR close** — #312/#315/#317/#319/#321/#324/#326
-3. **PR #285 triage** — 오래된 research compare PR 유지/종료 판단
+1. **PR #335 머지** — Multi-Agent OS v2 + MemKraft foundation + design verify
+2. **PR #322 검증/머지** — memory sync 큐 통합, KST 날짜, 중복 이벤트 방지
+3. **stale PR close** — #312/#315/#317/#319/#321/#324/#326
+4. **PR #285 triage** — 오래된 research compare PR 유지/종료 판단
 
 ### 중기
 4. **W-0212 차트 UX 마무리** — 패인 드래그 리사이즈 검증 + 크로스헤어 값 업데이트 + KPI 스파크라인 확인
@@ -97,3 +110,4 @@
 
 - `docs/archive/work-checkpoints/W-app-ci-repair-checkpoint-20260426.md` — App CI 수리 세션 기록
 - `work/active/W-next-design-20260426.md` — 다음 작업 설계 (W-0212 → W-0132 → W-0145)
+- `design/proposed/multi-agent-os-v2.md` — MemKraft 기반 Multi-Agent OS v2 설계

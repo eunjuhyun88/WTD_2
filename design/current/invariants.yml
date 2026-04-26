@@ -1,0 +1,88 @@
+version: 1
+
+contracts:
+  - name: "ChartBoard core props"
+    type: "svelte_props"
+    file: "app/src/components/terminal/workspace/ChartBoard.svelte"
+    props:
+      symbol:
+        required: true
+      tf:
+        required: false
+      verdictLevels:
+        required: false
+      initialData:
+        required: false
+      surfaceStyle:
+        required: false
+      analysisData:
+        required: false
+      onCandleClose:
+        required: false
+      gammaPin:
+        required: false
+
+  - name: "MemKraft single root"
+    type: "paths_absent"
+    paths:
+      - "app/memory"
+      - "memory/memory"
+
+  - name: "MemKraft wrapper exists"
+    type: "paths_present"
+    paths:
+      - "tools/mk.sh"
+      - "memory/mk.py"
+      - "memory/RESOLVER.md"
+
+  - name: "MemKraft automation uses wrapper"
+    type: "forbidden_text"
+    globs:
+      - "tools/**/*.sh"
+      - "app/scripts/dev/*.sh"
+      - "app/package.json"
+      - ".github/workflows/*.yml"
+    patterns:
+      - "cd memory && memkraft"
+      - " command -v memkraft"
+
+  - name: "Cogochi API auth policy stays centralized"
+    type: "file_contains"
+    file: "app/src/hooks.server.ts"
+    patterns:
+      - "isPublicApiPath"
+      - "/api/cogochi/"
+      - "event.locals.user"
+
+  - name: "Agent start reserves identity"
+    type: "file_contains"
+    file: "tools/start.sh"
+    patterns:
+      - "agent-id.lock"
+      - "memory/sessions/agents/${NEXT_ID}.jsonl"
+      - "session started"
+
+architecture:
+  - name: "engine must not import app"
+    type: "forbidden_imports"
+    globs:
+      - "engine/**/*.py"
+    patterns:
+      - "^\\s*from\\s+app(\\.|\\s+import)"
+      - "^\\s*import\\s+app(\\.|\\s|$)"
+
+  - name: "Svelte must not import Python engine"
+    type: "forbidden_imports"
+    globs:
+      - "app/src/**/*.svelte"
+    patterns:
+      - "from\\s+['\"]engine"
+      - "from\\s+['\"][^'\"]*\\/engine"
+
+  - name: "generated state must stay out of git truth"
+    type: "paths_ignored"
+    paths:
+      - "state/state.json"
+      - "state/worktrees.json"
+      - "state/current_agent.txt"
+      - "memory/.memkraft/index.json"

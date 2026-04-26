@@ -1,5 +1,13 @@
 #!/bin/bash
-# end.sh — 세션 종료 + ledger append + lock 해제
+# end.sh — 세션 종료 (memkraft 통합)
+#
+# 자동:
+#   1. memkraft log: session ended event
+#   2. memkraft retro --dry-run: Well/Bad/Next 자동 추출 표시
+#   3. memkraft distill-decisions: decision 후보 추출 안내
+#   4. agent별 jsonl append (per-agent history)
+#   5. spec/CONTRACTS.md lock 해제
+#   6. state 갱신
 #
 # 사용:
 #   ./tools/end.sh "PR #321" "git checkout -b feat/w-0146" [optional lesson]
@@ -9,6 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
+MK="$SCRIPT_DIR/mk.sh"
 
 if [ $# -lt 2 ]; then
   echo "Usage: $0 \"<shipped>\" \"<handoff>\" [lesson]"
@@ -26,39 +35,64 @@ END_SHA="$(git rev-parse HEAD)"
 DATE="$(date -u +%Y-%m-%d)"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# 1. 두 곳에 동시 append:
-#    - memory/sessions/{date}.jsonl       (날짜별 — 시간순 timeline)
-#    - memory/sessions/agents/{agent}.jsonl (에이전트별 — 본인 이력 추적)
-DATE_FILE="memory/sessions/${DATE}.jsonl"
+# 1. memkraft log — session end + lesson
+# 중요: tools/mk.sh가 MEMKRAFT_DIR을 repo root memory/로 고정한다.
+if [ -x "$MK" ] && [ -d memory ]; then
+  "$MK" log \
+    --event "${AGENT} session ended | shipped: ${SHIPPED} | handoff: ${HANDOFF}" \
+    --tags "session,end,${AGENT}" \
+    --importance high >/dev/null 2>&1 || true
+
+  if [ -n "$LESSON" ]; then
+    "$MK" log \
+      --event "${AGENT} lesson: ${LESSON}" \
+      --tags "lesson,${AGENT}" \
+      --importance high >/dev/null 2>&1 || true
+  fi
+fi
+
+# 2. agent별 jsonl append (memkraft가 안 하는 부분)
 AGENT_FILE="memory/sessions/agents/${AGENT}.jsonl"
 mkdir -p memory/sessions/agents
 
-# event = "session ended", tags=session,end + agent ID
-ENTRY=$(jq -nc --arg ts "$TS" \
-                --arg agent "$AGENT" \
-                --arg event "session ended ($AGENT)" \
-                --arg shipped "$SHIPPED" \
-                --arg handoff "$HANDOFF" \
-                --arg branch "$BRANCH" \
-                --arg sha "$END_SHA" \
-   '{
-     ts: $ts,
-     id: $agent,
-     event: $event,
-     tags: ["session", "end", $agent],
-     importance: "normal",
-     branch: $branch,
-     end_sha: $sha,
-     shipped: $shipped,
-     handoff: $handoff
-   }')
+ENTRY=$(jq -nc \
+  --arg ts "$TS" \
+  --arg agent "$AGENT" \
+  --arg event "session ended ($AGENT)" \
+  --arg shipped "$SHIPPED" \
+  --arg handoff "$HANDOFF" \
+  --arg branch "$BRANCH" \
+  --arg sha "$END_SHA" \
+  '{
+    ts: $ts,
+    id: $agent,
+    event: $event,
+    tags: ["session", "end", $agent],
+    importance: "high",
+    branch: $branch,
+    end_sha: $sha,
+    shipped: $shipped,
+    handoff: $handoff
+  }')
 
-echo "$ENTRY" >> "$DATE_FILE"
 echo "$ENTRY" >> "$AGENT_FILE"
 
-# 2. spec/CONTRACTS.md에서 자기 lock 제거
+if [ -n "$LESSON" ]; then
+  LESSON_ENTRY=$(jq -nc \
+    --arg ts "$TS" \
+    --arg agent "$AGENT" \
+    --arg event "lesson: $LESSON" \
+    '{ts: $ts, id: $agent, event: $event, tags: ["lesson", $agent], importance: "high"}')
+  echo "$LESSON_ENTRY" >> "$AGENT_FILE"
+fi
+
+# 3. design drift 확인 — 실패하면 lock을 유지한 채 종료를 중단한다.
+if [ -x "$SCRIPT_DIR/verify_design.sh" ]; then
+  "$SCRIPT_DIR/verify_design.sh"
+fi
+
+# 4. spec/CONTRACTS.md에서 자기 lock 제거
 if [ -f spec/CONTRACTS.md ]; then
-  # macOS sed 호환 (-i ''  vs Linux -i)
   if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i '' "/^| ${AGENT} |/d" spec/CONTRACTS.md
   else
@@ -66,22 +100,30 @@ if [ -f spec/CONTRACTS.md ]; then
   fi
 fi
 
-# 3. lesson이 있으면 두 곳에 모두 저장 (incident가 아니라 session note)
-if [ -n "$LESSON" ]; then
-  LESSON_ENTRY=$(jq -nc --arg ts "$TS" \
-                         --arg agent "$AGENT" \
-                         --arg event "lesson: $LESSON" \
-     '{ts: $ts, id: $agent, event: $event, tags: ["lesson", $agent], importance: "high"}')
-  echo "$LESSON_ENTRY" >> "$DATE_FILE"
-  echo "$LESSON_ENTRY" >> "$AGENT_FILE"
-fi
-
-# 4. state 갱신
+# 5. state 갱신
 ./tools/refresh_state.sh >/dev/null
 
+# 6. memkraft retro --dry-run (자동 회고 미리보기)
+echo ""
+echo "═══════════════════════════════════"
 echo "✓ Session $AGENT closed"
+echo "═══════════════════════════════════"
 echo "  shipped: $SHIPPED"
 echo "  handoff: $HANDOFF"
 [ -n "$LESSON" ] && echo "  lesson:  $LESSON"
-echo "  date jsonl:  $DATE_FILE"
 echo "  agent jsonl: $AGENT_FILE"
+
+if [ -x "$MK" ] && [ -d memory ]; then
+  echo ""
+  echo "Daily retro (memkraft retro):"
+  "$MK" retro --dry-run 2>/dev/null | head -20 | sed 's/^/  /' || true
+
+  echo ""
+  echo "Decision candidates (memkraft distill-decisions):"
+  "$MK" distill-decisions 2>/dev/null | head -10 | sed 's/^/  /' || echo "  (none)"
+
+  echo ""
+  echo "다음 단계:"
+  echo "  - 회고 정식 저장: ./tools/mk.sh retro"
+  echo "  - 결정 추출 정식: ./tools/mk.sh distill-decisions --apply"
+fi
