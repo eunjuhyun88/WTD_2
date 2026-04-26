@@ -47,6 +47,9 @@ class PatternObject:
     target_phase: str                    # phase_id = success condition
     timeframe: str = "1h"
     universe_scope: str = "binance_dynamic"
+    parent_id: str | None = None
+    evolution_chain: list[str] = field(default_factory=list)
+    derivation_note: str | None = None
     tags: list[str] = field(default_factory=list)
     version: int = 1
     created_by: str = "system"
