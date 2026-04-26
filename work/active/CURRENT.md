@@ -47,7 +47,7 @@
 
 ## main SHA
 
-`d7587a39` — origin/main (2026-04-27) — PR #390 A-03-app AIParserModal 머지 (Wave 2 4/4 완료)
+`7081b8b2` — origin/main (2026-04-27) — PR #390 A-03-app AIParserModal 머지 (Wave 2 4/4 완료)
 
 ---
 
