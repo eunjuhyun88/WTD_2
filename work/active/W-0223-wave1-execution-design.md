@@ -86,7 +86,7 @@ Process / coordination change (코드 영향 최소 — 1 CI workflow + 4 markdo
 3. `gh` CLI는 모든 worktree에서 사용 가능 (Codex sandbox 포함, graceful fallback).
 4. `claude-sonnet-4-6` model ID는 시스템 prompt 명시된 latest이므로 안정 사용 가능.
 
-## Decisions (lock-in)
+## Decisions
 
 권고대로 채택. 변경 사항 있으면 본 문서 검토 시 알려주세요.
 
@@ -199,7 +199,7 @@ jobs:
 - **D-W-0223-4**: Wave 1 4개는 PR 4개로 분리 (1 issue = 1 PR 원칙).
 - **D-W-0223-5**: 본 PR은 운영 골격만, 실제 Wave 1 구현은 4명 에이전트가 별도 PR.
 
-## Next Steps (구현)
+## Next Steps
 
 1. ✅ 본 설계 문서 작성 (this file) — 검토 대기
 2. **사용자 검토 + 승인** ← 여기서 멈춤
