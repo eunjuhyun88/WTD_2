@@ -4,3 +4,6 @@
 {"id":"A007","ts":"2026-04-26T14:55:00+09:00","event":"pr_opened","number":334,"title":"feat(commands): MemKraft 11개 슬래시 커맨드","draft":true,"branch":"claude/review-previous-work-glMAc"}
 {"id":"A007","ts":"2026-04-26T15:10:00+09:00","event":"decision_recorded","slug":"세션-id-체계-identity-date-seq","path":"memory/decisions/dec-2026-04-26-세션-id-체계-identity-date-seq.md"}
 {"id":"A007","ts":"2026-04-26T15:10:00+09:00","event":"id_scheme_migration","new_format":"<identity>-<YYYY-MM-DD>-<seq>","first_id":"claude-2026-04-26-01","legacy_preserved":"A001-A007"}
+{"ts":"2026-04-26T06:12:12Z","id":"claude-2026-04-26-01","event":"session ended (claude-2026-04-26-01)","tags":["session","end","claude-2026-04-26-01"],"importance":"normal","branch":"claude/review-previous-work-glMAc","end_sha":"d6ab6beedbb5429e4d34296564b79910dd044fbd","shipped":"PR #334 (draft) — MemKraft 슬래시 11개 + ID 체계 identity-date-seq","handoff":"집에서 git 로컬 상태 확인 후 /열기로 동작 검증 → PR #334 ready for review → Phase 3 시작"}
+{"ts":"2026-04-26T06:12:12Z","id":"claude-2026-04-26-01","event":"lesson: 트리거-구조-확인 3단 분리가 자유 텍스트 인계의 정보 손실을 막는 핵심","tags":["lesson","claude-2026-04-26-01"],"importance":"high"}
+{"id":"claude-2026-04-26-01","ts":"2026-04-26T15:25:00+09:00","event":"session_closed","shipped_count":3,"prs":[334],"decisions":2,"handoff_to":"claude-2026-04-26-02"}
