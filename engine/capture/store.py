@@ -100,7 +100,8 @@ class CaptureStore:
                   block_scores_json TEXT NOT NULL,
                   verdict_id TEXT,
                   outcome_id TEXT,
-                  status TEXT NOT NULL
+                  status TEXT NOT NULL,
+                  is_watching INTEGER NOT NULL DEFAULT 0
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_capture_records_transition
@@ -122,10 +123,22 @@ class CaptureStore:
                 "definition_ref_json",
                 "TEXT NOT NULL DEFAULT '{}'",
             )
+            self._ensure_column(
+                conn,
+                "capture_records",
+                "is_watching",
+                "INTEGER NOT NULL DEFAULT 0",
+            )
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_capture_records_definition
                   ON capture_records(definition_id, captured_at_ms)
+                """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_capture_records_is_watching
+                  ON capture_records(is_watching, captured_at_ms)
                 """
             )
 
@@ -155,8 +168,8 @@ class CaptureStore:
                   pattern_version, definition_id, definition_ref_json, phase, timeframe, captured_at_ms,
                   candidate_transition_id, candidate_id, scan_id, user_note,
                   chart_context_json, research_context_json, feature_snapshot_json, block_scores_json,
-                  verdict_id, outcome_id, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  verdict_id, outcome_id, status, is_watching
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(capture_id) DO UPDATE SET
                   capture_kind=excluded.capture_kind,
                   user_id=excluded.user_id,
@@ -203,6 +216,7 @@ class CaptureStore:
                     capture.verdict_id,
                     capture.outcome_id,
                     capture.status,
+                    int(capture.is_watching),
                 ),
             )
         # Mirror to Supabase asynchronously (fire-and-forget)
@@ -225,6 +239,7 @@ class CaptureStore:
         definition_id: str | None = None,
         symbol: str | None = None,
         status: str | None = None,
+        is_watching: bool | None = None,
         limit: int = 100,
     ) -> list[CaptureRecord]:
         clauses: list[str] = []
@@ -251,6 +266,9 @@ class CaptureStore:
         if status is not None:
             clauses.append("status = ?")
             params.append(status)
+        if is_watching is not None:
+            clauses.append("is_watching = ?")
+            params.append(int(is_watching))
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(limit)
         with self._connect() as conn:
@@ -320,8 +338,26 @@ class CaptureStore:
                 threading.Thread(target=_supabase_upsert_bg, args=(record,), daemon=True).start()
         return updated
 
+    def set_watching(self, capture_id: str, watching: bool = True) -> bool:
+        """Set is_watching flag for a capture. Idempotent.
+
+        Returns True if the capture was found, False if not found.
+        """
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE capture_records SET is_watching = ? WHERE capture_id = ?",
+                (int(watching), capture_id),
+            )
+            found = cur.rowcount > 0
+        if found:
+            record = self.load(capture_id)
+            if record:
+                threading.Thread(target=_supabase_upsert_bg, args=(record,), daemon=True).start()
+        return found
+
     @staticmethod
     def _row_to_record(row: sqlite3.Row) -> CaptureRecord:
+        keys = set(row.keys())
         return CaptureRecord(
             capture_id=row["capture_id"],
             capture_kind=row["capture_kind"],
@@ -345,4 +381,5 @@ class CaptureStore:
             verdict_id=row["verdict_id"],
             outcome_id=row["outcome_id"],
             status=row["status"],
+            is_watching=bool(row["is_watching"]) if "is_watching" in keys else False,
         )
