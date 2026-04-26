@@ -275,6 +275,17 @@ class SupabaseLedgerRecordStore:
                 "entry_block_coverage": outcome.entry_block_coverage,
             },
         ))
+        # F-30 Phase 2: dual-write to ledger_entries
+        try:
+            _sb().table("ledger_entries").upsert({
+                "id": outcome.id + ":entry",
+                "capture_id": outcome.capture_id or outcome.id,
+                "pattern_slug": outcome.pattern_slug,
+                "entry_price": outcome.entry_price,
+                "btc_trend": outcome.btc_trend_at_entry,
+            }).execute()
+        except Exception as exc:
+            log.warning("ledger_entries dual-write failed (non-fatal): %s", exc)
 
     def append_score_record(self, outcome: "PatternOutcome") -> None:
         self.append(PatternLedgerRecord(
@@ -300,6 +311,19 @@ class SupabaseLedgerRecordStore:
                 "entry_ml_error": outcome.entry_ml_error,
             },
         ))
+        # F-30 Phase 2: dual-write to ledger_scores
+        try:
+            _sb().table("ledger_scores").upsert({
+                "id": outcome.id + ":score",
+                "capture_id": outcome.capture_id or outcome.id,
+                "pattern_slug": outcome.pattern_slug,
+                "p_win": outcome.entry_p_win,
+                "model_key": outcome.entry_model_key,
+                "threshold": outcome.entry_threshold,
+                "threshold_passed": outcome.entry_threshold_passed,
+            }).execute()
+        except Exception as exc:
+            log.warning("ledger_scores dual-write failed (non-fatal): %s", exc)
 
     def append_capture_record(self, capture: "CaptureRecord") -> None:
         self.append(PatternLedgerRecord(
@@ -355,6 +379,19 @@ class SupabaseLedgerRecordStore:
                 "duration_hours": outcome.duration_hours,
             },
         ))
+        # F-30 Phase 2: dual-write to ledger_outcomes
+        try:
+            _sb().table("ledger_outcomes").upsert({
+                "id": outcome.id + ":outcome",
+                "capture_id": outcome.capture_id or outcome.id,
+                "pattern_slug": outcome.pattern_slug,
+                "outcome": outcome.outcome or "pending",
+                "max_gain_pct": outcome.max_gain_pct,
+                "exit_return_pct": outcome.exit_return_pct,
+                "duration_hours": outcome.duration_hours,
+            }).execute()
+        except Exception as exc:
+            log.warning("ledger_outcomes dual-write failed (non-fatal): %s", exc)
 
     def append_verdict_record(self, outcome: "PatternOutcome") -> None:
         self.append(PatternLedgerRecord(
@@ -374,6 +411,19 @@ class SupabaseLedgerRecordStore:
                 "user_note": outcome.user_note,
             },
         ))
+        # F-30 Phase 2: dual-write to ledger_verdicts
+        try:
+            _sb().table("ledger_verdicts").upsert({
+                "id": outcome.id + ":verdict",
+                "capture_id": outcome.capture_id or outcome.id,
+                "pattern_slug": outcome.pattern_slug,
+                "user_id": outcome.user_id or "",
+                "verdict": outcome.user_verdict or "",
+                "outcome_id": outcome.id,
+                "note": outcome.user_note,
+            }).execute()
+        except Exception as exc:
+            log.warning("ledger_verdicts dual-write failed (non-fatal): %s", exc)
 
     def append_phase_attempt_record(self, attempt: "PhaseAttemptRecord") -> None:
         self.append(PatternLedgerRecord(
