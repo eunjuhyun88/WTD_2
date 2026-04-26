@@ -14,9 +14,9 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| Multi-Agent OS Phase 3-4 | A009 | 다음 — `.gitattributes` + invariants 확장 |
-| W-0145 Search Corpus 40+차원 | 미할당 | 부분 완료, 확장 필요 |
-| W-0212 Chart UX Polish | 미할당 | 백로그 |
+| `W-0213-multi-agent-os-phase34` | A009 | 다음 — `.gitattributes` + invariants 확장 |
+| `W-0145-operational-seed-search-corpus` | 미할당 | 부분 완료, 확장 필요 |
+| `W-0212-chart-ux-polish` | 미할당 | 백로그 |
 
 ---
 
