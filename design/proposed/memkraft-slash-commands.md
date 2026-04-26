@@ -1,7 +1,7 @@
 # MemKraft 슬래시 커맨드 명세
 
 **Status**: PROPOSED (2026-04-26, by A007)
-**Owner**: A008+
+**Owner**: claude-2026-04-26-01+
 **구현**: PR #334 (`.claude/commands/*.md` 11개)
 
 ---
@@ -27,11 +27,14 @@
 - `/인계`: 전제 가정의 main SHA 누락 시 거부
 - `/완료`: Exit Criteria 미정의 work item 완료 거절
 
-### 3. 가변 Agent ID 자동 발번
+### 3. 세션 ID 자동 발번 (정체성 + 날짜 + 시퀀스)
 
-- `tools/start.sh`가 `memory/sessions/*.jsonl`에서 가장 큰 `A###` +1
+- 형식: `<identity>-<YYYY-MM-DD>-<seq>` (예: `claude-2026-04-26-01`)
+- 기본 identity = `claude`; `MEMKRAFT_IDENTITY` env로 오버라이드 (`codex`, `cursor`, `사용자` 등)
+- `tools/start.sh`가 같은 (identity, date)의 최대 seq +1
 - `state/current_agent.txt`에 기록
 - 모든 의미 기록의 `agent` 필드에 자동 삽입
+- 레거시 `A001`-`A007`은 그대로 유지 (히스토리 기록)
 
 ---
 
@@ -93,7 +96,7 @@
 
 ### Work item (2)
 
-#### `/인계` → `memory/sessions/agents/A###.jsonl` + `memory/sessions/{date}.jsonl`
+#### `/인계` → `memory/sessions/agents/<현재 세션 ID>.jsonl` + `memory/sessions/{date}.jsonl`
 - 필수 필드: 한 일, 안 한 일, 막힌 곳, 즉시 다음 단계, 전제 가정
 - 자동 추출: git log, gh pr list, state/state.json
 - 거부 룰: 전제 가정의 main SHA 누락, "이것저것" 같은 산출물 불명

@@ -17,8 +17,12 @@ Every session starts with:
 ./tools/start.sh
 ```
 
-This auto-issues your Agent ID (A###), refreshes derived state, and shows
-active locks, P0/P1 priorities, and MemKraft signals in <50 seconds.
+This auto-issues your session ID in the form `<identity>-<YYYY-MM-DD>-<seq>`
+(default identity = `claude`; override with `MEMKRAFT_IDENTITY=codex` etc.),
+refreshes derived state, and shows active locks, P0/P1 priorities, and
+MemKraft signals in <50 seconds.
+
+Legacy IDs `A001`-`A007` remain valid as historical session records.
 `work/active/CURRENT.md` remains the human-maintained source of truth;
 `state/` is derived and must not replace it.
 

@@ -2,3 +2,5 @@
 {"id":"A007","ts":"2026-04-26T14:55:00+09:00","event":"decision_recorded","slug":"memkraft-슬래시-커맨드-11개-목적별-구조-강제","path":"memory/decisions/dec-2026-04-26-memkraft-슬래시-커맨드-11개-목적별-구조-강제.md"}
 {"id":"A007","ts":"2026-04-26T14:55:00+09:00","event":"design_proposed","path":"design/proposed/memkraft-slash-commands.md","pr":334}
 {"id":"A007","ts":"2026-04-26T14:55:00+09:00","event":"pr_opened","number":334,"title":"feat(commands): MemKraft 11개 슬래시 커맨드","draft":true,"branch":"claude/review-previous-work-glMAc"}
+{"id":"A007","ts":"2026-04-26T15:10:00+09:00","event":"decision_recorded","slug":"세션-id-체계-identity-date-seq","path":"memory/decisions/dec-2026-04-26-세션-id-체계-identity-date-seq.md"}
+{"id":"A007","ts":"2026-04-26T15:10:00+09:00","event":"id_scheme_migration","new_format":"<identity>-<YYYY-MM-DD>-<seq>","first_id":"claude-2026-04-26-01","legacy_preserved":"A001-A007"}

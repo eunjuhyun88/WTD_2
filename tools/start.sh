@@ -21,15 +21,37 @@ QUIET=0
 MAIN_SHA="$(jq -r .main_sha state/state.json 2>/dev/null || echo unknown)"
 CURRENT_BRANCH="$(jq -r .current_branch state/state.json 2>/dev/null || echo unknown)"
 
-# 2. 다음 Agent ID 발번 (가변, 제한 없음)
-# memory/sessions/*.jsonl에서 가장 큰 A### 찾고 +1
-LATEST_ID=$(grep -hoE '"id":"A[0-9]+"' memory/sessions/*.jsonl 2>/dev/null \
-            | sed 's/.*A\([0-9]*\).*/\1/' \
-            | sort -n | tail -1 || true)
-LATEST_ID=${LATEST_ID:-0}
-NEXT_NUM=$((10#${LATEST_ID} + 1))
-NEXT_ID=$(printf "A%03d" $NEXT_NUM)
+# 2. 다음 Agent ID 발번 — <identity>-<YYYY-MM-DD>-<seq>
+# - identity: 기본 "claude", env MEMKRAFT_IDENTITY로 오버라이드 가능 (codex/cursor/사용자 등)
+# - date: KST 날짜
+# - seq: 같은 (identity, date) 안에서 01/02/03... 자동 증가
+IDENTITY="${MEMKRAFT_IDENTITY:-claude}"
+DATE_KST="$(TZ=Asia/Seoul date +%Y-%m-%d)"
+PREFIX="${IDENTITY}-${DATE_KST}"
+
+# 오늘 같은 identity의 최대 seq 찾기 (파일명 + jsonl 내부 id 모두 검사)
+MAX_SEQ_FILE=$(ls memory/sessions/agents/${PREFIX}-*.jsonl 2>/dev/null \
+               | sed "s|.*${PREFIX}-\([0-9][0-9]*\)\.jsonl|\1|" \
+               | sort -n | tail -1 || true)
+MAX_SEQ_INNER=$(grep -hoE "\"id\":\"${PREFIX}-[0-9]+\"" memory/sessions/agents/*.jsonl 2>/dev/null \
+                | sed "s/.*${PREFIX}-\([0-9][0-9]*\).*/\1/" \
+                | sort -n | tail -1 || true)
+MAX_SEQ=0
+[ -n "${MAX_SEQ_FILE:-}" ] && [ "$MAX_SEQ_FILE" -gt "$MAX_SEQ" ] && MAX_SEQ=$MAX_SEQ_FILE
+[ -n "${MAX_SEQ_INNER:-}" ] && [ "$MAX_SEQ_INNER" -gt "$MAX_SEQ" ] && MAX_SEQ=$MAX_SEQ_INNER
+NEXT_SEQ=$(printf "%02d" $((10#${MAX_SEQ} + 1)))
+NEXT_ID="${PREFIX}-${NEXT_SEQ}"
 echo "$NEXT_ID" > state/current_agent.txt
+
+# 직전 ID (같은 identity 우선, 없으면 어떤 세션이든 가장 최근)
+LATEST_ID=""
+if [ "$MAX_SEQ" -gt 0 ]; then
+  LATEST_ID="${PREFIX}-$(printf "%02d" $MAX_SEQ)"
+else
+  # 오늘 첫 세션 — 가장 최근 수정된 agent jsonl 사용
+  LATEST_FILE=$(ls -t memory/sessions/agents/*.jsonl 2>/dev/null | head -1)
+  [ -n "$LATEST_FILE" ] && LATEST_ID=$(basename "$LATEST_FILE" .jsonl)
+fi
 
 if [ $QUIET -eq 1 ]; then
   echo "Agent: $NEXT_ID | main: ${MAIN_SHA:0:8} | branch: $CURRENT_BRANCH"
@@ -89,13 +111,14 @@ else
   echo "  (no per-agent records yet — first agent to use ./tools/end.sh creates them)"
 fi
 
-# 내 이력 (NEXT_ID는 새 발번이라 비어있음, 직전 ID 표시)
-PREV_ID=$(printf "A%03d" $((10#${LATEST_ID:-0})))
-PREV_FILE="memory/sessions/agents/${PREV_ID}.jsonl"
-if [ -f "$PREV_FILE" ]; then
-  echo ""
-  echo "Previous agent ($PREV_ID) handoff:"
-  tail -1 "$PREV_FILE" 2>/dev/null | jq -r '"  shipped: \(.shipped // "?")\n  handoff: \(.handoff // "?")"' 2>/dev/null || true
+# 직전 세션 인계 표시
+if [ -n "$LATEST_ID" ]; then
+  PREV_FILE="memory/sessions/agents/${LATEST_ID}.jsonl"
+  if [ -f "$PREV_FILE" ]; then
+    echo ""
+    echo "Previous session ($LATEST_ID) handoff:"
+    tail -1 "$PREV_FILE" 2>/dev/null | jq -r '"  shipped: \(.shipped // "?")\n  handoff: \(.handoff // "?")"' 2>/dev/null || true
+  fi
 fi
 
 cat <<EOF
