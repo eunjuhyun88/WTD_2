@@ -1,8 +1,84 @@
 # W-0220 — 전체 작업 체크리스트
 
 > 범례: `[x]` 완료 / `[~]` 부분 / `[ ]` 미완료 / `[!]` 차단·결정 필요
-> Source: W-0220 PRD v2.2 + feature-implementation-map.md v3.0 + 코드 실측 (3ce9cf5d)
-> Updated: 2026-04-26
+> Source: W-0220 PRD v2.3 + feature-implementation-map.md v3.0 + 코드 실측 (9795d11a)
+> Updated: 2026-04-27 (v2.3 — 데이터 파이프라인 정본화 세션)
+
+---
+
+## 📌 v2.3 신규 추가 (2026-04-27 세션)
+
+### 🟢 완료 (PR #374 MERGED 9795d11a)
+
+- [x] **★ scanner→capture pipe fix** — `_on_entry_signal`에 CaptureRecord 생성 (Day-1 운영 동안 미작동했던 root cause 제거)
+- [x] **PatternObject evolution_chain** — `parent_id`, `evolution_chain`, `derivation_note` 필드 (R-02, Phase D AutoResearch hook)
+- [x] **docs/data/ 정본 폴더** — 9 파일 신설/이동 (00~09)
+- [x] **Verdict cardinality 단일화** — main 5-cat canonical (`valid/invalid/missed/too_late/unclear`), 6-cat은 alternative proposal로 보존
+
+### 🔴 P0 v2.3 (data milestone 직결)
+
+#### 데이터 inventory 정본
+- [ ] **L-1** `docs/data/14_DATA_INVENTORY.md` — 20 provider × URL × 비용 × free/paid (false claim 수정: "27 fetcher" → 실제 15, "Velo 21" → 실제 0)
+
+#### 데이터 보강 (Wave 2.5 진입 전)
+- [ ] **D-A** STH Cost Basis (Glassnode 무료 + 직접 계산) [M] ⭐⭐⭐⭐⭐
+- [ ] **D-B** Exchange Reserve full history (Binance/OKX/Coinbase) [M] ⭐⭐⭐⭐⭐
+- [ ] **D-C** HODL Waves (UTXO age 직접 계산) [L] ⭐⭐⭐⭐
+- [ ] **D-D** ETF Flow (BlackRock/Grayscale 공시) [S] ⭐⭐⭐⭐⭐
+- [ ] **D-E** Network Growth (새 주소 일별 집계) [S] ⭐⭐⭐⭐
+- [ ] **D-F** Realized P&L Ratio (UTXO realized cap) [M] ⭐⭐⭐⭐
+- [ ] **D-G** Volume per TVL Ratio (DEX_Vol/TVL 단순 계산) [XS] ⭐⭐⭐
+- [ ] **D-X** 8개 partial 인디케이터 강화 (Whale Ratio/Miner Outflow/NVT/Network Growth/Unique Swap/Token Unlock/STH/ETF)
+
+#### 코드 액션
+- [ ] **L-3** F-60 multi-period gate (`engine/stats/engine.py:_compute_gate_status`, median(W1,W2,W3)≥0.55 + min≥0.40)
+- [ ] **L-4** 1-click Watch app UI (engine route #373 머지됨, 버튼만)
+- [ ] **L-5** Ledger Supabase 이전 (JSON files DEPRECATED → one-shot migration)
+
+### 🟠 P1 v2.3 (정본 문서)
+
+- [ ] **L-6** Visualization Engine 정본 (`docs/data/10_VISUALIZATION_ENGINE.md`) — query→intent(6)→template(6)→ChartViewConfig
+- [ ] **L-7** AI 역할 정본 (`docs/data/11_AI_ROLES.md`) — parser/reranker/judge + signal vocabulary 30개 고정
+- [ ] **L-8** 4-tier 검색 엔진 정본 (`docs/data/12_SEARCH_ENGINE_4TIER.md`) — candidate→sequence→reranker→LLM judge + 점수식 + negative set
+- [ ] **L-9** UI Hierarchy 정본 (`docs/data/13_UI_HIERARCHY.md`) — 3-mode + HUD 4 카드 + IDE split-pane
+- [ ] **L-10** 사업 포지셔닝 (`docs/data/08`에 추가) — "Pattern Research OS" + 경쟁표 + 가격 모델
+- [ ] **L-11** 인디케이터 갭 spec (`docs/data/15_INDICATOR_GAP.md`) — D-A~G + 8 partial 강화 plan
+
+### 🟡 P2 v2.3 (거버넌스)
+
+- [ ] **L-11** Multi-agent isolation 룰 (`docs/runbooks/multi-agent-collaboration.md`) — Session Isolation / Touch Discipline / Concept Ownership / Pre-flight Check
+- [ ] **L-12** Mutex 강화 (`/claim` 슬래시 + `tools/preflight.sh` + `spec/CONTRACTS.md` lock)
+
+### 4가지 데이터 작업 영역 (사용자 명시)
+
+| # | 영역 | 매핑 항목 |
+|---|---|---|
+| **1. 데이터 보강** | D-A ~ D-G + 8 partial | 7 신규 + 8 강화 |
+| **2. 어떻게 뿌려줄지** | Visualization Engine | L-6 |
+| **3. 어떻게 정규화** | Signal Vocabulary 30개 + feature normalization | L-7 |
+| **4. 오토리서치 파이프라인** | Karpathy loop + iters.tsv + from-scratch | docs/data/09 + L-12 (Phase D) |
+
+### 단일 cardinal milestone (CTO call)
+
+```
+지금 (verdict 0건) → ✅ FIXED PR #374
+→ verdict 1~50건 → 5-cat UI + Watch UI
+→ verdict 50~200건 → multi-period gate 측정
+→ ★ verdict 200건 + median ≥ 0.55 + min ≥ 0.40 = Phase D 진입
+→ AutoResearch loop (NEVER STOP)
+```
+
+### 분리 원칙 (이번 세션 교훈)
+
+| 원칙 | 이유 |
+|---|---|
+| 1 PR = 1 논리 | PR #374가 6개 논리 묶어서 충돌 발생 |
+| 정본 문서 = 1 파일 = 1 논리 | 발견성 ↓ 방지 |
+| 코드 변경 ≠ 문서 변경 | review 분리 |
+| BUILT/NOT BUILT 표는 단일 위치 | 거짓말 방지 |
+| 외부 검증 가능한 숫자만 | "27 fetcher" false claim 방지 |
+
+---
 
 ---
 

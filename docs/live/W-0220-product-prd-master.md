@@ -1,10 +1,121 @@
 # W-0220 — Product PRD Master (CTO + AI Researcher Edition, v2)
 
-> **개정**: v1 (2026-04-26 오전) → v2 (2026-04-26 저녁)
-> **사유**: v1은 "이미 만들어진 것"을 "갭"으로 잘못 잡았다. v2는 코드 실측 + 설계문서 9-Doc + telegram refs 4채널 분석 + flywheel-closure-design 통합으로 재작성.
+> **개정**: v1 (2026-04-26 오전) → v2 (2026-04-26 저녁) → **v2.3 (2026-04-27 — 데이터 파이프라인 정본화 세션)**
+> **사유**: v1은 "이미 만들어진 것"을 "갭"으로 잘못 잡았다. v2는 코드 실측 + 설계문서 9-Doc + telegram refs 4채널 분석 + flywheel-closure-design 통합으로 재작성. v2.3은 PR #374 (scanner→capture pipe fix) + docs/data/ 9 파일 정본화 + 인디케이터 86% 커버리지 audit + 12 논리 분리 추가.
 > **저자**: A022 (CTO + AI Researcher hat)
-> **Source of truth**: `engine/`(~200 .py) + `app/`(180 routes) + `~/Downloads/2222/` 캐노니컬 + `docs/live/flywheel-closure-design.md` + `docs/design/11_CTO_DATA_ARCHITECTURE_REALITY.md` + `tmp/telegram_refs/` 4채널
-> **Base SHA**: 3ce9cf5d
+> **Source of truth**: `engine/`(~200 .py) + `app/`(180 routes) + `~/Downloads/2222/` 캐노니컬 + `docs/live/flywheel-closure-design.md` + `docs/data/` 9 파일 정본 + `tmp/telegram_refs/` 4채널
+> **Base SHA**: 9795d11a (PR #374 머지 후)
+
+---
+
+## 0.3 v2.3 — 데이터 파이프라인 정본화 세션 (2026-04-27)
+
+### 정정 사항 (v2.2 → v2.3)
+
+| v2.2 주장 | v2.3 정정 |
+|---|---|
+| "27 fetcher (engine/data_cache/)" | **실제 15** — false count. 진짜 외부 provider는 20 distinct (URL 기준) |
+| "Velo 21 파일" | **실제 0 호출** — 전부 `velocity` 변수 매칭 false positive |
+| "scanner→capture 파이프 작동" | ★ **Day-1 운영 동안 미작동** — `_on_entry_signal`이 ledger만 저장, CaptureRecord 생성 누락. PR #374에서 fix |
+| "ledger 702 rows" | **모두 synthetic test data** (2025-01-01 hardcoded) — 실제 production capture는 0건이었음 |
+
+### 핵심 픽스 (PR #374 MERGED 9795d11a)
+
+- ★ `engine/patterns/scanner.py:_on_entry_signal` — CaptureRecord 생성 추가 (지난 수개월 verdict 0건 근본 원인 제거)
+- `engine/patterns/types.py` — PatternObject `parent_id`, `evolution_chain`, `derivation_note` 필드 추가 (Phase D AutoResearch hook)
+- `engine/ledger/types.py` — main 5-cat verdict 유지 (rebase로 정합)
+- `docs/data/` 9 파일 정본화
+
+### docs/data/ 정본 폴더 (9 파일)
+
+```
+00_PIPELINE.md             system pull × user save 두 축
+01_ARCHITECTURE.md         L0~L7 layer 모델
+02_CONTRACTS.md            (← design/06) API/DB/event 스키마
+03_COMPLETE_ARCHITECTURE.md (← design/10) User Activity + Wiki + Stats SQL
+04_CTO_REALITY.md          (← design/11) CTO 10 결정
+05_ENGINE_PIPELINE.md      (← live/) engine 도메인 boundary
+07_AUTORESEARCH_ML.md      (← live/) Phase A0~D 계약
+08_AUTORESEARCH_INTEGRATION.md  8 GitHub repo 통합
+09_KARPATHY_REFERENCES.md  Karpathy bitter lesson + LLM Wiki
+```
+
+### 12 논리 분리 (이번 세션 도출)
+
+각 항목 = 별도 PR 단위. 한 PR에 여러 논리 묶지 말 것 (PR #374가 6개 논리 묶어 충돌).
+
+| ID | 논리 | 우선순위 | 분량 |
+|---|---|---|---|
+| **L-1** | 데이터 inventory 진실표 (`docs/data/14_DATA_INVENTORY.md`) | P0 | 400줄 |
+| **L-2** | Verdict cardinality 단일화 (main 5-cat canonical) | P0 (선언만) | 0 |
+| **L-3** | F-60 multi-period gate (median+floor) | P0 | 200줄 |
+| **L-4** | 1-click Watch app UI (engine #373 머지됨) | P0 | 150줄 |
+| **L-5** | Ledger Supabase 이전 (JSON DEPRECATED) | P0 | 300줄 |
+| **L-6** | Visualization Engine 정본 (`docs/data/10`) | P1 | 600줄 |
+| **L-7** | AI 역할 정본 + Signal Vocabulary (`docs/data/11`) | P1 | 300줄 |
+| **L-8** | 4-tier 검색 엔진 정본 (`docs/data/12`) | P1 | 500줄 |
+| **L-9** | UI Hierarchy 정본 (`docs/data/13`) | P1 | 400줄 |
+| **L-10** | 사업 포지셔닝 (`docs/data/08`에 추가) | P1 | 150줄 |
+| **L-11** | Multi-agent isolation 룰 (`docs/runbooks/`) | P2 | 200줄 |
+| **L-12** | Mutex 강화 (`/claim` + `tools/preflight.sh`) | P2 | 300줄 |
+
+### 인디케이터 커버리지 audit (35개 핵심 vs 우리 코드)
+
+| 분류 | 개수 | 비율 | 상태 |
+|---|---|---|---|
+| ✅✅ STRONG (10+ 파일) | 14 | 40% | Funding/OI/L-S/Liq/RSI/EMA/MACD/CVD/VWAP/Bollinger/ATR/MVRV/NUPL/SOPR/Coinbase Premium/Fear&Greed |
+| ✅ BUILT (3-10 파일) | 8 | 23% | Realized Price/Active Address/Exchange Flow/SSR/OBV/Supertrend/TVL/Social Volume/DEX Volume |
+| 🟡 partial (1-3 파일) | 11 | 31% | Exchange Reserve/Whale Ratio/Miner Outflow/NVT/HODL Waves/Network Growth/STH Cost Basis/Unique Swap/Token Unlock/ETF Flow/Realized P&L |
+| ❌ MISSING | 2 | 6% | Volume per TVL Ratio / Realized P&L Ratio |
+
+**한 줄 결론**: 데이터 수집 능력은 충분. 진짜 갭 = 7개 인디케이터 + fragmentation (app이 engine 우회 호출).
+
+### 즉시 보강 후보 (D-A ~ D-G, Wave 2.5 진입 전 P0)
+
+| ID | 인디케이터 | 출처 (무료) | 분량 | 트레이더 중요도 |
+|---|---|---|---|---|
+| **D-A** | STH Cost Basis | Glassnode + 직접 계산 | M | ⭐⭐⭐⭐⭐ |
+| **D-B** | Exchange Reserve (full history) | Binance/OKX/Coinbase | M | ⭐⭐⭐⭐⭐ |
+| **D-C** | HODL Waves | UTXO age 직접 계산 | L | ⭐⭐⭐⭐ |
+| **D-D** | ETF Flow | BlackRock/Grayscale 공시 | S | ⭐⭐⭐⭐⭐ |
+| **D-E** | Network Growth | 새 주소 일별 집계 | S | ⭐⭐⭐⭐ |
+| **D-F** | Realized P&L Ratio | UTXO realized cap | M | ⭐⭐⭐⭐ |
+| **D-G** | Volume per TVL Ratio | (DEX_Vol/TVL) 단순 계산 | XS | ⭐⭐⭐ |
+
+**총 ~7 신규 + 8개 강화** = `docs/data/15_INDICATOR_GAP.md` 1 spec doc 분량.
+
+### 4가지 데이터 작업 영역 (사용자 명시)
+
+| # | 작업 | 매핑 |
+|---|---|---|
+| **1. 데이터 보강** | 7개 인디케이터 (D-A~G) + fragmentation 통합 | L-1 + D-A~G |
+| **2. 그걸 어떻게 뿌려줄지** | Visualization Engine (intent×template) | L-6 |
+| **3. 어떻게 정규화하는지** | Signal Vocabulary 30개 고정 + feature normalization | L-7 + 04_CTO_REALITY.md |
+| **4. 오토리서치 파이프라인** | Karpathy loop + iters.tsv + from-scratch escape | docs/data/09 + L-12 (Phase D 진입 후) |
+
+### 단일 cardinal milestone
+
+```
+지금 (verdict 0건) → scanner→capture pipe ✅ FIXED PR #374
+→ verdict 1~50건 (Day-1) → 5-cat UI + Watch UI
+→ verdict 50~200건 (F-60 시작) → multi-period gate 측정
+→ ★ verdict 200건 + median ≥ 0.55 + min ≥ 0.40 = Phase D 진입
+→ PatternObject variant 자동 생성 + iters.tsv loop (NEVER STOP)
+→ 정체 5 iter → from-scratch escape
+→ 새 lineage > best → root pattern 변경
+```
+
+### 분리 원칙 (이번 세션 교훈)
+
+| 원칙 | 이유 |
+|---|---|
+| 1 PR = 1 논리 | PR #374 6개 논리 묶어 main 충돌 발생 |
+| 정본 문서 = 1 파일 = 1 논리 | 시각화+AI+UI 한 문서 ⇒ 발견성 ↓ |
+| 코드 변경 ≠ 문서 변경 | 같은 PR에 섞으면 review 어려움 |
+| BUILT/NOT BUILT 표는 단일 위치 | 흩어지면 거짓말 시작 |
+| 외부 검증 가능한 숫자만 | "27 fetcher" false claim 방지 |
+
+---
 
 ---
 
