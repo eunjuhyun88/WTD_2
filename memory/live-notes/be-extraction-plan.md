@@ -1,36 +1,12 @@
 # BE Extraction Plan (Live Note)
 
-**Tier: core**
-
-> Auto-tracked — updates automatically as new information arrives
-
-## Tracking Config
-- **Type:** concept
-- **Started:** 2026-04-12
-- **Last Update:** 2026-04-12
-- **Update Count:** 2
-- **Source:** cto-session-2026-04-12
+**Tier:** archival
+**Source:** cto-session-2026-04-12, be-extraction-design-v0.md
+**Updated:** 2026-04-26
 
 ## Current State
-(Latest information accumulates here)
+- The historical backend extraction plan described a five-step path: contracts, providers, engine-core, server-core, then apps/web. [Source: be-extraction-design-v0.md, 2026-04-12]
+- The plan kept one monorepo and one process boundary, with no HTTP split during extraction. [Source: be-extraction-design-v0.md, 2026-04-12]
 
-## Recent Activity
-- **2026-04-12** | 5-step backend extraction: contracts -> providers -> engine-core -> server-core -> apps/web. Same monorepo, same process, no HTTP split. [Source: be-extraction-design-v0.md]
-- **2026-04-12** | Tracking started [Source: cto-session-2026-04-12]
-
-## Key Points
-(Key points are automatically summarized here)
-
-## Related Entities
-(Links auto-populated as relationships are discovered)
-
-## Open Threads
-- [ ] Initial setup — enrichment needed
-
----
-
-## Timeline (Full Record)
-
-- **2026-04-12** | 5-step backend extraction: contracts -> providers -> engine-core -> server-core -> apps/web. Same monorepo, same process, no HTTP split. [Source: be-extraction-design-v0.md]
-
-- **2026-04-12** | Live note created [Source: cto-session-2026-04-12]
+## Next
+- Treat this as archived reference unless a new active work item promotes backend extraction again.

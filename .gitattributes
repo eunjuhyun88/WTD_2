@@ -1,2 +1,21 @@
+# Append-only MemKraft logs preserve both automation and agent events.
 memory/sessions/*.jsonl merge=union
 memory/sessions/**/*.jsonl merge=union
+
+# MemKraft note files accumulate facts from agents and sync automation. Union
+# avoids one side silently replacing the other during queue-branch merges.
+memory/live-notes/*.md merge=union
+memory/decisions/*.md merge=union
+memory/incidents/*.md merge=union
+memory/tasks/*.md merge=union
+memory/debug/*.md merge=union
+memory/inbox/*.md merge=union
+
+# Generated/cache state should never win over the active branch.
+state/** merge=ours -text
+memory/.memkraft/** merge=ours -text
+
+# Human-maintained coordination files should not be overwritten by memory-sync
+# queue branches. The ours driver is installed by app/scripts/dev/bootstrap-git-config.sh.
+work/active/CURRENT.md merge=ours
+spec/CONTRACTS.md merge=ours

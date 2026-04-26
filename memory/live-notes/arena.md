@@ -1,36 +1,12 @@
 # WTD Arena (Live Note)
 
-**Tier: core**
-
-> Auto-tracked — updates automatically as new information arrives
-
-## Tracking Config
-- **Type:** concept
-- **Started:** 2026-04-12
-- **Last Update:** 2026-04-12
-- **Update Count:** 2
-- **Source:** WTD_UNIFIED_DESIGN.md
+**Tier:** core
+**Source:** WTD_UNIFIED_DESIGN.md, root CLAUDE.md
+**Updated:** 2026-04-26
 
 ## Current State
-(Latest information accumulates here)
+- WTD Arena frames the same market data as competing interpretations: AI and human judges evaluate 48 factors, while market outcomes arbitrate the result. [Source: root CLAUDE.md, 2026-04-12]
+- Arena records map into `GameRecord`, training `OrpoPair`, and memory `RAGEntry` artifacts. [Source: root CLAUDE.md, 2026-04-12]
 
-## Recent Activity
-- **2026-04-12** | Same data different interpretation - AI vs human judge 48 factors, market arbitrates. GameRecord -> OrpoPair (training) + RAGEntry (memory). [Source: root CLAUDE.md]
-- **2026-04-12** | Tracking started [Source: WTD_UNIFIED_DESIGN.md]
-
-## Key Points
-(Key points are automatically summarized here)
-
-## Related Entities
-(Links auto-populated as relationships are discovered)
-
-## Open Threads
-- [ ] Initial setup — enrichment needed
-
----
-
-## Timeline (Full Record)
-
-- **2026-04-12** | Same data different interpretation - AI vs human judge 48 factors, market arbitrates. GameRecord -> OrpoPair (training) + RAGEntry (memory). [Source: root CLAUDE.md]
-
-- **2026-04-12** | Live note created [Source: WTD_UNIFIED_DESIGN.md]
+## Next
+- Reconfirm this note against current product docs before using it as implementation scope.
