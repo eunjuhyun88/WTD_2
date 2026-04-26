@@ -27,13 +27,13 @@
 
 > AC: 5값 저장 200 / 기존 3값 호환 / stats 반영 / wiki trigger
 
-- [ ] **F-02-1** `engine/ledger/types.py` VerdictLabel = `valid | invalid | missed | too_late | unclear` (5종, Q1: missed/too_late 분리)
-- [ ] **F-02-2** `engine/captures/verdict.py` 5종 수신 + DB write
-- [ ] **F-02-3** `engine/api/routes/captures.py` POST `/captures/{id}/verdict` 업데이트
-- [ ] **F-02-4** `app/src/routes/api/captures/[id]/verdict/+server.ts` 5종 proxy
-- [ ] **F-02-5** `app/src` Verdict Inbox 5-cat 버튼 UI (valid/invalid/missed/too_late/unclear)
-- [ ] **F-02-6** 기존 3값(valid/invalid/unclear) → 5값 DB migration (backfill 불필요, forward-only)
-- [ ] **F-02-7** Engine CI pass + App CI pass
+- [x] **F-02-1** `engine/ledger/types.py` VerdictLabel = `valid | invalid | missed | too_late | unclear` (5종, Q1: missed/too_late 분리)
+- [x] **F-02-2** `engine/captures/verdict.py` 5종 수신 + DB write
+- [x] **F-02-3** `engine/api/routes/captures.py` POST `/captures/{id}/verdict` 업데이트
+- [x] **F-02-4** `app/src/routes/api/captures/[id]/verdict/+server.ts` 5종 proxy
+- [x] **F-02-5** `app/src` Verdict Inbox 5-cat 버튼 UI (valid/invalid/missed/too_late/unclear)
+- [x] **F-02-6** 기존 3값(valid/invalid/unclear) → 5값 DB migration (backfill 불필요, forward-only)
+- [x] **F-02-7** Engine CI pass + App CI pass
 
 ---
 
