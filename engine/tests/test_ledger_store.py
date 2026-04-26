@@ -1,13 +1,14 @@
 """Tests for LedgerStore JSON-based persistence."""
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from ledger.store import LedgerRecordStore, LedgerStore
+from ledger.store import LedgerRecordStore, LedgerStore, get_ledger_record_store, get_ledger_store
 from ledger.types import PatternLedgerRecord, PatternOutcome, PatternStats
 
 
@@ -402,3 +403,60 @@ class TestLedgerRecordStore:
         assert stats.training_run_count == 1
         assert stats.model_count == 1
         assert stats.capture_to_entry_rate == pytest.approx(0.5)
+
+
+class TestProductionFailFast:
+    """W-0215: get_ledger_store / get_ledger_record_store must raise in prod without Supabase."""
+
+    def test_get_ledger_store_raises_in_cloud_run_without_supabase(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("K_SERVICE", "cogotchi")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
+        with pytest.raises(RuntimeError, match="Judgment ledger data would be lost"):
+            get_ledger_store()
+
+    def test_get_ledger_record_store_raises_in_cloud_run_without_supabase(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("K_SERVICE", "cogotchi")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
+        with pytest.raises(RuntimeError, match="Ledger record data would be lost"):
+            get_ledger_record_store()
+
+    def test_get_ledger_store_raises_with_engine_runtime_role_api(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ENGINE_RUNTIME_ROLE", "api")
+        monkeypatch.delenv("K_SERVICE", raising=False)
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
+        with pytest.raises(RuntimeError):
+            get_ledger_store()
+
+    def test_get_ledger_store_returns_file_store_in_local_dev(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("K_SERVICE", raising=False)
+        monkeypatch.delenv("ENGINE_RUNTIME_ROLE", raising=False)
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
+        store = get_ledger_store()
+        assert isinstance(store, LedgerStore)
+
+    def test_get_ledger_record_store_returns_file_store_in_local_dev(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("K_SERVICE", raising=False)
+        monkeypatch.delenv("ENGINE_RUNTIME_ROLE", raising=False)
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+
+        store = get_ledger_record_store()
+        assert isinstance(store, LedgerRecordStore)
