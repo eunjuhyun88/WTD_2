@@ -13,12 +13,13 @@
 | Work Item | Owner | 상태 |
 |---|---|---|
 | `W-0214-product-charter-gate` | contract | PR #347 landed; follow-up audit/sync in progress |
+| `W-0221-f7-meta-automation` | meta | **PR-1 merged (#362)**; PR-2 다음 세션 (post-merge mk.log + worktree cron + Actions issue-status-sync) |
 
 ---
 
 ## main SHA
 
-`66e5979f` — origin/main (2026-04-26) — PR #346 머지 (W-0145 search corpus 40+dim)
+`b66a7896` — origin/main (2026-04-26) — PR #362 머지 (W-0221 F-7 PR-1: pre-commit unknown-agent gate + W-0220 PRD v2.2 docs canonical)
 
 ---
 
