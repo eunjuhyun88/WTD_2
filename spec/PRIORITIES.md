@@ -5,28 +5,19 @@
 
 ---
 
-## P0 — Multi-Agent OS v2 적용 (Phase 3-4)
+## P0 — W-0132 Copy Trading Phase 1
 
-**Owner**: A008
-**Branch**: feat/multi-agent-os-slash-commands
-**Spec**: `design/proposed/multi-agent-os-v2.md`
+**Owner**: 미할당
+**Branch**: feat/w-0132-copy-trading-phase1
+**Spec**: `work/active/W-next-design-20260426.md`
 
-Status: PR #335에서 구현 중.
+- Supabase migration 022 (trader_profiles, copy_subscriptions)
+- engine/copy_trading/: leader_score.py, leaderboard.py, routes
+- App: CopyTradingLeaderboard.svelte + 3개 API 라우트
 
-- Phase 3: `design/current/invariants.yml` + `tools/verify_design.sh` + CI gate
-- Phase 4: `.gitattributes` merge policy + MemKraft wrapper/hook hardening
-- Agent boot/end: `Design status` 표시 및 drift 검증
+Exit: GET /leaderboard 응답 + UI 렌더링 + CI pass
 
-Exit: `./tools/verify_design.sh`, MemKraft health, PR checks 모두 pass.
-
-## P1 — W-0145 Search Corpus 40+차원
-
-**Status**: 완료 — main에 구현됨 (`work/active/CURRENT.md` 기준)
-**Next**: 검색 품질 회귀 측정이 필요하면 별도 eval PR로 분리.
-
----
-
-## P2 — W-0212 Chart UX Polish
+## P1 — W-0212 Chart UX Polish
 
 **Owner**: 미할당
 **Branch**: feat/w-0212-chart-ux-polish
