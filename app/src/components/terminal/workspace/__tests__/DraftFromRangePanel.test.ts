@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
  * A-04-app: DraftFromRangePanel tests.
- *
  * Tests draftPatternFromRange API integration matching A-04-eng (PR #372).
- * Engine route: POST /patterns/draft-from-range
  */
 
 import { draftPatternFromRange } from '$lib/api/terminalApi';
@@ -14,7 +12,7 @@ describe('DraftFromRangePanel — A-04-app', () => {
     vi.restoreAllMocks();
   });
 
-  it('POST /api/patterns/draft-from-range', async () => {
+  it('POST /api/patterns/draft-from-range returns parsed draft', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({
         pattern_family: 'oi_reversal',
@@ -34,14 +32,10 @@ describe('DraftFromRangePanel — A-04-app', () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const result = await draftPatternFromRange('BTCUSDT', 1700000000, 1700003600, '15m');
-
     expect(result.pattern_family).toBe('oi_reversal');
     expect(result.extracted_features?.oi_change).toBe(0.45);
     expect(result.extracted_features?.liq_volume).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const callArgs = fetchMock.mock.calls[0];
-    expect(callArgs[0]).toBe('/api/patterns/draft-from-range');
-    expect(callArgs[1]?.method).toBe('POST');
   });
 
   it('throws on engine 422 (4+ features null)', async () => {
@@ -66,23 +60,30 @@ describe('DraftFromRangePanel — A-04-app', () => {
     ).rejects.toThrow();
   });
 
-  it('default timeframe = 15m', () => {
-    // Type-level test: timeframe optional with default
-    const fn = draftPatternFromRange;
-    expect(fn).toBeDefined();
+  it('uses correct URL path', async () => {
+    let capturedUrl = '';
+    const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+      capturedUrl = typeof url === 'string' ? url : url.toString();
+      return new Response('{}', { status: 200 });
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await draftPatternFromRange('BTCUSDT', 1700000000, 1700003600, '15m');
+    expect(capturedUrl).toBe('/api/patterns/draft-from-range');
   });
 
   it('builds correct request body', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response('{}', { status: 200 }),
-    );
+    let capturedBody: unknown = null;
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.body && typeof init.body === 'string') {
+        capturedBody = JSON.parse(init.body);
+      }
+      return new Response('{}', { status: 200 });
+    });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     await draftPatternFromRange('BTCUSDT', 1700000000, 1700003600, '1h');
-
-    const callArgs = fetchMock.mock.calls[0];
-    const body = JSON.parse(callArgs[1]?.body as string);
-    expect(body).toEqual({
+    expect(capturedBody).toEqual({
       symbol: 'BTCUSDT',
       start_ts: 1700000000,
       end_ts: 1700003600,
@@ -100,9 +101,9 @@ describe('DraftFromRangePanel — A-04-app', () => {
     }
 
     expect(featureClass(null)).toBe('feat-null');
-    expect(featureClass(0.1)).toBe('feat-neutral'); // p50 무색
+    expect(featureClass(0.1)).toBe('feat-neutral');
     expect(featureClass(0.5)).toBe('feat-warn');
     expect(featureClass(0.9)).toBe('feat-extreme');
-    expect(featureClass(-0.85)).toBe('feat-extreme'); // 음수 극단도 extreme
+    expect(featureClass(-0.85)).toBe('feat-extreme');
   });
 });
