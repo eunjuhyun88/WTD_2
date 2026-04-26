@@ -2293,6 +2293,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/viz/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Viz Intent
+         * @description Classify visualization intent and return template + data.
+         *
+         *     - WHY/STATE/EXECUTION: no search, returns capture context data.
+         *     - SEARCH/COMPARE/FLOW: returns search_triggered=True + routing info.
+         *       Client should follow up with GET /search/similar?capture_id=...
+         */
+        post: operations["route_viz_intent_viz_route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -4739,6 +4763,17 @@ export interface components {
              * @default []
              */
             tags: string[];
+        };
+        /** _VizRouteBody */
+        _VizRouteBody: {
+            /** Capture Id */
+            capture_id?: string | null;
+            /** Intent */
+            intent?: ("WHY" | "STATE" | "COMPARE" | "SEARCH" | "FLOW" | "EXECUTION") | null;
+            /** Text Input */
+            text_input?: string | null;
+            /** Symbol */
+            symbol?: string | null;
         };
         /** _WatchBody */
         _WatchBody: {
@@ -8687,6 +8722,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    route_viz_intent_viz_route_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_VizRouteBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
