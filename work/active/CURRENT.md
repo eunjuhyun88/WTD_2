@@ -28,7 +28,7 @@
 
 | Work Item | 상태 | 비고 |
 |-----------|------|------|
-| `W-0231-f30-ledger-4table-split` | 🔄 Phase 3 대기 | backfill PR 미완 — dual-write 기간 후 착수 |
+| `W-0230-tradingview-grade-viz-design` | 🔄 Phase 3~5 대기 | F-30 backfill + H-08 read path 전환 + viz 디렉토리 설계 |
 
 ---
 
