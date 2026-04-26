@@ -14,9 +14,12 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
+| `W-0214-mm-hunter-core-theory-and-validation` | research | v1.3 LOCKED-IN (PR #396 머지) |
+| `W-0215-pattern-search-py-audit` | research | v1.2 PRD ready (CTO+AI+Quant 3-perspective) — 본 PR |
+| `W-0216-falsifiable-test-protocol` | research | v1.1 PRD ready (F1~F7) — 본 PR |
 | `W-0223-wave1-execution-design` | contract | PR #369 머지 완료 |
 | `W-0230-tradingview-grade-viz-design` | contract | PR #375 머지 완료 |
-| `W-0232-h07-f60-gate-design` | contract | 본 PR 진행 중 |
+| `W-0232-h07-f60-gate-design` | contract | PR #392 머지 완료 |
 
 > W-0220 PRD v2.2는 `docs/live/W-0220-product-prd-master.md`로 canonical.
 
@@ -35,7 +38,9 @@
 
 | 항목 | 상태 |
 |---|---|
-| H-07 F-60 Gate | 본 PR 설계 → 머지 후 H-07-eng + H-07-app 구현 PR 분리 |
+| **W-0215 V-00 audit** | **P0 #1 — 본 PRD 머지 후 시작 (~4h, read-only)** |
+| **W-0216 F1~F7 measurement** | **P0 #2 — V-02 phase_eval ready 후 측정 시작 (Week 1~6)** |
+| W-0217~W-0228 V-01~V-13 | W-0215 머지 후 분리 work item으로 작성 |
 | F-3 Telegram → Verdict deep link | 미설계, Wave 2.5 |
 | W-0102 Slice 1+2 mop-up | 진행 중 (다른 에이전트) |
 | Phase 1.2 Intent 6분류 | Wave 3 (W-0230 §Phase 1.2) |
@@ -47,7 +52,7 @@
 
 ## main SHA
 
-`d7587a39` — origin/main (2026-04-27) — PR #390 A-03-app AIParserModal 머지 (Wave 2 4/4 완료)
+`8a3566fe` — origin/main (2026-04-27) — PR #405 `/start` auto-bootstrap fix 머지. W-0214 v1.3 LOCKED-IN (PR #396).
 
 ---
 
