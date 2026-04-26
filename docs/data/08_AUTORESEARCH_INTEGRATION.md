@@ -1,5 +1,10 @@
 # W — AutoResearch 패턴 도입 설계 (원본 분석 기반)
 
+> **⚠️ Verdict cardinality 주석 (2026-04-27 rebase 정합)**
+> 이 문서는 Ryan Li 16-seed validation 기반 **6-cat verdict** (`near_miss / too_early` 추가) 제안을 담고 있다.
+> Main canonical은 **5-cat** (`valid / invalid / missed / too_late / unclear`, PR #370 F-02 머지).
+> 6-cat 채택 여부는 verdict 50+ 누적 후 재논의. 본 문서는 alternative proposal로 보존.
+
 **출처:** github.com/ryanli-me/paradigm-pm-challenge · github.com/octavi42/prediction-market-maker · github.com/Ar9av/obsidian-wiki  
 **분석일:** 2026-04-26 (A028 — 원본 코드/README/WRITEUP.md 직접 취득)
 

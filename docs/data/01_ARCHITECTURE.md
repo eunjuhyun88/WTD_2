@@ -1,6 +1,11 @@
 # W — Data Engine 정본 설계 (Canonical Master)
 
 **Status:** ACTIVE · 정본 (이 문서가 모든 데이터 관련 설계의 single source of truth)
+
+> **⚠️ Verdict cardinality 주석 (2026-04-27 rebase 정합)**
+> Main canonical은 **5-cat**: `valid / invalid / missed / too_late / unclear` (PR #370 F-02).
+> 이 문서의 6-cat (`near_miss / too_early` 추가) 표현은 Ryan Li 16-seed validation 기반 **alternative proposal**.
+> Engine/app 코드는 main의 5-cat을 따름. 6-cat 채택 검토는 verdict 50+ 누적 후 재논의 (R-01 follow-up).
 **Date:** 2026-04-26
 **Replaces fragmentation across:** `06_DATA_CONTRACTS.md`, `10_COMPLETE_DATA_ARCHITECTURE.md`, `11_CTO_DATA_ARCHITECTURE_REALITY.md`, `engine-pipeline.md`, `feature-implementation-map.md`, `autoresearch-ml.md`, `ENGINE_SPEC.md`, `W-autoresearch-integration-design-20260426.md`, `GITHUB_REPO_ANALYSIS_FULL.md`
 

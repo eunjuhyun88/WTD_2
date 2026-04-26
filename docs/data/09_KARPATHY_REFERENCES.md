@@ -1,5 +1,9 @@
 # 09 — Karpathy References (AutoResearch + LLM Wiki Patterns)
 
+> **⚠️ Verdict cardinality 주석 (2026-04-27 rebase 정합)**
+> §1.5의 6-cat verdict는 Ryan Li 16-seed validation alternative proposal.
+> Main canonical은 5-cat (`valid / invalid / missed / too_late / unclear`, PR #370 F-02).
+
 **Status:** Reference · 2026-04-26
 **Purpose:** Karpathy가 제시한 두 패턴(AutoResearch loop · LLM Wiki)이 우리 시스템에 어떻게 매핑되는지 정본 정리. `08_AUTORESEARCH_INTEGRATION.md`(8 repo 분석)와 `03_COMPLETE_ARCHITECTURE.md §18`(Wiki 구현 스펙) 통합.
 
