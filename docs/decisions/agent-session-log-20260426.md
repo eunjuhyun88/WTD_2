@@ -153,3 +153,71 @@
 **P1 — W-0145 Search Corpus 40+차원:**
 - Branch: `feat/w-0145-search-corpus-40dim`
 - 3→40+ feature, recall@10 >= 0.7
+
+---
+
+## 에이전트 6 (A006)
+
+**담당:** Worktree 대규모 정리 + 에이전트 문서화
+
+- Worktree 50개 → 5개 정리
+- `docs/decisions/agent-session-log-20260426.md` 생성 (PR #318)
+- CURRENT.md 체크포인트 (PR #314, #320)
+
+**PR:** #314 #318 #320 | **SHA:** `51ea37cf` | **Handoff:** Multi-Agent OS v2 설계 → A007 구현
+
+---
+
+## 에이전트 7 (A007)
+
+**담당:** W-0211 차트 리팩토링 + W-0132 카피트레이딩 Phase 1
+
+**W-0211 (PR #298 + #302):**
+- App CI 수리: chartSeriesService 중복 export, TradeMode $derived 미선언, ChartBoard merge artifact
+- MultiPaneChart.svelte — lightweight-charts v5.1 native multi-pane
+- KpiStrip.svelte + PaneInfoBar.svelte
+- Pine Script 엔진 (lib/server/pine/) — 10개 템플릿, 자연어 → Pine v6
+- OI/Funding/Liq 기본값 ON (storage key v2)
+
+**W-0132 Copy Trading Phase 1 (PR #313):**
+- Supabase migration 022: trader_profiles + copy_subscriptions 테이블
+- engine/copy_trading/ — leader_score.py (ELO), leaderboard.py (top-20)
+- engine/api/routes/copy_trading.py — GET/POST/DELETE
+- CopyTradingLeaderboard.svelte — rank/score/W-L/subscribe UI
+
+**PR:** #298 #302 #313 #328 | **SHA:** `628c28b2` | **Handoff:** W-0212 chart UX (crosshair + PaneInfoBar live value)
+
+---
+
+## 에이전트 8 (A008)
+
+**담당:** Multi-Agent OS Phase 0-2 + MemKraft 전체 도입
+
+**PR #335 (feat/multi-agent-os-slash-commands):**
+- tools/mk.sh — MemKraft CLI wrapper
+- tools/start.sh — 에이전트 부팅 (Agent ID 발번 + 컨텍스트 30-50초)
+- 11개 슬래시 커맨드: /start /save /end /search /claim /agent-status /open-loops /retro /decision /incident
+- memory/sessions/agents/A001-A008.jsonl 구조 확립
+- state/state.json 공유 상태
+- feat(design): verifiable design invariants
+- fix(memory): MemKraft merge & tracking 강화
+- fix(agent): session start 시 ID 예약
+
+**교훈:** PR 머지 후 자동 hook이 working tree 덮어쓰는 패턴 → Phase 4 .gitattributes merge=ours 필요
+
+**PR:** #335 | **SHA:** `c0ab48dc` | **Handoff:** feat/multi-agent-os-phase34 — .gitattributes + design verify CI gate
+
+---
+
+## 다음 에이전트 (A009) 시작 가이드
+
+```bash
+git checkout main && git pull origin main
+./tools/start.sh  # Agent ID 발번 + 컨텍스트 로드
+```
+
+**main SHA:** `c0ab48dc` | CI: App ✅ Engine ✅ Contract ✅
+
+**P0** — Multi-Agent OS Phase 3-4: `.gitattributes merge=ours` + design verify CI gate
+**P1** — W-0212 Chart UX: crosshair PaneInfoBar live value
+**P2** — W-0145 Search Corpus 40+차원: recall@10 >= 0.7
