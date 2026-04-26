@@ -1483,7 +1483,7 @@ export interface paths {
          *       tp2_price       — from chart_context.tp2 (null if not set)
          *       eval_window_ms  — evaluation window in ms (for shading end x)
          *       p_win           — float 0–1 if recorded
-         *       user_verdict    — "valid" | "invalid" | "missed" | null
+         *       user_verdict    — "valid" | "invalid" | "missed" | "too_late" | "unclear" | null
          */
         get: operations["get_chart_annotations_captures_chart_annotations_get"];
         put?: never;
@@ -4655,7 +4655,7 @@ export interface components {
              * Verdict
              * @enum {string}
              */
-            verdict: "valid" | "invalid" | "missed";
+            verdict: "valid" | "invalid" | "missed" | "too_late" | "unclear";
             /** User Note */
             user_note?: string | null;
         };
