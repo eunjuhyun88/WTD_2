@@ -152,6 +152,22 @@ else
 fi
 
 echo ""
+echo "🎯 Core (spec/CHARTER.md §In-Scope):"
+if [ -f spec/CHARTER.md ]; then
+  awk '/^## ✅ In-Scope/,/^---/' spec/CHARTER.md \
+    | grep -E "^\| L[0-9]|^- " | head -8 | sed 's/^/  /'
+else
+  echo "  (spec/CHARTER.md not yet created)"
+fi
+
+echo ""
+echo "🧊 Frozen / Non-Goals (CHARTER §Frozen):"
+if [ -f spec/CHARTER.md ]; then
+  awk '/^## 🚫 Frozen/,/^## 🛡/' spec/CHARTER.md \
+    | grep -E "^- ❌" | head -6 | sed 's/^/  /'
+fi
+
+echo ""
 echo "Priorities (P0/P1):"
 if [ -f spec/PRIORITIES.md ]; then
   grep -E "^## P[0-9]" spec/PRIORITIES.md | head -5 | sed 's/^/  /'
