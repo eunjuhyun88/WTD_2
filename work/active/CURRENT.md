@@ -14,9 +14,11 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0214-mm-hunter-core-theory-and-validation` | research | v1.3 LOCKED-IN (PR #396 머지) |
-| `W-0215-pattern-search-py-audit` | research | v1.2 PRD ready (CTO+AI+Quant 3-perspective) — 본 PR |
-| `W-0216-falsifiable-test-protocol` | research | v1.1 PRD ready (F1~F7) — 본 PR |
+| `W-0214-mm-hunter-core-theory-and-validation` | research | v1.3 LOCKED-IN + §14 Appendix B 완성 (PR #415) |
+| `W-0215-pattern-search-py-audit` | research | v1.2 PRD + V-00 audit 완료 (PR #415, Issue #417) |
+| `W-0216-falsifiable-test-protocol` | research | v1.1 PRD ready (F1~F7) (PR #415, Issue #418) |
+| `W-0217-v01-purged-kfold-cv` | research | v1.0 PRD ready (Issue #420) |
+| `W-0218-v02-phase-eval-m1` | research | v1.0 PRD ready (Issue #421) |
 | `W-0223-wave1-execution-design` | contract | PR #369 머지 완료 |
 | `W-0230-tradingview-grade-viz-design` | contract | PR #375 머지 완료 |
 | `W-0232-h07-f60-gate-design` | contract | PR #392 머지 완료 |
@@ -38,9 +40,12 @@
 
 | 항목 | 상태 |
 |---|---|
-| **W-0215 V-00 audit** | **P0 #1 — 본 PRD 머지 후 시작 (~4h, read-only)** |
-| **W-0216 F1~F7 measurement** | **P0 #2 — V-02 phase_eval ready 후 측정 시작 (Week 1~6)** |
-| W-0217~W-0228 V-01~V-13 | W-0215 머지 후 분리 work item으로 작성 |
+| ✅ W-0215 V-00 audit | **완료** (PR #415, §14 Appendix B 통합) |
+| **W-0217 V-01 PurgedKFold** | **P0 #1 — Issue #420, V-02 병렬** |
+| **W-0218 V-02 phase_eval (M1)** | **P0 #2 — Issue #421, V-01과 병렬** |
+| W-0219~W-0222 V-03~V-11 | V-01/V-02 머지 후 PRD 구체화 |
+| W-0226~W-0229 Quant 4종 | Wave 4+ 병렬 (capacity / sizing / alpha / drawdown) |
+| W-0216 F1~F7 measurement | V-02 ready 후 시작 (Week 1) |
 | F-3 Telegram → Verdict deep link | 미설계, Wave 2.5 |
 | W-0102 Slice 1+2 mop-up | 진행 중 (다른 에이전트) |
 | Phase 1.2 Intent 6분류 | Wave 3 (W-0230 §Phase 1.2) |
