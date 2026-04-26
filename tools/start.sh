@@ -72,7 +72,15 @@ else
   echo "  (spec/PRIORITIES.md not yet created)"
 fi
 
-# 4. memkraft 통합 — open loops + dream 시그널
+# 4. design verification summary
+if [ -x "$SCRIPT_DIR/verify_design.sh" ]; then
+  echo ""
+  echo "Design status:"
+  "$SCRIPT_DIR/verify_design.sh" --summary 2>/dev/null | sed 's/^/  /' \
+    || echo "  DRIFT ⚠ run ./tools/verify_design.sh"
+fi
+
+# 5. memkraft 통합 — open loops + dream 시그널
 if [ -x "$MK" ] && [ -d memory ]; then
   echo ""
   echo "Open loops (memkraft):"
@@ -83,7 +91,7 @@ if [ -x "$MK" ] && [ -d memory ]; then
   "$MK" dream --dry-run 2>/dev/null | head -5 | sed 's/^/  /' || true
 fi
 
-# 5. 최근 5개 에이전트 (per-agent jsonl 기준)
+# 6. 최근 5개 에이전트 (per-agent jsonl 기준)
 echo ""
 echo "Recent agents (last 5):"
 LATEST_AGENTS=$(ls -t memory/sessions/agents/A*.jsonl 2>/dev/null | head -5)
@@ -97,7 +105,7 @@ else
   echo "  (no per-agent records yet)"
 fi
 
-# 6. 직전 에이전트 handoff
+# 7. 직전 에이전트 handoff
 PREV_ID=$(printf "A%03d" $((10#${LATEST_ID:-0})))
 PREV_FILE="memory/sessions/agents/${PREV_ID}.jsonl"
 if [ -f "$PREV_FILE" ]; then

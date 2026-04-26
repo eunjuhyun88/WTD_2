@@ -18,4 +18,8 @@ memory/.memkraft/** merge=ours -text
 # Human-maintained coordination files should not be overwritten by memory-sync
 # queue branches. The ours driver is installed by app/scripts/dev/bootstrap-git-config.sh.
 work/active/CURRENT.md merge=ours
+work/active/*.md merge=ours
 spec/CONTRACTS.md merge=ours
+design/current/** merge=ours
+design/proposed/** merge=ours
+design/rejected/** merge=ours
