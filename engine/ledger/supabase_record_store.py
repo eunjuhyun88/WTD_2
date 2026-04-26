@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -32,14 +33,29 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("engine.ledger.supabase_records")
 
+# Module-level singleton — one TLS handshake per process, not per call.
+_client = None
+_client_lock = threading.Lock()
+
 
 def _sb():
-    from supabase import create_client  # type: ignore
-    url = os.environ.get("SUPABASE_URL", "")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    if not url or not key:
-        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
-    return create_client(url, key)
+    """Return the shared Supabase client, initialising it once per process.
+
+    Double-checked locking: the outer check avoids acquiring the lock on every
+    call once the client is initialised (hot path); the inner check prevents a
+    race where two threads both see _client is None simultaneously.
+    """
+    global _client
+    if _client is None:
+        with _client_lock:
+            if _client is None:
+                from supabase import create_client  # type: ignore
+                url = os.environ.get("SUPABASE_URL", "")
+                key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+                if not url or not key:
+                    raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+                _client = create_client(url, key)
+    return _client
 
 
 def _row_to_record(row: dict) -> PatternLedgerRecord:
