@@ -1,3 +1,4 @@
 {
-  "framework": "sveltekit"
+  "framework": "sveltekit",
+  "ignoreCommand": "\\! git log -1 --pretty=%B | grep -qF \"[deploy]\""
 }
