@@ -7,17 +7,17 @@
 
 ## P0 — Multi-Agent OS v2 적용 (Phase 3-4)
 
-**Owner**: A007+
-**Branch**: feat/multi-agent-os-* (각 phase별)
+**Owner**: A008
+**Branch**: feat/multi-agent-os-slash-commands
 **Spec**: `design/proposed/multi-agent-os-v2.md`
 
-남은 작업:
-- Phase 3: `design/current/invariants.yml` + `tools/verify_design.sh` (drift 차단)
-- Phase 4: `.gitattributes` + memory-sync hook scope 축소
+Status: PR #335에서 구현 중.
 
-Exit: `./tools/verify_design.sh` PR마다 자동 실행, drift 0 확인.
+- Phase 3: `design/current/invariants.yml` + `tools/verify_design.sh` + CI gate
+- Phase 4: `.gitattributes` merge policy + MemKraft wrapper/hook hardening
+- Agent boot/end: `Design status` 표시 및 drift 검증
 
----
+Exit: `./tools/verify_design.sh`, MemKraft health, PR checks 모두 pass.
 
 ## P1 — W-0145 Search Corpus 40+차원
 

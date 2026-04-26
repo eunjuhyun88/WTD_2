@@ -86,7 +86,12 @@ if [ -n "$LESSON" ]; then
   echo "$LESSON_ENTRY" >> "$AGENT_FILE"
 fi
 
-# 3. spec/CONTRACTS.md에서 자기 lock 제거
+# 3. design drift 확인 — 실패하면 lock을 유지한 채 종료를 중단한다.
+if [ -x "$SCRIPT_DIR/verify_design.sh" ]; then
+  "$SCRIPT_DIR/verify_design.sh"
+fi
+
+# 4. spec/CONTRACTS.md에서 자기 lock 제거
 if [ -f spec/CONTRACTS.md ]; then
   if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i '' "/^| ${AGENT} |/d" spec/CONTRACTS.md
@@ -95,10 +100,10 @@ if [ -f spec/CONTRACTS.md ]; then
   fi
 fi
 
-# 4. state 갱신
+# 5. state 갱신
 ./tools/refresh_state.sh >/dev/null
 
-# 5. memkraft retro --dry-run (자동 회고 미리보기)
+# 6. memkraft retro --dry-run (자동 회고 미리보기)
 echo ""
 echo "═══════════════════════════════════"
 echo "✓ Session $AGENT closed"
