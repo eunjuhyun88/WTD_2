@@ -9,7 +9,8 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0214-mm-hunter-core-theory-and-validation` | Research × Product | **v1.3 LOCKED-IN (2026-04-27)** — D1~D8 confirmed. Week 1 V-00 작업 시작 가능 |
+| `W-0214-mm-hunter-core-theory-and-validation` | Research × Product | **v1.3 LOCKED-IN (2026-04-27)** — D1~D8 confirmed. PR #396 MERGEABLE |
+| `W-0215-pattern-search-py-audit` | research | **READY** — W-0214 PR #396 merge 후 즉시 시작. V-00 audit (1d) |
 | `W-0132-copy-trading-phase1` | engine + app | 다음 — DB 스키마 설계 필요 |
 | `W-0145-operational-seed-search-corpus` | engine | 다음 — 40+차원 corpus 완성 |
 
