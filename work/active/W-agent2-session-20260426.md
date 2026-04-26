@@ -110,8 +110,14 @@ Exit criteria 전체 달성:
 
 | 항목 | 상태 |
 |---|---|
-| main SHA | `cdefda4d` (변경 없음) |
-| PR #313 | CI 대기 중 |
-| W-0145 | 완료 (기존 main 구현) |
-| 다음 작업 | PR #313 CI 통과 후 머지 |
-| 인프라 P0 | 미완 (사람 직접) |
+| main SHA | `c0ab48dc` (PR #335 포함 최신) |
+| PR #313 | ✅ 머지 완료 (`e9014e5c`) |
+| W-0145 | ✅ 완료 (기존 main 구현, 14 tests) |
+| W-0132 | ✅ 완료 — migration 022 + engine + API + UI main 반영 |
+| 인프라 P0 | 미완 (사람 직접: GCP worker trigger, Vercel EXCHANGE_ENCRYPTION_KEY) |
+
+## 다음 에이전트 (Agent 3+) 인계사항
+
+- W-0132 migration 022 prod 실행 미완 (Supabase prod 콘솔에서 직접 실행 필요)
+- main SHA: `c0ab48dc`
+- 다음 우선 후보: W-0212 차트 UX 마무리 (`feat/w-0212-chart-ux-polish`)
