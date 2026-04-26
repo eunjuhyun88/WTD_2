@@ -862,6 +862,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Pattern Text
+         * @description Parse free-text trading memo → PatternDraftBody JSON via Claude Sonnet 4.5.
+         *
+         *     AC: POST {"text": "OI가 급등하면서 가격이 하락했다"} → PatternDraftBody JSON
+         */
+        post: operations["parse_pattern_text_patterns_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/library": {
         parameters: {
             query?: never;
@@ -3265,6 +3287,13 @@ export interface components {
             galaxyScore?: number | null;
             /** Alerts */
             alerts: string[];
+        };
+        /** ParseRequest */
+        ParseRequest: {
+            /** Text */
+            text: string;
+            /** Symbol */
+            symbol?: string | null;
         };
         /** ParserMetaBody */
         ParserMetaBody: {
@@ -6273,6 +6302,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["api__routes__scanner__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_pattern_text_patterns_parse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternDraftBody"];
                 };
             };
             /** @description Validation Error */
