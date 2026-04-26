@@ -1088,6 +1088,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/f60-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get F60 Gate Status
+         * @description F-60 multi-period acceptance gate (L-3, R-05).
+         *
+         *     Returns:
+         *         passed: bool — gate 통과 여부 (median≥0.55 AND floor≥0.40 AND count≥200)
+         *         verdict_count: int — 누적 verdict 수 (unclear 제외)
+         *         remaining_to_threshold: int — 200까지 남은 수
+         *         median_accuracy / floor_accuracy: float — W1/W2/W3 통계
+         *         window_accuracies / window_counts: list — 30d 윈도우 3개 분포
+         *         reason: "insufficient_data" | "insufficient_windows" | "failed_threshold" | "passed"
+         *
+         *     근거: Ryan Li 16-seed validation + Kropiunig $32 variance on identical code.
+         *     Single-period accuracy 0.60이 multi-period 0.45보다 나쁠 수 있음 → median+floor.
+         */
+        get: operations["get_f60_gate_status_patterns__slug__f60_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/stats": {
         parameters: {
             query?: never;
@@ -6686,6 +6717,39 @@ export interface operations {
                 staleness_hours?: number;
                 warmup_bars?: number;
             };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_f60_gate_status_patterns__slug__f60_status_get: {
+        parameters: {
+            query?: never;
             header?: never;
             path: {
                 slug: string;
