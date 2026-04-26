@@ -54,6 +54,14 @@ contracts:
       - "/api/cogochi/"
       - "event.locals.user"
 
+  - name: "Agent start reserves identity"
+    type: "file_contains"
+    file: "tools/start.sh"
+    patterns:
+      - "agent-id.lock"
+      - "memory/sessions/agents/${NEXT_ID}.jsonl"
+      - "session started"
+
 architecture:
   - name: "engine must not import app"
     type: "forbidden_imports"

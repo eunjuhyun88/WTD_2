@@ -19,6 +19,10 @@ Every non-trivial session starts with:
 ./tools/start.sh
 ```
 
+`tools/start.sh` reserves the next `A###` ID through a local atomic counter in
+the git common directory, writes `state/current_agent.txt`, and appends a
+`session started` entry to `memory/sessions/agents/A###.jsonl`.
+
 Before touching a file-domain:
 
 ```bash

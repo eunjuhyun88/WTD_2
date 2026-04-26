@@ -22,8 +22,13 @@ QUIET=0
 
 MAIN_SHA="$(jq -r .main_sha state/state.json 2>/dev/null || echo unknown)"
 CURRENT_BRANCH="$(jq -r .current_branch state/state.json 2>/dev/null || echo unknown)"
+HEAD_SHA="$(git rev-parse --short HEAD)"
+TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# 2. 다음 Agent ID 발번 (가변, 제한 없음) — agent별 jsonl에서 가장 큰 번호 +1
+# 2. 다음 Agent ID 발번 (가변, 제한 없음)
+#    memory/sessions/agents/*.jsonl에 이미 기록된 번호와 git common dir의
+#    local atomic counter를 함께 본다. 같은 clone의 여러 worktree에서 동시에
+#    start해도 같은 ID를 받지 않게 하는 최소 예약 장치다.
 LATEST_ID=0
 if [ -d memory/sessions/agents ]; then
   LATEST_ID=$(ls memory/sessions/agents/A*.jsonl 2>/dev/null \
@@ -31,9 +36,71 @@ if [ -d memory/sessions/agents ]; then
               | sort -n | tail -1 || echo 0)
 fi
 LATEST_ID=${LATEST_ID:-0}
+GIT_COMMON_DIR="$(git rev-parse --git-common-dir)"
+AGENT_STATE_DIR="$GIT_COMMON_DIR/agent-os"
+COUNTER_FILE="$AGENT_STATE_DIR/next_agent_number"
+LOCK_DIR="$AGENT_STATE_DIR/agent-id.lock"
+mkdir -p "$AGENT_STATE_DIR"
+
+for _ in $(seq 1 100); do
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+    break
+  fi
+  sleep 0.05
+done
+
+if [ ! -d "$LOCK_DIR" ]; then
+  echo "✗ Could not reserve Agent ID lock: $LOCK_DIR" >&2
+  exit 1
+fi
+
 NEXT_NUM=$((10#${LATEST_ID} + 1))
-NEXT_ID=$(printf "A%03d" $NEXT_NUM)
+if [ -f "$COUNTER_FILE" ]; then
+  COUNTER_NUM="$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)"
+  COUNTER_NUM="${COUNTER_NUM:-0}"
+  case "$COUNTER_NUM" in
+    ''|*[!0-9]*) COUNTER_NUM=0 ;;
+  esac
+  if [ "$COUNTER_NUM" -gt "$NEXT_NUM" ]; then
+    NEXT_NUM="$COUNTER_NUM"
+  fi
+fi
+NEXT_ID=$(printf "A%03d" "$NEXT_NUM")
+echo "$((NEXT_NUM + 1))" > "$COUNTER_FILE"
+rmdir "$LOCK_DIR" 2>/dev/null || true
+trap - EXIT
+
 echo "$NEXT_ID" > state/current_agent.txt
+AGENT_FILE="memory/sessions/agents/${NEXT_ID}.jsonl"
+mkdir -p memory/sessions/agents
+
+if [ ! -s "$AGENT_FILE" ]; then
+  START_ENTRY=$(jq -nc \
+    --arg ts "$TS" \
+    --arg agent "$NEXT_ID" \
+    --arg branch "$CURRENT_BRANCH" \
+    --arg baseline "$MAIN_SHA" \
+    --arg sha "$HEAD_SHA" \
+    '{
+      ts: $ts,
+      id: $agent,
+      event: "session started",
+      tags: ["session", "start", $agent],
+      importance: "normal",
+      branch: $branch,
+      baseline: $baseline,
+      head_sha: $sha
+    }')
+  echo "$START_ENTRY" >> "$AGENT_FILE"
+
+  if [ -x "$MK" ] && [ -d memory ]; then
+    "$MK" log \
+      --event "${NEXT_ID} session started | branch: ${CURRENT_BRANCH} | baseline: ${MAIN_SHA:0:8}" \
+      --tags "session,start,${NEXT_ID}" \
+      --importance normal >/dev/null 2>&1 || true
+  fi
+fi
 
 if [ $QUIET -eq 1 ]; then
   echo "Agent: $NEXT_ID | main: ${MAIN_SHA:0:8} | branch: $CURRENT_BRANCH"
