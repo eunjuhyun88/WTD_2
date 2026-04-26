@@ -44,7 +44,7 @@
 
 ### F-0b AI Parser (A-03)
 - [ ] **A-03-eng** `POST /patterns/parse` — ContextAssembler → Claude Sonnet → PatternDraftBody. **스키마/Assembler/downstream 이미 있음** [M, 3-4일]
-- [ ] **A-03-app** UI — 텍스트 입력 + Parse 버튼 + Draft 미리보기 → 저장 → capture [M] — spec: W-0227 §A-03-app
+- [x] **A-03-app** UI — AIParserModal (자유 텍스트 → Sonnet 4.6 → DraftPreview → 저장) [M] — spec: W-0230 §A-03-app
 
 ### F-1 5-cat Verdict (F-02)
 - [ ] **F-02** `engine/ledger/types.py:54` + `captures.py:66` + `verdict.py`. AC: 5값 200 / 기존 3값 호환 [S, Q1 결정 후] — engine MERGED PR #370 (1cfac2e3), F-02-app pending
