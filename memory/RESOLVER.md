@@ -1,75 +1,43 @@
-# RESOLVER.md — 메모리 분류 결정 트리
+# RESOLVER.md — WTD MemKraft 분류 규칙
 
-새 정보가 들어올 때 어디에 저장할지 결정하는 규칙.
-**모든 새 페이지 생성 전 반드시 이 파일을 먼저 읽을 것.**
+새 정보를 MemKraft에 저장하기 전에 이 파일로 홈 디렉토리를 결정한다.
+`memory/`는 repo 전체의 단일 MemKraft 저장소이며, `app/`나 `engine/` 아래에 별도 MemKraft root를 만들지 않는다.
 
-## 결정 트리
+## 홈 디렉토리
 
-```
-1. 이 정보의 주체는 무엇인가?
-   │
-   ├─ 사람 → 2a
-   ├─ 기업/조직 → 2b
-   ├─ 프로젝트/서비스 → 2c
-   ├─ 개념/프레임워크 → 2d
-   ├─ 형의 고유 사고 → 2e
-   ├─ 결정/정책 → 2f
-   ├─ 사건/회의 → 2g
-   ├─ 일일 기록 → 2h
-   └─ 미분류 → memory/inbox/
-   
-2a. 사람
-   ├─ 형(Simon)과 직접 관련 → memory/entities/{slug}.md
-   ├─ 5남매 관련 → shared-context/
-   └─ 일반 인물 → memory/entities/{slug}.md
-   
-2b. 기업/조직
-   ├─ 형의 포트폴리오/파트너 → memory/entities/{slug}.md
-   └─ 일반 → memory/entities/{slug}.md
-   
-2c. 프로젝트/서비스
-   ├─ 활성 프로젝트 → memory/projects.md (요약) + memory/tasks/{project}.md (상세)
-   └─ 아카이브 → memory/archive/
+| 정보 유형 | 저장 위치 | 예시 |
+|---|---|---|
+| 활성 작업 요약 | `memory/live-notes/w-XXXX.md` | W-0163 진행 상태, 다음 검증 |
+| 에이전트 세션 | `memory/sessions/{YYYY-MM-DD}.jsonl`, `memory/sessions/agents/A###.jsonl` | start/save/end 기록 |
+| 아키텍처 결정 | `memory/decisions/{slug}.md` | CI required checks 정책 |
+| 장애/실패 | `memory/incidents/{slug}.md` | stale memory-sync PR 충돌 |
+| repo/domain 엔티티 | `memory/entities/{slug}.md` | engine/search, app/chart, contract-ci |
+| 실행 task 상태 | `memory/tasks/{slug}.md` | 장기 cleanup task |
+| 디버깅 가설 | `memory/debug/{slug}.md` | CI failure hypothesis |
+| 미분류 입력 | `memory/inbox/{date}-{slug}.md` | 분류 보류 메모 |
 
-2d. 개념/프레임워크
-   ├─ 형이 창작 → memory/originals/{slug}.md
-   ├─ 세계 개념 → memory/entities/{slug}.md
-   └─ 5남매 운영 개념 → compound/skills/
+## MemKraft 외부 source of truth
 
-2e. 형의 고유 사고
-   └─ memory/originals/{slug}.md (항상 여기)
+| 정보 | 권위 파일 |
+|---|---|
+| 현재 진행 목록 | `work/active/CURRENT.md` |
+| 작업별 의도/범위 | `work/active/W-*.md` |
+| 운영 규칙 | `AGENTS.md` |
+| 우선순위/락 | `spec/PRIORITIES.md`, `spec/CONTRACTS.md` |
+| 검증 가능한 현재 설계 | `design/current/*` |
+| 사람이 읽는 ADR/incident | `docs/decisions/*`, `docs/incidents/*` |
 
-2f. 결정/정책
-   ├─ 중요 결정 → memory/decisions/{slug}.md
-   └─ 운영 정책 → compound/policy.json 또는 AGENTS.md
+MemKraft는 위 파일들을 대체하지 않는다. MemKraft에는 검색 가능한 요약, 결정, 사건, 세션 타임라인을 남긴다.
 
-2g. 사건/회의
-   ├─ 회의록 → memory/meetings/{date}-{slug}.md
-   └─ 일일 기록 → memory/{YYYY-MM-DD}.md
+## 중복 처리
 
-2h. 일일 기록
-   └─ memory/{YYYY-MM-DD}.md
-```
+1. 먼저 `./tools/mk.sh search "<keyword>"` 또는 `from memory.mk import mk; mk.evidence_first(...)`로 기존 기록을 찾는다.
+2. 같은 주체가 있으면 새 파일을 만들지 말고 기존 홈 파일을 갱신한다.
+3. runtime state, generated state, build output, cache는 MemKraft에 저장하지 않는다.
+4. `memory/.memkraft/`는 인덱스/cache이므로 commit하지 않는다.
 
-## 중복 판별 규칙
-1. 기존 페이지 검색: `memory_search` → `memory_get`으로 내용 확인
-2. 동일 주체 기존 페이지 있으면 → 새로 만들지 말고 기존 것 업데이트
-3. 두 디렉토리에 같은 항목이 있으면 → 주 디렉토리에 병합, 다른 쪽은 See Also로 링크
+## CLI 규칙
 
-## 모호성 해결
-| 충돌 시나리오 | 해결 |
-|-------------|------|
-| 사람이자 기업 설립자 | people/ 우선, 기업 페이지는 See Also |
-| 개념이자 형의 original | original/ 우선, 개념 페이지는 See Also |
-| 프로젝트가 기업과 동일 | projects/ 우선, 기업은 entities/에서 See Also |
-| 결정이 프로젝트와 관련 | decisions/ 우선, projects/는 See Also |
-
-## inbox 규칙
-- 분류 불명확 → `memory/inbox/`에 임시 저장
-- inbox 아이템은 48시간 내 분류 완료 (distill 스크립트 또는 수동)
-- inbox 누적 = 스키마 업데이트 필요 신호
-
-## MECE 원칙
-- 모든 지식은 정확히 하나의 **주 홈** 디렉토리에 속함
-- 크로스 레퍼런스는 허용 (See Also), 중복 페이지는 금지
-- 디렉토리당 README.md에 "무엇이 들어가는지/아닌지" 명시
+- 모든 CLI 호출은 `./tools/mk.sh ...`를 사용한다.
+- `memkraft` 전역 바이너리를 직접 호출하지 않는다.
+- `cd memory && memkraft ...`를 사용하지 않는다. MemKraft 2.x에서는 `memory/memory/`를 만들 수 있다.
