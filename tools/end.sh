@@ -29,7 +29,14 @@ SHIPPED="$1"
 HANDOFF="$2"
 LESSON="${3:-}"
 
-AGENT="$(cat state/current_agent.txt 2>/dev/null || echo unknown)"
+AGENT="$(cat state/current_agent.txt 2>/dev/null || echo "")"
+if [ -z "$AGENT" ] || [ "$AGENT" = "unknown" ]; then
+  echo "✗ Agent ID 미발번 (state/current_agent.txt 없음 또는 'unknown')." >&2
+  echo "  이 worktree에서 ./tools/start.sh를 먼저 실행하세요." >&2
+  echo "  (silent 'unknown' fallback은 per-agent jsonl 손실을 일으켜 제거됐습니다.)" >&2
+  exit 1
+fi
+
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 END_SHA="$(git rev-parse HEAD)"
 DATE="$(date -u +%Y-%m-%d)"
