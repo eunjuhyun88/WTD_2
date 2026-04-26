@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# post-merge hook — refresh state after merging (e.g. git pull, merge)
+# Install: git config core.hooksPath .githooks  (or run app/scripts/dev/install-git-hooks.sh)
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+if [ -f "$REPO_ROOT/tools/refresh_state.sh" ]; then
+  bash "$REPO_ROOT/tools/refresh_state.sh" --quiet 2>/dev/null || true
+fi
