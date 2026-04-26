@@ -52,3 +52,9 @@ version: "v3.0 (code-verified, A023)"
 ## See Also
 
 - `telegram-refs.md` (live-note) — F-60 메시지 schema는 N-05 작업 시 참조
+
+---
+
+## Timeline
+
+- **2026-04-26** | Live note created [Source: manual]

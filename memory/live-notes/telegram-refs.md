@@ -34,3 +34,9 @@ updated: "2026-04-26"
 ## See Also
 
 - `feature-impl-map.md` (live-note) — N-05 / N-06 Marketplace 항목
+
+---
+
+## Timeline
+
+- **2026-04-26** | Live note created [Source: manual]

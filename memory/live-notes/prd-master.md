@@ -47,3 +47,9 @@ updated: "2026-04-26"
 - `feature-impl-map.md` (live-note) — 19 도메인 × 160+ Built / 9 NOT BUILT
 - `telegram-refs.md` (live-note) — 4채널 분석 + 13 base signal vocabulary + F-60 메시지 schema
 - `dec-2026-04-26-w0220-prd-v2-canonical.md` (decision) — v2 채택 근거
+
+---
+
+## Timeline
+
+- **2026-04-26** | Live note created [Source: manual]
