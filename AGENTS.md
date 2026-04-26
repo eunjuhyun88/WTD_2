@@ -11,6 +11,8 @@ Execution rules for humans and coding agents.
 
 ## Bootstrap (Multi-Agent OS v2 + MemKraft)
 
+**처음 worktree 들어올 때 1회**: `bash app/scripts/dev/install-git-hooks.sh` — `core.hooksPath=.githooks` 활성화. F-7 hooks: pre-commit (unknown-agent gate, PR #354 silent loss 차단) + pre-push (branch naming + design invariant) + post-merge (state refresh).
+
 세션 흐름:
 ```bash
 ./tools/start.sh                                      # 또는 /start
