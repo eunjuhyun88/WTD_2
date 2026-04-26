@@ -607,6 +607,27 @@ async def get_similar_live(
     return await asyncio.to_thread(_sync)
 
 
+@router.get("/{slug}/f60-status")
+async def get_f60_gate_status(slug: str) -> dict:
+    """F-60 multi-period acceptance gate (L-3, R-05).
+
+    Returns:
+        passed: bool — gate 통과 여부 (median≥0.55 AND floor≥0.40 AND count≥200)
+        verdict_count: int — 누적 verdict 수 (unclear 제외)
+        remaining_to_threshold: int — 200까지 남은 수
+        median_accuracy / floor_accuracy: float — W1/W2/W3 통계
+        window_accuracies / window_counts: list — 30d 윈도우 3개 분포
+        reason: "insufficient_data" | "insufficient_windows" | "failed_threshold" | "passed"
+
+    근거: Ryan Li 16-seed validation + Kropiunig $32 variance on identical code.
+    Single-period accuracy 0.60이 multi-period 0.45보다 나쁠 수 있음 → median+floor.
+    """
+    from stats.engine import get_stats_engine
+    return await asyncio.to_thread(
+        lambda: get_stats_engine().as_gate_dict(slug)
+    )
+
+
 @router.get("/{slug}/stats")
 async def get_stats(
     slug: str,
