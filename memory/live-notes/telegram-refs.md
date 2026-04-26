@@ -39,4 +39,4 @@ updated: "2026-04-26"
 
 ## Timeline
 
-- **2026-04-26** | Live note created [Source: manual]
+- **2026-04-26** | telegram-refs live note initialized [Source: manual]
