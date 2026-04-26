@@ -96,7 +96,10 @@ ENTRY=$(jq -nc \
 
 echo "$ENTRY" >> "$AGENT_FILE"
 
-# 5. 출력
+# 5. live 파일 갱신 (다른 에이전트가 볼 수 있게)
+"$SCRIPT_DIR/live.sh" update "" "$NEXT" 2>/dev/null || true
+
+# 6. 출력
 echo "✓ Checkpoint 저장됨 ($AGENT @ $HEAD_SHA)"
 echo ""
 if [ -n "$DONE_RAW" ]; then
