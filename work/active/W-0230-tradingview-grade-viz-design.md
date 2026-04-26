@@ -453,3 +453,360 @@ Jin이 W-0230 시스템을 사용하는 시나리오:
 | Pane 5 한도 vs 사용자 요구 충돌 | hard limit 유지, 추가 요구 시 swap UI 제공 |
 | Highlight Planner 결정성 깨짐 | unit test 100% coverage 강제 |
 | Indicator Registry backfill 너무 큼 (60+ 추가) | 점진적 (사용 빈도 우선), 미등록은 fallback renderer |
+
+---
+
+# §Per-Issue Detailed Spec — Wave 2 UI 4개
+
+각 항목은 별도 PR로 구현. PR #375 (본 doc) 머지 후 Issue 4개 등록 → 4명 에이전트 병렬 가능.
+
+## F-02-app — Verdict 5-button UI
+
+### Goal
+
+`VerdictInboxPanel.svelte`의 verdict button row를 3개 → 5개로 확장. F-02 engine PR #370 이미 main에 있음 (verdict 5값 server-side 지원), UI는 아직 3-button.
+
+### 실측 기존 코드
+
+`app/src/components/terminal/peek/VerdictInboxPanel.svelte`:
+- L55: `submitVerdict(captureId, verdict: 'valid' | 'invalid' | 'missed')` — type 좁음
+- L149-168: `.card-actions` row에 3 button — 2개 추가
+
+```svelte
+<!-- 변경 후 -->
+<div class="card-actions">
+  <button class="verdict-btn verdict-valid"     onclick={...}>✓ Valid</button>
+  <button class="verdict-btn verdict-invalid"   onclick={...}>✗ Invalid</button>
+  <button class="verdict-btn verdict-too-late"  onclick={...}>⏰ Too Late</button>
+  <button class="verdict-btn verdict-missed"    onclick={...}>~ Missed</button>
+  <button class="verdict-btn verdict-unclear"   onclick={...}>? Unclear</button>
+</div>
+```
+
+### 의미 매핑 (Q1 lock-in)
+
+| Button | 의미 | ML 라벨 매핑 |
+|---|---|---|
+| ✓ valid | 셋업 정확 | positive (1) |
+| ✗ invalid | 셋업 틀림 | negative (0) |
+| ⏰ too_late | valid, 진입 타이밍 늦음 | weak negative |
+| ~ missed | valid, 진입 못함 | 학습 제외 |
+| ? unclear | 라벨 모호 | 학습 제외 |
+
+### Files Touched
+
+| 파일 | 변경 |
+|---|---|
+| `app/src/components/terminal/peek/VerdictInboxPanel.svelte` | type 5값 + 2 button + CSS classes |
+| `app/src/components/terminal/peek/__tests__/VerdictInboxPanel.test.ts` (NEW) | Vitest |
+
+→ **단일 파일, S size**.
+
+### Implementation Steps
+
+- [ ] **F-02-app-1** `submitVerdict` Literal 5값 확장
+- [ ] **F-02-app-2** 2 button 추가 (⏰ Too Late, ? Unclear)
+- [ ] **F-02-app-3** CSS — `.verdict-too-late`, `.verdict-unclear` (LIS palette)
+- [ ] **F-02-app-4** Vitest unit test
+- [ ] **F-02-app-5** App CI pass
+
+### Visual Spec (LIS palette)
+
+| Button | Color token |
+|---|---|
+| ✓ valid | `--lis-positive` (#4ade80) |
+| ✗ invalid | `--lis-negative` (#f87171) |
+| ⏰ too_late | `--sc-yellow-400` (#facc15) |
+| ~ missed | `--sc-grey-7` (#666666) |
+| ? unclear | `--sc-grey-6` (#484848) |
+
+### 선행
+
+PR #370 (F-02 engine) ✅ 머지 완료 — 즉시 시작 가능.
+
+---
+
+## A-03-app — AI Parser UI (자유 텍스트 → Parse → Draft preview)
+
+### Goal
+
+자유 텍스트 메모 → Claude Sonnet → PatternDraft → 저장.
+
+### UX Flow
+
+```
+[Verdict Inbox] "메모로 패턴 만들기" 버튼
+    ↓
+[AIParserModal] textarea (5000c) + Parse 버튼
+    ↓ Parse → loading 3-5s
+[PatternDraftPreview] phases + signals 카드
+    ↓ "저장"
+→ POST /captures → Verdict Inbox 노출
+```
+
+### Files Touched
+
+| 파일 | 변경 |
+|---|---|
+| `app/src/components/terminal/AIParserModal.svelte` (NEW) | Modal + textarea + Parse |
+| `app/src/components/terminal/PatternDraftPreview.svelte` (NEW) | Draft 렌더링 (A-04-app과 공유) |
+| `app/src/lib/api/terminalApi.ts` | `parsePatternFromText()` |
+| `app/src/components/terminal/peek/VerdictInboxPanel.svelte` | "메모로 패턴 만들기" 진입점 |
+
+### API 호출
+
+```typescript
+export async function parsePatternFromText(
+  text: string,
+  hints?: { pattern_family?: string; symbol?: string }
+): Promise<PatternDraftBody> {
+  const res = await fetch('/api/patterns/parse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, context_hints: hints }),
+  });
+  if (!res.ok) throw new Error(parseErrorMessage(await res.json(), res.status));
+  return res.json();
+}
+```
+
+### Implementation Steps
+
+- [ ] **A-03-app-1** `AIParserModal.svelte` 골격 (Svelte 5, SaveSetupModal 패턴)
+- [ ] **A-03-app-2** Textarea + 5000c + Parse disabled 로직
+- [ ] **A-03-app-3** `parsePatternFromText` API 메서드
+- [ ] **A-03-app-4** Loading + 에러 메시지
+- [ ] **A-03-app-5** `PatternDraftPreview.svelte` (phases / signals)
+- [ ] **A-03-app-6** "저장" → POST /captures
+- [ ] **A-03-app-7** VerdictInboxPanel 진입점
+- [ ] **A-03-app-8** Vitest (mock API)
+- [ ] **A-03-app-9** App CI pass
+
+### Visual Spec
+
+- Modal: dark overlay + center sheet, max-width 640px
+- Textarea: mono 12px, 12 rows, resize-y
+- Parse button: `--lis-accent` bg, 40px height
+- Phases: horizontal cards (phase label + duration estimate)
+- Signals chips: `required` (border accent), `preferred` (filled grey), `forbidden` (border red)
+
+### 선행
+
+PR #371 (A-03-eng) ✅ 머지 완료.
+
+---
+
+## A-04-app — Chart Drag UI (80% 재사용)
+
+### Goal
+
+차트 범위 선택 → engine `/patterns/draft-from-range` → 12 features → PatternDraft preview.
+
+### 🚨 80% 이미 구현됨 (W-0086 / W-0117)
+
+기존 인프라:
+- ✅ `chartSaveMode` store (anchorA/B/noteDraft/payload)
+- ✅ `CanvasHost` click-anchor 캡처
+- ✅ `RangePrimitive` 시각 하이라이트
+- ✅ `SaveSetupModal` (mobile) + `SaveStrip` (desktop)
+- ✅ 5 phase 정의 (FAKE_DUMP/ARCH_ZONE/REAL_DUMP/ACCUMULATION/BREAKOUT/GENERAL)
+
+→ **새 컴포넌트 0**.
+
+### UX Flow
+
+```
+[Terminal] "Save Setup" 모드 활성화
+    ↓
+chartSaveMode.active = true → CanvasHost click 구독
+    ↓ 두 번 클릭 → RangePrimitive 하이라이트
+SaveSetupModal 열림
+  ┌─ [기존] Save Setup → POST /captures
+  └─ [신규] **Draft from Range** → POST /patterns/draft-from-range
+                                    → form prefill → 저장
+```
+
+### Files Touched
+
+| 파일 | 변경 |
+|---|---|
+| `app/src/components/terminal/workspace/SaveSetupModal.svelte` | "Draft from Range" 버튼 + form prefill + features 표시 |
+| `app/src/components/terminal/workspace/SaveStrip.svelte` | desktop 동일 토글 |
+| `app/src/lib/api/terminalApi.ts` | `draftPatternFromRange()` |
+
+### Implementation Steps
+
+- [ ] **A-04-app-1** `draftPatternFromRange` API 메서드
+- [ ] **A-04-app-2** SaveSetupModal "Draft from Range" 버튼
+- [ ] **A-04-app-3** Draft 응답 → form prefill (pattern_family / phases / signals)
+- [ ] **A-04-app-4** extracted_features 12 칩 (LIS palette, p50 무색)
+- [ ] **A-04-app-5** SaveStrip 동일 토글
+- [ ] **A-04-app-6** Vitest (Draft 모킹)
+- [ ] **A-04-app-7** App CI pass
+
+### Visual Spec
+
+- "Draft from Range" 버튼: `--lis-accent` outline, 36px, Save 버튼 옆
+- features 칩: 4×3 grid, 32×24px each
+  - null: `--sc-grey-7` outline
+  - 값: `--sc-yellow-400` fill (extreme tier 시 pulse)
+
+### 선행
+
+PR #372 (A-04-eng) ✅ 머지 완료.
+
+---
+
+## D-03-app — 1-click Watch corner toggle
+
+### Goal
+
+VerdictInboxPanel 카드 우상단 Watch 토글 → POST /captures/{id}/watch.
+
+### UX Decision
+
+verdict (결과) vs watch (지속 모니터링) **의미축 분리** → 카드 우상단 corner.
+
+### UX Flow
+
+```
+[Card]
+  ┌─────────────────────────────────────┐
+  │ BTC · OI Reversal · ACCUM       [👁]│  ← 우상단
+  │ 🎯 TP @ $42100  +3.2%               │
+  │ [✓] [✗] [⏰] [~] [?]                  │  ← F-02-app 5-button
+  └─────────────────────────────────────┘
+        ↓ click 👁 (outline)
+  - 즉시 색상 변경 (optimistic)
+  - 백그라운드: POST /captures/{id}/watch
+  - 성공: pulse + tooltip "Watching since {time}"
+  - 실패: 원복 + toast
+```
+
+### Files Touched
+
+| 파일 | 변경 |
+|---|---|
+| `app/src/components/terminal/peek/VerdictInboxPanel.svelte` | `.card-top` corner toggle |
+| `app/src/lib/api/terminalApi.ts` | `watchCapture()` |
+| `app/src/components/terminal/WatchToggle.svelte` (NEW, ~40 LOC) | 24×24 토글 |
+
+### API 호출
+
+```typescript
+export async function watchCapture(
+  captureId: string,
+  expiry_hours?: number
+): Promise<{
+  capture_id: string;
+  is_watching: boolean;
+  started_watching_at: string;
+  watch_expires_at: string | null;
+}> {
+  const res = await fetch(`/api/captures/${captureId}/watch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(expiry_hours ? { expiry_hours } : {}),
+  });
+  if (!res.ok) throw new Error(parseErrorMessage(await res.json(), res.status));
+  return res.json();
+}
+```
+
+### Implementation Steps
+
+- [ ] **D-03-app-1** `WatchToggle.svelte` (props: captureId / isWatching / onToggle)
+- [ ] **D-03-app-2** Optimistic update (즉시 UI + 실패 시 원복)
+- [ ] **D-03-app-3** Idempotent 처리
+- [ ] **D-03-app-4** Toast (성공 / 실패)
+- [ ] **D-03-app-5** VerdictInboxPanel `.card-top` 통합
+- [ ] **D-03-app-6** `watchCapture` API
+- [ ] **D-03-app-7** Vitest
+- [ ] **D-03-app-8** App CI pass
+
+### Visual Spec
+
+- 24×24px corner (padding 6px)
+- outline: stroke `--sc-grey-7`, fill transparent
+- filled: fill `--lis-positive`, stroke none
+- pulse: 1회 scale 1.0 → 1.2 → 1.0 (300ms) on success
+
+### 선행
+
+PR #373 (D-03-eng) ✅ 머지 완료.
+
+---
+
+# §Wave 2 PR Sequence
+
+```
+[지금] PR #375 머지 (W-0230 design)
+    ↓
+[Wave 2 — 4 PR 병렬]
+  PR-1: F-02-app (S, 단일 파일)
+  PR-2: A-03-app (M, AIParserModal NEW)
+  PR-3: A-04-app (S-M, SaveSetupModal 확장)
+  PR-4: D-03-app (S, WatchToggle NEW)
+
+[충돌 가능]
+  - F-02-app + D-03-app 모두 VerdictInboxPanel 수정
+  - 머지 순서: F-02-app 먼저 → D-03-app rebase
+    ↓
+[Wave 2.5]
+  - H-07 F-60 Gate (W-0232 별도)
+  - F-3 Telegram deep link
+    ↓
+[Wave 3]
+  - Phase 1.1: W-0102 Slice 1+2
+  - Phase 1.2: Intent 6분류
+  - Phase 1.3: app/src/lib/viz/ 디렉토리
+
+---
+
+# §Visual Hierarchy (TradingView 디자이너 lens)
+
+```
+1. Regime Banner / Flip Clock (Archetype E × ≤3)
+2. Main Chart (candle + structure overlay) — 70%
+3. Decision HUD (5 카드 max) — 우측 20%
+4. Pillar pane (OI / Funding / Liq sub-pane)
+5. Gauge row (Archetype A) — live indicator strip
+6. Workspace sections (Phase Timeline / Evidence...) — bottom 30%
+7. Footer / event tape
+```
+
+핵심 룰 (불변식):
+- primary highlight = 1, secondary ≤ 2
+- 시선 이동 < 200ms
+- raw numeric은 workspace 하단만
+- 동일 정보 중복 금지
+
+---
+
+# §LIS Color Token Reference
+
+```css
+/* Direction */
+--lis-positive:   #4ade80;
+--lis-negative:   #f87171;
+--lis-accent:     #db9a9f;     /* primary brand pink */
+
+/* Indicator family */
+--oi:             #22d3ee;     /* cyan */
+--cvd:            white;
+
+/* Phase zones (8% opacity fill) */
+--phase-fake:     gray translucent
+--phase-arch:     light purple
+--phase-real:     red translucent
+--phase-accum:    amber translucent
+--phase-break:    green translucent
+
+/* Percentile tier (p50 무색 룰) */
+--ind-neutral:    var(--sc-grey-9)         /* p40-p60 */
+--ind-warn:       amber 35%                /* p72/p27 */
+--ind-extreme:    amber 75%                /* p92/p8 */
+--ind-historical: amber solid + 2s pulse   /* p98+/p2- */
+```
+
+→ 모든 신규 컴포넌트는 토큰 사용 (하드코딩 금지).
