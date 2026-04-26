@@ -40,20 +40,21 @@
 
 ### F-0a Chart Drag → PatternDraft (A-04)
 - [ ] **A-04-eng** `POST /patterns/draft-from-range` — 12 features 추출 (oi_change, funding, cvd, liq_volume, price, volume, btc_corr, higher_lows, lower_highs, compression, smart_money, venue_div) [M]
-- [ ] **A-04-app** UI — range 드래그 → 하이라이트 → 확인 팝업 → Draft 미리보기 → 저장 [M-L]
+- [ ] **A-04-app** UI — anchor click → SaveSetupModal 'Draft from Range' → form prefill [S-M, **80% 재사용**] — spec: W-0227 §A-04-app
 
 ### F-0b AI Parser (A-03)
 - [ ] **A-03-eng** `POST /patterns/parse` — ContextAssembler → Claude Sonnet → PatternDraftBody. **스키마/Assembler/downstream 이미 있음** [M, 3-4일]
-- [ ] **A-03-app** UI — 텍스트 입력 + Parse 버튼 + Draft 미리보기 → 저장 → capture [M]
+- [ ] **A-03-app** UI — 텍스트 입력 + Parse 버튼 + Draft 미리보기 → 저장 → capture [M] — spec: W-0227 §A-03-app
 
 ### F-1 5-cat Verdict (F-02)
-- [ ] **F-02** `engine/ledger/types.py:54` + `captures.py:66` + `verdict.py` + 앱 버튼. AC: 5값 200 / 기존 3값 호환 [S, Q1 결정 후]
-- [ ] **L-04** Verdict Inbox 5-cat 버튼 UI 추가
+- [x] **F-02** `engine/ledger/types.py:54` + `captures.py:66` + `verdict.py`. AC: 5값 200 / 기존 3값 호환 [S, Q1 결정 후] — **MERGED PR #370 (main: 1cfac2e3)**
+- [ ] **F-02-app** UI — VerdictInboxPanel `.card-actions` 3 → 5 button (too_late/unclear 추가) [S, 단일 파일] — spec: W-0227 §F-02-app
+- [ ] **L-04** Verdict Inbox 5-cat 버튼 UI 추가 (= F-02-app과 동일, 중복 항목)
 - [ ] **F-2-test** end-to-end: UI submit → DB → stats → wiki → refinement 통합 테스트
 
 ### F-2 Search Result List + 1-click Watch (D-03)
 - [ ] **D-03-eng** `POST /captures/{id}/watch` — monitoring row 생성, idempotent [M]
-- [ ] **D-03-app** Watch 버튼 (Verdict Inbox 카드) [S]
+- [ ] **D-03-app** Watch 버튼 (Verdict Inbox 카드) [S] — spec: W-0227 §D-03-app
 - [ ] **F-2-list** Search result top 10~20 + similarity score + 차트 미리보기 + 1-click Watch UX
 
 ### F-3 Telegram → Verdict deep link
