@@ -16,7 +16,7 @@
 |---|---|---|
 | `W-0213-multi-agent-os-phase34` | A009 | 다음 — `.gitattributes` + invariants 확장 |
 | `W-0145-operational-seed-search-corpus` | 미할당 | 부분 완료, 확장 필요 |
-| `W-0211-pine-template-engine` | 미할당 | 백로그 — 차트 UX polish 후속 |
+| `W-0212-chart-ux-polish` | 미할당 | 백로그 |
 
 ---
 
