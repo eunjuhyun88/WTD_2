@@ -78,3 +78,6 @@ memory/.memkraft/
 .memkraft/
 # memkraft가 잘못된 cwd에서 실행될 때 생기는 파일 (있으면 cleanup 신호)
 memory/memory/
+
+# Live agent heartbeat files (ephemeral, not tracked)
+state/agents/*.live.json

@@ -100,10 +100,13 @@ if [ -f spec/CONTRACTS.md ]; then
   fi
 fi
 
-# 5. state 갱신
+# 5. live heartbeat 파일 삭제 (세션 종료 표시)
+"$SCRIPT_DIR/live.sh" delete 2>/dev/null || true
+
+# 6. state 갱신
 ./tools/refresh_state.sh >/dev/null
 
-# 6. memkraft retro --dry-run (자동 회고 미리보기)
+# 7. memkraft retro --dry-run (자동 회고 미리보기)
 echo ""
 echo "═══════════════════════════════════"
 echo "✓ Session $AGENT closed"
