@@ -1,0 +1,2 @@
+{"ts":"2026-04-26T15:14:00.956717","id":"A010","event":"A010 session ended | shipped: PR #291 | handoff: git pull origin main && git checkout -b feat/w-0204-live-monitor-auto-sync","tags":["session","end","A010"],"importance":"high","shipped":"PR #291","handoff":"git pull origin main && git checkout -b feat/w-0204-live-monitor-auto-sync"}
+{"ts":"2026-04-26T15:14:01.715761","id":"A010","event":"A010 lesson: VariantCaseResult에 .timeframe 필드 없음 — active_variant_store sync 시 variants spec lookup으로 해결","tags":["lesson","A010"],"importance":"high"}
