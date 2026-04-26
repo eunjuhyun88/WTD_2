@@ -51,5 +51,9 @@ done
 
 # Lock 추가
 echo "| $AGENT | $DOMAIN | $BRANCH | $NOW |" >> spec/CONTRACTS.md
+
+# live 파일에 claimed domain 반영 (다른 에이전트가 실시간으로 볼 수 있게)
+"$SCRIPT_DIR/live.sh" update "$DOMAIN" 2>/dev/null || true
+
 echo "✓ $AGENT locked: $DOMAIN"
 echo "  released by: ./tools/end.sh"

@@ -102,6 +102,9 @@ if [ ! -s "$AGENT_FILE" ]; then
   fi
 fi
 
+# live heartbeat 파일 생성 (동시 실행 에이전트 가시성)
+"$SCRIPT_DIR/live.sh" write 2>/dev/null || true
+
 if [ $QUIET -eq 1 ]; then
   echo "Agent: $NEXT_ID | main: ${MAIN_SHA:0:8} | branch: $CURRENT_BRANCH"
   exit 0
@@ -122,13 +125,17 @@ jq -r '.open_prs[] | "  #\(.number) — \(.title) [\(.mergeable // "?")]"' state
   | head -10 || echo "  (none or gh CLI unavailable)"
 
 echo ""
-echo "Active locks:"
+echo "Live agents (now):"
+"$SCRIPT_DIR/live.sh" show 2>/dev/null || echo "  (none)"
+
+echo ""
+echo "Active locks (claimed domains):"
 if [ -f spec/CONTRACTS.md ]; then
   grep -E "^\| A[0-9]+" spec/CONTRACTS.md 2>/dev/null \
     | sed 's/^/  /' \
     | head -10 || echo "  (none)"
 else
-  echo "  (spec/CONTRACTS.md not yet created)"
+  echo "  (none)"
 fi
 
 echo ""
