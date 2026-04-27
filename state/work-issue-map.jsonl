@@ -1,2 +1,22 @@
 {"ts": "2026-04-28T00:00:00Z", "w_id": "W-0269", "issue": 506, "pr": [], "status": "design", "agent": "A066"}
 {"ts":"2026-04-27T19:09:48Z","w_id":"W-0272","issue":521,"pr":[],"status":"design","agent":"A066"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0215","issue":417,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0216","issue":418,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0217","issue":454,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0218","issue":421,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0219","issue":426,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0220","issue":422,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0221","issue":423,"pr":[],"status":"in_progress","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0222","issue":427,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0223","issue":428,"pr":[],"status":"in_progress","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0224","issue":429,"pr":[],"status":"in_progress","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0252","issue":462,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0254","issue":460,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0255","issue":461,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0256","issue":468,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0257","issue":474,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0258","issue":475,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0259","issue":476,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0264","issue":492,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0270","issue":501,"pr":[],"status":"completed","agent":"backfill"}
+{"ts":"2026-04-27T19:57:11Z","w_id":"W-0275","issue":516,"pr":[],"status":"completed","agent":"backfill"}
