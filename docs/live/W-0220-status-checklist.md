@@ -32,7 +32,7 @@
 - [ ] **Q2** F-60 accuracy threshold: **0.55** (권고, 90일 후 조정)
 - [x] **Q3** Drag UI: **실제 드래그** (lock-in 2026-04-26 W-0223 — form fallback)
 - [x] **Q4** Parser 입력: **자유 텍스트** (lock-in 2026-04-26 W-0223 — telegram refs 4채널 기반)
-- [x] **Q5** Parser 모델: **claude-sonnet-4-6** (lock-in 2026-04-26 W-0223 — function calling)
+- [x] **Q5** Parser 모델: **claude-sonnet-4-5 또는 4-6** (둘 다 function calling 안정 — lock-in 2026-04-26 W-0223. 코드 현재 4-5 사용)
 
 ---
 

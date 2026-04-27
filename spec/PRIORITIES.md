@@ -40,7 +40,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 ```
 [Input — 3 modes]
   A. 차트 드래그 → POST /patterns/draft-from-range (12 features 자동 추출)
-  B. 자유 텍스트 → POST /patterns/parse → ContextAssembler → claude-sonnet-4-6
+  B. 자유 텍스트 → POST /patterns/parse → ContextAssembler → claude-sonnet-4-5/4-6
   C. 53 카탈로그 선택 + threshold 수정
 
 [Resolve]   PatternDraft → Validator → SearchQuerySpec
@@ -265,7 +265,7 @@ CSS Grid, resizable, min-width per pane
 | **Q1** | missed vs too_late: **분리** | 학습 노이즈 다름. missed = 패턴 무효, too_late = 타이밍 실패 |
 | **Q3** | Chart Drag: **실제 드래그 UI** | D11 forward search mental model 일치. form은 fallback |
 | **Q4** | Parser 입력: **자유 텍스트** | Telegram refs 4채널 형식 그대로 붙여넣기 지원 |
-| **Q5** | Parser 모델: **claude-sonnet-4-6** | function calling 안정성. Haiku는 KOL caption(M-02)에 사용 |
+| **Q5** | Parser 모델: **claude-sonnet-4-5 또는 4-6** | 둘 다 function calling 안정. 코드 현재 `engine/api/routes/patterns.py:159`는 4-5. Haiku는 KOL caption(M-02)에 사용 |
 
 ### ✅ Lock-in 완료 (CTO 확정 2026-04-27)
 
