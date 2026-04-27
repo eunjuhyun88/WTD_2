@@ -379,7 +379,7 @@ promotion_gate_pass_rate_30d > 0
 ```
 1. [즉시]   W-0215 시작 — pattern_search.py:3283줄 audit (V-00)
 2. [즉시]   F-02-fix — verdict 레이블 이관 migration 작성 (기존 missed→near_miss 포함)
-3. [이번 주] D1/D2/D3/D5/D11/D15 사용자 lock-in (미확정 결정 5개 우선)
+3. [이번 주] F-02-fix migration 022 배포 (missed→near_miss + stats/engine.py 동시)
 4. [이번 주] W-0216 — validation/ 모듈 구현 (W-0215 완료 후)
 5. [다음 주] F-3 Telegram→Verdict deep link / F-4 Decision HUD / F-7 메타 자동화
 6. [M1]     F-5 IDE split-pane + F-11 Dashboard WATCHING + H-07 F-60 Gate
@@ -387,4 +387,40 @@ promotion_gate_pass_rate_30d > 0
 
 ---
 
-*코드 실측 SHA: 6d7de4fe | CTO+AI Researcher A024 | 2026-04-27*
+*코드 실측 SHA: 6d7de4fe | CTO+AI Researcher A024 | 2026-04-27 | D/Q 전체 lock-in 완료*
+
+---
+
+## 🛤 2-트랙 병렬 실행 (2026-04-27 분리)
+
+> Wave UX 트랙과 MM Hunter 검증 트랙은 **파일 영역 disjoint** → 동시 실행 가능.
+> 다른 에이전트는 시작 전 본인이 어느 트랙인지 확인하고 해당 트랙 work item만 픽업.
+> 상세: `docs/live/track-separation-2026-04-27.md`
+
+### Track 1 — Wave (Surface UI / Gate / 입구)
+
+| W-# | Feature | Owner | 상태 |
+|---|---|---|---|
+| W-0241 | H-07-eng F-60 Gate Status API | engine | ✅ Wave 1 완료 (patterns.py:427) |
+| W-0242 | H-07-app F60GateBar UI | app | W-0241 후 |
+| W-0243 | Wave 3 Phase 1.1 W-0102 Slice 1+2 | app | 독립, 즉시 시작 |
+| W-0244 | SaveSetupModal × DraftFromRangePanel | app | 독립, 즉시 시작 |
+| W-0234 | F-3 Telegram → Verdict deep link | app+engine | 별도 |
+
+→ 영역: `app/`, `engine/api/routes/users.py`, `engine/stats/engine.py`
+
+### Track 2 — MM Hunter (Engine Core 검증)
+
+| W-# | Feature | Owner | 상태 |
+|---|---|---|---|
+| W-0214 | MM Hunter Core Theory v1.3 | contract | ✅ LOCKED-IN (#396) |
+| W-0215 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 |
+| W-0216 | `validation/` 모듈 구현 | engine | W-0215 후 |
+
+→ 영역: `engine/research/`, `engine/validation/`
+
+### 트랙 충돌 방지 룰
+
+- Track 1 작업 → `app/src/components/`, `app/src/routes/api/users/`, `app/src/routes/api/captures/`, `engine/api/routes/users.py`, `engine/stats/engine.py`만
+- Track 2 작업 → `engine/research/pattern_search.py`, `engine/validation/`, MM Hunter 도메인만
+- 두 트랙 모두 `docs/live/W-0220-status-checklist.md` 토글 가능 (line-level merge OK)

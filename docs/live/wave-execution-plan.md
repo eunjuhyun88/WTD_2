@@ -141,3 +141,39 @@ A. 다른 에이전트가 조정 후 강제 해제 가능 — `docs/runbooks/mul
 
 **Q. 새 work item이 생기면 W-#### 또 충돌하지 않나?**
 A. 단기적으로 W-#### 유지. 장기적으로 Issue 번호로 이전 (별도 ADR 후속).
+
+---
+
+## 7. 2-트랙 분리 (2026-04-27 추가)
+
+본 Wave Execution Plan은 **Track 1 (Wave UX)** 만 다룹니다.
+**Track 2 (MM Hunter Engine Core)** 는 별도 트랙으로 분리되어 동시 실행 가능합니다.
+
+### Track 분리 명세
+
+- 상세: `docs/live/track-separation-2026-04-27.md`
+- Track 1 영역: `app/`, `engine/api/routes/users.py`, `engine/stats/engine.py`
+- Track 2 영역: `engine/research/`, `engine/validation/`
+- 두 트랙은 파일 영역 disjoint → 충돌 0
+
+### Wave 트랙 차기 작업 (W-0241~W-0244, 본 PR #430)
+
+| W-# | Feature | Effort |
+|---|---|---|
+| W-0241 | H-07-eng F-60 Gate Status API | M |
+| W-0242 | H-07-app F60GateBar UI | M |
+| W-0243 | Wave 3 Phase 1.1 W-0102 Slice 1+2 | S |
+| W-0244 | SaveSetupModal × DraftFromRangePanel | S-M |
+
+### MM Hunter 트랙 차기 작업 (W-0215, W-0216)
+
+| W-# | Feature | Effort |
+|---|---|---|
+| W-0215 | V-00 pattern_search.py audit | L |
+| W-0216 validation/ 모듈 | L |
+
+### 충돌 방지
+
+- 에이전트는 트랙 결정 후 **자기 트랙 영역만** 작업
+- 트랙 간 파일 변경 금지 (필요시 PR 분리 + 다른 에이전트 할당)
+- 두 트랙 모두 `docs/live/W-0220-status-checklist.md`는 토글 가능 (line-level merge OK)
