@@ -33,6 +33,6 @@ Do not start active work from this file alone.
 - `docs/generated/`
 - `docs/archive/`
 - `_archive/`
-- `memory/memory/`
+- `memory/` (legacy local memory root; use root `../memory/`)
 
 If a task changes contracts or behavior, update the root canonical docs, not only legacy app docs.

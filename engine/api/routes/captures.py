@@ -13,7 +13,7 @@ Cold-start lane (design: docs/product/flywheel-closure-design.md):
     outcome_resolver closes them via the same pipeline as pattern_candidate.
   - Bulk import is the founder's seed lane before external users arrive.
   - Verdict label closes axis 3: founder reviews resolved outcomes and
-    annotates them as valid/invalid/missed so axis 4 (refinement) can train.
+    annotates them as valid/invalid/missed/too_late/unclear so axis 4 (refinement) can train.
 
 Verdict Inbox (W-0088 Phase C, flywheel axis 3):
   - outcome_resolver flips pending_outcome → outcome_ready once the
@@ -63,7 +63,8 @@ _benchmark_pack_store = BenchmarkPackStore()
 _pattern_search_artifact_store = PatternSearchArtifactStore()
 
 # Literal alias documents the accepted values and lets pydantic validate.
-VerdictLabel = Literal["valid", "invalid", "missed"]
+# 5-cat verdict (F-02): valid / invalid / missed / too_late / unclear
+VerdictLabel = Literal["valid", "invalid", "missed", "too_late", "unclear"]
 
 
 def _status_for_kind(kind: CaptureKind) -> str:
@@ -647,7 +648,7 @@ async def get_chart_annotations(
       tp2_price       — from chart_context.tp2 (null if not set)
       eval_window_ms  — evaluation window in ms (for shading end x)
       p_win           — float 0–1 if recorded
-      user_verdict    — "valid" | "invalid" | "missed" | null
+      user_verdict    — "valid" | "invalid" | "missed" | "too_late" | "unclear" | null
     """
     captures = await asyncio.to_thread(
         _capture_store.list,
@@ -694,6 +695,15 @@ async def get_chart_annotations(
 
 # ── Single + list (MUST be after /chart-annotations to avoid collision) ──────
 
+@router.post("/{capture_id}/watch")
+async def watch_capture(capture_id: str) -> dict:
+    """Mark a capture as watching. Idempotent — calling twice is safe."""
+    found = _capture_store.set_watching(capture_id, True)
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    return {"ok": True, "status": "watching", "capture_id": capture_id}
+
+
 @router.get("/{capture_id}")
 async def get_capture(capture_id: str) -> dict:
     capture = _capture_store.load(capture_id)
@@ -708,6 +718,7 @@ async def list_captures(
     pattern_slug: str | None = None,
     symbol: str | None = None,
     status: str | None = None,
+    watching: bool | None = None,
     limit: int = Query(default=100, ge=1, le=500),
 ) -> dict:
     captures = _capture_store.list(
@@ -715,6 +726,7 @@ async def list_captures(
         pattern_slug=pattern_slug,
         symbol=symbol,
         status=status,
+        is_watching=watching,
         limit=limit,
     )
     return {

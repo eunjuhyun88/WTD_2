@@ -14,12 +14,14 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 MEMORY_DIR = ROOT / "memory"
 CURRENT_MD = ROOT / "work" / "active" / "CURRENT.md"
+LOCAL_TZ = ZoneInfo("Asia/Seoul")
 
 # 루트 memory.mk protocol import를 우선 사용한다.
 sys.path.insert(0, str(ROOT))
@@ -39,6 +41,10 @@ def record_pr_event(pr_number: int, pr_title: str, pr_body: str, sha: str, autho
     if mk is None:
         return
 
+    if has_existing_pr_event(pr_number):
+        print(f"MemKraft: PR #{pr_number} event already exists - skipping duplicate")
+        return
+
     # work item ID 추출 (W-XXXX 패턴)
     work_ids = re.findall(r"W-\d{4}", pr_title + " " + pr_body)
     tags_parts = ["pr", "merge"] + list(dict.fromkeys(work_ids))  # dedup, order preserved
@@ -50,6 +56,21 @@ def record_pr_event(pr_number: int, pr_title: str, pr_body: str, sha: str, autho
         importance="high",
     )
     print(f"MemKraft: recorded PR #{pr_number} (tags: {tags})")
+
+
+def has_existing_pr_event(pr_number: int) -> bool:
+    needle = f"PR #{pr_number} merged"
+    sessions_dir = MEMORY_DIR / "sessions"
+    if not sessions_dir.exists():
+        return False
+
+    for path in sessions_dir.glob("*.jsonl"):
+        try:
+            if needle in path.read_text(encoding="utf-8"):
+                return True
+        except OSError:
+            continue
+    return False
 
 
 # ──────────────────────────────────────────────
@@ -70,8 +91,8 @@ def sync_current_md(sha: str, pr_number: int, pr_title: str) -> bool:
         text,
     )
 
-    # 날짜 헤더 갱신
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # 날짜 헤더 갱신. GitHub Actions runs in UTC, but CURRENT.md is kept in KST.
+    today = datetime.now(LOCAL_TZ).strftime("%Y-%m-%d")
     new_text = re.sub(
         r"(# CURRENT — 단일 진실 \().*?(\))",
         rf"\g<1>{today}\2",

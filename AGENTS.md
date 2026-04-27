@@ -9,16 +9,66 @@ Execution rules for humans and coding agents.
 3. Contracts define app-engine coupling.
 4. Work continues via `work/active/*.md`, not chat history.
 
+## Bootstrap (Multi-Agent OS v2 + MemKraft)
+
+**처음 worktree 들어올 때 1회**: `bash app/scripts/dev/install-git-hooks.sh` — `core.hooksPath=.githooks` 활성화. F-7 hooks: pre-commit (unknown-agent gate, PR #354 silent loss 차단) + pre-push (branch naming + design invariant) + post-merge (state refresh).
+
+세션 흐름:
+```bash
+./tools/start.sh                                      # 또는 /start
+./tools/claim.sh "engine/X, app/Y"                    # 또는 /claim "..."
+./tools/save.sh "다음에 할 일"                          # 또는 /save "..."   (중간)
+./tools/end.sh "PR #N" "handoff" [lesson]             # 또는 /end ...     (종료)
+```
+
+`/start`가 자동:
+- Agent ID 발번 (`memory/sessions/agents/A###.jsonl` 기반, 가변)
+- `state/` 갱신 (main SHA, open PRs, worktrees)
+- memkraft 통합 (open-loops, dream)
+- 직전 에이전트 handoff 표시
+
+### MemKraft 슬래시 커맨드
+
+| 슬래시 | 기능 | memkraft 명령 |
+|---|---|---|
+| `/start` | 세션 시작 | `dream --dry-run`, `open-loops --dry-run` |
+| `/save` | 중간 체크포인트 | `log --event "..."` ×2 (done/next) |
+| `/end` | 세션 종료 | `log --event "session ended"` + `retro --dry-run` |
+| `/claim` | 영역 lock | `spec/CONTRACTS.md` (memkraft 외부) |
+| `/agent-status` | 현재 상태 | (read-only 합본) |
+| `/retro` | 일일 회고 | `retro` (Well/Bad/Next 자동 추출) |
+| `/decision` | 결정 기록 | `log --decision` |
+| `/incident` | 사고 기록 | `mk.incident_record()` |
+| `/open-loops` | 미해결 항목 | `open-loops` |
+| `/search` | 메모리 검색 | `search --fuzzy` |
+
+### MemKraft 작동 원칙 (중요)
+
+- **모든 MemKraft CLI 명령은 `./tools/mk.sh`로 실행** — 전역 `memkraft`와 `cd memory && memkraft` 금지
+- wrapper가 `MEMKRAFT_DIR=./memory`와 engine uv 환경의 MemKraft 버전을 고정함
+- entity 시드: `./tools/track_repo.sh` (W-번호, Agent ID, 모듈 자동 등록)
+- `memory/RESOLVER.md` — 새 정보 저장 전 분류 결정 트리 참조
+- `memory/.memkraft/` — auto-cache, .gitignore
+
+### 핵심 파일
+
+- 설계: `design/proposed/multi-agent-os-v2.md`, `design/proposed/memkraft-full-integration.md`
+- spec: `spec/PRIORITIES.md` (P0/P1/P2), `spec/CONTRACTS.md` (locks)
+- state (자동): `state/state.json`, `state/current_agent.txt`
+- ledger: `memory/sessions/{date}.jsonl` (timeline), `memory/sessions/agents/A###.jsonl` (per-agent)
+
 ## Default Read Scope
 
 Read in this order:
 
 1. `AGENTS.md`
 2. `work/active/CURRENT.md`
-3. Relevant `work/active/*.md` listed in `CURRENT.md`
-4. Relevant `docs/domains/*.md`
-5. Relevant `docs/product/*.md`
-6. Minimal required code files
+3. `./tools/start.sh` output (Agent ID + derived state + priorities)
+4. `spec/PRIORITIES.md` for compact P0/P1 detail
+5. Relevant `work/active/*.md` listed in `CURRENT.md`
+6. Relevant `docs/domains/*.md`
+7. Relevant `docs/product/*.md`
+8. Minimal required code files
 
 ## Context Routing
 

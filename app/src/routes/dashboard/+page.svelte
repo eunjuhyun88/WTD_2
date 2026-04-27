@@ -51,7 +51,7 @@
   let labellingId = $state<string | null>(null);
   let labelError = $state<string | null>(null);
 
-  async function submitVerdict(captureId: string, verdict: 'valid' | 'invalid' | 'missed', note?: string) {
+  async function submitVerdict(captureId: string, verdict: 'valid' | 'invalid' | 'missed' | 'too_late' | 'unclear', note?: string) {
     labellingId = captureId;
     labelError = null;
     try {
@@ -345,17 +345,27 @@
               class="verdict-btn verdict-btn--valid"
               disabled={busy}
               onclick={() => submitVerdict(capture.capture_id, 'valid')}
-            >Valid</button>
+            >성공</button>
             <button
               class="verdict-btn verdict-btn--invalid"
               disabled={busy}
               onclick={() => submitVerdict(capture.capture_id, 'invalid')}
-            >Invalid</button>
+            >실패</button>
             <button
               class="verdict-btn verdict-btn--missed"
               disabled={busy}
               onclick={() => submitVerdict(capture.capture_id, 'missed')}
-            >Missed</button>
+            >놓침</button>
+            <button
+              class="verdict-btn verdict-btn--too-late"
+              disabled={busy}
+              onclick={() => submitVerdict(capture.capture_id, 'too_late')}
+            >늦은진입</button>
+            <button
+              class="verdict-btn verdict-btn--unclear"
+              disabled={busy}
+              onclick={() => submitVerdict(capture.capture_id, 'unclear')}
+            >불명확</button>
           </div>
         </div>
       {/each}
@@ -712,6 +722,18 @@
     background: rgba(251, 191, 36, 0.18);
     border-color: rgba(251, 191, 36, 0.35);
     color: #fbbf24;
+  }
+
+  .verdict-btn--too-late:hover:not(:disabled) {
+    background: rgba(251, 146, 60, 0.18);
+    border-color: rgba(251, 146, 60, 0.35);
+    color: #fb923c;
+  }
+
+  .verdict-btn--unclear:hover:not(:disabled) {
+    background: rgba(148, 163, 184, 0.18);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #94a3b8;
   }
 
   .verdict-error {

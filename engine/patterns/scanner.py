@@ -26,6 +26,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
 
+from capture.store import CaptureStore
+from capture.types import CaptureRecord
 from data_cache.loader import load_klines, load_perp
 from exceptions import CacheMiss
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
@@ -47,6 +49,7 @@ log = logging.getLogger("engine.patterns.scanner")
 
 LEDGER_STORE = get_ledger_store()
 STATE_STORE = PatternStateStore()
+_CAPTURE_STORE = CaptureStore()
 
 # ── Singleton state machines — one per pattern in library ──────────────────
 _MACHINES: dict[str, PatternStateMachine] = {}
@@ -162,6 +165,32 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
     LEDGER_STORE.save(outcome)
     LEDGER_RECORD_STORE.append_entry_record(outcome)
     LEDGER_RECORD_STORE.append_score_record(outcome)
+
+    capture = CaptureRecord(
+        capture_kind="pattern_candidate",
+        symbol=transition.symbol,
+        pattern_slug=transition.pattern_slug,
+        pattern_version=transition.pattern_version or 1,
+        definition_id=outcome.definition_id,
+        definition_ref=outcome.definition_ref,
+        phase=transition.to_phase,
+        timeframe=transition.timeframe,
+        captured_at_ms=int(transition.timestamp.timestamp() * 1000),
+        candidate_transition_id=transition.transition_id,
+        scan_id=transition.scan_id,
+        feature_snapshot=transition.feature_snapshot,
+        block_scores=transition.block_scores or {},
+        outcome_id=outcome.id,
+        status="pending_outcome",
+    )
+    _CAPTURE_STORE.save(capture)
+    log.info(
+        "CAPTURE SAVED: %s %s [%s] capture_id=%s",
+        transition.symbol,
+        transition.to_phase,
+        transition.pattern_slug,
+        capture.capture_id,
+    )
 
 
 def _on_success(transition: PhaseTransition) -> None:

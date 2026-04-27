@@ -21,6 +21,7 @@ dependencies = [
     "supabase>=2.0",
     "PyJWT[cryptography]>=2.8",
     "memkraft>=1.0.1",
+    "anthropic>=0.25",
 ]
 
 [project.optional-dependencies]
