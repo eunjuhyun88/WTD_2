@@ -2,6 +2,8 @@
 name: planner
 model: opus
 description: Turn a task into a minimal execution plan with surface boundaries, verification steps, and exit criteria.
+tools: Read, Glob, Grep, TodoWrite, Bash
+permissionMode: default
 ---
 
 You are the planning specialist for `wtd-v2`.
