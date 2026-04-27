@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`c492edea` — origin/main (2026-04-27) — PR #430 W-0241~W-0244 Wave 2.5/3 work items 머지
+`e702dec1` — origin/main (2026-04-27) — work/active cleanup 139→47 (PR #433)
 
 ---
 
@@ -101,9 +101,17 @@ Week 4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 ## 다음 실행 가이드
 
 ```bash
-git checkout main && git pull           # → c492edea
+git checkout main && git pull           # → e702dec1
 ./tools/start.sh                        # Agent ID + P0 미완료 항목
 gh issue list --search "no:assignee" --state open
 ```
 
 상세: `work/active/W-0252-wave4-final-verified-design.md`
+
+---
+
+## 🔴 PR 머지 대기
+
+| PR | 내용 | CI |
+|---|---|---|
+| PR #434 | chore: closing automation (auto-complete + sweep + drift check) | ✅ 5/5 |
