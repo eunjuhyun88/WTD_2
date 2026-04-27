@@ -13,7 +13,7 @@ Cold-start lane (design: docs/product/flywheel-closure-design.md):
     outcome_resolver closes them via the same pipeline as pattern_candidate.
   - Bulk import is the founder's seed lane before external users arrive.
   - Verdict label closes axis 3: founder reviews resolved outcomes and
-    annotates them as valid/invalid/missed/too_late/unclear so axis 4 (refinement) can train.
+    annotates them as valid/invalid/near_miss/too_early/too_late so axis 4 (refinement) can train.
 
 Verdict Inbox (W-0088 Phase C, flywheel axis 3):
   - outcome_resolver flips pending_outcome → outcome_ready once the
@@ -63,8 +63,8 @@ _benchmark_pack_store = BenchmarkPackStore()
 _pattern_search_artifact_store = PatternSearchArtifactStore()
 
 # Literal alias documents the accepted values and lets pydantic validate.
-# 5-cat verdict (F-02): valid / invalid / missed / too_late / unclear
-VerdictLabel = Literal["valid", "invalid", "missed", "too_late", "unclear"]
+# 5-cat verdict (F-02): valid / invalid / near_miss / too_early / too_late
+VerdictLabel = Literal["valid", "invalid", "near_miss", "too_early", "too_late"]
 
 
 def _status_for_kind(kind: CaptureKind) -> str:
@@ -648,7 +648,7 @@ async def get_chart_annotations(
       tp2_price       — from chart_context.tp2 (null if not set)
       eval_window_ms  — evaluation window in ms (for shading end x)
       p_win           — float 0–1 if recorded
-      user_verdict    — "valid" | "invalid" | "missed" | "too_late" | "unclear" | null
+      user_verdict    — "valid" | "invalid" | "near_miss" | "too_early" | "too_late" | null
     """
     captures = await asyncio.to_thread(
         _capture_store.list,
