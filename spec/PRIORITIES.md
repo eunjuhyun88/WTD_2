@@ -176,6 +176,8 @@ CSS Grid, resizable, min-width per pane
 ① post-merge hook: main push → CURRENT.md SHA 자동 업데이트
 ② worktree cron: 매일 00:00 → worktree 10개 초과 시 Slack/log 경고
 ③ spec/PRIORITIES.md validation: D/Q 미확정 항목 출력
+④ [✅ W-0269 완료 2026-04-28] Issue lifecycle enforcement
+   — /설계 atomic issue 강제 + pre-push gate + CI gate + zombie sweep
 ```
 
 ---
