@@ -156,14 +156,49 @@ if echo "$CURRENT_BRANCH" | grep -qE '^(claude/|codex/|worktree-agent-)'; then
   BRANCH_AUTO=1
 fi
 
+# Stale worktree check (G7 — 2026-04-28 W-0264 §Safety).
+# Detects when this worktree's HEAD is far behind origin/main.  Stale
+# worktrees cause /start auto-sync to encounter merge conflicts (e.g.
+# 2026-04-27 A045/A051 sessions).  Threshold: ≥ 30 commits behind.
+STALE_COMMITS=0
+if [ -n "$MAIN_SHA" ]; then
+  STALE_COMMITS=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+fi
+STALE_WARN=""
+if [ "$STALE_COMMITS" -ge 30 ]; then
+  STALE_WARN=" ⚠️ STALE (${STALE_COMMITS} commits behind)"
+elif [ "$STALE_COMMITS" -ge 10 ]; then
+  STALE_WARN=" (${STALE_COMMITS} commits behind)"
+fi
+
 # 4. 부팅 출력 헤더
 cat <<EOF
 ═══════════════════════════════════
 You are Agent ${NEXT_ID}
 ═══════════════════════════════════
 Baseline:    ${MAIN_SHA:0:8}  (origin/main)
-Branch:      ${CURRENT_BRANCH}
+Branch:      ${CURRENT_BRANCH}${STALE_WARN}
 
+EOF
+
+if [ "$STALE_COMMITS" -ge 30 ]; then
+  cat <<EOF
+🚨 STALE WORKTREE — DO NOT continue work here.
+
+  This worktree is ${STALE_COMMITS} commits behind origin/main.  Continuing
+  will produce merge conflicts (G7 sacrificed sessions on 2026-04-27).
+
+  Recommended:
+    1. cd to repo root and create a fresh worktree:
+       git worktree add .claude/worktrees/feat-{Issue-ID} -b feat/{ID}-{desc} main
+    2. Move your in-flight changes via PR (do not git pull this stale tree).
+    3. After PR merge, retire this worktree:
+       git worktree remove <this path>
+
+EOF
+fi
+
+cat <<EOF
 Open PRs:
 EOF
 
