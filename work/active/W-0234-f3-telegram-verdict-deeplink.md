@@ -50,12 +50,19 @@ feature (deep link routing + UI)
 3. `PATCH /outcomes/{id}/verdict` — H-08 PR #377에서 구현 완료 (user_verdict 업데이트).
 4. `APP_ORIGIN` env var — `engine/api/config.py` 또는 `.env`에 설정 필요.
 5. Supabase Auth — app에 이미 구현. 비인증 redirect 패턴 존재.
+6. **[코드 실측 2026-04-27]** F-02-fix(migration 022) 완료 후 시작 필수 — verdict 버튼 레이블이 `near_miss/too_early`로 변경, deep link UI에 반영 필요.
+7. **선행 조건**: F-02-fix BLOCKER 완료 후 시작 (W-0252 §5 Week 1 A-1).
 
 ## Assumptions
 
 1. `APP_ORIGIN` env var 설정됨 (GCP 배포 시 `https://cogochi.app`).
 2. Telegram Bot Token 이미 운영 환경에 설정됨.
 3. capture_id는 UUID 형식 (URL-safe).
+
+## Open Questions
+
+- **Q1**: deep link TTL 정책 — 72h 만료 후 접근 시 "기간 만료" 페이지 vs 그냥 VerdictInbox (현재 만료 처리 없음)?
+- **Q2**: VerdictInboxPanel standalone 모드에서 `capture_id` prop만으로 데이터 조회 가능한가? (`GET /captures/{id}` 스펙 확인 필요)
 
 ## Canonical Files
 
