@@ -7,9 +7,12 @@
    * hybrid ranker (feature + LCS sequence + context).
    */
   import { buildCanonicalHref } from '$lib/seo/site';
+  import SearchResultList from '$lib/components/search/SearchResultList.svelte';
+  import type { SearchResultCardProps } from '$lib/components/search/SearchResultCard.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface SimilarCandidate {
+    capture_id?: string;
     symbol: string;
     timeframe: string;
     bar_ts_ms: number;
@@ -21,6 +24,7 @@
     observed_phase_path: string[];
     matched_phase_path: string[];
     missing_phases: string[];
+    outcome?: string | null;
   }
 
   interface SearchResult {
@@ -78,6 +82,22 @@
   let result = $state<SearchResult | null>(null);
   let error = $state<string | null>(null);
   let parseError = $state<string | null>(null);
+
+  // ── Derived card items for SearchResultList ────────────────────────────────
+  const cardItems = $derived<SearchResultCardProps[]>(
+    result == null
+      ? []
+      : result.candidates.map((c) => ({
+          capture_id: c.capture_id,
+          pattern_name: result.spec_pattern_family.replace(/_/g, ' '),
+          similarity: c.final_score,
+          phase: c.observed_phase_path.length ? c.observed_phase_path.join(' → ') : '—',
+          outcome: c.outcome ?? null,
+          timestamp: c.bar_iso,
+          symbol: c.symbol,
+          timeframe: c.timeframe,
+        }))
+  );
 
   // ── Search ─────────────────────────────────────────────────────────────────
   async function runSearch() {
@@ -253,7 +273,15 @@
             </p>
           </div>
         {:else}
+          <!-- Card view: similarity score + Watch button (Top 20, 10 per page) -->
+          <div class="surface-card results-cards">
+            <div class="view-label">Card View — Top 20 · 10 per page</div>
+            <SearchResultList items={cardItems} maxResults={20} pageSize={10} />
+          </div>
+
+          <!-- Table view: detailed score breakdown -->
           <div class="surface-card results-shell">
+            <div class="view-label">Score Breakdown</div>
             <div class="results-table">
               <div class="table-header">
                 <span>Symbol</span>
@@ -431,6 +459,21 @@
     font-family: var(--sc-font-mono, monospace);
     font-size: 10px;
     letter-spacing: 0.04em;
+  }
+
+  .results-cards {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .view-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.2);
+    padding: 8px 14px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   }
 
   .results-shell {
