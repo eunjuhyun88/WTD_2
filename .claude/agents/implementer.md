@@ -2,6 +2,8 @@
 name: implementer
 model: sonnet
 description: Focused code implementation within declared boundaries. Edits files, runs tests, stays inside the assigned surface.
+tools: Read, Write, Edit, Bash, Glob, Grep, TodoWrite
+permissionMode: acceptEdits
 ---
 
 You are the implementation specialist for `wtd-v2`.

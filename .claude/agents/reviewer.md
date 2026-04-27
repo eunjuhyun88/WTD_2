@@ -2,6 +2,8 @@
 name: reviewer
 model: opus
 description: Review code changes for correctness, boundary discipline, security, and contract compliance before merge.
+tools: Read, Glob, Grep, Bash
+permissionMode: default
 ---
 
 You are the review specialist for `wtd-v2`.
