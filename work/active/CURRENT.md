@@ -29,10 +29,10 @@
 
 ### MM Hunter (Research Track) — V layer (다른 에이전트)
 
+> 머지 완료된 design/audit work item 5종은 `work/completed/`로 이동: W-0214 mm-hunter-core-theory, W-0215 pattern-search-py-audit, W-0223 wave1-execution-design, W-0230 tradingview-grade-viz-design, W-0232 h07-f60-gate-design. (PR #415 / #369 / #375 / #392)
+
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0214-mm-hunter-core-theory-and-validation` | research | ✅ v1.3 LOCKED-IN |
-| `W-0215-pattern-search-py-audit` | research | ✅ V-00 완료 (PR #415) |
 | `W-0217-v01-purged-kfold-cv` | research | ⏳ Issue #420 |
 | `W-0218-v02-phase-eval-m1` | research | ⏳ Issue #421, V-01과 병렬 |
 | `W-0219-v03-ablation-m2` | research | ⏳ Issue #426 |
