@@ -17,8 +17,10 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
   const limit = Math.min(Number(url.searchParams.get('limit') || '20'), 100);
   const symbol = url.searchParams.get('symbol') ?? '';
+  const watching = url.searchParams.get('watching');
   const params = new URLSearchParams({ user_id: user.id, limit: String(limit) });
   if (symbol) params.set('symbol', symbol);
+  if (watching) params.set('watching', watching);
 
   try {
     const res = await engineFetch(`/runtime/captures?${params}`, {
