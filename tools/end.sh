@@ -113,6 +113,16 @@ fi
 # 6. state 갱신
 ./tools/refresh_state.sh >/dev/null
 
+# 6.5 sweep + drift check (재발 방지 자동화)
+if [ -x "$SCRIPT_DIR/sweep_session_artifacts.sh" ]; then
+  echo ""
+  "$SCRIPT_DIR/sweep_session_artifacts.sh" || true
+fi
+if [ -x "$SCRIPT_DIR/check_drift.sh" ]; then
+  echo ""
+  "$SCRIPT_DIR/check_drift.sh" || true
+fi
+
 # 7. memkraft retro --dry-run (자동 회고 미리보기)
 echo ""
 echo "═══════════════════════════════════"

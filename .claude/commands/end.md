@@ -21,6 +21,17 @@ argument-hint: "shipped" "handoff" [lesson]
 3. `spec/CONTRACTS.md`에서 자기 lock 제거
 4. lesson이 있으면 별도 항목으로 추가 기록
 5. `state/state.json` 갱신
+6. **`tools/sweep_session_artifacts.sh`** — 세션 아티팩트 archive + docs/live 중복 삭제
+7. **`tools/check_drift.sh`** — main SHA / W-#### 충돌 / 활성표 모순 / origin 차이 보고
+
+## 머지된 work item 정리는 `/닫기` 사용 권장
+
+`/end`는 세션 단위 종료만 한다. 이번 세션에 PR이 머지됐다면 `/닫기`로 종료하는 게 좋다 — `/닫기`가 머지된 W-XXXX를 식별해서 `tools/complete_work_item.sh`로 자동 정리한다.
+
+또는 수동:
+```
+bash tools/complete_work_item.sh W-XXXX
+```
 
 ## 실행 후
 
