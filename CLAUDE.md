@@ -58,35 +58,66 @@ Do not read these unless explicitly required:
 - Move durable findings, assumptions, and rejected hypotheses into the active work item tracked from `work/active/CURRENT.md`.
 - Preserve source attribution for key decisions so another agent can continue without chat replay.
 
-## Branch Naming — MANDATORY
+## Branch Naming — TARGET (auto-rename allowed)
 
-**Before creating any branch**, look up the Issue ID in `docs/live/feature-implementation-map.md`.
-
-Branch name format: `feat/{Issue-ID}-{kebab-desc}`
+PR 머지 전 도달해야 할 형태: `feat/{Issue-ID}-{slug}` 또는 `feat/{W-NNNN}-{slug}`.
 
 Examples:
 - `feat/F02-verdict-5cat`
-- `feat/A03-ai-parser-engine`
-- `feat/D03-watch-engine`
+- `feat/W-0260-agent-os-registry-overhaul`
+- `feat/issue-442-meta-automation`
+- `chore/cleanup-stale-branches`
 
-**NEVER** create branches with auto-generated names:
-- `claude/*` — forbidden
-- `codex/*` — forbidden
-- Any name without a Feature ID prefix — forbidden
+### Auto-generated 이름 처리 (이중 worktree 방지)
 
-If no matching Issue ID exists in `feature-implementation-map.md`, **stop and ask the user** before creating a branch. Do not invent a new branch name.
+Claude Code SDK / codex CLI는 자동으로 `claude/<random>`, `codex/<random>`, `worktree-agent-<hash>` 형식 worktree를 생성한다. 이 worktree에 진입한 경우:
 
-The pre-push hook at `.githooks/pre-push` will block `claude/*` and `codex/*` pushes.
+1. **새 worktree를 또 만들지 말 것**. 이중 생성은 stale 누적의 주원인.
+2. **단순 rename으로 충분**:
+   ```bash
+   git branch -m feat/{Issue-ID}-{slug}    # worktree는 그대로 유지
+   ```
+3. PR push 시점 전까지 rename하면 hook은 통과 (warning만 표시).
+4. PR 본문에 `Closes #{Issue-ID}` 또는 work item ID 명시 → 추적 완료.
+
+진입 시 Issue가 없으면 `/start` 출력의 P0 목록에서 픽업하거나 새 issue 생성 후 rename. `docs/live/feature-implementation-map.md`는 보조 매핑 — 진실 출처는 GitHub Issue + `state/worktrees.json` registry.
 
 ## Branch and Worktree Operating Rules
 
-- One agent = one worktree = one branch = one issue. Never mix.
-- Worktree path: `.claude/worktrees/feat-{Issue-ID}/`
-- Create worktree: `git worktree add .claude/worktrees/feat-{ID} -b feat/{ID}-{desc} main`
-- Delete worktree after PR merge: `git worktree remove .claude/worktrees/feat-{ID}`
-- Work only inside your own worktree path. Never edit files in another agent's worktree.
-- Do not push or merge without explicit user approval.
-- If unrelated or unexpected diffs appear, pause and confirm before continuing.
+- **1 agent = 1 worktree = 1 branch = 1 issue**. 절대 섞지 말 것.
+- Worktree 경로 자유 (`.claude/worktrees/<auto-name>/` 또는 `.claude/worktrees/feat-<ID>/`).
+- 새 worktree 생성: `git worktree add .claude/worktrees/<slug> -b feat/<ID>-<desc> main`
+  - 이미 worktree 안에 있으면 **rename**으로 처리. 새로 만들지 말 것.
+- PR 머지 후 폐기: `git worktree remove <path>` + `tools/worktree-registry.sh remove`
+- 자기 worktree 내부에서만 편집. 다른 agent의 worktree 절대 손대지 말 것.
+- 명시적 승인 없이 push/merge 금지.
+- 예상 외 diff 발견 시 진행 중단 + 사용자 확인.
+
+## Worktree Registry — Single Source of Truth
+
+`state/worktrees.json` 이 worktree 4축의 단일 진실 출처: `(path, branch, agent_id, issue, work_item, status, last_active)`.
+
+자동 갱신:
+- `/start` → 현재 worktree 자동 등록 (`agent_id`, `last_active`)
+- `/claim --issue N` → issue/work_item 매핑 추가
+- `/end` → `status=done` 표식 + branch push hint
+- `tools/refresh_state.sh` → derived 필드(branch/ahead/modified/head_sha) 갱신
+
+직접 조작:
+```bash
+tools/worktree-registry.sh get                    # 현재 worktree 매핑
+tools/worktree-registry.sh list --mine            # 내 worktree들
+tools/worktree-registry.sh list --stale           # stale 후보
+tools/worktree-registry.sh set work_item W-0260   # 임의 declared 필드
+tools/worktree-registry.sh sweep                  # 24h+ idle → stale, 7d+ → 폐기 권장
+tools/worktree-registry.sh remove --path <P>      # registry entry만 제거
+```
+
+진실 우선순위 (충돌 시):
+1. **GitHub Issue assignee** (CHARTER §Coordination — primary mutex)
+2. **Worktree registry** (로컬 SSOT)
+3. **live.sh heartbeat** (실시간 가시성)
+4. ~~`spec/CONTRACTS.md` 텍스트 lock~~ (DEPRECATED — Phase 4에서 제거 예정)
 
 ## Branch-Thread Rules
 

@@ -34,7 +34,7 @@ Execution rules for humans and coding agents.
 | `/start` | 세션 시작 | `dream --dry-run`, `open-loops --dry-run` |
 | `/save` | 중간 체크포인트 | `log --event "..."` ×2 (done/next) |
 | `/end` | 세션 종료 | `log --event "session ended"` + `retro --dry-run` |
-| `/claim` | 영역 lock | `spec/CONTRACTS.md` (memkraft 외부) |
+| `/claim` | 영역 lock + Issue mutex + registry 매핑 | `state/worktrees.json` (SSOT) + GitHub Issue assignee |
 | `/agent-status` | 현재 상태 | (read-only 합본) |
 | `/retro` | 일일 회고 | `retro` (Well/Bad/Next 자동 추출) |
 | `/decision` | 결정 기록 | `log --decision` |
@@ -53,8 +53,8 @@ Execution rules for humans and coding agents.
 ### 핵심 파일
 
 - 설계: `design/proposed/multi-agent-os-v2.md`, `design/proposed/memkraft-full-integration.md`
-- spec: `spec/PRIORITIES.md` (P0/P1/P2), `spec/CONTRACTS.md` (locks)
-- state (자동): `state/state.json`, `state/current_agent.txt`
+- spec: `spec/PRIORITIES.md` (P0/P1/P2), `spec/CONTRACTS.md` (legacy locks — DEPRECATED)
+- state (자동, SSOT): `state/state.json`, `state/worktrees.json` (4축 worktree registry), `state/current_agent.txt`
 - ledger: `memory/sessions/{date}.jsonl` (timeline), `memory/sessions/agents/A###.jsonl` (per-agent)
 
 ### ⚠️ 경로 혼동 주의 (모든 에이전트 필독)
@@ -69,6 +69,14 @@ Execution rules for humans and coding agents.
 - 에이전트 세션 기록 찾을 때: `memory/sessions/agents/A###.jsonl` (프로젝트 루트)
 - `work/active/W-xxxx-*.md` 파일은 **메인 프로젝트 트리** 기준 — worktree에서 찾으면 없을 수 있음
 - worktree 내에서 메인 프로젝트 파일이 필요하면: `/Users/ej/Projects/wtd-v2/` 절대경로 사용
+
+### Worktree Registry (SSOT, 2026-04-27 도입)
+
+`state/worktrees.json` = `(path, branch, agent_id, issue, work_item, status, last_active, ...)` 단일 진실. `tools/worktree-registry.sh`로 register/get/list/remove. `/start`/`/claim`/`/end`가 자동으로 갱신. sweep은 W-0263 Phase 4에서 도입. 자세한 운영 룰은 `CLAUDE.md` §Worktree Registry 참조.
+
+### Branch 명명 (auto-rename allowed)
+
+Claude Code SDK / codex CLI가 자동 생성한 `claude/*` `codex/*` `worktree-agent-*` 브랜치는 **차단 없음**. PR push 전 `git branch -m feat/{ID}-{slug}`로 rename만 하면 hook 통과. 새 worktree를 만들지 말고 rename으로 처리. 자세한 룰은 `CLAUDE.md` §Branch Naming.
 
 ## Default Read Scope
 
