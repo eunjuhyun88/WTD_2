@@ -17,7 +17,31 @@ MK="$SCRIPT_DIR/mk.sh"
 QUIET=0
 [ "${1:-}" = "--quiet" ] && QUIET=1
 
-# 1. state 갱신
+# 1. 자동 main sync (안전한 경우만 fast-forward) + state 갱신
+git fetch origin main >/dev/null 2>&1 || true
+AHEAD=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+if [ "$AHEAD" -gt 0 ] 2>/dev/null; then
+  UPSTREAM=$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || echo "")
+  LOCAL_AHEAD=0
+  if [ -n "$UPSTREAM" ]; then
+    LOCAL_AHEAD=$(git rev-list --count "$UPSTREAM..HEAD" 2>/dev/null || echo 0)
+  fi
+  DIRTY=0
+  git status --porcelain | grep -q . && DIRTY=1
+
+  if [ "$LOCAL_AHEAD" = "0" ] && [ "$DIRTY" = "0" ]; then
+    if git merge --ff-only origin/main >/dev/null 2>&1; then
+      echo "✓ origin/main으로 자동 fast-forward ($AHEAD commit)"
+    fi
+  else
+    echo "⚠ origin/main이 $AHEAD commit 앞섬 (본인 commit $LOCAL_AHEAD, dirty=$DIRTY) — 자동 sync skip"
+    if [ "$DIRTY" = "1" ]; then
+      echo "    먼저 commit/stash 후 재시도"
+    elif [ "$LOCAL_AHEAD" != "0" ]; then
+      echo "    추천: git merge origin/main"
+    fi
+  fi
+fi
 ./tools/refresh_state.sh >/dev/null
 
 MAIN_SHA="$(jq -r .main_sha state/state.json 2>/dev/null || echo unknown)"
