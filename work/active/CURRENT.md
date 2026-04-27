@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`e702dec1` — origin/main (2026-04-27) — work/active cleanup 139→47 (PR #433)
+`4367bc94` — origin/main (2026-04-27) — PR #436(V-01) #438(V-06) #440(V-02) #448(cleanup) 머지
 
 ---
 
@@ -33,13 +33,13 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0217-v01-purged-kfold-cv` | research | ⏳ Issue #420 |
-| `W-0218-v02-phase-eval-m1` | research | ⏳ Issue #421, V-01과 병렬 |
+| `W-0217-v01-purged-kfold-cv` | research | ✅ **PR #436 MERGED** (`engine/research/validation/cv.py`) |
+| `W-0218-v02-phase-eval-m1` | research | ✅ **PR #440 MERGED** (`engine/research/validation/phase_eval.py`) |
 | `W-0219-v03-ablation-m2` | research | ⏳ Issue #426 |
-| `W-0222-v04-sequence-test-m3` | research | ⏳ Issue #427 |
+| `W-0222-v04-sequence-test-m3` | research | ✅ **PR #435 MERGED** (`engine/research/validation/sequence.py`) |
 | `W-0223-v05-regime-test-m4` | research | ⏳ Issue #428 |
-| `W-0220-v06-stats-engine` | research | ⏳ Issue #422 |
-| `W-0221-v08-validation-pipeline` | research | ⏳ Issue #423 |
+| `W-0220-v06-stats-engine` | research | ✅ **PR #438 MERGED** (`engine/research/validation/stats.py`) |
+| `W-0221-v08-validation-pipeline` | research | ⏳ Issue #423 — **다음 P0** (V-01+02+04+06 통합) |
 
 ---
 
@@ -101,17 +101,9 @@ Week 4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 ## 다음 실행 가이드
 
 ```bash
-git checkout main && git pull           # → e702dec1
+git checkout main && git pull           # → 4367bc94
 ./tools/start.sh                        # Agent ID + P0 미완료 항목
 gh issue list --search "no:assignee" --state open
 ```
 
 상세: `work/active/W-0252-wave4-final-verified-design.md`
-
----
-
-## 🔴 PR 머지 대기
-
-| PR | 내용 | CI |
-|---|---|---|
-| PR #434 | chore: closing automation (auto-complete + sweep + drift check) | ✅ 5/5 |
