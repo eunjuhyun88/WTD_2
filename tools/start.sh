@@ -336,6 +336,22 @@ fi
 cat <<EOF
 
 ═══════════════════════════════════
+🔒 Multi-Agent Orchestration — MANDATORY (CLAUDE.md §Multi-Agent Orchestration)
+
+  병렬 sub-agent 띄울 때 반드시 isolation="worktree" 옵션을 준다.
+  (빠뜨리면 같은 working directory + HEAD + stash 공유 → git 상태 섞임)
+
+  ✅ Agent(subagent_type=..., isolation="worktree", run_in_background=true, prompt=...)
+  ❌ Agent(subagent_type=..., run_in_background=true, prompt=...)
+
+  병렬 launch 전 파일 충돌 매트릭스 확인:
+   - 같은 파일 동시 수정 sub-agent는 띄우지 않는다 (axis 달라도 merge conflict)
+   - main agent는 sub-agent 작업 중 코드 변경 금지 (오케스트레이터 역할만)
+
+  사고 사례: 2026-04-27 A045 W-0259 background agent — 같은 worktree 공유로
+            commit이 다른 branch에 쌓여 reset --hard + reflog 복구 필요.
+
+═══════════════════════════════════
 GitHub Issue mutex (primary — CHARTER §Coordination):
   gh issue list --search "no:assignee" --state open    비어있는 일감
   gh issue edit N --add-assignee @me                   mutex 획득
