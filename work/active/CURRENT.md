@@ -31,7 +31,6 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0223-v05-regime-test-m4` | research | ⏳ Issue #428 |
 
 ---
 
