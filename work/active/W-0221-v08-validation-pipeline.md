@@ -414,3 +414,56 @@ git diff origin/main -- engine/research/pattern_search.py
 ---
 
 *W-0221 v1.0 created 2026-04-27 by Agent A033 — V-08 pipeline PRD with 3-perspective sign-off.*
+
+---
+
+## Goal
+
+§1 — V-01 + V-02 + V-06 통합 end-to-end validation pipeline. F1 measurement 트리거.
+
+## Owner
+
+§2 — research
+
+## Scope
+
+§3 — `validation/pipeline.py` + `baselines.py` 신규 + test.
+
+## Non-Goals
+
+§4 — M2/M3/M4 별도 (V-03/V-04/V-05) / Gate v2 V-11 / cron V-09 / UI V-10.
+
+## Canonical Files
+
+§3 — `pipeline.py`, `baselines.py`, `test_pipeline.py`.
+
+## Facts
+
+§7.1 W-0214 §3 spec 정합 매트릭스. cost_bps=15.0 D3 정합.
+
+## Assumptions
+
+§9 Risk register. V-01/V-02/V-06 interface frozen, BenchmarkPack n>=60.
+
+## Open Questions
+
+§10 Q1~Q3 (JSON file vs DB, gate threshold, B2/B3 hooks).
+
+## Decisions
+
+cost_bps 강제 / ≥4 of 6 gate / BH within-pattern / dashboard JSON spec for V-10.
+
+## Next Steps
+
+§13 — F1 measurement (W-0216) + V-09 cron + V-11 gate v2.
+
+## Exit Criteria
+
+§5 — config + run_validation_pipeline + B0~B3 + G1~G4 + dashboard JSON + integration test + perf <60s.
+
+## Handoff Checklist
+
+- [x] PRD v1.0 published
+- [ ] V-01/V-02/V-06 머지 후 시작
+- [ ] Issue #423 implementation
+- [ ] dashboard JSON spec → V-10 frontend

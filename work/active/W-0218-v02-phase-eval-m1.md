@@ -373,3 +373,56 @@ assert len(result) == 5
 ---
 
 *W-0218 v1.0 created 2026-04-27 by Agent A033 — V-02 phase_eval PRD with 3-perspective sign-off.*
+
+---
+
+## Goal
+
+§1 참조. W-0214 §3.2 M1 — phase k 진입 시점 forward return 측정. composition wrap of `_measure_forward_peak_return` + 신규 mean at horizon h.
+
+## Owner
+
+§2 — research (F1 trigger)
+
+## Scope
+
+§3 — `engine/research/validation/phase_eval.py` 신규 + test.
+
+## Non-Goals
+
+§4 — pattern_search.py 수정 X / t-stat 직접 계산 X (V-06) / B0~B3 정의 X (V-08).
+
+## Canonical Files
+
+§3 — `phase_eval.py`, `test_phase_eval.py`.
+
+## Facts
+
+§7.1 W-0214 §3.2 spec 정합. `R(t,h) = (price[t+h] - price[t]) / price[t] - cost`.
+
+## Assumptions
+
+§9 Risk register. cost double-counting, klines cache miss, horizon overflow.
+
+## Open Questions
+
+§10 Q1~Q3 (peak vs mean, cost 5+10 vs 15, phase entry 정의).
+
+## Decisions
+
+cost_bps=15.0 default (W-0214 D3 round-trip). composition only (V-00 augment-only).
+
+## Next Steps
+
+§13 — V-06 (W-0220) stats.py + V-08 (W-0221) pipeline 통합 → F1 measurement.
+
+## Exit Criteria
+
+§5 — measure_phase_conditional_return 구현 / horizons [1,4,24] / cost_bps=15 / unit test 15+ / perf <2s.
+
+## Handoff Checklist
+
+- [x] PRD v1.0 published
+- [ ] Issue #421 implementation 시작
+- [ ] phase_eval.py 구현 + 15+ unit test
+- [ ] V-01 cv.py와 통합 검증

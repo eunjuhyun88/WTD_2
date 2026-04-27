@@ -290,3 +290,56 @@ cd engine && python -m research.validation.cv  # smoke test main
 ---
 
 *W-0217 v1.0 created 2026-04-27 by Agent A033 — V-01 PurgedKFold PRD with 3-perspective sign-off.*
+
+---
+
+## Goal
+
+§1 참조. López de Prado (2018) Ch 7 PurgedKFold + Embargo 구현. evaluate_variant_against_pack composition.
+
+## Owner
+
+§2 — research
+
+## Scope
+
+§3 참조. validation/cv.py 신규 + test, pattern_search.py read-only.
+
+## Non-Goals
+
+§4 — pattern_search.py 수정 X / phase_eval X / walk-forward W-0226+.
+
+## Canonical Files
+
+§3 — `engine/research/validation/cv.py`, `test_cv.py`.
+
+## Facts
+
+§7.1 학술 식. embargo_bars = max(label_horizon_bars, n × 0.005). López de Prado (2018) Ch 7.
+
+## Assumptions
+
+§9 Risk register. interface frozen + pattern_search.py 동시 수정 X (V-00 enforce).
+
+## Open Questions
+
+§10 Q1~Q3 (BenchmarkCase ref/hold 활용, bars_per_hour, small n).
+
+## Decisions
+
+PurgedKFold + Embargo (López de Prado 2018 표준). Walk-forward는 W-0226+ 분리.
+
+## Next Steps
+
+§13 — V-02 (W-0218) + V-06 (W-0220) + V-08 (W-0221) 통합.
+
+## Exit Criteria
+
+§5 — class 구현 / embargo 식 / unit test 10+ / integration ROC delta < 0.05 / perf < 5s.
+
+## Handoff Checklist
+
+- [x] PRD v1.0 published (3-perspective)
+- [ ] Issue #420 implementation 시작
+- [ ] cv.py 구현 + 10+ unit test
+- [ ] V-02와 interface align

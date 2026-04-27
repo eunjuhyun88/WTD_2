@@ -404,3 +404,56 @@ print(f'DSR={deflated_sharpe(samples, n_trials=15):.3f}')
 ---
 
 *W-0220 v1.0 created 2026-04-27 by Agent A033 — V-06 stats engine PRD with 3-perspective sign-off.*
+
+---
+
+## Goal
+
+§1 — W-0214 G1~G4 통계 엔진. F1 measurement 임계 검증 직접 트리거.
+
+## Owner
+
+§2 — research
+
+## Scope
+
+§3 — `engine/research/validation/stats.py` 신규 + test.
+
+## Non-Goals
+
+§4 — G3 V-01 / G5 V-03 / G6 V-04 / G7 V-05 / pipeline V-08 / sizing W-0226+.
+
+## Canonical Files
+
+§3 — `stats.py`, `test_stats.py`.
+
+## Facts
+
+§7.1 학술 출처: Welch 1947 / BH 1995 / DSR 2014 / Efron 1979 / Sharpe 1966.
+
+## Assumptions
+
+§9 Risk register. scipy ≥1.6, statsmodels 의존, NaN dropna.
+
+## Open Questions
+
+§10 Q1~Q3 (alternative=greater, bootstrap seed, PF inf).
+
+## Decisions
+
+Welch + BH (fdr_bh) + DSR (López de Prado) + bootstrap seed=42 default.
+
+## Next Steps
+
+§13 — V-08 (W-0221) pipeline 통합 + F1 measurement (W-0216).
+
+## Exit Criteria
+
+§5 — 7 함수 구현 + unit test 20+ + perf <50ms + 학술 출처 인용.
+
+## Handoff Checklist
+
+- [x] PRD v1.0 published
+- [ ] Issue #422 implementation 시작
+- [ ] stats.py 구현 + 20+ unit test
+- [ ] V-08 pipeline 통합

@@ -64,7 +64,7 @@ research
 - **Q2**: BenchmarkPack class가 이미 baseline 개념을 가지고 있나? B0~B3와 직접 매핑 가능?
 - **Q3**: hypothesis_test 함수가 multiple comparison correction (BH/FDR) 또는 DSR을 이미 구현했나? 안 했으면 W-0214 §3.5 stats.py에서 추가
 
-## Decisions (V-00 audit 결과로 채워짐)
+## Decisions
 
 (현재 [unknown]. Audit 완료 시 다음 채움)
 - D-V00-1: pattern_search.py의 hypothesis_test wrapping 방식
@@ -465,3 +465,11 @@ def factor_attribution(pattern_returns, factors=['btc_return', 'funding', 'oi_de
 *W-0215 v1.0 created 2026-04-27 as next work item after W-0214 lock-in.*
 *W-0215 v1.1 concretized 2026-04-27 by Agent A032 — output template + methodology + validation matrix.*
 *W-0215 v1.2 concretized 2026-04-27 by Agent A032 — Quant Trader 관점 8개 영역 추가 (cost / risk-adj / walk-forward / capacity / alpha / tail / sizing).*
+
+## Handoff Checklist
+
+- [x] PRD v1.2 published (3-perspective)
+- [x] V-00 audit 완료 (W-0214 §14 통합, PR #415)
+- [ ] PR #415 머지
+- [ ] Issue #417 close (audit 완료)
+- [ ] 후속 W-0217~W-0221 work items으로 인계

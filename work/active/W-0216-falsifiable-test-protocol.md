@@ -367,3 +367,56 @@ v1.1: "1.5 day PRD + ongoing (Week 1~6 + F7 continuous)"
 
 *W-0216 v1.0 created 2026-04-27 by Agent A032 — Falsifiable Test Protocol PRD for W-0214 D1~D8 kill criteria.*
 *W-0216 v1.1 concretized 2026-04-27 by Agent A032 — Quant Trader 관점 강화 (F1~F4 강화 + F5~F7 신규).*
+
+---
+
+## Goal
+
+§1 참조. F1~F7 measurement protocol — when/what/data/threshold/escalation lock-in.
+
+## Owner
+
+§2 — research (CTO + AI Researcher 공동 sign-off)
+
+## Scope
+
+§3 참조. PRD only — measurement code (W-0218 후속).
+
+## Non-Goals
+
+§4 참조. 코드 X / kill 후 marketing X.
+
+## Canonical Files
+
+§3 — `work/active/W-0216-*.md`, `engine/research/validation/falsifiable_kill.py` (W-0218 후속).
+
+## Facts
+
+§6.1~§6.4 + §15.5~7. F1~F7 spec + López de Prado / Bailey 학술 출처.
+
+## Assumptions
+
+§6 각 F별 false positive guard. n>=200 (F2), n>=20 active (F3), n>=10 users (F4).
+
+## Open Questions
+
+§12 Q1~Q5 (5 P0 선정, ordinal encoding, active_user 정의, variant period, threshold).
+
+## Decisions
+
+§15.10 KILL 의사결정 매트릭스 lock-in. F1~F2 frame-critical, F5~F7 운영 조정.
+
+## Next Steps
+
+V-02 (W-0218) ready 후 F1 measurement 시작. Week 1~6 일정 (§7 + §15.9).
+
+## Exit Criteria
+
+§5 + §14 — F1~F7 6 컬럼 채움, SOP, rescue, sign-off line.
+
+## Handoff Checklist
+
+- [x] PRD v1.1 published (F1~F7)
+- [ ] W-0218 V-02 ready → F1 측정
+- [ ] Week 1 F1 결과 commit
+- [ ] CTO + AI Researcher sign-off line 추가

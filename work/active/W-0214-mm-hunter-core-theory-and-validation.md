@@ -1335,6 +1335,88 @@ grep -rln "W-0215\|V-00 audit" work/active/ memory/decisions/
 
 ---
 
+## Goal
+
+W-0214 정의 — User as MM Hunter framing의 Core Theory + Validation Framework + Implementation roadmap. 53 PatternObject library 기반 P0 5 패턴 검증 + 4 metric × 4 baseline × 8 gate.
+
+(상세: §1 Core Theory, §3 Validation Framework, §5 Implementation, §10 Decision lock-in)
+
+## Owner
+
+research
+
+## Scope
+
+- Core Theory framing (D1~D8 LOCKED-IN)
+- Validation framework spec (M1~M4, B0~B3, G1~G7)
+- Implementation roadmap (V-00 ~ V-13)
+- Hunter UI glossary spec (§15)
+- Augment-only policy enforcement
+
+## Non-Goals
+
+§0.2 참조. 핵심:
+- ❌ AI 차트 분석 툴 / 범용 스크리너
+- ❌ 자동매매 / 카피트레이딩 / 마켓플레이스
+- ❌ 53 PatternObject library 재정의 (기존 augment only)
+
+## Canonical Files
+
+- `engine/research/pattern_search.py` (V-00 audit 대상)
+- `engine/research/validation/` (V-01~V-13 신규 모듈)
+- `work/active/W-0215~W-0221-*.md` (후속 work items)
+- `memory/decisions/dec-2026-04-27-w-0214-mm-hunter-framing-d1-d8-lockin.md`
+
+## Facts
+
+§13 References + §14 Appendix B 참조. 핵심:
+- pattern_search.py 3283줄, 82 def/class (V-00 audit 결과)
+- López de Prado (2018) Ch 7 PurgedKFold + Embargo
+- Bailey & López de Prado (2014) Deflated Sharpe Ratio
+- Welch (1947), Benjamini & Hochberg (1995) statistical basis
+
+## Assumptions
+
+§9 Risks 참조. 핵심:
+- 53 PatternObject library 안정 (Hill Climbing + LightGBM ready)
+- Binance perp 1h bar 1년 holdout 데이터 사용 가능
+- W-0220 PRD v2.2 정합 유지
+
+## Open Questions
+
+§11 Open Questions (V-00~V-04 측정 후 답변):
+- Q1: 5 P0 패턴 선정 기준
+- Q2: F2 verdict ordinal encoding
+- Q3: F3 active_user 정의
+- Q4: variant_active period
+- Q5: F1 PASS threshold (5 중 1 vs 3)
+
+## Decisions
+
+§10 Decision Requests D1~D8 LOCKED-IN (PR #396):
+- D1 Hunter framing | D2 4h horizon | D3 15bps cost | D4 5+48 P0
+- D5 F-60 = Layer A AND B | D6 9주 일정 | D7 전체 공개 UI | D8 Wyckoff default
+
+## Next Steps
+
+§14.11 후속 work items + W-0217~W-0224 (V-01~V-11) PRD 진행 중.
+
+## Exit Criteria
+
+§5.1 Phase Exit Criteria 참조. P0 통과 조건:
+- 5 P0 패턴 ≥1개 F1 통과 (W-0216)
+- F1~F7 KILL 발생 0
+- §3.7 G1~G7 acceptance 통과
+
+## Handoff Checklist
+
+- [x] D1~D8 LOCKED-IN (PR #396)
+- [x] §14 Appendix B V-00 audit 통합 (PR #415)
+- [ ] PR #415 머지
+- [ ] V-01~V-08 implementation tracks 시작 (W-0217~W-0221)
+
+---
+
 ## 15. Appendix C — Hunter UI Glossary Spec [v1.3 신규, D7 결정]
 
 power user 한국어 dashboard에 노출되는 통계 용어 사전. P1 UI 작업으로 구현. JSON or markdown 형식으로 dashboard glossary toggle에서 lazy load.
