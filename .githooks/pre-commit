@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
-# pre-commit — "unknown" agent 상태에서 commit 차단
+# pre-commit — agent ID 검증 + W-0274 optimistic concurrency 충돌 감지
 #
 # Install: git config core.hooksPath .githooks  (또는 app/scripts/dev/install-git-hooks.sh)
 # Active path: REPO/.githooks/pre-commit
 #
 # 책임:
-#   - state/current_agent.txt이 "unknown" 또는 빈값이면 commit 거절
-#   - 메타/메모리/상태 sync staged-only 변경은 예외 (자동 메모리 sync 차단 X)
+#   [1] state/current_agent.txt이 "unknown" 또는 빈값이면 commit 거절
+#       - 메타/메모리/상태 sync staged-only 변경은 예외
+#   [2] W-0274 conflict-detector: staged 파일이 다른 agent에게 claimed되어 있으면
+#       commit 거절 (optimistic concurrency — CAS check)
 #
 # 배경 (PR #354):
 #   A009~A016 8개 에이전트의 jsonl 11 entries가 silent loss됨.
 #   원인: end.sh가 unknown agent를 허용 → per-agent 파일에 안 기록.
 #   해결: commit 시점에 차단 → 자연히 start.sh 실행 강제됨.
+#
+# W-0274 추가 (Phase 4 Optimistic Concurrency):
+#   multi-agent 환경에서 두 agent가 동시에 같은 파일을 수정하는 경우를 감지.
+#   conflict-detector.mjs check-staged 호출 → 충돌 시 exit 1.
 
 set -euo pipefail
 
@@ -31,8 +37,30 @@ if [ -f "$AGENT_FILE" ]; then
   [ -z "$AGENT" ] && AGENT="unknown"
 fi
 
-# Agent 정상 → 통과
+# Agent 정상 → [2] W-0274 CAS check 실행
 if [ "$AGENT" != "unknown" ] && [ -n "$AGENT" ]; then
+  # W-0274: conflict-detector.mjs — staged 파일 claim 충돌 감지
+  CONFLICT_DETECTOR="$REPO_ROOT/tools/conflict-detector.mjs"
+  if [ -f "$CONFLICT_DETECTOR" ]; then
+    # node 경로 탐색 (zprofile에 설치된 경우 PATH에 없을 수 있음)
+    NODE_BIN="$(command -v node 2>/dev/null || \
+                ls ~/.local/node-v*/bin/node 2>/dev/null | head -1 || \
+                echo "")"
+    if [ -n "$NODE_BIN" ]; then
+      if ! "$NODE_BIN" "$CONFLICT_DETECTOR" check-staged --agent "$AGENT" 2>&1; then
+        echo ""
+        echo "❌ pre-commit blocked: W-0274 optimistic concurrency conflict"
+        echo ""
+        echo "Staged files conflict with another agent's claim."
+        echo "See output above.  To bypass (if you're sure):"
+        echo "  node tools/conflict-detector.mjs release --agent <owner>"
+        echo "  # then retry the commit"
+        echo ""
+        exit 1
+      fi
+    fi
+    # node not found → skip W-0274 check (soft degradation)
+  fi
   exit 0
 fi
 
