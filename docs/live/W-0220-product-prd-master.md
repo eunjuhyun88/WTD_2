@@ -78,7 +78,7 @@ v1에서 갭이라고 본 항목 중 **실제로는 이미 구현된** 것들:
 | L4 State Machine durable 미구현 | `state_store.py` (SQLite WAL primary) + `supabase_state_sync.py` (background dual-write) | ✅ 이미 완성 |
 | L5 Sequence Matcher 미구현 | `engine/search/similar.py:582줄` Layer B LCS DP O(min(m,n)) space | ✅ 이미 완성 |
 | Phase A+B AutoResearch 없음 | `hill_climbing.py:214줄` + `lightgbm_engine.py:302줄` per-user + AUC gate | ✅ 이미 완성 |
-| Pattern Engine 17개 정도 | **53 PatternObjects + 92 Building Blocks** (Alpha Hunter 22개 포함) | ✅ 압도적 |
+| Pattern Engine 17개 정도 | **52 PatternObjects + 85 Building Blocks** (Alpha Hunter 22개 포함) | ✅ 압도적 |
 | Outcome resolver 없음 | `outcome_resolver_job` 매시간 + 72h window + HIT(+15%)/MISS(-10%)/EXPIRED | ✅ 이미 완성 |
 | Refinement loop 미구현 | `refinement_trigger_job` 10 verdicts + 7d gate → Hill Climbing 재실행 | ✅ 이미 완성 |
 | Branding layer 없음 | `pnl_renderer.py` + `sns_poster.py` + `kol_style_engine.py` (Claude Haiku 한국어 KOL) | ✅ 이미 완성 |
@@ -91,7 +91,7 @@ v1에서 갭이라고 본 항목 중 **실제로는 이미 구현된** 것들:
 
 ## 1. Vision
 
-**Cogochi/WTD = "Pattern Research OS"**: 트레이더가 손으로 가리키거나 자연어로 말하면, 시스템은 그 감각을 PatternObject로 외화해서 53패턴 × 92블록 카탈로그에 합류시키고, 12개 백그라운드 잡이 시장 전체에서 매칭·검증·학습을 자동으로 돌린다. 검증된 패턴은 카피시그널 marketplace로 monetize 된다.
+**Cogochi/WTD = "Pattern Research OS"**: 트레이더가 손으로 가리키거나 자연어로 말하면, 시스템은 그 감각을 PatternObject로 외화해서 52패턴 × 85블록 카탈로그에 합류시키고, 12개 백그라운드 잡이 시장 전체에서 매칭·검증·학습을 자동으로 돌린다. 검증된 패턴은 카피시그널 marketplace로 monetize 된다.
 
 본질:
 - **broadcasting 시그널 SaaS 아님** (Alpha Hunter / Alpha Terminal / Alpha Flow / 시그널 레이더와의 결정적 차이)
@@ -99,7 +99,7 @@ v1에서 갭이라고 본 항목 중 **실제로는 이미 구현된** 것들:
 - **사용자 감각 → PatternObject → market match → ledger verdict → refinement → 자산화** 플라이휠
 
 차별점:
-- 53 PatternObject × 92 Building Block — 한국 derivatives 패턴 커버리지에서 압도적
+- 52 PatternObject × 85 Building Block — 한국 derivatives 패턴 커버리지에서 압도적
 - Phase Path LCS Sequence Matcher — broadcasting 채널 어디에도 없음
 - 5-category Verdict ledger — 책임 추적 + reranker 학습 라벨
 - KOL-style 한국어 자동 캡션 — 카피시그널 발행시 즉시 사용 가능
@@ -122,7 +122,7 @@ Anti: 초보, follower, holder, KYC/wallet 유저, broadcasting 시그널 의존
 
 ## 3. Core Loop (3 input mode)
 
-> **Mental model**: 입력 모드는 3가지 — 차트 드래그(F-0a) / 자연어(F-0b AI Parser) / 53 카탈로그에서 선택. 셋 다 동일한 PatternDraft → SearchQuerySpec → 53패턴 × 92블록 매칭 → 결과 리스트 → Watch → 72h Outcome → 5-cat Verdict → Refinement → 카피시그널.
+> **Mental model**: 입력 모드는 3가지 — 차트 드래그(F-0a) / 자연어(F-0b AI Parser) / 53 카탈로그에서 선택. 셋 다 동일한 PatternDraft → SearchQuerySpec → 52패턴 × 85블록 매칭 → 결과 리스트 → Watch → 72h Outcome → 5-cat Verdict → Refinement → 카피시그널.
 
 ```
 [Input — 3 modes]
@@ -175,8 +175,8 @@ ACCUMULATION 서페이싱이 product의 엣지. BREAKOUT 확인은 늦다.
 - **GAP**: kimchi_premium / session_apac/us/eu / oi_normalized_cvd 미반영 — F-6
 
 ### L3 — Pattern Object Plane ✅✅
-- **53 PatternObjects** (Core OI Reversal 6 / Short 3 / Alpha Terminal 7 / Alpha Flow 6 / Alpha Hunter 22 / Radar 5 / Breakout 2)
-- **92 Building Blocks** (Confirmations 60+ / Disqualifiers 5 / Entries 8 / Triggers 11+)
+- **52 PatternObjects** (코드 실측: `len(PATTERN_LIBRARY) == 52`. 카테고리 분포는 PR 시점 기준 추정값)
+- **85 Building Blocks** (Confirmations 58 / Disqualifiers 5 / Entries 8 / Triggers 14 — 코드 실측: `engine/building_blocks/*/*.py` 카운트)
 - `library.py` + `registry.py` (JSON metadata) + `definitions.py`
 - `active_variant_registry.py` — 유저별 threshold override
 
@@ -215,7 +215,7 @@ ACCUMULATION 서페이싱이 product의 엣지. BREAKOUT 확인은 늦다.
 ```
 engine/scanner/jobs/
   universe_scan.py         15분  Alpha Score + block signals
-  pattern_scan.py          별도  53패턴 phase 추적
+  pattern_scan.py          별도  52패턴 phase 추적
   auto_evaluate.py         1h    알림 품질 피드백 (1h ±1%)
   outcome_resolver.py      1h    capture outcome (72h +15%/-10%)
   pattern_refinement.py    daily threshold 개선 제안
@@ -323,11 +323,11 @@ bb_squeeze_breakout, orderbook_imbalance, micro_volatility_low,
 taker_ratio_extreme_buy, taker_ratio_extreme_sell,
 kimchi_premium_extreme
 ```
-→ 92 Building Blocks 어휘에 이미 다수 포함됨. 누락된 것만 추가 (kimchi_premium은 신규).
+→ 85 Building Blocks 어휘에 이미 다수 포함됨. 누락된 것만 추가 (kimchi_premium은 신규).
 
 ### Wyckoff Phase 명명 (canonical 채택)
 ACCUMULATION → DISTRIBUTION → BREAKOUT → RETEST → [SQUEEZE 전조]
-4채널 모두 동일 → **한국 시장 표준**. 53 PatternObject 중 wyckoff-spring/accumulation/absorption 이미 있음.
+4채널 모두 동일 → **한국 시장 표준**. 52 PatternObject 중 wyckoff-spring/accumulation/absorption 이미 있음.
 
 ### F-60 카피시그널 메시지 표준 (JSON 스키마)
 별도 부록에 13-field schema 명세 (signal_id / issuer.verified_badge / phase_path_observed / alpha_score / trigger_features / trade_plan / thesis_one_liner / chart_attachment_url / verdict_eta).
@@ -350,7 +350,7 @@ ACCUMULATION → DISTRIBUTION → BREAKOUT → RETEST → [SQUEEZE 전조]
 | D4 | Decision HUD | **5-card** | 의사결정 incomplete 방지 |
 | D5 | Layout | **IDE split-pane** | free-form canvas 폐기 |
 | D6 | L6 1-table vs 4-table | **현재 1-table 유지 (P2 분리)** | W-0215 운영 안정 |
-| D7 | L3 hardcoded vs DB-first | **현재 file-first 유지** | 53패턴 file 등록 OK, lifecycle만 명확화 |
+| D7 | L3 hardcoded vs DB-first | **현재 file-first 유지** | 52패턴 file 등록 OK, lifecycle만 명확화 |
 | D8 | 5-cat verdict 시점 | **즉시 P0** | reranker 라벨 = moat |
 | D9 | Wiki Agent 분류 | **L7 ledger-driven job** | 별도 AI agent 아님 |
 | D10 | DESIGN_V3.1 features | **즉시 P1** | Korea persona 직결 |

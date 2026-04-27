@@ -93,7 +93,7 @@ W-0252 audit에서 식별된 🔴 갭 2개 (D3 cost model, D8 phase taxonomy)를
 
 | 메트릭 | 측정 방법 | Threshold |
 |---|---|---|
-| D3 cost 적용 시 strict_gate_pass_rate 변화 | A/B: cost=0 vs cost=15bps, 같은 53 PatternObject 대상 | drop ≤ 30% (catastrophic failure 차단) |
+| D3 cost 적용 시 strict_gate_pass_rate 변화 | A/B: cost=0 vs cost=15bps, 같은 52 PatternObject 대상 | drop ≤ 30% (catastrophic failure 차단) |
 | D8 taxonomy 분기 시 phase_fidelity 측정 | wyckoff_4 vs oi_reversal_5 같은 case에서 score 차이 | 둘 다 0.0 ≤ score ≤ 1.0 (정상 범위) |
 
 ### Failure Modes

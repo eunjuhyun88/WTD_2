@@ -10,7 +10,7 @@
 
 ```
 시스템 성숙도: 88.3% Built (166/188 features)
-핵심 인프라: 53 PatternObjects × 92 Building Blocks
+핵심 인프라: 52 PatternObjects × 85 Building Blocks
            L1~L7 전 레이어 구조 완성
            11 APScheduler jobs 자동 운영 중
            138,915 feature_window rows
@@ -32,7 +32,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 ## 1. Vision + Core Loop
 
 **Cogochi = "Pattern Research OS"**
-트레이더가 자연어/드래그로 패턴을 가리키면 → PatternObject로 외화 → 53패턴 × 92블록 카탈로그 합류 → 12개 백그라운드 잡이 매칭·검증·학습 자동 운영.
+트레이더가 자연어/드래그로 패턴을 가리키면 → PatternObject로 외화 → 52패턴 × 85블록 카탈로그 합류 → 12개 백그라운드 잡이 매칭·검증·학습 자동 운영.
 
 **차별점**: on-demand search + verdict-validated archive. Broadcasting 시그널 채널 아님.
 **단일 페르소나 "Jin"**: 28-38세, 크립토 perp 전업/반전업, WTP $29-79/mo.
@@ -62,7 +62,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 |---|---|---|---|
 | **L1** Market Data | 27 modules (Binance/Bybit/Coinbase/OKX) | ✅ | — |
 | **L2** Feature Window | migration 021, 40+col, 138,915 rows | ✅ | DESIGN_V3.1 미반영 (F-12) |
-| **L3** Pattern Object | **53 PatternObjects × 92 Building Blocks** | ✅ | lifecycle UI (F-14) |
+| **L3** Pattern Object | **52 PatternObjects × 85 Building Blocks** | ✅ | lifecycle UI (F-14) |
 | **L4** State Machine | SQLite WAL + Supabase dual-write, 15m scan | ✅ | — |
 | **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) |
 | **L6** Ledger | 8-type Python, Supabase 1-table | ✅ | F-02 ✅ 해소 (W-0253, PR #437+#472) — 운영 DB 검증 #481 |
@@ -76,7 +76,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 **Scheduler 11 jobs (APScheduler)**:
 ```
 universe_scan      15m   Alpha Score + block signals
-pattern_scan       15m   53패턴 phase 추적
+pattern_scan       15m   52패턴 phase 추적
 auto_evaluate      15m   알림 품질 피드백 (1h ±1%)
 outcome_resolver   1h    capture outcome (72h +15%/-10%)
 pattern_refinement daily threshold 개선 제안
@@ -277,7 +277,7 @@ CSS Grid, resizable, min-width per pane
 | **D4** | Decision HUD **5-card** | Pattern/Evidence/Risk/Next/Actions — 정보 아키텍처 완결. F-4 설계 그대로 실행 |
 | **D5** | **IDE split-pane** (free-form canvas 폐기) | 리사이저블 고정 레이아웃 > 자유 캔버스. 집중력 > 자유도. F-5 설계 그대로 |
 | **D6** | L6 **1-table 유지** (4-table P2) | M3 전 스키마 변경 금지. F-30은 Week 4 최후순위로 유지 |
-| **D7** | L3 **file-first** 유지 | 53패턴 버전 관리 trivial. DB sync = read path. lifecycle UI(F-14)만 추가 |
+| **D7** | L3 **file-first** 유지 | 52패턴 버전 관리 trivial. DB sync = read path. lifecycle UI(F-14)만 추가 |
 | **D9** | Wiki = **L7 ledger-driven job** | engine/wiki/ BUILT. 별도 AI agent 시스템 불필요. 야크쉐이빙 방지 |
 | **D10** | DESIGN_V3.1 features **즉시 P1** | kimchi_premium = Korea OI 급등 선행지표. Jin 페르소나 핵심. Week 2 F-12 확정 |
 | **D11** | **Forward search tool** (복기 저널 아님) | "다음에 무슨 일이?" vs "무슨 일이 있었나?" — 제품 전체 thesis. 영구 lock-in |

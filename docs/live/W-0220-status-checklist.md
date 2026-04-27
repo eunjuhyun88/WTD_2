@@ -203,8 +203,8 @@
 - [ ] DESIGN_V3.1 patch (F-12)
 
 ### L3 Pattern Object ✅
-- [x] **53 PatternObjects** (Core OI 6 / Short 3 / Alpha Terminal 7 / Alpha Flow 6 / Alpha Hunter 22 / Radar 5 / Breakout 2)
-- [x] **92 Building Blocks** (Confirmations 60+ / Disqualifiers 5 / Entries 8 / Triggers 11+)
+- [x] **52 PatternObjects** (코드 실측: `len(PATTERN_LIBRARY) == 52`)
+- [x] **85 Building Blocks** (Confirmations 58 / Disqualifiers 5 / Entries 8 / Triggers 14 — `engine/building_blocks/*/*.py` 카운트)
 - [x] PatternRegistry + ActiveVariantRegistry
 - [x] PatternDraft 스키마
 
