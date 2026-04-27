@@ -76,6 +76,37 @@ app
 2. D5 lock-in: free-form canvas 폐기, IDE split-pane 채택.
 3. W-0237 DecisionHUD — HUD 컴포넌트 재사용.
 
+## Assumptions
+
+1. `svelte-split-pane` 또는 CSS resize handle로 구현 — 외부 라이브러리 추가 가능.
+2. mode 상태는 URL param `?mode=analyze` + svelte store 동기화.
+3. W-0237 DecisionHUD 컴포넌트가 먼저 완료되어 재사용 가능.
+
+## Open Questions
+
+- **Q1**: resizable pane 비율 저장 — localStorage vs 세션 전용 (비로그인 포함)?
+- **Q2**: Observe mode에서 HUD 숨김 시 chart에 100% width 주는 CSS transition 방식?
+
+## Decisions
+
+- **layout**: CSS Grid `grid-template-columns: 1fr 0.28fr` + row `1fr 0.43fr`
+- **mode 전환**: URL param `?mode=` + svelte store 양방향 동기화
+- **free-form canvas 폐기**: D5 lock-in, IDE split-pane으로 대체
+
+## Next Steps
+
+1. `app/src/routes/terminal/+page.svelte` 현재 레이아웃 파악
+2. `SplitPaneLayout.svelte` 작성 (CSS Grid + resize handle)
+3. `ModeToggle.svelte` + `terminalMode.ts` store 작성
+4. W-0237 DecisionHUD 통합
+5. App CI 검증
+
+## Handoff Checklist
+
+- [ ] `app/src/routes/terminal/+page.svelte` 현재 구조 파악
+- [ ] W-0237 DecisionHUD 완료 여부 확인
+- [ ] `svelte-split-pane` 패키지 존재 여부 확인 (`app/package.json`)
+
 ## Canonical Files
 
 - `app/src/routes/terminal/+page.svelte`

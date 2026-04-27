@@ -1,115 +1,109 @@
-# CURRENT — Wave 2 Complete + H-07 Design (2026-04-27)
+# CURRENT — Wave 4 실행 설계 확정 (2026-04-27)
 
 > 신규 진입자는 `./tools/start.sh` 출력 + 아래 파일만 본다.
 > - `spec/CHARTER.md` — product core / frozen gate
-> - `spec/PRIORITIES.md` — Wave 1/2/3 P0/P1/P2
-> - `docs/live/W-0220-status-checklist.md` — 체크리스트 (단일 진실)
-> - `docs/live/wave-execution-plan.md` — 운영 가이드
-> - `work/active/W-0230-tradingview-grade-viz-design.md` — TradingView-grade Viz design
-> - `work/active/W-0232-h07-f60-gate-design.md` — H-07 F-60 Gate design (본 PR)
-
----
-
-## 활성 Work Items
-
-| Work Item | Owner | 상태 |
-|---|---|---|
-| `W-0214-mm-hunter-core-theory-and-validation` | research | v1.3 LOCKED-IN + §14 Appendix B 완성 (PR #415) |
-| `W-0215-pattern-search-py-audit` | research | v1.2 PRD + V-00 audit 완료 (PR #415, Issue #417) |
-| `W-0216-falsifiable-test-protocol` | research | v1.1 PRD ready (F1~F7) (PR #415, Issue #418) |
-| `W-0217-v01-purged-kfold-cv` | research | v1.0 PRD ready (Issue #420) |
-| `W-0218-v02-phase-eval-m1` | research | v1.0 PRD ready (Issue #421) |
-| `W-0220-v06-stats-engine` | research | v1.0 PRD ready (Issue #422) |
-| `W-0221-v08-validation-pipeline` | research | v1.0 PRD ready (Issue #423) |
-| `W-0219-v03-ablation-m2` | research | v1.0 PRD ready (Issue #426) |
-| `W-0222-v04-sequence-test-m3` | research | v1.0 PRD ready (Issue #427, thin wrapper 가장 쉬움) |
-| `W-0223-v05-regime-test-m4` | research | v1.0 PRD ready (Issue #428) |
-| `W-0224-v11-gate-v2-integration` | research | v1.0 PRD ready (Issue #429) |
-| `W-0223-wave1-execution-design` | contract | PR #369 머지 완료 |
-| `W-0230-tradingview-grade-viz-design` | contract | PR #375 머지 완료 |
-| `W-0232-h07-f60-gate-design` | contract | PR #392 머지 완료 |
-
-> W-0220 PRD v2.2는 `docs/live/W-0220-product-prd-master.md`로 canonical.
-
-## Wave 2 PRs (전부 머지 완료 ✅)
-
-| PR | Issue | Branch | 상태 |
-|---|---|---|---|
-| #381 | #379 F-02-app | `feat/F02-app-verdict-5cat-ui-2` | ✅ MERGED |
-| #383 | #382 D-03-app | `feat/D03-app-watch-toggle` | ✅ MERGED |
-| #386 | #385 A-04-app | `feat/A04-app-chart-drag-draft` | ✅ MERGED |
-| #390 | #388 A-03-app | `feat/A03-app-ai-parser-ui` | ✅ MERGED |
-
-→ 모든 핵심 입구 (parser/drag/watch) + 라벨 (5-cat) UI 작동.
-
-## 다음 (Wave 2.5 / Wave 3)
-
-| 항목 | 상태 |
-|---|---|
-| ✅ W-0215 V-00 audit | **완료** (PR #415, §14 Appendix B 통합) |
-| **W-0217 V-01 PurgedKFold** | **P0 #1 — Issue #420, V-02 병렬** |
-| **W-0218 V-02 phase_eval (M1)** | **P0 #2 — Issue #421, V-01과 병렬** |
-| W-0219~W-0222 V-03~V-11 | V-01/V-02 머지 후 PRD 구체화 |
-| W-0226~W-0229 Quant 4종 | Wave 4+ 병렬 (capacity / sizing / alpha / drawdown) |
-| W-0216 F1~F7 measurement | V-02 ready 후 시작 (Week 1) |
-| F-3 Telegram → Verdict deep link | 미설계, Wave 2.5 |
-| W-0102 Slice 1+2 mop-up | 진행 중 (다른 에이전트) |
-| Phase 1.2 Intent 6분류 | Wave 3 (W-0230 §Phase 1.2) |
-| Phase 1.3 viz/ 디렉토리 | Wave 3 (W-0230 §Phase 1.3) |
-| Phase 2 6 Template Svelte | Wave 4 |
-| W-0231 Whale identity | Wave 5 (별도) |
+> - `spec/PRIORITIES.md` — 전체 우선순위
+> - `work/active/W-0252-wave4-final-verified-design.md` — **Wave 4 단일 진실 (3-perspective 검증, 오류 7건 수정)**
+> - `docs/live/W-0220-status-checklist.md` — 체크리스트
 
 ---
 
 ## main SHA
 
-`8a3566fe` — origin/main (2026-04-27) — PR #405 `/start` auto-bootstrap fix 머지. W-0214 v1.3 LOCKED-IN (PR #396).
+`c492edea` — origin/main (2026-04-27) — PR #430 W-0241~W-0244 Wave 2.5/3 work items 머지
 
 ---
 
-## Core Direction
+## 활성 Work Items
 
-- ✅ Wave 1 engine (F-02 / A-03-eng / A-04-eng / D-03-eng) — 머지 완료
-- ✅ Wave 2 UI (F-02-app / A-03-app / A-04-app / D-03-app) — 머지 완료
-- ⏳ Wave 2.5 — H-07 F-60 Gate (본 PR), F-3 Telegram deep link
-- ⏳ Wave 3 — Visualization Engine (W-0230 Phase 1)
+### Wave (UX Track) — W-0252 §5 실행 계획 기준
 
-## Frozen
+| Work Item | Owner | 상태 |
+|---|---|---|
+| **F-02-fix** (migration 022 + label 정합) | engine + app | 🔴 **BLOCKER — Week 0 즉시** |
+| `W-0234-f3-telegram-verdict-deeplink` | app + engine | ⏳ Week 1 (A-1) |
+| `W-0237-f4-decision-hud` | app | ⏳ Week 2 (A-2) |
+| `W-0240-f11-dashboard-watching` | app | ⏳ Week 1 (B-1) |
+| `W-0243-f5-ide-split-pane` | app | ⏳ Week 2 (A-3, F-4 후) |
+| H-07 + H-08 (stats endpoints) | engine | ⏳ Week 1 (C-1, F-02-fix 후) |
 
-- Copy Trading Phase 1+ (N-05 marketplace는 F-60 gate 후 별도 ADR 필요)
-- 신규 dispatcher / OS / handoff framework 빌드
+### MM Hunter (Research Track) — V layer (다른 에이전트)
+
+| Work Item | Owner | 상태 |
+|---|---|---|
+| `W-0214-mm-hunter-core-theory-and-validation` | research | ✅ v1.3 LOCKED-IN |
+| `W-0215-pattern-search-py-audit` | research | ✅ V-00 완료 (PR #415) |
+| `W-0217-v01-purged-kfold-cv` | research | ⏳ Issue #420 |
+| `W-0218-v02-phase-eval-m1` | research | ⏳ Issue #421, V-01과 병렬 |
+| `W-0219-v03-ablation-m2` | research | ⏳ Issue #426 |
+| `W-0222-v04-sequence-test-m3` | research | ⏳ Issue #427 |
+| `W-0223-v05-regime-test-m4` | research | ⏳ Issue #428 |
+| `W-0220-v06-stats-engine` | research | ⏳ Issue #422 |
+| `W-0221-v08-validation-pipeline` | research | ⏳ Issue #423 |
+
+---
+
+## ✅ Wave 1 / Wave 2 완료 (코드 실측 확인)
+
+| 항목 | 코드 위치 | 비고 |
+|---|---|---|
+| A-03-eng `POST /patterns/parse` | `routes/patterns.py:190` | Claude Sonnet 4.6 function calling |
+| A-04-eng `POST /patterns/draft-from-range` | `routes/patterns.py:427` | 10 effective features |
+| D-03-eng `POST /captures/{id}/watch` | `routes/captures.py:698` | idempotent |
+| F-02-eng 5-cat verdict (engine) | `ledger/types.py:54` | ⚠️ 레이블 불일치 → F-02-fix 필요 |
+| A-03-app AIParserModal | Wave 2 PR #390 | |
+| A-04-app DraftFromRangePanel | Wave 2 PR #386 | |
+| D-03-app WatchToggle | Wave 2 PR #383 | |
+| F-02-app 5-cat 버튼 UI | Wave 2 PR #381 | |
+
+---
+
+## 🔴 BLOCKER — F-02-fix (즉시)
+
+**레이블 불일치**: 현재 코드 `missed/unclear` ↔ PRD 확정 `near_miss/too_early`
+
+```
+migration 022:  missed → near_miss, unclear → too_early
+engine/ledger/types.py:54    — VerdictLabel Literal 변경
+engine/stats/engine.py:40-41 — F60_WIN_LABELS/DENOM_LABELS 동시 업데이트
+app VerdictInboxPanel        — 버튼 텍스트/value 업데이트
+```
+
+→ 이 작업 없이 LightGBM 학습 데이터 오염. 모든 Stream 시작 전 완료 필수.
+
+상세: `work/active/W-0252-wave4-final-verified-design.md §1`
+
+---
+
+## Wave 4 실행 계획 (W-0252 §5 기준)
+
+```
+Week 0: F-02-fix (BLOCKER) + F-7 Meta automation (1.5일)
+Week 1: H-07+H-08 / F-3 Telegram deeplink / F-11 WATCHING
+Week 2: F-4 Decision HUD / F-5 IDE split-pane / F-12 Korea features
+Week 3: F-18 Stripe / F-14 Pattern lifecycle / F-16 recall
+Week 4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
+```
+
+병렬 스트림 상세: `work/active/W-0252-wave4-final-verified-design.md §5`
+
+---
+
+## Frozen (Wave 4 기간 중 비접촉)
+
+- Copy Trading Phase 1+ (N-05 marketplace → F-60 gate 후)
 - Chart UX polish (W-0212류)
+- Phase C/D ORPO/DPO (GPU 필요)
+- Screener Sprint 2 (20% 결손)
+
+---
 
 ## 다음 실행 가이드
 
 ```bash
-git checkout main && git pull           # → d7587a39
-./tools/start.sh                         # Agent ID + 활성 issue
+git checkout main && git pull           # → c492edea
+./tools/start.sh                        # Agent ID + P0 미완료 항목
 gh issue list --search "no:assignee" --state open
 ```
 
-상세: `docs/live/wave-execution-plan.md`
-
----
-
-## 🛤 2-Track 병렬 실행 (2026-04-27)
-
-상세: `docs/live/track-separation-2026-04-27.md`
-
-### Track 1 — Wave (UX / Gate / 입구)
-- W-0241 H-07-eng (engine endpoint)
-- W-0242 H-07-app (UI)
-- W-0243 W-0102 Slice 1+2 mop-up
-- W-0244 SaveSetupModal × Draft integration
-- W-0234 F-3 Telegram deep link (별도)
-
-### Track 2 — MM Hunter (Engine Core 검증)
-- W-0214 LOCKED-IN ✅
-- W-0215 V-00 pattern_search.py audit
-- W-0216 validation/ 모듈
-
-### 영역 disjoint (충돌 0)
-- Track 1: `app/`, `engine/api/routes/users.py`, `engine/stats/engine.py`
-- Track 2: `engine/research/`, `engine/validation/`
-
-→ 다른 에이전트는 트랙 결정 후 자기 영역만 작업.
+상세: `work/active/W-0252-wave4-final-verified-design.md`
