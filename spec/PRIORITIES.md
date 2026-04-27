@@ -1,6 +1,6 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (6d7de4fe) | 2026-04-27
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (889c42f0) | 2026-04-27
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
@@ -9,7 +9,7 @@
 ## 0. CTO 현황 요약 (2026-04-27)
 
 ```
-시스템 성숙도: 86.7% Built (163/188 features)
+시스템 성숙도: 88.3% Built (166/188 features)
 핵심 인프라: 53 PatternObjects × 92 Building Blocks
            L1~L7 전 레이어 구조 완성
            11 APScheduler jobs 자동 운영 중
@@ -17,15 +17,12 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    22개 (P0=5 / P1=11 / P2=10 / P3=10)
-즉시 P0:   W-0215 pattern_search.py audit (MM Hunter V-00)
+열린 갭:    19개 (P0=2 / P1=8 / P2=10 / P3=10) ← F-02-fix/H-07/H-08/W-0252/W-0256 완료
+즉시 P0:   W-0253 F-60 gate min-samples 경화 / W-0257~W-0259 MM Hunter Augment B1+B2+A1
 ```
 
-**가장 위험한 갭 (AI Researcher 진단)**: F-02 레이블 불일치.
-현재 코드 `engine/ledger/types.py:54` = `valid/invalid/missed/too_late/unclear`.
-PRD 스펙 = `valid/invalid/near_miss/too_early/too_late`.
-`missed ≠ near_miss`, `unclear`은 PRD에 없음 → **LightGBM 훈련 라벨 노이즈 발생**.
-이대로 verdicts가 쌓이면 Layer C 재학습 시 라벨 이관 비용 급등. **즉시 정리 필요**.
+~~**가장 위험한 갭**: F-02 레이블 불일치~~ → **✅ 완료 (PR #437, 2026-04-27)**
+`engine/ledger/types.py:54` = `valid/invalid/near_miss/too_early/too_late` ✅ PRD 정합
 
 ---
 
@@ -96,7 +93,7 @@ __init__           —     APScheduler 등록
 
 | Feature | 코드 위치 | 검증 |
 |---|---|---|
-| F-02 engine (5-cat 확장) | `engine/ledger/types.py:54` | ✅ (레이블 불일치 있음 → F-02-fix 필요) |
+| F-02 engine (5-cat 확장) | `engine/ledger/types.py:54` | ✅ **F-02-fix 완료 (PR #437)** — near_miss/too_early/too_late 정합 |
 | A-03-eng `POST /patterns/parse` | `engine/api/routes/patterns.py:190` | ✅ Claude Sonnet 4.6 function calling |
 | A-04-eng `POST /patterns/draft-from-range` | `engine/api/routes/patterns.py:427` | ✅ 12 features 추출 |
 | D-03-eng `POST /captures/{id}/watch` | `engine/api/routes/captures.py:698` | ✅ idempotent |
@@ -116,8 +113,10 @@ H-08 / F-30 / F-17
 | Work Item | Feature | 상태 | 비고 |
 |---|---|---|---|
 | **W-0214** | MM Hunter design D1~D8 | ✅ main (#396) | 설계 완료 |
-| **W-0215** | `engine/research/pattern_search.py:3283줄` V-00 audit | 🟡 **즉시 시작** | augment-only 정책 |
-| **W-0216** | `validation/` 모듈 구현 | ⬜ W-0215 후 | |
+| **W-0252** | `engine/research/pattern_search.py` V-00 audit | ✅ **완료 (PR #467)** | 2갭 발견(D3/D8), F1 미발동 |
+| **W-0256** | MM Hunter Augment D3 cost + D8 phase taxonomy | ✅ **완료 (PR #478)** | phase_taxonomy_id + roundtrip_cost_bps 추가 |
+| **W-0253** | F-60 gate min-samples 경화 | 🔴 **즉시** | 설계만 완료, 구현 필요 |
+| **W-0257~W-0259** | MM Hunter Augment B1(4h horizon)+B2(F-60 Layer B)+A1(validation wrapper) | 🟡 설계 완료 (PR #477) | 구현 필요 |
 
 ---
 
@@ -191,9 +190,8 @@ CSS Grid, resizable, min-width per pane
 | F-15 PersonalVariant runtime UI | W-0246 | S-M | — | `active_variant_registry.py` BUILT |
 | F-16 Search recall@10 ≥ 0.7 | W-0247 | M | — | Layer C 미훈련 → A:0.6 / B:0.4 현재 |
 | ↳ 50 query eval set + LCS 가중 튜닝 (0.6/0.3/0.1) | | | | |
-| H-07 F-60 Gate | W-0238 | S-M | F-02-fix | 라우트 없음 |
-| ↳ `GET /users/{id}/f60-status` → verdict_count / accuracy / gate_passed | | | | |
-| H-08 per-user verdict accuracy | W-0239 | S | F-02-fix | `engine/stats/engine.py`에 추가만 |
+| ~~H-07 F-60 Gate~~ | W-0238 | — | — | ✅ **완료 (PR #437)** `GET /users/{id}/f60-status` |
+| ~~H-08 per-user verdict accuracy~~ | W-0239 | — | — | ✅ **완료 (PR #437)** IN clause 배치 포함 |
 | F-18 Stripe $29/mo + tier enforcement | W-0248 | M | — | JWT Auth BUILT, Stripe 미연결 |
 | ↳ tier enforcement (Free/Pro) + rate limit + migration 028 | | | | |
 | F-19 Sentry + observability | W-0249 | M | — | H-04/H-05 flywheel 체크 BUILT |
@@ -247,8 +245,8 @@ CSS Grid, resizable, min-width per pane
 | **A-03-eng** | `POST /patterns/parse` | — | — | ✅ Wave 1 완료 |
 | **A-04-eng** | `POST /patterns/draft-from-range` | — | — | ✅ Wave 1 완료 |
 | **D-03-eng** | `POST /captures/{id}/watch` | — | — | ✅ Wave 1 완료 |
-| **H-07** | F-60 Gate `GET /users/{id}/f60-status` | S-M | F-02-fix 권장 | NOT BUILT |
-| **H-08** | per-user verdict accuracy in stats engine | S | F-02-fix 권장 | NOT BUILT |
+| **H-07** | F-60 Gate `GET /users/{id}/f60-status` | — | — | ✅ 완료 (PR #437) |
+| **H-08** | per-user verdict accuracy in stats engine | — | — | ✅ 완료 (PR #437) |
 | **N-05** | Marketplace listing + subscribe | L | H-07 | P3 |
 
 ---
@@ -377,10 +375,10 @@ promotion_gate_pass_rate_30d > 0
 ## 14. 즉시 다음 액션 (CTO 지시)
 
 ```
-1. [즉시]   W-0215 시작 — pattern_search.py:3283줄 audit (V-00)
-2. [즉시]   F-02-fix — verdict 레이블 이관 migration 작성 (기존 missed→near_miss 포함)
-3. [이번 주] F-02-fix migration 022 배포 (missed→near_miss + stats/engine.py 동시)
-4. [이번 주] W-0216 — validation/ 모듈 구현 (W-0215 완료 후)
+1. [즉시]   W-0252 시작 — pattern_search.py:3283줄 audit (V-00) — Issue #462
+2. [완료]   F-02-fix — verdict 레이블 이관 PR #437 머지됨 (missed→near_miss + unclear→too_early)
+3. [이번 주] F-02-fix migration 022 배포 검증 + stats/engine.py 일관성 확인
+4. [이번 주] W-0216 — validation/ 모듈 구현 (W-0252 완료 후, ID 재발번 검토)
 5. [다음 주] F-3 Telegram→Verdict deep link / F-4 Decision HUD / F-7 메타 자동화
 6. [M1]     F-5 IDE split-pane + F-11 Dashboard WATCHING + H-07 F-60 Gate
 ```
@@ -414,8 +412,8 @@ promotion_gate_pass_rate_30d > 0
 | W-# | Feature | Owner | 상태 |
 |---|---|---|---|
 | W-0214 | MM Hunter Core Theory v1.3 | contract | ✅ LOCKED-IN (#396) |
-| W-0215 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 |
-| W-0216 | `validation/` 모듈 구현 | engine | W-0215 후 |
+| W-0252 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 (Issue #462, design PR #463) |
+| W-0216 | `validation/` 모듈 구현 | engine | W-0252 후 (ID 재발번 검토) |
 
 → 영역: `engine/research/`, `engine/validation/`
 
