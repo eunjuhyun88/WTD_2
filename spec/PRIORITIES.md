@@ -10,7 +10,7 @@
 
 ```
 시스템 성숙도: 88.3% Built (166/188 features)
-핵심 인프라: 53 PatternObjects × 92 Building Blocks
+핵심 인프라: 52 PatternObjects × 85 Building Blocks
            L1~L7 전 레이어 구조 완성
            11 APScheduler jobs 자동 운영 중
            138,915 feature_window rows
@@ -18,7 +18,7 @@
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
 열린 갭:    19개 (P0=3 / P1=10 / P2=10 / P3=10) — F-02-fix ✅ (#472) + W-0256 D3+D8 ✅ (#478) + W-0252 audit ✅ (#467)
-즉시 P0:   W-0259 engine/validation/ wrapper (V-track 4 모듈 통합) / W-0254 H-07+H-08 (#460, F-02-fix 차단 해제됨)
+즉시 P0:   W-0259 engine/research/validation/ V-track 통합 검증 / W-0254 H-07+H-08 (#460, F-02-fix 차단 해제됨)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.
@@ -32,7 +32,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 ## 1. Vision + Core Loop
 
 **Cogochi = "Pattern Research OS"**
-트레이더가 자연어/드래그로 패턴을 가리키면 → PatternObject로 외화 → 53패턴 × 92블록 카탈로그 합류 → 12개 백그라운드 잡이 매칭·검증·학습 자동 운영.
+트레이더가 자연어/드래그로 패턴을 가리키면 → PatternObject로 외화 → 52패턴 × 85블록 카탈로그 합류 → 12개 백그라운드 잡이 매칭·검증·학습 자동 운영.
 
 **차별점**: on-demand search + verdict-validated archive. Broadcasting 시그널 채널 아님.
 **단일 페르소나 "Jin"**: 28-38세, 크립토 perp 전업/반전업, WTP $29-79/mo.
@@ -40,7 +40,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 ```
 [Input — 3 modes]
   A. 차트 드래그 → POST /patterns/draft-from-range (12 features 자동 추출)
-  B. 자유 텍스트 → POST /patterns/parse → ContextAssembler → claude-sonnet-4-6
+  B. 자유 텍스트 → POST /patterns/parse → ContextAssembler → claude-sonnet-4-5/4-6
   C. 53 카탈로그 선택 + threshold 수정
 
 [Resolve]   PatternDraft → Validator → SearchQuerySpec
@@ -62,7 +62,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 |---|---|---|---|
 | **L1** Market Data | 27 modules (Binance/Bybit/Coinbase/OKX) | ✅ | — |
 | **L2** Feature Window | migration 021, 40+col, 138,915 rows | ✅ | DESIGN_V3.1 미반영 (F-12) |
-| **L3** Pattern Object | **53 PatternObjects × 92 Building Blocks** | ✅ | lifecycle UI (F-14) |
+| **L3** Pattern Object | **52 PatternObjects × 85 Building Blocks** | ✅ | lifecycle UI (F-14) |
 | **L4** State Machine | SQLite WAL + Supabase dual-write, 15m scan | ✅ | — |
 | **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) |
 | **L6** Ledger | 8-type Python, Supabase 1-table | ✅ | F-02 ✅ 해소 (W-0253, PR #437+#472) — 운영 DB 검증 #481 |
@@ -76,7 +76,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 **Scheduler 11 jobs (APScheduler)**:
 ```
 universe_scan      15m   Alpha Score + block signals
-pattern_scan       15m   53패턴 phase 추적
+pattern_scan       15m   52패턴 phase 추적
 auto_evaluate      15m   알림 품질 피드백 (1h ±1%)
 outcome_resolver   1h    capture outcome (72h +15%/-10%)
 pattern_refinement daily threshold 개선 제안
@@ -119,7 +119,7 @@ H-08 / F-30 / F-17
 | **W-0252** | `engine/research/pattern_search.py` V-00 audit | ✅ main (#467) | 100% coverage, F1 미발동, 🔴 갭 2개(D3/D8) → augment-only 진행 |
 | **W-0256** | D3 cost + D8 phase taxonomy augment | ✅ main (#478) | 461줄 추가/0줄 삭제, 178/178 PASS |
 | **W-0253** | F-60 gate min-samples 경화 | 🔴 **즉시** | 설계만 완료, 구현 필요 |
-| **W-0259** | `engine/validation/` wrapper (V-01/V-02/V-04/V-06 통합) | 🟡 **즉시 시작** | 설계 #477 머지, 구현 미시작 |
+| **W-0259** | `engine/research/validation/` V-01/V-02/V-04/V-06 통합 검증 | 🟡 **즉시 시작** | 설계 #477 머지, 구현 미시작. 모듈은 이미 `engine/research/validation/`에 9개 존재 |
 | **W-0257** | D2 horizon parametrization (4h primary) | ⬜ Priority B1 (P1) | 설계 #477 머지 |
 | **W-0258** | D5 F-60 Layer B subjective gate | ⬜ Priority B2 (P1) | 설계 #477 머지 |
 
@@ -265,7 +265,7 @@ CSS Grid, resizable, min-width per pane
 | **Q1** | missed vs too_late: **분리** | 학습 노이즈 다름. missed = 패턴 무효, too_late = 타이밍 실패 |
 | **Q3** | Chart Drag: **실제 드래그 UI** | D11 forward search mental model 일치. form은 fallback |
 | **Q4** | Parser 입력: **자유 텍스트** | Telegram refs 4채널 형식 그대로 붙여넣기 지원 |
-| **Q5** | Parser 모델: **claude-sonnet-4-6** | function calling 안정성. Haiku는 KOL caption(M-02)에 사용 |
+| **Q5** | Parser 모델: **claude-sonnet-4-5 또는 4-6** | 둘 다 function calling 안정. 코드 현재 `engine/api/routes/patterns.py:159`는 4-5. Haiku는 KOL caption(M-02)에 사용 |
 
 ### ✅ Lock-in 완료 (CTO 확정 2026-04-27)
 
@@ -277,7 +277,7 @@ CSS Grid, resizable, min-width per pane
 | **D4** | Decision HUD **5-card** | Pattern/Evidence/Risk/Next/Actions — 정보 아키텍처 완결. F-4 설계 그대로 실행 |
 | **D5** | **IDE split-pane** (free-form canvas 폐기) | 리사이저블 고정 레이아웃 > 자유 캔버스. 집중력 > 자유도. F-5 설계 그대로 |
 | **D6** | L6 **1-table 유지** (4-table P2) | M3 전 스키마 변경 금지. F-30은 Week 4 최후순위로 유지 |
-| **D7** | L3 **file-first** 유지 | 53패턴 버전 관리 trivial. DB sync = read path. lifecycle UI(F-14)만 추가 |
+| **D7** | L3 **file-first** 유지 | 52패턴 버전 관리 trivial. DB sync = read path. lifecycle UI(F-14)만 추가 |
 | **D9** | Wiki = **L7 ledger-driven job** | engine/wiki/ BUILT. 별도 AI agent 시스템 불필요. 야크쉐이빙 방지 |
 | **D10** | DESIGN_V3.1 features **즉시 P1** | kimchi_premium = Korea OI 급등 선행지표. Jin 페르소나 핵심. Week 2 F-12 확정 |
 | **D11** | **Forward search tool** (복기 저널 아님) | "다음에 무슨 일이?" vs "무슨 일이 있었나?" — 제품 전체 thesis. 영구 lock-in |
@@ -419,10 +419,10 @@ promotion_gate_pass_rate_30d > 0
 | W-0252 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 (Issue #462, design PR #463) |
 | W-0216 | `validation/` 모듈 구현 | engine | W-0252 후 (ID 재발번 검토) |
 
-→ 영역: `engine/research/`, `engine/validation/`
+→ 영역: `engine/research/`, `engine/research/validation/`
 
 ### 트랙 충돌 방지 룰
 
 - Track 1 작업 → `app/src/components/`, `app/src/routes/api/users/`, `app/src/routes/api/captures/`, `engine/api/routes/users.py`, `engine/stats/engine.py`만
-- Track 2 작업 → `engine/research/pattern_search.py`, `engine/validation/`, MM Hunter 도메인만
+- Track 2 작업 → `engine/research/pattern_search.py`, `engine/research/validation/`, MM Hunter 도메인만
 - 두 트랙 모두 `docs/live/W-0220-status-checklist.md` 토글 가능 (line-level merge OK)

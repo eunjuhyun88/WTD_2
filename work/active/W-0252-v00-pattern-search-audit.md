@@ -29,7 +29,7 @@
 ### Non-Scope
 - ❌ pattern_search.py **삭제 / rewrite / 함수 통합** — augment-only 정책 (D6 결정)
 - ❌ V-01~V-13 구현 자체 (별도 work item, 이 audit는 갭 식별만)
-- ❌ 53 PatternObject 통계 측정 자체 (V-12 threshold audit, 별도)
+- ❌ 52 PatternObject 통계 측정 자체 (V-12 threshold audit, 별도)
 
 ## Files Touched (예상)
 
@@ -123,7 +123,7 @@
 | 라벨 / 스키마 변경 | ❌ 없음 (audit only) |
 | feature_windows 138,915 row 영향 | ❌ 없음 |
 | LightGBM Layer C 학습 신호 | ❌ 직접 영향 없음 |
-| 53 PatternObject 카탈로그 | ⚠️ 간접 — gap matrix가 D4 (P0 5개 측정 + 48개 보존)와 충돌 시 알림 |
+| 52 PatternObject 카탈로그 | ⚠️ 간접 — gap matrix가 D4 (P0 5개 측정 + 48개 보존)와 충돌 시 알림 |
 
 ### Statistical Validation (audit 자체의 품질 측정)
 

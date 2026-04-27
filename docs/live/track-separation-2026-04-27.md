@@ -45,7 +45,7 @@ Wave UX 트랙(parser/drag/watch/verdict UI 등)과 MM Hunter 트랙(pattern_sea
 
 ### 금지 영역 (다른 트랙 침범)
 - ❌ `engine/research/pattern_search.py` (Track 2 V-00)
-- ❌ `engine/validation/*` (Track 2)
+- ❌ `engine/research/validation/*` (Track 2)
 - ❌ MM Hunter 관련 새 파일
 
 ### Spec 문서
@@ -72,7 +72,7 @@ PRD v2.2의 **MM Hunter** 비전. `pattern_search.py` 3283줄 audit + augment-on
 ### 파일 영역 (claim 가능)
 - `engine/research/pattern_search.py` (audit 대상)
 - `engine/research/*` (MM Hunter 관련)
-- `engine/validation/*` (NEW 모듈)
+- `engine/research/validation/*` (9 모듈 + 6 테스트 존재 — V-track 통합 검증 영역)
 - `engine/tests/test_validation_*.py`
 - `docs/design/MM_HUNTER_*.md` (기존 + 추가)
 - `work/active/W-0214-mm-hunter-*.md`

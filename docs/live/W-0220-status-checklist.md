@@ -32,7 +32,7 @@
 - [ ] **Q2** F-60 accuracy threshold: **0.55** (권고, 90일 후 조정)
 - [x] **Q3** Drag UI: **실제 드래그** (lock-in 2026-04-26 W-0223 — form fallback)
 - [x] **Q4** Parser 입력: **자유 텍스트** (lock-in 2026-04-26 W-0223 — telegram refs 4채널 기반)
-- [x] **Q5** Parser 모델: **claude-sonnet-4-6** (lock-in 2026-04-26 W-0223 — function calling)
+- [x] **Q5** Parser 모델: **claude-sonnet-4-5 또는 4-6** (둘 다 function calling 안정 — lock-in 2026-04-26 W-0223. 코드 현재 4-5 사용)
 
 ---
 
@@ -62,7 +62,8 @@
 - [ ] 알림 클릭 → 자동 로그인 → verdict 30s 내 제출 가능
 
 ### F-4 Decision HUD 5-card
-- [ ] Pattern Status card
+> [~] 1차 컴포넌트 BUILT (`app/src/components/terminal/workspace/DecisionHUD.svelte`) — Card 1 bias/levels/RR 구조 존재. W-0237에서 5-card 완성도 강화 진행 중.
+- [~] Pattern Status card (1차 BUILT — bias/action/conf)
 - [ ] Top Evidence (3개)
 - [ ] Risk (2-3)
 - [ ] Next Transition
@@ -203,8 +204,8 @@
 - [ ] DESIGN_V3.1 patch (F-12)
 
 ### L3 Pattern Object ✅
-- [x] **53 PatternObjects** (Core OI 6 / Short 3 / Alpha Terminal 7 / Alpha Flow 6 / Alpha Hunter 22 / Radar 5 / Breakout 2)
-- [x] **92 Building Blocks** (Confirmations 60+ / Disqualifiers 5 / Entries 8 / Triggers 11+)
+- [x] **52 PatternObjects** (코드 실측: `len(PATTERN_LIBRARY) == 52`)
+- [x] **85 Building Blocks** (Confirmations 58 / Disqualifiers 5 / Entries 8 / Triggers 14 — `engine/building_blocks/*/*.py` 카운트)
 - [x] PatternRegistry + ActiveVariantRegistry
 - [x] PatternDraft 스키마
 

@@ -117,7 +117,7 @@
 **핵심 발견**:
 - pattern_search.py = **standalone variant evaluation + promotion engine**
 - V-track (#435/#436/#438/#440)와 **현재 zero coupling**
-- V-track 통합은 **새 wrapper 모듈** (예: `engine/validation/`)에서 augment-only로 처리 가능
+- V-track 통합은 **이미 존재하는 모듈** (`engine/research/validation/` — 9 모듈 + 6 테스트)에서 augment-only로 처리 가능
 - `forward_peak_return_pct` 필드는 V-02 framework가 직접 소비할 수 있는 상태 (rename 또는 alias 추가만 필요)
 
 ---
@@ -126,9 +126,9 @@
 
 ### Priority A — V-track 활성화에 필수 (P0 다음 즉시)
 
-1. **A1. `engine/validation/` 신규 모듈 생성** (W-0216 또는 ID 재발번)
-   - V-01 PurgedKFold + V-02 phase_eval + V-04 sequence + V-06 stats를 wrapping
-   - `pattern_search.py` 코드 변경 0줄, 외부에서 import만
+1. **A1. `engine/research/validation/` V-track 통합 검증** (W-0216 또는 ID 재발번)
+   - V-01 PurgedKFold + V-02 phase_eval + V-04 sequence + V-06 stats — 모두 이미 `engine/research/validation/`에 9 모듈로 존재
+   - `pattern_search.py` 코드 변경 0줄, 외부에서 import만 (통합 wiring)
 2. **A2. `D3 cost model` augment**
    - PromotionGatePolicy에 `roundtrip_cost_bps: float = 15.0` 필드 추가
    - VariantCaseResult에 `cost_adjusted_forward_return_pct` 필드 추가
@@ -164,7 +164,7 @@
 다만 audit 중 발견된 V-13 관련 surface:
 - pattern_search.py에는 **decay monitoring 로직 부재** (예상대로)
 - NegativeSearchMemoryEntry (L515)이 가장 근접 — 실패 검색 기억은 있으나 통계적 decay 측정 부재
-- **권고**: V-13 별도 work item 발번 (예상 ID = W-0253), `NegativeSearchMemoryEntry` 확장 또는 신규 `engine/validation/decay_monitor.py` 모듈 신설
+- **권고**: V-13 별도 work item 발번 (예상 ID = W-0253), `NegativeSearchMemoryEntry` 확장 또는 신규 `engine/research/validation/decay_monitor.py` 모듈 신설
 
 ---
 
