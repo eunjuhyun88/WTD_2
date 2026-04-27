@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`fd54b314` — origin/main (2026-04-28) — PR #479(W-0254 GateBar) #484(W-0219 ablation) #485(W-0221 pipeline) #493(W-0264 Agent OS) 머지
+`d6893cb8` — origin/main (2026-04-28) — PR #498(W-0265~W-0268 설계 4종) 머지
 
 ---
 
@@ -31,9 +31,7 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0219-v03-ablation-m2` | research | ⏳ Issue #426 |
 | `W-0223-v05-regime-test-m4` | research | ⏳ Issue #428 |
-| `W-0221-v08-validation-pipeline` | research | ⏳ Issue #423 — **다음 P0** (V-01+02+04+06 통합) |
 
 ---
 
