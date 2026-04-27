@@ -84,20 +84,20 @@
   let parseError = $state<string | null>(null);
 
   // ── Derived card items for SearchResultList ────────────────────────────────
-  const cardItems = $derived<SearchResultCardProps[]>(
-    result == null
-      ? []
-      : result.candidates.map((c) => ({
-          capture_id: c.capture_id,
-          pattern_name: result.spec_pattern_family.replace(/_/g, ' '),
-          similarity: c.final_score,
-          phase: c.observed_phase_path.length ? c.observed_phase_path.join(' → ') : '—',
-          outcome: c.outcome ?? null,
-          timestamp: c.bar_iso,
-          symbol: c.symbol,
-          timeframe: c.timeframe,
-        }))
-  );
+  const cardItems = $derived<SearchResultCardProps[]>((): SearchResultCardProps[] => {
+    if (result == null) return [];
+    const r = result;
+    return r.candidates.map((c) => ({
+      capture_id: c.capture_id,
+      pattern_name: r.spec_pattern_family.replace(/_/g, ' '),
+      similarity: c.final_score,
+      phase: c.observed_phase_path.length ? c.observed_phase_path.join(' → ') : '—',
+      outcome: c.outcome ?? null,
+      timestamp: c.bar_iso,
+      symbol: c.symbol,
+      timeframe: c.timeframe,
+    }));
+  }());
 
   // ── Search ─────────────────────────────────────────────────────────────────
   async function runSearch() {
