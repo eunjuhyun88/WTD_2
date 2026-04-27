@@ -121,15 +121,20 @@ def _compute_from_supabase(user_id: str) -> UserAccuracy:
         breakdown[label] = breakdown.get(label, 0) + 1
 
     # Query 2: outcome records for those outcome_ids
+    # Batch in chunks of 100 — PostgREST IN clause via GET params hits 8KB URL limit at ~220 UUIDs
+    _BATCH = 100
     outcome_ids = list(verdict_map.keys())
-    resp2 = (
-        sb.table("pattern_ledger_records")
-        .select("id, payload")
-        .eq("record_type", "outcome")
-        .in_("id", outcome_ids)
-        .execute()
-    )
-    outcome_rows: list[dict[str, Any]] = resp2.data or []
+    outcome_rows: list[dict[str, Any]] = []
+    for i in range(0, len(outcome_ids), _BATCH):
+        chunk = outcome_ids[i : i + _BATCH]
+        r = (
+            sb.table("pattern_ledger_records")
+            .select("id, payload")
+            .eq("record_type", "outcome")
+            .in_("id", chunk)
+            .execute()
+        )
+        outcome_rows.extend(r.data or [])
     outcome_result: dict[str, str] = {}  # outcome_id → outcome value
     for row in outcome_rows:
         oid = row.get("id") or ""

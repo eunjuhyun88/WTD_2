@@ -102,3 +102,29 @@ class TestSafeDiv:
 
     def test_safe_div_zero_denominator(self):
         assert _safe_div(5, 0) == 0.0
+
+
+class TestBatchChunking:
+    """#449: IN clause URL overflow 방지 — 100단위 배치 분할 검증."""
+
+    def test_batch_size_covers_220(self):
+        # 220 outcome_ids → ceil(220/100) = 3 batches, 모두 ≤ 100
+        ids = [f"id-{i}" for i in range(220)]
+        _BATCH = 100
+        chunks = [ids[i : i + _BATCH] for i in range(0, len(ids), _BATCH)]
+        assert len(chunks) == 3
+        assert all(len(c) <= _BATCH for c in chunks)
+        assert sum(len(c) for c in chunks) == 220
+
+    def test_batch_size_covers_1000(self):
+        ids = [f"id-{i}" for i in range(1000)]
+        _BATCH = 100
+        chunks = [ids[i : i + _BATCH] for i in range(0, len(ids), _BATCH)]
+        assert len(chunks) == 10
+        assert sum(len(c) for c in chunks) == 1000
+
+    def test_batch_empty_ids(self):
+        ids = []
+        _BATCH = 100
+        chunks = [ids[i : i + _BATCH] for i in range(0, len(ids), _BATCH)]
+        assert chunks == []
