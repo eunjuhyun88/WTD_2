@@ -167,7 +167,7 @@ EOF
 jq -r '.open_prs[] | "  #\(.number) — \(.title) [\(.mergeable // "?")]"' state/state.json 2>/dev/null \
   | head -10 || echo "  (none or gh CLI unavailable)"
 
-# ── 브랜치 명명 규칙 경고 ─────────────────────────────────────────────────────
+# ── 브랜치 명명 규칙 경고 + stale 차단 ────────────────────────────────────────
 if [ "$BRANCH_BLOCKED" -eq 1 ]; then
   echo ""
   echo "══════════════════════════════════════════════════"
@@ -175,38 +175,59 @@ if [ "$BRANCH_BLOCKED" -eq 1 ]; then
   echo "══════════════════════════════════════════════════"
   echo "  'claude/*' and 'codex/*' branches are not allowed."
   echo ""
-  echo "  Before doing any work:"
-  echo "  1. Check docs/live/feature-implementation-map.md for your Issue ID"
-  echo "  2. Run: git checkout -b feat/{Issue-ID}-{desc} main"
+  echo "  WORKTREE 규칙:"
+  echo "    신규 작업은 항상 origin/main 기준 새 worktree로 생성."
+  echo "    기존 agent worktree(claude/*, codex/*) 재사용 금지."
   echo ""
-  echo "  Allowed formats:"
+  echo "    git worktree add ../wtd-v2-<TASK> origin/main -b feat/<TASK>"
+  echo ""
+  echo "  Allowed branch formats:"
   echo "    feat/F02-verdict-5cat"
   echo "    feat/A03-ai-parser-engine"
   echo "    chore/cleanup-stale-branches"
   echo "══════════════════════════════════════════════════"
+
+  # Stale 차단: forbidden 브랜치 + origin/main 50 커밋 이상 뒤 → exit 1
+  if [ "${AHEAD:-0}" -gt 50 ] 2>/dev/null; then
+    echo ""
+    echo "❌ STALE WORKTREE (${AHEAD} commits behind origin/main) — bootstrap 중단" >&2
+    echo "   위 worktree 명령어로 새 worktree 생성 후 다시 시작하세요." >&2
+    exit 1
+  fi
 fi
 
 echo ""
 echo "Live agents (now):"
 "$SCRIPT_DIR/live.sh" show 2>/dev/null || echo "  (none)"
 
-# GitHub Issue assignee = primary mutex (CHARTER §Coordination)
-# 다른 에이전트가 잡은 Issue 즉시 표시. 못 부르면 graceful skip.
+# GitHub Issue = 진행 중 + 다음 P0 한눈에 (mutex + pick-up 동시)
 echo ""
-echo "🎯 Active GitHub Issues (assignee = mutex):"
+echo "🔴 IN PROGRESS (claimed — 건드리지 말 것):"
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   ASSIGNED=$(gh issue list --state open --assignee "*" \
-    --json number,title,assignees --limit 20 2>/dev/null \
-    | jq -r '.[] | "  #\(.number) [\((.assignees | map(.login) | join(",")) // "?")] \(.title[:60])"' 2>/dev/null)
-  UNASSIGNED=$(gh issue list --state open --search "no:assignee" \
-    --json number,title --limit 10 2>/dev/null \
-    | jq -r '.[] | "  #\(.number) [unassigned] \(.title[:60])"' 2>/dev/null)
-  if [ -n "$ASSIGNED" ] || [ -n "$UNASSIGNED" ]; then
-    [ -n "$ASSIGNED" ] && echo "$ASSIGNED"
-    [ -n "$UNASSIGNED" ] && echo "$UNASSIGNED"
+    --json number,title,assignees,labels --limit 20 2>/dev/null \
+    | jq -r '.[] | "  #\(.number) ✋\((.assignees | map(.login) | join(",")))"
+              + " [\((.labels | map(.name) | join(",")))]"
+              + " \(.title[:55])"' 2>/dev/null)
+  if [ -n "$ASSIGNED" ]; then
+    echo "$ASSIGNED"
   else
-    echo "  (no open issues)"
+    echo "  (없음)"
   fi
+
+  echo ""
+  echo "🟢 AVAILABLE P0 (미배정 — 픽업 가능):"
+  AVAIL_P0=$(gh issue list --state open --search "no:assignee label:P0" \
+    --json number,title,labels --limit 10 2>/dev/null \
+    | jq -r '.[] | "  #\(.number) [\((.labels | map(.name) | join(",")))] \(.title[:60])"' 2>/dev/null)
+  if [ -n "$AVAIL_P0" ]; then
+    echo "$AVAIL_P0"
+  else
+    echo "  (없음 — P1 확인: gh issue list --search \"no:assignee label:P1\")"
+  fi
+
+  echo ""
+  echo "  → 픽업: gh issue edit N --add-assignee @me  &&  git checkout -b feat/issue-N-slug"
 else
   echo "  (gh CLI 미인증 — \`gh auth login\` 후 활성화)"
 fi

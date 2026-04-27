@@ -613,7 +613,7 @@ async def get_f60_gate_status(slug: str) -> dict:
 
     Returns:
         passed: bool — gate 통과 여부 (median≥0.55 AND floor≥0.40 AND count≥200)
-        verdict_count: int — 누적 verdict 수 (unclear 제외)
+        verdict_count: int — 누적 verdict 수 (all 5 cats included)
         remaining_to_threshold: int — 200까지 남은 수
         median_accuracy / floor_accuracy: float — W1/W2/W3 통계
         window_accuracies / window_counts: list — 30d 윈도우 3개 분포

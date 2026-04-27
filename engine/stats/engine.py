@@ -36,9 +36,9 @@ F60_NUM_WINDOWS = 3                    # 3 rolling 30-day windows
 F60_WINDOW_DAYS = 30
 F60_MEDIAN_THRESHOLD = 0.55            # median(W1,W2,W3) must reach this
 F60_FLOOR_THRESHOLD = 0.40             # min(W1,W2,W3) must reach this
-# Verdict labels considered "win" (matches main 5-cat: valid/invalid/missed/too_late/unclear)
+# Verdict labels considered "win" (5-cat: valid/invalid/near_miss/too_early/too_late)
 F60_WIN_LABELS = {"valid"}
-F60_DENOM_LABELS = {"valid", "invalid", "missed", "too_late"}  # unclear = skip
+F60_DENOM_LABELS = {"valid", "invalid", "near_miss", "too_early", "too_late"}
 
 
 @dataclass
@@ -145,8 +145,7 @@ def _compute_gate_status(slug: str, outcomes: list[Any], now: datetime | None = 
 
     Verdict labels (main 5-cat canonical):
       win:    valid
-      loss:   invalid, missed, too_late
-      skip:   unclear (excluded from denominator)
+      loss:   invalid, near_miss, too_early, too_late
     """
     verdicted = [
         o for o in outcomes

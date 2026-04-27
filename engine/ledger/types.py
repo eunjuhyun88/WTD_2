@@ -51,7 +51,7 @@ class PatternOutcome:
     btc_trend_at_entry: str = "unknown"      # "bullish" | "bearish" | "sideways"
 
     # User feedback
-    user_verdict: Literal["valid", "invalid", "missed", "too_late", "unclear"] | None = None
+    user_verdict: Literal["valid", "invalid", "near_miss", "too_early", "too_late"] | None = None
     user_note: str | None = None
 
     # v2: Feature snapshot for reproducibility

@@ -51,7 +51,7 @@
   let labellingId = $state<string | null>(null);
   let labelError = $state<string | null>(null);
 
-  async function submitVerdict(captureId: string, verdict: 'valid' | 'invalid' | 'missed' | 'too_late' | 'unclear', note?: string) {
+  async function submitVerdict(captureId: string, verdict: 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late', note?: string) {
     labellingId = captureId;
     labelError = null;
     try {
@@ -83,18 +83,38 @@
     return slug.replace(/-v\d+$/, '').replace(/-/g, ' ');
   }
 
-  const WATCHING_QUERIES = [
-    {
-      title: 'BTC momentum watch',
-      query: 'btc 4h recent_rally 10% bollinger_expansion',
-      note: '저장해둔 리듬을 다시 확인하는 빠른 진입점입니다.'
-    },
-    {
-      title: 'ETH compression watch',
-      query: 'eth 1d squeeze expansion cvd uptick',
-      note: '느린 타임프레임에서 다시 볼 세팅을 바로 엽니다.'
+  interface WatchingCapture {
+    capture_id: string;
+    symbol: string;
+    pattern_slug: string;
+    status: string;
+    captured_at_ms: number;
+    pnl_pct: number | null;
+  }
+
+  let watchingCaptures = $state<WatchingCapture[]>([]);
+  let watchingLoading = $state(true);
+
+  async function loadWatching() {
+    try {
+      const res = await fetch('/api/captures?watching=true&limit=8');
+      if (res.ok) {
+        const data = await res.json();
+        watchingCaptures = (data.captures ?? []).map((c: Record<string, unknown>) => ({
+          capture_id: c.capture_id as string,
+          symbol: (c.symbol as string) || '—',
+          pattern_slug: (c.pattern_slug as string) || '',
+          status: (c.status as string) || 'watching',
+          captured_at_ms: (c.captured_at_ms as number) || 0,
+          pnl_pct: (c.exit_return_pct as number | null) ?? null,
+        }));
+      }
+    } catch { /* silent */ } finally {
+      watchingLoading = false;
     }
-  ] as const;
+  }
+
+  $effect(() => { loadWatching(); });
 
   const strategies = $derived($allStrategies);
   const prices = $derived($priceStore);
@@ -148,9 +168,7 @@
     goto('/lab');
   }
 
-  function openWatching(query: string) {
-    goto(`/cogochi?q=${encodeURIComponent(query)}`);
-  }
+
 </script>
 
 <svelte:head>
@@ -352,20 +370,20 @@
               onclick={() => submitVerdict(capture.capture_id, 'invalid')}
             >실패</button>
             <button
-              class="verdict-btn verdict-btn--missed"
+              class="verdict-btn verdict-btn--near-miss"
               disabled={busy}
-              onclick={() => submitVerdict(capture.capture_id, 'missed')}
-            >놓침</button>
+              onclick={() => submitVerdict(capture.capture_id, 'near_miss')}
+            >니어미스</button>
             <button
               class="verdict-btn verdict-btn--too-late"
               disabled={busy}
               onclick={() => submitVerdict(capture.capture_id, 'too_late')}
             >늦은진입</button>
             <button
-              class="verdict-btn verdict-btn--unclear"
+              class="verdict-btn verdict-btn--too-early"
               disabled={busy}
-              onclick={() => submitVerdict(capture.capture_id, 'unclear')}
-            >불명확</button>
+              onclick={() => submitVerdict(capture.capture_id, 'too_early')}
+            >너무이름</button>
           </div>
         </div>
       {/each}
@@ -379,22 +397,43 @@
       <div class="surface-section-head">
         <div>
           <span class="surface-kicker">Watching</span>
-          <h2>다시 볼 검색</h2>
+          <h2>지켜보는 패턴</h2>
         </div>
-        <span class="surface-chip">{WATCHING_QUERIES.length} saved</span>
+        {#if !watchingLoading}
+          <span class="surface-chip">{watchingCaptures.length} active</span>
+        {/if}
       </div>
 
-      {#each WATCHING_QUERIES as item}
-        <button class="surface-card watcher-card" onclick={() => openWatching(item.query)}>
-          <div class="watcher-top">
-            <span class="surface-meta">Terminal Query</span>
-            <span class="surface-chip">Open</span>
-          </div>
-          <strong>{item.title}</strong>
-          <p>{item.note}</p>
-          <code class="surface-code">{item.query}</code>
-        </button>
-      {/each}
+      {#if watchingLoading}
+        <div class="watcher-loading">불러오는 중...</div>
+      {:else if watchingCaptures.length === 0}
+        <div class="watcher-empty">
+          <span class="watcher-empty-icon">👁</span>
+          <p>패턴 검색 후 Watch를 누르면 여기에 표시됩니다</p>
+          <button class="surface-btn-secondary" onclick={() => goto('/cogochi')}>
+            패턴 탐색하기
+          </button>
+        </div>
+      {:else}
+        {#each watchingCaptures as cap}
+          <button
+            class="surface-card watcher-card"
+            onclick={() => goto(`/cogochi?capture=${cap.capture_id}`)}
+          >
+            <div class="watcher-top">
+              <span class="surface-meta">{cap.pattern_slug.replace(/-v\d+$/, '').replace(/-/g, ' ')}</span>
+              <span class="surface-chip watcher-status-{cap.status}">{cap.status}</span>
+            </div>
+            <strong class="watcher-symbol">{cap.symbol}</strong>
+            <div class="watcher-meta-row">
+              <span class="surface-meta">{fmtDate(cap.captured_at_ms)}</span>
+              {#if cap.pnl_pct != null}
+                <span class={pnlClass(cap.pnl_pct)}>{fmtPct(cap.pnl_pct)}</span>
+              {/if}
+            </div>
+          </button>
+        {/each}
+      {/if}
     </div>
 
     <div class="surface-grid">
@@ -536,6 +575,43 @@
     border-radius: inherit;
     background: linear-gradient(90deg, rgba(255, 127, 133, 0.92), rgba(249, 216, 194, 0.84));
   }
+
+  .watcher-loading {
+    padding: 24px;
+    color: var(--sc-text-2);
+    font-size: 0.88rem;
+    text-align: center;
+  }
+
+  .watcher-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 16px;
+    text-align: center;
+  }
+  .watcher-empty-icon { font-size: 2rem; }
+  .watcher-empty p { margin: 0; color: var(--sc-text-1); font-size: 0.88rem; }
+
+  .watcher-symbol {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--sc-text-0);
+  }
+
+  .watcher-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+  }
+
+  .watcher-status-watching { background: rgba(59,130,246,0.15); color: #93c5fd; }
+  .watcher-status-pending_outcome { background: rgba(234,179,8,0.15); color: #fde047; }
+  .watcher-status-outcome_ready { background: rgba(34,197,94,0.15); color: #86efac; }
 
   .untested-copy,
   .watcher-card p,
@@ -718,7 +794,7 @@
     color: #f87171;
   }
 
-  .verdict-btn--missed:hover:not(:disabled) {
+  .verdict-btn--near-miss:hover:not(:disabled) {
     background: rgba(251, 191, 36, 0.18);
     border-color: rgba(251, 191, 36, 0.35);
     color: #fbbf24;
@@ -730,10 +806,10 @@
     color: #fb923c;
   }
 
-  .verdict-btn--unclear:hover:not(:disabled) {
-    background: rgba(148, 163, 184, 0.18);
-    border-color: rgba(148, 163, 184, 0.35);
-    color: #94a3b8;
+  .verdict-btn--too-early:hover:not(:disabled) {
+    background: rgba(147, 51, 234, 0.18);
+    border-color: rgba(147, 51, 234, 0.35);
+    color: #a78bfa;
   }
 
   .verdict-error {

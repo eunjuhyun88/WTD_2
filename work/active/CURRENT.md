@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`c492edea` — origin/main (2026-04-27) — PR #430 W-0241~W-0244 Wave 2.5/3 work items 머지
+`4367bc94` — origin/main (2026-04-27) — PR #436(V-01) #438(V-06) #440(V-02) #448(cleanup) 머지
 
 ---
 
@@ -21,9 +21,7 @@
 | Work Item | Owner | 상태 |
 |---|---|---|
 | **F-02-fix** (migration 022 + label 정합) | engine + app | 🔴 **BLOCKER — Week 0 즉시** |
-| `W-0234-f3-telegram-verdict-deeplink` | app + engine | ⏳ Week 1 (A-1) |
 | `W-0237-f4-decision-hud` | app | ⏳ Week 2 (A-2) |
-| `W-0240-f11-dashboard-watching` | app | ⏳ Week 1 (B-1) |
 | `W-0243-f5-ide-split-pane` | app | ⏳ Week 2 (A-3, F-4 후) |
 | H-07 + H-08 (stats endpoints) | engine | ⏳ Week 1 (C-1, F-02-fix 후) |
 
@@ -33,13 +31,9 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0217-v01-purged-kfold-cv` | research | ⏳ Issue #420 |
-| `W-0218-v02-phase-eval-m1` | research | ⏳ Issue #421, V-01과 병렬 |
 | `W-0219-v03-ablation-m2` | research | ⏳ Issue #426 |
-| `W-0222-v04-sequence-test-m3` | research | ⏳ Issue #427 |
 | `W-0223-v05-regime-test-m4` | research | ⏳ Issue #428 |
-| `W-0220-v06-stats-engine` | research | ⏳ Issue #422 |
-| `W-0221-v08-validation-pipeline` | research | ⏳ Issue #423 |
+| `W-0221-v08-validation-pipeline` | research | ⏳ Issue #423 — **다음 P0** (V-01+02+04+06 통합) |
 
 ---
 
@@ -101,7 +95,7 @@ Week 4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 ## 다음 실행 가이드
 
 ```bash
-git checkout main && git pull           # → c492edea
+git checkout main && git pull           # → 4367bc94
 ./tools/start.sh                        # Agent ID + P0 미완료 항목
 gh issue list --search "no:assignee" --state open
 ```

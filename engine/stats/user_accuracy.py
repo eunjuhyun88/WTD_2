@@ -4,9 +4,9 @@ Measures how well a user's verdict labels align with actual market outcomes.
 Powers H-07 F-60 Gate's accuracy threshold check.
 
 Design:
-- 5-cat verdict: valid | invalid | missed | too_late | unclear
-- "correct" = (valid/missed → success) OR (invalid → failure)
-- "soft labels" (too_late, unclear) counted in resolved but not in correct
+- 5-cat verdict: valid | invalid | near_miss | too_early | too_late
+- "correct" = (valid → success) OR (invalid → failure)
+- "soft labels" (near_miss, too_early, too_late) counted in resolved but not in correct
 - TTL: 5 minutes (same as PatternStatsEngine)
 - DB: pattern_ledger_records, 2-query approach (verdict → outcome join in Python)
 """
@@ -24,9 +24,9 @@ _F60_GATE_MIN_COUNT = 200
 _F60_GATE_MIN_ACCURACY = 0.55
 
 # Verdict labels that can be correct/incorrect vs outcome
-_HARD_LABELS = {"valid", "missed"}   # expect outcome=success
-_INVALID_LABEL = "invalid"           # expect outcome=failure
-_SOFT_LABELS = {"too_late", "unclear"}  # excluded from accuracy calculation
+_HARD_LABELS = {"valid"}                              # expect outcome=success
+_INVALID_LABEL = "invalid"                            # expect outcome=failure
+_SOFT_LABELS = {"near_miss", "too_early", "too_late"} # timing failures — resolved but not correct
 
 
 @dataclass
@@ -121,15 +121,20 @@ def _compute_from_supabase(user_id: str) -> UserAccuracy:
         breakdown[label] = breakdown.get(label, 0) + 1
 
     # Query 2: outcome records for those outcome_ids
+    # Batch in chunks of 100 — PostgREST IN clause via GET params hits 8KB URL limit at ~220 UUIDs
+    _BATCH = 100
     outcome_ids = list(verdict_map.keys())
-    resp2 = (
-        sb.table("pattern_ledger_records")
-        .select("id, payload")
-        .eq("record_type", "outcome")
-        .in_("id", outcome_ids)
-        .execute()
-    )
-    outcome_rows: list[dict[str, Any]] = resp2.data or []
+    outcome_rows: list[dict[str, Any]] = []
+    for i in range(0, len(outcome_ids), _BATCH):
+        chunk = outcome_ids[i : i + _BATCH]
+        r = (
+            sb.table("pattern_ledger_records")
+            .select("id, payload")
+            .eq("record_type", "outcome")
+            .in_("id", chunk)
+            .execute()
+        )
+        outcome_rows.extend(r.data or [])
     outcome_result: dict[str, str] = {}  # outcome_id → outcome value
     for row in outcome_rows:
         oid = row.get("id") or ""
@@ -148,7 +153,7 @@ def _compute_from_supabase(user_id: str) -> UserAccuracy:
             correct += 1
         elif verdict == _INVALID_LABEL and outcome == "failure":
             correct += 1
-        # soft labels (too_late, unclear): count toward resolved, not correct
+        # soft labels (near_miss, too_early, too_late): count toward resolved, not correct
 
     accuracy = _safe_div(correct, resolved)
     gate_eligible = resolved >= _F60_GATE_MIN_COUNT and accuracy >= _F60_GATE_MIN_ACCURACY
