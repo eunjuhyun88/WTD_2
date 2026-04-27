@@ -12,8 +12,7 @@ type: decision
 valid_from: 2026-04-27T14:15:00Z
 valid_to: null
 related_docs:
-  - work/active/W-0252-v00-pattern-search-audit.md
-  - memory/decisions/dec-2026-04-27-w-0214-mm-hunter-framing-d1-d8-lockin.md
+  - memory/decisions/dec-2026-04-27-w-0252-audit-result.md
 ---
 
 # W-0252 V-00 Audit — Open Questions Q1~Q3 CTO 결정
