@@ -15,7 +15,7 @@ Agent OS의 4축(worktree / branch / issue / work_item)을 단일 진실 출처(
 
 1. `state/worktrees.json` 스키마 v2 (declared + derived 필드 통합)
 2. `tools/refresh_state.sh` — declared 보존 + derived 갱신 merge
-3. `tools/worktree-registry.sh` (new) — register/set/get/list/sweep/remove CLI
+3. `tools/worktree-registry.sh` (new) — register/set/get/list/remove CLI (sweep은 W-0263 Phase 4에서 도입, Charter §Frozen 250줄 한도 준수)
 4. `tools/start.sh` — 자동 register, 헤더에 매핑 표시, 가드 합리화
 5. `tools/end.sh` — `status=done` 표식 + branch push hint
 6. `tools/claim.sh` — registry에 issue/work_item 매핑
@@ -36,7 +36,7 @@ Agent OS의 4축(worktree / branch / issue / work_item)을 단일 진실 출처(
 ## Exit Criteria
 
 - [ ] `tools/refresh_state.sh` 호출 후 `state/worktrees.json`에 declared + derived 필드 모두 존재
-- [ ] `tools/worktree-registry.sh register/get/list/sweep/remove` 5개 명령 정상 동작
+- [ ] `tools/worktree-registry.sh register/set/get/list/remove` 5개 명령 정상 동작 (sweep은 W-0263)
 - [ ] `./tools/start.sh` — `claude/*` `codex/*` 브랜치에서 차단 없이 부팅 + registry 자동 등록
 - [ ] `./tools/start.sh` 헤더에 "This worktree (registry):" 섹션 출력 (agent/issue/work_item/status)
 - [ ] `./tools/end.sh` — `status=done` 갱신 + 본인 commit 있고 PR 없으면 push hint 출력

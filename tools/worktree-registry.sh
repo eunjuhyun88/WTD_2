@@ -11,13 +11,12 @@
 #       현재 worktree의 임의 declared 필드 갱신 (issue|work_item|status|notes|agent_id).
 #   tools/worktree-registry.sh get [--path P] [KEY]
 #       현재(또는 path 지정) worktree의 entry를 jq로 출력.
-#   tools/worktree-registry.sh list [--mine | --orphan | --stale | --all]
+#   tools/worktree-registry.sh list [--mine | --orphan | --all]
 #       worktree 목록 표시.
-#   tools/worktree-registry.sh sweep
-#       heartbeat 24h+ idle → status=stale, 7d+ → notes에 폐기 추천.
 #   tools/worktree-registry.sh remove [--path P]
 #       registry entry만 삭제 (실제 worktree는 git worktree remove 별도).
 #
+# (sweep 명령은 W-0263 Phase 4에서 도입 — Charter §Frozen 250줄 한도 준수.)
 # Atomic: 모든 쓰기는 mktemp + mv. flock 미사용 (jq는 빠름, race 창은 ms 단위).
 
 set -euo pipefail
@@ -27,22 +26,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
 REG_FILE="state/worktrees.json"
-STALE_HOURS_WARN=24
-STALE_HOURS_PRUNE=168  # 7일
 
 mkdir -p state
 
 _now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-_now_epoch() { date -u +%s; }
-
-_iso_to_epoch() {
-  local ts="$1"
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" "+%s" 2>/dev/null || echo 0
-  else
-    date -u -d "$ts" +%s 2>/dev/null || echo 0
-  fi
-}
 
 _inode_of() {
   stat -f %i "$1" 2>/dev/null || stat -c %i "$1" 2>/dev/null || echo ""
@@ -169,53 +156,24 @@ cmd_list() {
   case "${1:-}" in
     --mine)   mode="mine" ;;
     --orphan) mode="orphan" ;;
-    --stale)  mode="stale" ;;
     --all|"") mode="all" ;;
   esac
   _ensure_registry
   local me; me="$(cat state/current_agent.txt 2>/dev/null || echo '')"
 
   jq -r --arg me "$me" --arg mode "$mode" '
-    map(. + {_age_h: (if .last_active then ((now - (.last_active | fromdateiso8601)) / 3600 | floor) else null end)})
-    | map(select(
+    map(select(
         $mode == "all"
         or ($mode == "mine"   and .agent_id == $me)
         or ($mode == "orphan" and (.exists == false or .status == "orphan"))
-        or ($mode == "stale"  and .status == "stale")
       ))
     | .[]
-    | "\(.path)\n  branch=\(.branch // "?")  agent=\(.agent_id // "-")  issue=\(.issue // "-")  work_item=\(.work_item // "-")  status=\(.status // "-")\n  ahead=\(.ahead // 0)  modified=\(.modified // 0)  age_h=\(._age_h // "-")"
+    | "\(.path)\n  branch=\(.branch // "?")  agent=\(.agent_id // "-")  issue=\(.issue // "-")  work_item=\(.work_item // "-")  status=\(.status // "-")\n  ahead=\(.ahead // 0)  modified=\(.modified // 0)  last_active=\(.last_active // "-")"
   ' "$REG_FILE"
 }
 
-# ── sweep: stale 표식 ─────────────────────────────────────────────────────────
-cmd_sweep() {
-  _ensure_registry
-  local now_e; now_e="$(_now_epoch)"
-  local merged
-  merged="$(jq \
-    --argjson now "$now_e" \
-    --argjson warn_s $((STALE_HOURS_WARN * 3600)) \
-    --argjson prune_s $((STALE_HOURS_PRUNE * 3600)) '
-    def age_seconds(w):
-      if (w.last_active // null) == null then 0
-      else ($now - (w.last_active | fromdateiso8601))
-      end;
-    map(
-      . as $w |
-      (age_seconds($w)) as $age |
-      if $age > $prune_s and (($w.status // "active") != "done") then
-        ($age / 3600 | floor) as $age_h |
-        . + {status: "stale", notes: ((.notes // "") + " [sweep: " + ($age_h|tostring) + "h idle, 폐기 권장]")}
-      elif $age > $warn_s and (($w.status // "active") == "active") then
-        . + {status: "stale"}
-      else .
-      end
-    )
-  ' "$REG_FILE")"
-  _atomic_write "$merged"
-  echo "✓ sweep done. stale: $(jq '[.[] | select(.status=="stale")] | length' "$REG_FILE")"
-}
+# sweep 명령은 W-0263 (Phase 4) 후속 PR에서 도입.
+# 이번 PR은 Charter §Frozen 250줄 한도 준수 위해 register/set/get/list/remove 5개로 한정.
 
 # ── remove ───────────────────────────────────────────────────────────────────
 cmd_remove() {
@@ -242,7 +200,6 @@ case "$CMD" in
   set)      cmd_set "$@" ;;
   get)      cmd_get "$@" ;;
   list)     cmd_list "$@" ;;
-  sweep)    cmd_sweep ;;
   remove)   cmd_remove "$@" ;;
   *)
     cat <<EOF
@@ -250,8 +207,7 @@ Usage:
   $0 register [--agent A###] [--issue N] [--work-item W-NNNN] [--status active|done|stale]
   $0 set <key> <value>      # key: agent_id|issue|work_item|status|notes|claimed_at
   $0 get [--path P] [key]
-  $0 list [--mine|--orphan|--stale|--all]
-  $0 sweep                  # 24h+ idle → stale, 7d+ → 폐기 권장 noted
+  $0 list [--mine|--orphan|--all]
   $0 remove [--path P]
 EOF
     exit 1

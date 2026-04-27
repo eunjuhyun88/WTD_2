@@ -35,7 +35,8 @@
 - `tools/live.sh` 강화:
   - heartbeat 1h+ idle → 자동 표식 (state stale)
   - 24h+ idle → 자동 삭제 (auto-release)
-- `tools/worktree-registry.sh sweep` cron/post-merge hook 등록
+- `tools/worktree-registry.sh sweep` 명령 신규 도입 + cron/post-merge hook 등록 (W-0260에서 분리)
+- (이 항목은 #442 F-7 ②번 "worktree cron 매일 00:00 → 10개+ 경고"와 통합)
 - `AGENTS.md` / `CLAUDE.md` "legacy locks" 모든 언급 제거
 
 ### Non-Goals

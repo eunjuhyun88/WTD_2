@@ -107,11 +107,12 @@ Claude Code SDK / codex CLI는 자동으로 `claude/<random>`, `codex/<random>`,
 ```bash
 tools/worktree-registry.sh get                    # 현재 worktree 매핑
 tools/worktree-registry.sh list --mine            # 내 worktree들
-tools/worktree-registry.sh list --stale           # stale 후보
+tools/worktree-registry.sh list --orphan          # registry에는 있는데 git이 모르는 것
 tools/worktree-registry.sh set work_item W-0260   # 임의 declared 필드
-tools/worktree-registry.sh sweep                  # 24h+ idle → stale, 7d+ → 폐기 권장
 tools/worktree-registry.sh remove --path <P>      # registry entry만 제거
 ```
+
+자동 stale sweep (24h+ idle → stale, 7d+ → 폐기 권장)은 **W-0263 Phase 4**에서 도입 예정. 현재는 수동 cleanup으로 충분 (Charter §Frozen 준수).
 
 진실 우선순위 (충돌 시):
 1. **GitHub Issue assignee** (CHARTER §Coordination — primary mutex)

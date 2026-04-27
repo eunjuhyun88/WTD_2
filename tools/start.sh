@@ -270,7 +270,7 @@ fi
 echo ""
 echo "Priorities (P0/P1):"
 if [ -f spec/PRIORITIES.md ]; then
-  grep -E "^## P[0-9]|^## ✅" spec/PRIORITIES.md | head -6 | sed 's/^/  /'
+  { grep -E "^## P[0-9]|^## ✅" spec/PRIORITIES.md || true; } | head -6 | sed 's/^/  /'
 else
   echo "  (spec/PRIORITIES.md not yet created)"
 fi

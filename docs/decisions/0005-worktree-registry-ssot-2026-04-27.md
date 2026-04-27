@@ -65,7 +65,7 @@
 | `/claim --issue N` (`tools/claim.sh`) | `register --issue N --work-item <branch에서 추출>` |
 | `/end` (`tools/end.sh`) | `set status done` + branch push hint (PR 미생성 + 본인 commit 있으면) |
 
-추가: `tools/worktree-registry.sh sweep`으로 24h+ idle → stale, 7d+ → 폐기 권장 표식.
+자동 sweep(24h+ idle → stale, 7d+ → 폐기 권장)은 W-0263 Phase 4 후속 PR에서 도입. 본 PR은 Charter §Frozen 250줄 한도 준수 위해 register/set/get/list/remove 5개로 한정.
 
 ### 4. `start.sh` 가드 합리화
 
