@@ -62,7 +62,8 @@
 - [ ] 알림 클릭 → 자동 로그인 → verdict 30s 내 제출 가능
 
 ### F-4 Decision HUD 5-card
-- [ ] Pattern Status card
+> [~] 1차 컴포넌트 BUILT (`app/src/components/terminal/workspace/DecisionHUD.svelte`) — Card 1 bias/levels/RR 구조 존재. W-0237에서 5-card 완성도 강화 진행 중.
+- [~] Pattern Status card (1차 BUILT — bias/action/conf)
 - [ ] Top Evidence (3개)
 - [ ] Risk (2-3)
 - [ ] Next Transition

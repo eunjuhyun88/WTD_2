@@ -110,7 +110,7 @@ W-0223 PR로 lock-in:
 | **Q1** | missed vs too_late **분리** | #364 enum |
 | **Q3** | Chart Drag UI **실제 마우스 드래그** (form fallback) | #366 (engine X, Wave 2 app) |
 | **Q4** | AI Parser 입력 **자유 텍스트** | #365 |
-| **Q5** | Parser 모델 **claude-sonnet-4-6** (function calling) | #365 |
+| **Q5** | Parser 모델 **claude-sonnet-4-5 또는 4-6** (function calling, 둘 다 안정 — 코드 현재 4-5) | #365 |
 
 D1~D7, D9~D15는 Wave 1 작업에 영향 없음. 별도 PR로 lock-in.
 
