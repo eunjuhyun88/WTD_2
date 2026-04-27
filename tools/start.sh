@@ -167,7 +167,7 @@ EOF
 jq -r '.open_prs[] | "  #\(.number) — \(.title) [\(.mergeable // "?")]"' state/state.json 2>/dev/null \
   | head -10 || echo "  (none or gh CLI unavailable)"
 
-# ── 브랜치 명명 규칙 경고 ─────────────────────────────────────────────────────
+# ── 브랜치 명명 규칙 경고 + stale 차단 ────────────────────────────────────────
 if [ "$BRANCH_BLOCKED" -eq 1 ]; then
   echo ""
   echo "══════════════════════════════════════════════════"
@@ -175,15 +175,25 @@ if [ "$BRANCH_BLOCKED" -eq 1 ]; then
   echo "══════════════════════════════════════════════════"
   echo "  'claude/*' and 'codex/*' branches are not allowed."
   echo ""
-  echo "  Before doing any work:"
-  echo "  1. Check docs/live/feature-implementation-map.md for your Issue ID"
-  echo "  2. Run: git checkout -b feat/{Issue-ID}-{desc} main"
+  echo "  WORKTREE 규칙:"
+  echo "    신규 작업은 항상 origin/main 기준 새 worktree로 생성."
+  echo "    기존 agent worktree(claude/*, codex/*) 재사용 금지."
   echo ""
-  echo "  Allowed formats:"
+  echo "    git worktree add ../wtd-v2-<TASK> origin/main -b feat/<TASK>"
+  echo ""
+  echo "  Allowed branch formats:"
   echo "    feat/F02-verdict-5cat"
   echo "    feat/A03-ai-parser-engine"
   echo "    chore/cleanup-stale-branches"
   echo "══════════════════════════════════════════════════"
+
+  # Stale 차단: forbidden 브랜치 + origin/main 50 커밋 이상 뒤 → exit 1
+  if [ "${AHEAD:-0}" -gt 50 ] 2>/dev/null; then
+    echo ""
+    echo "❌ STALE WORKTREE (${AHEAD} commits behind origin/main) — bootstrap 중단" >&2
+    echo "   위 worktree 명령어로 새 worktree 생성 후 다시 시작하세요." >&2
+    exit 1
+  fi
 fi
 
 echo ""
