@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`c492edea` — origin/main (2026-04-27) — PR #430 W-0241~W-0244 Wave 2.5/3 work items 머지
+`c840f973` — origin/main (2026-04-27) — PR #430 W-0241~W-0244 Wave 2.5/3 work items 머지
 
 ---
 
