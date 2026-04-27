@@ -1,12 +1,12 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (6d7de4fe) | 2026-04-27
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (889c42f0) | 2026-04-28
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
 ---
 
-## 0. CTO 현황 요약 (2026-04-27)
+## 0. CTO 현황 요약 (2026-04-28)
 
 ```
 시스템 성숙도: 86.7% Built (163/188 features)
@@ -17,15 +17,15 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    20개 (P0=4 / P1=10 / P2=10 / P3=10) — D3 cost + D8 taxonomy close (W-0256 #478)
-즉시 P0:   W-0259 engine/validation/ wrapper (V-track 4 모듈 통합) — W-0252 audit + W-0256 D3+D8 완료(✅ #467 #478)
+열린 갭:    19개 (P0=3 / P1=10 / P2=10 / P3=10) — F-02-fix ✅ (#472) + W-0256 D3+D8 ✅ (#478) + W-0252 audit ✅ (#467)
+즉시 P0:   W-0259 engine/validation/ wrapper (V-track 4 모듈 통합) / W-0254 H-07+H-08 (#460, F-02-fix 차단 해제됨)
 ```
 
-**가장 위험한 갭 (AI Researcher 진단)**: F-02 레이블 불일치.
-현재 코드 `engine/ledger/types.py:54` = `valid/invalid/missed/too_late/unclear`.
-PRD 스펙 = `valid/invalid/near_miss/too_early/too_late`.
-`missed ≠ near_miss`, `unclear`은 PRD에 없음 → **LightGBM 훈련 라벨 노이즈 발생**.
-이대로 verdicts가 쌓이면 Layer C 재학습 시 라벨 이관 비용 급등. **즉시 정리 필요**.
+**가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.
+audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app/supabase/migrations/023` + `VerdictInboxPanel.svelte` 모두 5-cat (`valid/invalid/near_miss/too_early/too_late`) 정합 확인. 회귀 테스트 17/17 통과.
+**잔여 ⚠️ WARN**: 운영 Supabase에 023 적용 여부 미검증 (issue #481).
+
+**다음 위험 갭**: V-08 validation pipeline 미통합 (#423) — V-01/02/04/06 머지됐으나 통합 검증 pipeline 부재.
 
 ---
 
@@ -65,7 +65,7 @@ PRD 스펙 = `valid/invalid/near_miss/too_early/too_late`.
 | **L3** Pattern Object | **53 PatternObjects × 92 Building Blocks** | ✅ | lifecycle UI (F-14) |
 | **L4** State Machine | SQLite WAL + Supabase dual-write, 15m scan | ✅ | — |
 | **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) |
-| **L6** Ledger | 8-type Python, Supabase 1-table | 🟡 | F-02 레이블 불일치 ⚠️ |
+| **L6** Ledger | 8-type Python, Supabase 1-table | ✅ | F-02 ✅ 해소 (W-0253, PR #437+#472) — 운영 DB 검증 #481 |
 | **L7** AutoResearch | Hill Climbing + LightGBM Phase A+B | ✅/❌ | Phase C/D GPU 필요 (P3) |
 
 **PARTIAL 3개 (AI Researcher 주의)**:
@@ -96,7 +96,7 @@ __init__           —     APScheduler 등록
 
 | Feature | 코드 위치 | 검증 |
 |---|---|---|
-| F-02 engine (5-cat 확장) | `engine/ledger/types.py:54` | ✅ (레이블 불일치 있음 → F-02-fix 필요) |
+| F-02 engine (5-cat 확장) | `engine/ledger/types.py:54` | ✅ 5-cat 정합 완료 (PR #437+#472, 2026-04-28) — 운영 DB 검증 #481 |
 | A-03-eng `POST /patterns/parse` | `engine/api/routes/patterns.py:190` | ✅ Claude Sonnet 4.6 function calling |
 | A-04-eng `POST /patterns/draft-from-range` | `engine/api/routes/patterns.py:427` | ✅ 12 features 추출 |
 | D-03-eng `POST /captures/{id}/watch` | `engine/api/routes/captures.py:698` | ✅ idempotent |
@@ -126,19 +126,18 @@ H-08 / F-30 / F-17
 
 ## 5. P0 — 다음 (Wave 4, MM Hunter 이후)
 
-### F-02-fix: Verdict 레이블 정합성 ← **⚠️ 긴급 / S사이즈**
+### ~~F-02-fix: Verdict 레이블 정합성~~ ✅ COMPLETE (PR #472, 2026-04-28)
 
-```
-현재: valid / invalid / missed / too_late / unclear
-목표: valid / invalid / near_miss / too_early / too_late
-변경:  missed  → near_miss   (semantic: 패턴 자체 유효했지만 타점 미스)
-      unclear → too_early   (semantic: 타이밍 조기 진입)
-      추가:     too_late     (기존 too_late 유지)
-파일: engine/ledger/types.py:54 + verdict.py + label_maker.py + UI 5-cat 버튼
-선행: DB migration (기존 missed/unclear 값 이관 스크립트 포함)
-```
+코드 audit 결과 모든 핵심 변경이 머지된 상태로 확인됨:
+- `engine/ledger/types.py:54` — Literal 5-cat ✅
+- `engine/stats/engine.py:40-41` — `F60_DENOM_LABELS` 5-cat ✅
+- `app/supabase/migrations/023_verdict_label_rename.sql` — `UPDATE capture_records` ✅
+- `app/src/components/terminal/peek/VerdictInboxPanel.svelte` — 5-cat 버튼 ✅
+- 회귀 테스트: `engine/tests/test_user_accuracy.py` 17/17 PASS ✅
 
-**AI Researcher 근거**: LightGBM Layer C 훈련 시 near_miss는 "패턴 정확, 타점만 틀림" 라벨 → refinement 방향이 threshold shift. missed는 패턴 자체 무효 → 다른 학습 신호. 혼재 시 recall 저하 직결.
+**Down script**: 반가역 분석으로 forward-only 결정 (단순 reverse UPDATE 시 데이터 손실).
+**⚠️ 잔여 검증**: 운영 Supabase에 023 적용 여부 — issue #481.
+**상세**: `work/completed/W-0253-f02-fix-verdict-label.md`
 
 ### F-3: Telegram alert → 1-click Verdict deep link (M, 3일)
 
@@ -246,7 +245,7 @@ CSS Grid, resizable, min-width per pane
 
 | 이슈 | 기능 | Effort | 선행 | 현재 상태 |
 |---|---|---|---|---|
-| **F-02-fix** | Verdict 레이블 정합 (missed→near_miss, unclear→too_early) | S | — | ⚠️ 즉시 필요 |
+| ~~F-02-fix~~ | ~~Verdict 레이블 정합~~ | ~~S~~ | — | ✅ COMPLETE (PR #472, 2026-04-28) — 운영 DB 검증 #481 |
 | **A-03-eng** | `POST /patterns/parse` | — | — | ✅ Wave 1 완료 |
 | **A-04-eng** | `POST /patterns/draft-from-range` | — | — | ✅ Wave 1 완료 |
 | **D-03-eng** | `POST /captures/{id}/watch` | — | — | ✅ Wave 1 완료 |
