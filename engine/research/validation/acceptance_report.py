@@ -237,26 +237,134 @@ def _v01_acceptance() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _v02_synthetic_acceptance() -> dict[str, Any]:
-    """V-02 needs `_measure_forward_peak_return` against real klines, which
-    are not in this worktree. We assert the W-0225 C-1 cost-fix contract:
-    when entry_slippage_pct=0.0 is forced, the only cost subtracted is
-    cost_bps."""
-    # Re-import within function to avoid circular concerns at module load.
-    from research.validation import phase_eval
+def _v02_real_data_acceptance() -> dict[str, Any]:
+    """V-02 real-data acceptance: load benchmark_packs, run
+    measure_phase_conditional_return against real cached klines (the
+    cache lives in the parent repo and is auto-resolved by
+    `data_cache.loader`).
 
-    # the contract is documented in module docstring; we just confirm the
-    # public API exists and is callable.
-    has_measure = hasattr(phase_eval, "measure_phase_conditional_return")
-    has_result = hasattr(phase_eval, "PhaseConditionalReturn")
-    has_baseline = hasattr(phase_eval, "measure_random_baseline")
+    For each case we use the case's `start_at` as the BREAKOUT entry and
+    measure forward return at horizons 4h and 24h with cost_bps=15.
+    """
+    from datetime import datetime
+
+    from data_cache.loader import load_klines
+    from research.validation.phase_eval import (
+        PhaseConditionalReturn,
+        measure_phase_conditional_return,
+    )
+
+    pack_dir = Path("research/pattern_search/benchmark_packs")
+    pack_files = sorted(pack_dir.glob("*.json"))
+
+    # collect (symbol, ts, pattern, phase_name) from all 12 packs
+    entries_by_symbol: dict[tuple[str, str], list[datetime]] = {}
+    pattern_for: dict[tuple[str, str], str] = {}
+    phase_for: dict[tuple[str, str], str] = {}
+    for pf in pack_files:
+        with pf.open() as fp:
+            pack = json.load(fp)
+        for case in pack.get("cases", []):
+            sym = case["symbol"]
+            tf = case["timeframe"]
+            phases = case.get("expected_phase_path") or []
+            entry_phase = phases[-1] if phases else "BREAKOUT"
+            ts = datetime.fromisoformat(case["start_at"])
+            key = (sym, tf)
+            entries_by_symbol.setdefault(key, []).append(ts)
+            pattern_for[key] = pack["pattern_slug"]
+            phase_for[key] = entry_phase
+
+    # filter to symbol/tf combos for which we have a kline cache
+    runnable: list[tuple[str, str]] = []
+    for key in entries_by_symbol:
+        sym, tf = key
+        try:
+            df = load_klines(sym, tf, offline=True)
+            if len(df) > 0:
+                runnable.append(key)
+        except Exception:
+            continue
+
+    timings_4h: list[float] = []
+    timings_24h: list[float] = []
+    n_entries_total = 0
+    n_results_4h = 0
+    n_results_24h = 0
+    cost_pct_observed: list[float] = []
+
+    for key in runnable:
+        sym, tf = key
+        ts_list = entries_by_symbol[key]
+        n_entries_total += len(ts_list)
+        # h = 4
+        t0 = time.perf_counter()
+        r4: PhaseConditionalReturn = measure_phase_conditional_return(
+            pattern_slug=pattern_for[key],
+            phase_name=phase_for[key],
+            entry_timestamps=ts_list,
+            symbol=sym,
+            timeframe=tf,
+            horizon_hours=4,
+            cost_bps=15.0,
+        )
+        timings_4h.append((time.perf_counter() - t0) * 1000)
+        if r4.n_samples > 0:
+            n_results_4h += r4.n_samples
+
+        # h = 24
+        t0 = time.perf_counter()
+        r24 = measure_phase_conditional_return(
+            pattern_slug=pattern_for[key],
+            phase_name=phase_for[key],
+            entry_timestamps=ts_list,
+            symbol=sym,
+            timeframe=tf,
+            horizon_hours=24,
+            cost_bps=15.0,
+        )
+        timings_24h.append((time.perf_counter() - t0) * 1000)
+        if r24.n_samples > 0:
+            n_results_24h += r24.n_samples
+
+        # cost-fix evidence: re-measure with cost_bps=0 and compute
+        # delta == 0.15% per the W-0225 C-1 fix.
+        r4_zero = measure_phase_conditional_return(
+            pattern_slug=pattern_for[key],
+            phase_name=phase_for[key],
+            entry_timestamps=ts_list,
+            symbol=sym,
+            timeframe=tf,
+            horizon_hours=4,
+            cost_bps=0.0,
+        )
+        if r4.n_samples > 0 and r4_zero.n_samples == r4.n_samples:
+            # mean_return_net difference must equal exactly cost_bps/100 = 0.15%
+            delta = r4_zero.mean_return_pct - r4.mean_return_pct
+            cost_pct_observed.append(delta)
+
+    avg_cost_delta = (
+        sum(cost_pct_observed) / len(cost_pct_observed)
+        if cost_pct_observed
+        else float("nan")
+    )
 
     return {
-        "module_loadable": True,
-        "has_measure_phase_conditional_return": has_measure,
-        "has_PhaseConditionalReturn": has_result,
-        "has_measure_random_baseline": has_baseline,
-        "real_data_skipped_reason": "klines parquet cache not in worktree",
+        "n_packs_with_klines_cache": len(runnable),
+        "n_entries_attempted": n_entries_total,
+        "n_results_h4": n_results_4h,
+        "n_results_h24": n_results_24h,
+        "max_latency_ms_h4": max(timings_4h) if timings_4h else 0,
+        "max_latency_ms_h24": max(timings_24h) if timings_24h else 0,
+        "avg_latency_ms_h4": (sum(timings_4h) / len(timings_4h)) if timings_4h else 0,
+        "c1_cost_delta_observed_pct": avg_cost_delta,
+        "c1_cost_fix_pass": (
+            len(cost_pct_observed) > 0
+            and abs(avg_cost_delta - 0.15) < 1e-6
+        ),
+        "perf_budget_ok_h4": (
+            (max(timings_4h) if timings_4h else 0) < 5000
+        ),
     }
 
 
@@ -287,8 +395,8 @@ def main() -> int:
     for k, v in v01.items():
         print(f"- **{k}**: {v}")
 
-    print("\n## V-02 phase_eval (module-load smoke; klines absent in worktree)\n")
-    v02 = _v02_synthetic_acceptance()
+    print("\n## V-02 phase_eval (REAL klines from data_cache parent-repo cache)\n")
+    v02 = _v02_real_data_acceptance()
     for k, v in v02.items():
         print(f"- **{k}**: {v}")
 
@@ -309,8 +417,16 @@ def main() -> int:
         failures.append(f"V-06 bootstrap perf exceeded 1s ({v06['bootstrap_ms_for_10k_iter']:.0f}ms)")
     if not v01["no_leak_pass"]:
         failures.append(f"V-01 train/test leak detected ({v01['leak_count']} folds)")
-    if not v02["module_loadable"]:
-        failures.append("V-02 module failed to load")
+    if v02.get("n_packs_with_klines_cache", 0) == 0:
+        failures.append("V-02 no real-kline cases runnable")
+    if not v02.get("c1_cost_fix_pass", False):
+        failures.append(
+            f"V-02 W-0225 C-1 cost-fix violation — observed Δ={v02.get('c1_cost_delta_observed_pct')!r}, expected 0.15"
+        )
+    if not v02.get("perf_budget_ok_h4", False):
+        failures.append(
+            f"V-02 perf budget exceeded ({v02.get('max_latency_ms_h4'):.0f} ms)"
+        )
 
     if failures:
         print("## ❌ ACCEPTANCE FAILURES\n")
