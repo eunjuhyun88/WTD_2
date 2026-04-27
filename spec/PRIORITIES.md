@@ -1,6 +1,6 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (889c42f0) | 2026-04-28
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (47c8b148) | 2026-04-28
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
@@ -17,8 +17,8 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    19개 (P0=3 / P1=10 / P2=10 / P3=10) — F-02-fix ✅ (#472) + W-0256 D3+D8 ✅ (#478) + W-0252 audit ✅ (#467)
-즉시 P0:   W-0259 engine/validation/ wrapper (V-track 4 모듈 통합) / W-0254 H-07+H-08 (#460, F-02-fix 차단 해제됨)
+열린 갭:    17개 (P0=1 / P1=10 / P2=10 / P3=10) — W-0253 ✅ (#512) + W-0254 ✅ (#509) + W-0244 ✅ (#505) + V-05 ✅ (#507) + V-11 ✅ (#508)
+즉시 P0:   W-0259 engine/validation/ wrapper (V-track 통합) — V-01/02/04/05/06/11 모듈 존재, 통합 pipeline 미구현
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.
@@ -118,8 +118,12 @@ H-08 / F-30 / F-17
 | **W-0214** | MM Hunter design D1~D8 | ✅ main (#396) | 설계 완료 |
 | **W-0252** | `engine/research/pattern_search.py` V-00 audit | ✅ main (#467) | 100% coverage, F1 미발동, 🔴 갭 2개(D3/D8) → augment-only 진행 |
 | **W-0256** | D3 cost + D8 phase taxonomy augment | ✅ main (#478) | 461줄 추가/0줄 삭제, 178/178 PASS |
-| **W-0253** | F-60 gate min-samples 경화 | 🔴 **즉시** | 설계만 완료, 구현 필요 |
-| **W-0259** | `engine/validation/` wrapper (V-01/V-02/V-04/V-06 통합) | 🟡 **즉시 시작** | 설계 #477 머지, 구현 미시작 |
+| **W-0253** | F-60 gate min-samples 경화 | ✅ PR #512 | `F60_MIN_SAMPLES_PER_WINDOW=10`, 13 tests |
+| **W-0223** | V-05 regime-conditional return M4 | ✅ PR #507 | RegimeLabel+G7 gate, 19 tests |
+| **W-0224** | V-11 gate v2 G1~G7 integration | ✅ PR #508 | GateV2+PromotionPolicy, 16 tests |
+| **W-0244** | F-7 meta automation workflows | ✅ PR #505 | CURRENT.md SHA auto-update + worktree cron |
+| **W-0254** | F60GateBar UI component | ✅ PR #509 | Svelte 5 dual progress bars + badge |
+| **W-0259** | `engine/validation/` wrapper (V-01/02/04/05/06/11 통합) | 🔴 **즉시** | 모듈 구현 완료, pipeline wrapper 미구현 |
 | **W-0257** | D2 horizon parametrization (4h primary) | ⬜ Priority B1 (P1) | 설계 #477 머지 |
 | **W-0258** | D5 F-60 Layer B subjective gate | ⬜ Priority B2 (P1) | 설계 #477 머지 |
 
@@ -404,9 +408,9 @@ promotion_gate_pass_rate_30d > 0
 | W-# | Feature | Owner | 상태 |
 |---|---|---|---|
 | W-0241 | H-07-eng F-60 Gate Status API | engine | ✅ Wave 1 완료 (patterns.py:427) |
-| W-0242 | H-07-app F60GateBar UI | app | W-0241 후 |
+| W-0242 | H-07-app F60GateBar UI (W-0254) | app | ✅ PR #509 — F60GateBar.svelte |
 | W-0243 | Wave 3 Phase 1.1 W-0102 Slice 1+2 | app | 독립, 즉시 시작 |
-| W-0244 | SaveSetupModal × DraftFromRangePanel | app | 독립, 즉시 시작 |
+| W-0244 | F-7 CURRENT.md auto-SHA + worktree cron | app | ✅ PR #505 |
 | W-0234 | F-3 Telegram → Verdict deep link | app+engine | 별도 |
 
 → 영역: `app/`, `engine/api/routes/users.py`, `engine/stats/engine.py`
@@ -416,8 +420,11 @@ promotion_gate_pass_rate_30d > 0
 | W-# | Feature | Owner | 상태 |
 |---|---|---|---|
 | W-0214 | MM Hunter Core Theory v1.3 | contract | ✅ LOCKED-IN (#396) |
-| W-0252 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 (Issue #462, design PR #463) |
-| W-0216 | `validation/` 모듈 구현 | engine | W-0252 후 (ID 재발번 검토) |
+| W-0252 | V-00 `pattern_search.py` audit (3283줄) | engine | ✅ main (#467) |
+| W-0223 | V-05 regime-conditional return M4 | engine | ✅ PR #507 |
+| W-0224 | V-11 gate v2 G1~G7 + PromotionPolicy | engine | ✅ PR #508 |
+| W-0253 | F-60 gate min-samples hardening | engine | ✅ PR #512 |
+| W-0259 | `engine/validation/` pipeline wrapper (V-01~V-11 통합) | engine | 🔴 즉시 — 모듈 OK, pipeline 미구현 |
 
 → 영역: `engine/research/`, `engine/validation/`
 
