@@ -9,7 +9,7 @@
 ## 0. CTO 현황 요약 (2026-04-28)
 
 ```
-시스템 성숙도: 86.7% Built (163/188 features)
+시스템 성숙도: 88.3% Built (166/188 features)
 핵심 인프라: 53 PatternObjects × 92 Building Blocks
            L1~L7 전 레이어 구조 완성
            11 APScheduler jobs 자동 운영 중
@@ -116,8 +116,9 @@ H-08 / F-30 / F-17
 | Work Item | Feature | 상태 | 비고 |
 |---|---|---|---|
 | **W-0214** | MM Hunter design D1~D8 | ✅ main (#396) | 설계 완료 |
-| **W-0252** | `engine/research/pattern_search.py:3283줄` V-00 audit | ✅ main (#467) | 100% coverage, F1 미발동, 🔴 갭 2개(D3/D8) → augment-only 진행 |
-| **W-0256** | D3 cost + D8 phase taxonomy augment | ✅ main (#478) | 461줄 추가/0줄 삭제, signature 0건, 178/178 PASS, A/B drop 7.9% (≤30% AC6) |
+| **W-0252** | `engine/research/pattern_search.py` V-00 audit | ✅ main (#467) | 100% coverage, F1 미발동, 🔴 갭 2개(D3/D8) → augment-only 진행 |
+| **W-0256** | D3 cost + D8 phase taxonomy augment | ✅ main (#478) | 461줄 추가/0줄 삭제, 178/178 PASS |
+| **W-0253** | F-60 gate min-samples 경화 | 🔴 **즉시** | 설계만 완료, 구현 필요 |
 | **W-0259** | `engine/validation/` wrapper (V-01/V-02/V-04/V-06 통합) | 🟡 **즉시 시작** | 설계 #477 머지, 구현 미시작 |
 | **W-0257** | D2 horizon parametrization (4h primary) | ⬜ Priority B1 (P1) | 설계 #477 머지 |
 | **W-0258** | D5 F-60 Layer B subjective gate | ⬜ Priority B2 (P1) | 설계 #477 머지 |
@@ -193,9 +194,8 @@ CSS Grid, resizable, min-width per pane
 | F-15 PersonalVariant runtime UI | W-0246 | S-M | — | `active_variant_registry.py` BUILT |
 | F-16 Search recall@10 ≥ 0.7 | W-0247 | M | — | Layer C 미훈련 → A:0.6 / B:0.4 현재 |
 | ↳ 50 query eval set + LCS 가중 튜닝 (0.6/0.3/0.1) | | | | |
-| H-07 F-60 Gate | W-0238 | S-M | F-02-fix | 라우트 없음 |
-| ↳ `GET /users/{id}/f60-status` → verdict_count / accuracy / gate_passed | | | | |
-| H-08 per-user verdict accuracy | W-0239 | S | F-02-fix | `engine/stats/engine.py`에 추가만 |
+| ~~H-07 F-60 Gate~~ | W-0238 | — | — | ✅ **완료 (PR #437)** `GET /users/{id}/f60-status` |
+| ~~H-08 per-user verdict accuracy~~ | W-0239 | — | — | ✅ **완료 (PR #437)** IN clause 배치 포함 |
 | F-18 Stripe $29/mo + tier enforcement | W-0248 | M | — | JWT Auth BUILT, Stripe 미연결 |
 | ↳ tier enforcement (Free/Pro) + rate limit + migration 028 | | | | |
 | F-19 Sentry + observability | W-0249 | M | — | H-04/H-05 flywheel 체크 BUILT |
@@ -249,8 +249,8 @@ CSS Grid, resizable, min-width per pane
 | **A-03-eng** | `POST /patterns/parse` | — | — | ✅ Wave 1 완료 |
 | **A-04-eng** | `POST /patterns/draft-from-range` | — | — | ✅ Wave 1 완료 |
 | **D-03-eng** | `POST /captures/{id}/watch` | — | — | ✅ Wave 1 완료 |
-| **H-07** | F-60 Gate `GET /users/{id}/f60-status` | S-M | F-02-fix 권장 | NOT BUILT |
-| **H-08** | per-user verdict accuracy in stats engine | S | F-02-fix 권장 | NOT BUILT |
+| **H-07** | F-60 Gate `GET /users/{id}/f60-status` | — | — | ✅ 완료 (PR #437) |
+| **H-08** | per-user verdict accuracy in stats engine | — | — | ✅ 완료 (PR #437) |
 | **N-05** | Marketplace listing + subscribe | L | H-07 | P3 |
 
 ---
