@@ -1,8 +1,19 @@
-"""Corpus-only search route runtime."""
+"""Corpus-only search route runtime.
+
+W-0145: seed-search uses corpus-first retrieval with 40+dim enrichment.
+  - Layer A signals: FeatureWindowStore 40+ signals (OI, funding, vol, price, positioning)
+  - Fallback: 6-field compact corpus signature when FW enrichment unavailable
+  - Weighted L1 scoring (SIGNAL_WEIGHTS from _signals.py)
+"""
 from __future__ import annotations
 
 from typing import Any
 
+from search._signals import (
+    FW_DB_PATH as _FW_DB_PATH,
+    fetch_feature_signals_batch,
+    weighted_l1_score,
+)
 from search.corpus import CorpusWindow, SearchCorpusStore
 
 
@@ -23,14 +34,21 @@ def run_seed_search(
         definition_ref = None
 
     windows = store.list_windows(symbol=symbol, timeframe=timeframe, limit=max(limit * 3, limit))
-    candidates = [
-        _candidate_from_window(
-            window,
-            _score_signature(window.signature, reference_signature),
-            definition_ref=definition_ref,
+
+    # W-0145: enrich window signatures with FeatureWindowStore 40+ signals
+    fw_enrichment = fetch_feature_signals_batch(windows, _FW_DB_PATH)
+
+    candidates = []
+    for window in windows:
+        # Merge 40+ FW signals on top of 6-field corpus signature
+        cand_sig = dict(window.signature)
+        if window.window_id in fw_enrichment:
+            cand_sig.update(fw_enrichment[window.window_id])
+        score = weighted_l1_score(cand_sig, reference_signature)
+        candidates.append(
+            _candidate_from_window(window, score, definition_ref=definition_ref)
         )
-        for window in windows
-    ]
+
     candidates.sort(key=lambda item: item["score"], reverse=True)
     status = "corpus_only" if candidates else "degraded"
     return store.create_seed_run(
@@ -115,17 +133,6 @@ def _candidate_from_window(
         "score": round(max(0.0, min(score, 1.0)), 6),
         "payload": payload,
     }
-
-
-def _score_signature(candidate: dict[str, Any], reference: dict[str, Any]) -> float:
-    numeric_keys = [
-        key for key, value in reference.items()
-        if isinstance(value, int | float) and isinstance(candidate.get(key), int | float)
-    ]
-    if not numeric_keys:
-        return 0.5
-    distance = sum(abs(float(candidate[key]) - float(reference[key])) for key in numeric_keys) / len(numeric_keys)
-    return 1.0 / (1.0 + distance)
 
 
 def _scan_score(window: CorpusWindow) -> float:

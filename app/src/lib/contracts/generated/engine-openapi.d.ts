@@ -862,6 +862,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Pattern Text
+         * @description Parse free-text trading memo → PatternDraftBody JSON via Claude Sonnet 4.5.
+         *
+         *     AC: POST {"text": "OI가 급등하면서 가격이 하락했다"} → PatternDraftBody JSON
+         */
+        post: operations["parse_pattern_text_patterns_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/library": {
         parameters: {
             query?: never;
@@ -962,6 +984,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/draft-from-range": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft From Range
+         * @description Extract 12 features from a chart range and return a PatternDraftBody.
+         *
+         *     Accepts (symbol, start_ts, end_ts) and computes features over that window.
+         *     Features unavailable from a single-symbol window (btc_corr, venue_div)
+         *     are returned as null — this is not an error per spec.
+         */
+        post: operations["draft_from_range_patterns_draft_from_range_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/scan": {
         parameters: {
             query?: never;
@@ -1034,6 +1080,37 @@ export interface paths {
          * @description Return current symbols ranked by pattern-state similarity for one family.
          */
         get: operations["get_similar_live_patterns__slug__similar_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/f60-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get F60 Gate Status
+         * @description F-60 multi-period acceptance gate (L-3, R-05).
+         *
+         *     Returns:
+         *         passed: bool — gate 통과 여부 (median≥0.55 AND floor≥0.40 AND count≥200)
+         *         verdict_count: int — 누적 verdict 수 (all 5 cats included)
+         *         remaining_to_threshold: int — 200까지 남은 수
+         *         median_accuracy / floor_accuracy: float — W1/W2/W3 통계
+         *         window_accuracies / window_counts: list — 30d 윈도우 3개 분포
+         *         reason: "insufficient_data" | "insufficient_windows" | "failed_threshold" | "passed"
+         *
+         *     근거: Ryan Li 16-seed validation + Kropiunig $32 variance on identical code.
+         *     Single-period accuracy 0.60이 multi-period 0.45보다 나쁠 수 있음 → median+floor.
+         */
+        get: operations["get_f60_gate_status_patterns__slug__f60_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1483,11 +1560,54 @@ export interface paths {
          *       tp2_price       — from chart_context.tp2 (null if not set)
          *       eval_window_ms  — evaluation window in ms (for shading end x)
          *       p_win           — float 0–1 if recorded
-         *       user_verdict    — "valid" | "invalid" | "missed" | null
+         *       user_verdict    — "valid" | "invalid" | "near_miss" | "too_early" | "too_late" | null
          */
         get: operations["get_chart_annotations_captures_chart_annotations_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Watch Capture
+         * @description Mark a capture as watching. Idempotent — calling twice is safe.
+         */
+        post: operations["watch_capture_captures__capture_id__watch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/verdict-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Verdict Deeplink
+         * @description F-3: Generate a signed 72h deep-link token for Telegram verdict submission.
+         *
+         *     Token = HMAC-SHA256 signed payload (stateless, no DB write).
+         *     The app /verdict?token=xxx validates and pre-fills the VerdictModal.
+         */
+        post: operations["create_verdict_deeplink_captures__capture_id__verdict_link_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2198,6 +2318,73 @@ export interface paths {
          *     Requires: Authorization: Bearer <token>
          */
         post: operations["logout_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}/f60-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get F60 Status
+         * @description H-07: F-60 copy-signal gate status for a user.
+         *
+         *     Returns verdicts remaining + current accuracy + pass/fail.
+         *     Cached 5 min (same TTL as PatternStatsEngine).
+         */
+        get: operations["get_f60_status_users__user_id__f60_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}/verdict-accuracy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Verdict Accuracy
+         * @description H-08: per-user verdict accuracy detail. Alias of f60-status for compatibility.
+         */
+        get: operations["get_verdict_accuracy_users__user_id__verdict_accuracy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/viz/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Route Viz Intent
+         * @description Classify visualization intent and return template + data.
+         *
+         *     - WHY/STATE/EXECUTION: no search, returns capture context data.
+         *     - SEARCH/COMPARE/FLOW: returns search_triggered=True + routing info.
+         *       Client should follow up with GET /search/similar?capture_id=...
+         */
+        post: operations["route_viz_intent_viz_route_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3246,6 +3433,13 @@ export interface components {
             /** Alerts */
             alerts: string[];
         };
+        /** ParseRequest */
+        ParseRequest: {
+            /** Text */
+            text: string;
+            /** Symbol */
+            symbol?: string | null;
+        };
         /** ParserMetaBody */
         ParserMetaBody: {
             /** Parser Role */
@@ -3580,6 +3774,20 @@ export interface components {
         RagVectorResponse: {
             /** Embedding */
             embedding: number[];
+        };
+        /** RangeRequest */
+        RangeRequest: {
+            /** Symbol */
+            symbol: string;
+            /** Start Ts */
+            start_ts: number;
+            /** End Ts */
+            end_ts: number;
+            /**
+             * Timeframe
+             * @default 1h
+             */
+            timeframe: string;
         };
         /** ResearchContextBody */
         ResearchContextBody: {
@@ -4630,6 +4838,17 @@ export interface components {
              */
             tags: string[];
         };
+        /** _VizRouteBody */
+        _VizRouteBody: {
+            /** Capture Id */
+            capture_id?: string | null;
+            /** Intent */
+            intent?: ("WHY" | "STATE" | "COMPARE" | "SEARCH" | "FLOW" | "EXECUTION") | null;
+            /** Text Input */
+            text_input?: string | null;
+            /** Symbol */
+            symbol?: string | null;
+        };
         /** _WatchBody */
         _WatchBody: {
             /** Symbol */
@@ -4655,7 +4874,7 @@ export interface components {
              * Verdict
              * @enum {string}
              */
-            verdict: "valid" | "invalid" | "missed";
+            verdict: "valid" | "invalid" | "near_miss" | "too_early" | "too_late";
             /** User Note */
             user_note?: string | null;
         };
@@ -5508,6 +5727,7 @@ export interface operations {
                 pattern_slug?: string | null;
                 symbol?: string | null;
                 status?: string | null;
+                watching?: boolean | null;
                 limit?: number;
             };
             header?: never;
@@ -6266,6 +6486,39 @@ export interface operations {
             };
         };
     };
+    parse_pattern_text_patterns_parse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternDraftBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_patterns_patterns_library_get: {
         parameters: {
             query?: never;
@@ -6376,6 +6629,39 @@ export interface operations {
             };
         };
     };
+    draft_from_range_patterns_draft_from_range_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternDraftBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     trigger_pattern_scan_patterns_scan_post: {
         parameters: {
             query?: never;
@@ -6475,6 +6761,39 @@ export interface operations {
                 staleness_hours?: number;
                 warmup_bars?: number;
             };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_f60_gate_status_patterns__slug__f60_status_get: {
+        parameters: {
+            query?: never;
             header?: never;
             path: {
                 slug: string;
@@ -7049,6 +7368,7 @@ export interface operations {
                 pattern_slug?: string | null;
                 symbol?: string | null;
                 status?: string | null;
+                watching?: boolean | null;
                 limit?: number;
             };
             header?: never;
@@ -7308,6 +7628,72 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    watch_capture_captures__capture_id__watch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_verdict_deeplink_captures__capture_id__verdict_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -8463,6 +8849,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LogoutResponse"];
+                };
+            };
+        };
+    };
+    get_f60_status_users__user_id__f60_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_verdict_accuracy_users__user_id__verdict_accuracy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    route_viz_intent_viz_route_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_VizRouteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

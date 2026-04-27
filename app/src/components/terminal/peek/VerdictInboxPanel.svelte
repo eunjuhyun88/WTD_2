@@ -6,6 +6,9 @@
    * User labels each as valid / invalid / missed to close the feedback loop.
    */
 
+  import WatchToggle from '../WatchToggle.svelte';
+  import AIParserModal from '../AIParserModal.svelte';
+
   interface OutcomeItem {
     capture: {
       capture_id: string;
@@ -15,6 +18,7 @@
       timeframe: string;
       captured_at_ms: number;
       user_note: string | null;
+      is_watching?: boolean;
     };
     outcome: {
       outcome: string | null;        // 'target_hit' | 'stop_hit' | 'expired' | null
@@ -36,6 +40,7 @@
   let error = $state<string | null>(null);
   let submitting = $state<Record<string, boolean>>({});
   let dismissed = $state<Set<string>>(new Set());
+  let parserOpen = $state(false);
 
   async function load() {
     loading = true;
@@ -52,7 +57,10 @@
     }
   }
 
-  async function submitVerdict(captureId: string, verdict: 'valid' | 'invalid' | 'missed') {
+  async function submitVerdict(
+    captureId: string,
+    verdict: 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late',
+  ) {
     submitting = { ...submitting, [captureId]: true };
     try {
       const res = await fetch(`/api/captures/${captureId}/verdict`, {
@@ -105,8 +113,19 @@
   <div class="inbox-header">
     <span class="inbox-title">REVIEW INBOX</span>
     <span class="inbox-count">{items.length} pending</span>
+    <button
+      class="parser-btn"
+      onclick={() => { parserOpen = true; }}
+      title="자유 텍스트 메모로 패턴 만들기 (AI Parser)"
+    >📝 Memo → Pattern</button>
     <button class="reload-btn" onclick={load} disabled={loading} title="Reload">↺</button>
   </div>
+
+  <AIParserModal
+    open={parserOpen}
+    onClose={() => { parserOpen = false; }}
+    onSaved={() => { load(); }}
+  />
 
   {#if loading}
     <div class="inbox-empty">Loading…</div>
@@ -130,6 +149,12 @@
             <span class="card-phase phase-{cap.phase.toLowerCase()}">{cap.phase}</span>
             <span class="card-tf">{cap.timeframe.toUpperCase()}</span>
             <span class="card-age">{timeAgo(cap.captured_at_ms)}</span>
+            <span class="card-watch">
+              <WatchToggle
+                captureId={cap.capture_id}
+                isWatching={cap.is_watching ?? false}
+              />
+            </span>
           </div>
 
           <div class="card-outcome">
@@ -160,11 +185,23 @@
               title="Setup was wrong"
             >✗ Invalid</button>
             <button
-              class="verdict-btn verdict-missed"
-              onclick={() => submitVerdict(cap.capture_id, 'missed')}
+              class="verdict-btn verdict-too-late"
+              onclick={() => submitVerdict(cap.capture_id, 'too_late')}
               disabled={busy}
-              title="Missed the entry"
-            >~ Missed</button>
+              title="Setup was valid but entry timing too late"
+            >⏰ Too Late</button>
+            <button
+              class="verdict-btn verdict-near-miss"
+              onclick={() => submitVerdict(cap.capture_id, 'near_miss')}
+              disabled={busy}
+              title="Setup was valid but entry missed by a little"
+            >~ Near Miss</button>
+            <button
+              class="verdict-btn verdict-too-early"
+              onclick={() => submitVerdict(cap.capture_id, 'too_early')}
+              disabled={busy}
+              title="Entry too early — structure not confirmed yet"
+            >⏫ Too Early</button>
           </div>
         </div>
       {/each}
@@ -204,8 +241,25 @@
     background: rgba(99,179,237,0.15);
     color: rgba(131,188,255,0.9);
   }
-  .reload-btn {
+  .parser-btn {
     margin-left: auto;
+    background: rgba(219, 154, 159, 0.10);
+    border: 1px solid rgba(219, 154, 159, 0.35);
+    color: #db9a9f;
+    border-radius: 3px;
+    padding: 3px 8px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .parser-btn:hover {
+    background: rgba(219, 154, 159, 0.20);
+    color: #f7f2ea;
+  }
+  .reload-btn {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.1);
     color: rgba(247,242,234,0.5);
@@ -257,6 +311,11 @@
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
+  }
+  .card-watch {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
   }
   .card-sym {
     font-family: var(--sc-font-mono, monospace);
@@ -359,12 +418,34 @@
   }
   .verdict-invalid:hover { background: rgba(242,54,69,0.2); }
 
-  .verdict-missed {
-    background: rgba(239,192,80,0.1);
-    border-color: rgba(239,192,80,0.25);
-    color: #EFC050;
+  .verdict-too-late {
+    background: rgba(250,204,21,0.1);
+    border-color: rgba(250,204,21,0.25);
+    color: #facc15;
   }
-  .verdict-missed:hover { background: rgba(239,192,80,0.2); }
+  .verdict-too-late:hover { background: rgba(250,204,21,0.2); }
+
+  .verdict-near-miss {
+    background: rgba(102,102,102,0.1);
+    border-color: rgba(102,102,102,0.3);
+    color: rgba(247,242,234,0.7);
+  }
+  .verdict-near-miss:hover { background: rgba(102,102,102,0.2); }
+
+  .verdict-too-early {
+    background: rgba(147,51,234,0.1);
+    border-color: rgba(147,51,234,0.3);
+    color: rgba(196,168,255,0.85);
+  }
+  .verdict-too-early:hover { background: rgba(147,51,234,0.2); }
 
   .verdict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* 5-button row needs flex-wrap on narrow screens */
+  .card-actions {
+    flex-wrap: wrap;
+  }
+  .verdict-btn {
+    min-width: 60px;
+  }
 </style>

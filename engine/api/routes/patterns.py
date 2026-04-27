@@ -9,11 +9,19 @@ alert-policy PUT, register) stay on the async route without offloading.
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
+import os
+from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from api.routes import patterns_thread
+from api.schemas_pattern_draft import PatternDraftBody
+
+log = logging.getLogger("engine.api.routes.patterns")
 from capture.store import CaptureStore
 from research.capture_benchmark import (
     build_benchmark_pack_from_capture,
@@ -32,6 +40,8 @@ from patterns.scanner import run_pattern_scan
 from patterns.types import PatternObject, PhaseCondition
 from research.live_monitor import search_pattern_state_similarity
 from scoring.block_evaluator import _BLOCKS
+from api.schemas_pattern_draft import PatternDraftBody, PatternDraftPhaseBody
+from features.materialization_store import FeatureMaterializationStore
 
 router = APIRouter()
 _ledger = get_ledger_store()
@@ -104,6 +114,266 @@ class _BenchmarkSearchBody(BaseModel):
     max_holdouts: int = 4
 
 
+class ParseRequest(BaseModel):
+    text: str
+    symbol: str | None = None
+
+
+class RangeRequest(BaseModel):
+    symbol: str          # e.g. "BTCUSDT"
+    start_ts: int        # unix timestamp (seconds)
+    end_ts: int          # unix timestamp (seconds)
+    timeframe: str = "1h"
+
+
+# ── AI Parser ────────────────────────────────────────────────────────────────
+
+def _validate_draft(data: dict) -> PatternDraftBody:
+    """Validate a dict as PatternDraftBody; raises ValueError on failure."""
+    try:
+        draft = PatternDraftBody.model_validate(data)
+    except ValidationError as exc:
+        raise ValueError(f"draft validation failed: {exc}") from exc
+    if not draft.phases:
+        raise ValueError("draft must have at least one phase (phase_sequence empty)")
+    return draft
+
+
+async def _call_claude(system_prompt: str, user_text: str) -> PatternDraftBody:
+    """Call Claude Sonnet 4.5 and parse the response into PatternDraftBody.
+
+    Retries up to 2 times on JSON parse or validation failure.
+    """
+    import anthropic  # lazy import — not required for non-parser routes
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY not configured")
+
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    last_error: Exception | None = None
+
+    for attempt in range(3):  # 1 initial + 2 retries
+        try:
+            message = await client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_text}],
+            )
+            raw = message.content[0].text.strip()
+
+            # Strip markdown fences if the model wraps output anyway
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+                raw = raw.rsplit("```", 1)[0].strip()
+
+            parsed = json.loads(raw)
+            return _validate_draft(parsed)
+
+        except (json.JSONDecodeError, ValueError) as exc:
+            last_error = exc
+            log.warning("parse attempt %d failed: %s", attempt + 1, exc)
+            if attempt < 2:
+                continue
+        except anthropic.APIError as exc:
+            raise HTTPException(status_code=502, detail=f"Claude API error: {exc}") from exc
+
+    raise HTTPException(
+        status_code=422,
+        detail=f"Failed to parse pattern after 3 attempts. Last error: {last_error}",
+    )
+
+
+@router.post("/parse", response_model=PatternDraftBody)
+async def parse_pattern_text(body: ParseRequest) -> PatternDraftBody:
+    """Parse free-text trading memo → PatternDraftBody JSON via Claude Sonnet 4.5.
+
+    AC: POST {"text": "OI가 급등하면서 가격이 하락했다"} → PatternDraftBody JSON
+    """
+    from agents.context import get_assembler
+
+    ctx = await asyncio.to_thread(get_assembler().for_parse_text, body.symbol)
+    return await _call_claude(ctx.system_prompt, body.text)
+
+
+# ── 12-feature extraction from feature_window dict ───────────────────────────
+
+def _extract_12_features(fw: dict[str, Any]) -> dict[str, Any | None]:
+    """Map feature_window dict → 12 canonical draft features.
+
+    Accepts dicts from either compute_feature_window() or _aggregate_feature_windows().
+    Pre-derived boolean keys (_higher_lows, _lower_highs, etc.) take precedence
+    when present; otherwise the same derivation logic applies.
+    All values are allowed to be None (partial extraction OK per spec).
+    """
+    # oi_change: OI change rate
+    oi_change: float | None = fw.get("oi_change_pct")
+
+    # funding: latest funding rate
+    funding: float | None = fw.get("funding_rate_last")
+
+    # cvd: cumulative volume delta (change over window)
+    cvd: float | None = fw.get("cvd_delta")
+
+    # liq_volume: derived from liq_imbalance (signed imbalance of long/short liq)
+    liq_volume: float | None = fw.get("liq_imbalance")
+
+    # price: window return pct (price change %)
+    price: float | None = fw.get("return_pct")
+
+    # volume: volume zscore relative to window mean
+    volume: float | None = fw.get("volume_zscore")
+
+    # btc_corr: requires cross-symbol BTC data — not available in single-symbol window
+    btc_corr: None = None
+
+    # higher_lows: use pre-derived value if available, else derive
+    if "_higher_lows" in fw:
+        higher_lows: bool | None = fw["_higher_lows"]
+    else:
+        hl_count = fw.get("higher_low_count")
+        higher_lows = bool(hl_count > 0) if hl_count is not None else None
+
+    # lower_highs: use pre-derived value if available, else derive
+    if "_lower_highs" in fw:
+        lower_highs: bool | None = fw["_lower_highs"]
+    else:
+        trend_regime = fw.get("trend_regime")
+        hh_count = fw.get("higher_high_count")
+        lower_highs = None
+        if trend_regime is not None and hh_count is not None:
+            lower_highs = trend_regime == "downtrend" and hh_count == 0
+
+    # compression: use pre-derived value if available, else derive
+    if "_compression" in fw:
+        compression: bool | None = fw["_compression"]
+    else:
+        compression_ratio = fw.get("compression_ratio")
+        compression = bool(compression_ratio <= 1.0) if compression_ratio is not None else None
+
+    # smart_money: use pre-derived value if available, else derive
+    if "_smart_money" in fw:
+        smart_money: bool | None = fw["_smart_money"]
+    else:
+        absorption = fw.get("absorption_flag")
+        smart_money = bool(absorption) if absorption is not None else None
+
+    # venue_div: requires cross-venue data — not available in single-symbol window
+    venue_div: None = None
+
+    return {
+        "oi_change": oi_change,
+        "funding": funding,
+        "cvd": cvd,
+        "liq_volume": liq_volume,
+        "price": price,
+        "volume": volume,
+        "btc_corr": btc_corr,
+        "higher_lows": higher_lows,
+        "lower_highs": lower_highs,
+        "compression": compression,
+        "smart_money": smart_money,
+        "venue_div": venue_div,
+    }
+
+
+def _query_feature_windows_range(
+    symbol: str,
+    start_ts: int,
+    end_ts: int,
+    timeframe: str = "1h",
+) -> list[dict[str, Any]]:
+    """Query feature_windows SQLite cache for rows in [start_ts, end_ts].
+
+    Converts Unix timestamps to ISO strings for comparison with stored TEXT values.
+    Returns rows ordered by window_end_ts ASC.
+    """
+    start_iso = datetime.fromtimestamp(start_ts, tz=timezone.utc).isoformat()
+    end_iso = datetime.fromtimestamp(end_ts, tz=timezone.utc).isoformat()
+    store = FeatureMaterializationStore()
+    with store._connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM feature_windows
+            WHERE symbol = ? AND timeframe = ?
+              AND window_end_ts BETWEEN ? AND ?
+            ORDER BY window_end_ts ASC
+            """,
+            (symbol, timeframe, start_iso, end_iso),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def _aggregate_feature_windows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate a list of feature_window rows into a single feature dict.
+
+    Uses averages for continuous metrics, logical OR for flags, and picks the
+    last available value for categorical fields. Missing columns are None.
+    """
+    if not rows:
+        return {}
+
+    def _avg(key: str) -> float | None:
+        vals = [r.get(key) for r in rows if r.get(key) is not None]
+        return sum(vals) / len(vals) if vals else None
+
+    def _sum(key: str) -> float | None:
+        vals = [r.get(key) for r in rows if r.get(key) is not None]
+        return sum(vals) if vals else None
+
+    def _any_flag(key: str) -> bool | None:
+        vals = [r.get(key) for r in rows if r.get(key) is not None]
+        return any(bool(v) for v in vals) if vals else None
+
+    def _last(key: str) -> Any:
+        for r in reversed(rows):
+            val = r.get(key)
+            if val is not None:
+                return val
+        return None
+
+    # Derive higher_lows: any window has higher_low_count > 0
+    hl_count = _avg("higher_low_count")
+    higher_lows: bool | None = bool(hl_count > 0) if hl_count is not None else None
+
+    # Derive lower_highs: last trend_regime == downtrend and avg higher_high_count == 0
+    trend_regime = _last("trend_regime")
+    hh_count = _avg("higher_high_count")
+    lower_highs: bool | None = None
+    if trend_regime is not None and hh_count is not None:
+        lower_highs = trend_regime == "downtrend" and hh_count == 0
+
+    compression_ratio = _avg("compression_ratio")
+    compression: bool | None = bool(compression_ratio <= 1.0) if compression_ratio is not None else None
+
+    absorption = _any_flag("absorption_flag")
+    smart_money: bool | None = bool(absorption) if absorption is not None else None
+
+    return {
+        "oi_change_pct": _avg("oi_change_pct"),
+        "funding_rate_last": _last("funding_rate_last"),
+        "cvd_delta": _sum("cvd_delta"),
+        "liq_imbalance": _avg("liq_imbalance"),
+        "return_pct": _sum("return_pct"),
+        "volume_zscore": _avg("volume_zscore"),
+        "btc_corr": None,
+        "higher_low_count": hl_count,
+        "higher_high_count": hh_count,
+        "compression_ratio": compression_ratio,
+        "absorption_flag": int(absorption) if absorption is not None else None,
+        "trend_regime": trend_regime,
+        "volatility_regime": _last("volatility_regime"),
+        # Pre-derived booleans for _extract_12_features
+        "_higher_lows": higher_lows,
+        "_lower_highs": lower_highs,
+        "_compression": compression,
+        "_smart_money": smart_money,
+    }
+
+
 # ── Library & States ─────────────────────────────────────────────────────────
 
 @router.get("/library")
@@ -150,6 +420,105 @@ async def get_all_states() -> dict:
 async def get_all_candidates() -> dict:
     """Entry candidates across all patterns."""
     return await asyncio.to_thread(patterns_thread.get_all_candidates_sync)
+
+
+# ── Draft from range ─────────────────────────────────────────────────────────
+
+@router.post("/draft-from-range")
+async def draft_from_range(body: RangeRequest) -> PatternDraftBody:
+    """Extract 12 features from a chart range and return a PatternDraftBody.
+
+    Accepts (symbol, start_ts, end_ts) and computes features over that window.
+    Features unavailable from a single-symbol window (btc_corr, venue_div)
+    are returned as null — this is not an error per spec.
+    """
+    def _sync() -> PatternDraftBody:
+        if body.end_ts <= body.start_ts:
+            raise ValueError("end_ts must be greater than start_ts")
+        if (body.end_ts - body.start_ts) > 604800:
+            raise ValueError("range exceeds 7 days (604800 seconds)")
+
+        rows = _query_feature_windows_range(
+            body.symbol,
+            body.start_ts,
+            body.end_ts,
+            body.timeframe,
+        )
+        if not rows:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"No feature_windows data for {body.symbol} {body.timeframe} "
+                    f"in range [{body.start_ts}, {body.end_ts}]"
+                ),
+            )
+
+        fw = _aggregate_feature_windows(rows)
+        features = _extract_12_features(fw)
+
+        # Build phase description from extracted features
+        signals_required: list[str] = []
+        signals_preferred: list[str] = []
+        if features.get("higher_lows"):
+            signals_required.append("higher_lows")
+        if features.get("compression"):
+            signals_required.append("compression")
+        if features.get("smart_money"):
+            signals_preferred.append("absorption")
+
+        phase = PatternDraftPhaseBody(
+            phase_id="PHASE_0",
+            label="Range",
+            sequence_order=0,
+            description=(
+                f"Chart drag selection: {body.symbol} "
+                f"from {body.start_ts} to {body.end_ts}"
+            ),
+            timeframe=body.timeframe,
+            signals_required=signals_required,
+            signals_preferred=signals_preferred,
+        )
+
+        trend = fw.get("trend_regime") or "unknown"
+        vol_regime = fw.get("volatility_regime") or "unknown"
+
+        thesis_parts: list[str] = []
+        if features.get("price") is not None:
+            direction = "up" if (features["price"] or 0.0) >= 0 else "down"
+            thesis_parts.append(f"Price moved {direction} {abs(features['price'] or 0.0):.2%} over range")
+        if features.get("higher_lows"):
+            thesis_parts.append("Higher lows detected — bullish structure")
+        if features.get("lower_highs"):
+            thesis_parts.append("Lower highs detected — bearish structure")
+        if features.get("compression"):
+            thesis_parts.append("Volatility compression detected")
+        if not thesis_parts:
+            thesis_parts.append(f"Trend: {trend}, volatility: {vol_regime}")
+
+        return PatternDraftBody(
+            schema_version=1,
+            pattern_family="chart_drag",
+            pattern_label=f"{body.symbol} range selection",
+            source_type="chart_drag",
+            source_text=(
+                f"Chart drag: {body.symbol} {body.timeframe} "
+                f"[{body.start_ts}, {body.end_ts}]"
+            ),
+            symbol_candidates=[body.symbol],
+            timeframe=body.timeframe,
+            thesis=thesis_parts,
+            phases=[phase],
+            trade_plan={"features": features},
+            confidence=None,
+            ambiguities=[
+                k for k, v in features.items() if v is None
+            ],
+        )
+
+    try:
+        return await asyncio.to_thread(_sync)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # ── Scan ─────────────────────────────────────────────────────────────────────
@@ -236,6 +605,27 @@ async def get_similar_live(
         }
 
     return await asyncio.to_thread(_sync)
+
+
+@router.get("/{slug}/f60-status")
+async def get_f60_gate_status(slug: str) -> dict:
+    """F-60 multi-period acceptance gate (L-3, R-05).
+
+    Returns:
+        passed: bool — gate 통과 여부 (median≥0.55 AND floor≥0.40 AND count≥200)
+        verdict_count: int — 누적 verdict 수 (all 5 cats included)
+        remaining_to_threshold: int — 200까지 남은 수
+        median_accuracy / floor_accuracy: float — W1/W2/W3 통계
+        window_accuracies / window_counts: list — 30d 윈도우 3개 분포
+        reason: "insufficient_data" | "insufficient_windows" | "failed_threshold" | "passed"
+
+    근거: Ryan Li 16-seed validation + Kropiunig $32 variance on identical code.
+    Single-period accuracy 0.60이 multi-period 0.45보다 나쁠 수 있음 → median+floor.
+    """
+    from stats.engine import get_stats_engine
+    return await asyncio.to_thread(
+        lambda: get_stats_engine().as_gate_dict(slug)
+    )
 
 
 @router.get("/{slug}/stats")

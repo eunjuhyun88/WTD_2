@@ -405,3 +405,92 @@ export async function getYahooData(symbol: string): Promise<{
     points,
   };
 }
+
+// ─── Pattern Draft from Range (A-04-app) ──────────────────────────
+
+export interface PatternDraftPhaseBody {
+  phase_id: string;
+  duration_min?: number;
+  duration_max?: number;
+  must_have?: string[];
+  forbidden?: string[];
+}
+
+export interface PatternDraftBodyShape {
+  pattern_family?: string;
+  pattern_label?: string;
+  phases?: PatternDraftPhaseBody[];
+  signals_required?: string[];
+  signals_preferred?: string[];
+  signals_forbidden?: string[];
+  search_hints?: Record<string, unknown>;
+  extracted_features?: Record<string, number | null>;
+}
+
+/**
+ * POST /api/patterns/draft-from-range — A-04-app entry point.
+ *
+ * Engine extracts 12 features from chart range and returns a PatternDraft.
+ * 4+ null features → engine returns 422 → throws Error.
+ */
+export async function draftPatternFromRange(
+  symbol: string,
+  startTs: number,
+  endTs: number,
+  timeframe = '15m',
+  signal?: AbortSignal,
+): Promise<PatternDraftBodyShape> {
+  const res = await fetch('/api/patterns/draft-from-range', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      symbol,
+      start_ts: startTs,
+      end_ts: endTs,
+      timeframe,
+    }),
+    signal: signal ?? AbortSignal.timeout(15_000),
+  });
+  const payload: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(parseErrorMessage(payload, res.status));
+  }
+  if (!isRecord(payload)) {
+    throw new Error(`Invalid draft-from-range response (${res.status})`);
+  }
+  return payload as PatternDraftBodyShape;
+}
+
+// ─── AI Parser (A-03-app) ──────────────────────────────────────
+
+export interface AIParserHints {
+  pattern_family?: string;
+  symbol?: string;
+}
+
+/**
+ * POST /api/patterns/parse — A-03-app entry point.
+ *
+ * 자유 텍스트 메모를 PatternDraftBody로 변환 (engine: Claude Sonnet 4.6).
+ * Engine: ContextAssembler.for_parser() + Anthropic SDK + Tool Use.
+ */
+export async function parsePatternFromText(
+  text: string,
+  hints: AIParserHints = {},
+  signal?: AbortSignal,
+): Promise<PatternDraftBodyShape> {
+  const res = await fetch('/api/patterns/parse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, context_hints: hints }),
+    signal: signal ?? AbortSignal.timeout(25_000),
+  });
+  const payload: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(parseErrorMessage(payload, res.status));
+  }
+  if (!isRecord(payload)) {
+    throw new Error(`Invalid parse response (${res.status})`);
+  }
+  return payload as PatternDraftBodyShape;
+}

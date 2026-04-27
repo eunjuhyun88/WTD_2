@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# pre-push hook — branch naming + design invariant enforcement
+# Install: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null || echo '')"
+
+# ── 1. Branch naming enforcement ──────────────────────────────────────────────
+# Forbidden: claude/* and codex/* (auto-generated random names, no issue link)
+# Allowed:   feat/{Issue-ID}-{desc} | chore/... | docs/... | fix/... | automation/... | main | release
+
+BLOCKED_PATTERN='^(claude/|codex/)'
+ALLOWED_PATTERN='^(main|release|feat/.+|chore/.+|docs/.+|fix/.+|automation/.+|hotfix/.+)$'
+
+if [[ -n "$BRANCH" ]]; then
+  if echo "$BRANCH" | grep -qE "$BLOCKED_PATTERN"; then
+    echo ""
+    echo "ERROR: Branch '$BRANCH' is forbidden."
+    echo ""
+    echo "  'claude/*' and 'codex/*' are auto-generated names with no issue link."
+    echo "  Required naming: feat/{Issue-ID}-{desc}"
+    echo ""
+    echo "  Steps:"
+    echo "  1. Check docs/live/feature-implementation-map.md for your Issue ID"
+    echo "  2. git checkout -b feat/{Issue-ID}-{desc}"
+    echo "  3. git push origin feat/{Issue-ID}-{desc}"
+    echo ""
+    exit 1
+  fi
+
+  if ! echo "$BRANCH" | grep -qE "$ALLOWED_PATTERN"; then
+    echo ""
+    echo "WARNING: '$BRANCH' does not match naming convention."
+    echo "  Expected: feat/{Issue-ID}-{desc} | chore/... | docs/... | fix/..."
+    echo ""
+  fi
+fi
+
+# ── 2. Design invariant check ─────────────────────────────────────────────────
+if [ -f "$REPO_ROOT/tools/verify_design.sh" ]; then
+  echo "-> Verifying design invariants..."
+  if ! bash "$REPO_ROOT/tools/verify_design.sh" --summary 2>/dev/null; then
+    echo ""
+    echo "ERROR: Design drift detected. Run ./tools/verify_design.sh for details."
+    exit 1
+  fi
+fi

@@ -856,11 +856,38 @@ class LedgerRecordStore:
 LedgerStore = FileLedgerStore
 
 
+def _is_production() -> bool:
+    """True when running inside Cloud Run or with an explicit production role.
+
+    Cloud Run sets K_SERVICE automatically on every deployed revision.
+    W-0126 deploy convention: ENGINE_RUNTIME_ROLE=api or ENGINE_RUNTIME_ROLE=worker.
+    """
+    return bool(
+        os.environ.get("K_SERVICE")
+        or os.environ.get("ENGINE_RUNTIME_ROLE") in ("api", "worker")
+    )
+
+
 def get_ledger_store():
-    """Return SupabaseLedgerStore if env configured, else FileLedgerStore (local dev)."""
-    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+    """Return SupabaseLedgerStore if env configured, else FileLedgerStore (local dev).
+
+    W-0215: Raises RuntimeError in production when Supabase env is missing so that
+    silent JSON-only writes (which survive only the container lifetime) are caught at
+    startup rather than silently losing judgment ledger data.
+    """
+    has_supabase = bool(
+        os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    )
+    if has_supabase:
         from ledger.supabase_store import SupabaseLedgerStore
         return SupabaseLedgerStore()
+    if _is_production():
+        raise RuntimeError(
+            "Production environment detected (K_SERVICE or ENGINE_RUNTIME_ROLE set) "
+            "but SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are missing. "
+            "Judgment ledger data would be lost on container restart. "
+            "Set the Supabase env vars in Cloud Run."
+        )
     return FileLedgerStore()
 
 
@@ -869,10 +896,23 @@ def get_ledger_record_store():
 
     W-0126: Supabase-backed store enables O(1) compute_family_stats() via indexed DB query
     instead of O(N files) scan. Multi-instance GCP deployments share state via Postgres.
+
+    W-0215: Raises RuntimeError in production when Supabase env is missing (same policy
+    as get_ledger_store).
     """
-    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+    has_supabase = bool(
+        os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    )
+    if has_supabase:
         from ledger.supabase_record_store import SupabaseLedgerRecordStore
         return SupabaseLedgerRecordStore()
+    if _is_production():
+        raise RuntimeError(
+            "Production environment detected (K_SERVICE or ENGINE_RUNTIME_ROLE set) "
+            "but SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are missing. "
+            "Ledger record data would be lost on container restart. "
+            "Set the Supabase env vars in Cloud Run."
+        )
     return LedgerRecordStore()
 
 

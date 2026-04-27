@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# pre-commit — "unknown" agent 상태에서 commit 차단
+#
+# Install: git config core.hooksPath .githooks  (또는 app/scripts/dev/install-git-hooks.sh)
+# Active path: REPO/.githooks/pre-commit
+#
+# 책임:
+#   - state/current_agent.txt이 "unknown" 또는 빈값이면 commit 거절
+#   - 메타/메모리/상태 sync staged-only 변경은 예외 (자동 메모리 sync 차단 X)
+#
+# 배경 (PR #354):
+#   A009~A016 8개 에이전트의 jsonl 11 entries가 silent loss됨.
+#   원인: end.sh가 unknown agent를 허용 → per-agent 파일에 안 기록.
+#   해결: commit 시점에 차단 → 자연히 start.sh 실행 강제됨.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+[ -z "${REPO_ROOT:-}" ] && exit 0
+
+cd "$REPO_ROOT"
+
+# state/current_agent.txt — main repo 공통 (git common dir 기준)
+GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null)"
+MAIN_REPO="$(cd "$GIT_COMMON_DIR/.." && pwd)"
+AGENT_FILE="$MAIN_REPO/state/current_agent.txt"
+
+AGENT="unknown"
+if [ -f "$AGENT_FILE" ]; then
+  AGENT="$(tr -d '[:space:]' < "$AGENT_FILE" 2>/dev/null || echo unknown)"
+  [ -z "$AGENT" ] && AGENT="unknown"
+fi
+
+# Agent 정상 → 통과
+if [ "$AGENT" != "unknown" ] && [ -n "$AGENT" ]; then
+  exit 0
+fi
+
+# Agent unknown → staged 파일 화이트리스트 체크
+STAGED_FILES="$(git diff --cached --name-only 2>/dev/null || echo '')"
+
+# 화이트리스트 (이 경로만 변경됐다면 unknown 허용):
+#   memory/sessions/*, memory/decisions/*, memory/incidents/*, memory/MEMORY.md
+#   state/*
+#   .githooks/*  (hook 설치/수정 자체는 허용 — 무한 chicken-and-egg 방지)
+ALL_WHITELISTED=1
+HAS_FILES=0
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  HAS_FILES=1
+  case "$f" in
+    memory/sessions/*|memory/decisions/*|memory/incidents/*|memory/MEMORY.md)
+      ;;
+    state/*)
+      ;;
+    .githooks/*)
+      ;;
+    *)
+      ALL_WHITELISTED=0
+      ;;
+  esac
+done <<< "$STAGED_FILES"
+
+if [ "$HAS_FILES" = "1" ] && [ "$ALL_WHITELISTED" = "1" ]; then
+  exit 0
+fi
+
+# 거절
+echo ""
+echo "❌ pre-commit blocked: state/current_agent.txt = 'unknown'"
+echo ""
+echo "이 워크트리는 Agent ID가 없습니다. silent loss(PR #354 — A009~A016)"
+echo "재발 방지를 위해 session boot 없이 commit이 거절됩니다."
+echo ""
+echo "해결:"
+echo "  cd $MAIN_REPO"
+echo "  ./tools/start.sh    # Agent ID 발번 + state 갱신"
+echo ""
+echo "긴급 우회 (메모리/상태/hook sync 외 path):"
+echo "  echo 'A###' > $AGENT_FILE   # 직전 핸드오프 ID 사용"
+echo ""
+exit 1
