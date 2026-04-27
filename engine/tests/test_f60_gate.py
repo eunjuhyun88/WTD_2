@@ -9,6 +9,7 @@ import pytest
 from stats.engine import (
     F60_FLOOR_THRESHOLD,
     F60_MEDIAN_THRESHOLD,
+    F60_MIN_SAMPLES_PER_WINDOW,
     F60_MIN_VERDICT_COUNT,
     GateStatus,
     _compute_gate_status,
@@ -161,3 +162,75 @@ def test_gate_status_dataclass_defaults():
     assert gs.reason == "insufficient_data"
     assert gs.median_threshold == 0.55
     assert gs.floor_threshold == 0.40
+
+
+# ── W-0253: min-samples-per-window boundary tests ─────────────────────────
+
+def _make_windows(w0_n: int, w1_n: int, w2_n: int, *, win_frac: float = 0.7) -> list:
+    """Build outcomes spread across 3 windows at 15/45/75 days ago."""
+    outcomes = []
+    for n, days_ago in [(w0_n, 15), (w1_n, 45), (w2_n, 75)]:
+        for i in range(n):
+            verdict = "valid" if i < int(n * win_frac) else "invalid"
+            outcomes.append(_make(verdict, days_ago=days_ago))
+    return outcomes
+
+
+def test_min_samples_per_window_below_threshold():
+    """Windows with < F60_MIN_SAMPLES_PER_WINDOW samples are excluded.
+
+    Scenario: 200 total verdicts but W0=5, W1=5, rest in W2.
+    Only W2 qualifies → < 2 qualifying windows → insufficient_windows.
+    """
+    outcomes = []
+    # W0: 5 samples (below 10) → excluded
+    for i in range(5):
+        outcomes.append(_make("valid" if i < 4 else "invalid", days_ago=15))
+    # W1: 5 samples (below 10) → excluded
+    for i in range(5):
+        outcomes.append(_make("valid" if i < 4 else "invalid", days_ago=45))
+    # W2: 190 samples (above 10) → included
+    for i in range(190):
+        outcomes.append(_make("valid" if i < 133 else "invalid", days_ago=75))
+
+    gs = _compute_gate_status("test_slug", outcomes)
+    assert gs.verdict_count == 200
+    assert gs.passed is False
+    assert gs.reason == "insufficient_windows"
+    # Only 1 window qualifies (W2) → cannot compute median of 2
+    assert len(gs.window_accuracies) < 2
+
+
+def test_min_samples_per_window_at_threshold():
+    """Windows with exactly F60_MIN_SAMPLES_PER_WINDOW samples are included."""
+    min_n = F60_MIN_SAMPLES_PER_WINDOW  # 10
+    # 3 windows × 10 samples = 30 → below 200 total verdict gate
+    # Use 200+ total by padding W2
+    outcomes = []
+    # W0: exactly 10 (≥ threshold → included)
+    for i in range(min_n):
+        outcomes.append(_make("valid" if i < 7 else "invalid", days_ago=15))
+    # W1: exactly 10 (≥ threshold → included)
+    for i in range(min_n):
+        outcomes.append(_make("valid" if i < 7 else "invalid", days_ago=45))
+    # W2: 180 to clear 200 total verdict gate
+    for i in range(180):
+        outcomes.append(_make("valid" if i < 126 else "invalid", days_ago=75))
+
+    gs = _compute_gate_status("test_slug", outcomes)
+    assert gs.verdict_count == 200
+    # All 3 windows have ≥ 10 samples → 3 accuracies → can evaluate
+    assert len(gs.window_accuracies) == 3
+
+
+def test_min_samples_per_window_above_threshold():
+    """Windows with > F60_MIN_SAMPLES_PER_WINDOW samples all qualify.
+
+    Standard happy path — uniform 70% accuracy across 3 windows × 75 samples.
+    """
+    outcomes = _make_windows(75, 75, 75, win_frac=0.7)
+    gs = _compute_gate_status("test_slug", outcomes)
+    assert gs.verdict_count == 225
+    assert len(gs.window_accuracies) == 3
+    assert gs.passed is True
+    assert gs.median_accuracy >= F60_MEDIAN_THRESHOLD
