@@ -59,6 +59,11 @@ feature (deep link routing + UI)
 2. Telegram Bot Token 이미 운영 환경에 설정됨.
 3. capture_id는 UUID 형식 (URL-safe).
 
+## Open Questions
+
+- **Q1**: deep link TTL 정책 — 72h 만료 후 접근 시 "기간 만료" 페이지 vs 그냥 VerdictInbox (현재 만료 처리 없음)?
+- **Q2**: VerdictInboxPanel standalone 모드에서 `capture_id` prop만으로 데이터 조회 가능한가? (`GET /captures/{id}` 스펙 확인 필요)
+
 ## Canonical Files
 
 - `app/src/routes/verdict/[capture_id]/+page.svelte` (신규)
