@@ -11,6 +11,7 @@ Modules:
     stats        -- V-06 (W-0220) Welch + BH + DSR + Bootstrap.
 """
 
+from .cv import PurgedKFold, PurgedKFoldConfig
 from .sequence import SequenceCompletionResult, measure_sequence_completion
 from .phase_eval import PhaseConditionalReturn, measure_phase_conditional_return, measure_random_baseline
 from .ablation import AblationResult, run_ablation, get_signal_list
@@ -23,6 +24,8 @@ from .pipeline import (
 )
 
 __all__ = [
+    "PurgedKFold",
+    "PurgedKFoldConfig",
     "SequenceCompletionResult",
     "measure_sequence_completion",
     "PhaseConditionalReturn",
