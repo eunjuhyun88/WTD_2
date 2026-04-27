@@ -127,6 +127,59 @@ tools/worktree-registry.sh remove --path <P>      # registry entry만 제거
 - Split commits first; split branches only for a new merge unit.
 - If the branch changes but the work item does not, continue on the same thread after explicit confirmation.
 
+## Multi-Agent Orchestration — MANDATORY
+
+**Rule of thumb**: 한 에이전트 = 한 worktree = 한 branch. 다른 에이전트와 worktree를 절대 공유하지 않는다.
+
+### Sub-agent 띄울 때 (Agent tool / Task)
+
+병렬 sub-agent를 launch할 때는 **반드시 `isolation: "worktree"`** 옵션을 준다. 빠뜨리면 sub-agent가 main agent와 같은 working directory + HEAD + stash를 공유해서 git 상태가 섞인다.
+
+실제 사고 사례 (2026-04-27 A045): W-0259 background agent를 같은 worktree에서 띄움 → main agent가 별도 W-0257+W-0258 commit 만들었지만 git checkout이 stash 충돌로 silent fail → 같은 W-0259 local branch 위에 commit 쌓임 → push가 꼬여 PR 분리에 reset --hard + reflog 복구 필요. 한 세션 30분 낭비.
+
+```python
+# ✅ CORRECT
+Agent(
+    description="...",
+    subagent_type="general-purpose",
+    isolation="worktree",      # ← 필수
+    run_in_background=true,    # 병렬일 때만
+    prompt="..."
+)
+
+# ❌ WRONG — 같은 worktree 공유, race condition
+Agent(
+    subagent_type="general-purpose",
+    run_in_background=true,
+    prompt="..."
+)
+```
+
+### 병렬 작업 분배 원칙
+
+병렬로 띄우기 **전에** 파일 충돌 매트릭스 작성:
+
+| Sub-agent | 변경 파일 / 디렉토리 | 다른 sub-agent와 disjoint? |
+|---|---|---|
+| Agent A | `engine/X/` (신규) | ✅ |
+| Agent B | `engine/Y.py` (PromotionGatePolicy 확장) | ✅ disjoint with A |
+| Agent C | `engine/Y.py` (다른 클래스) | ⚠️ B와 같은 파일 → 순차 권고 |
+
+같은 파일을 동시 수정하는 sub-agent는 띄우지 않는다. axis가 달라도 git merge conflict가 발생함.
+
+### Main agent의 역할 (오케스트레이터)
+
+Sub-agent 작업 중 main agent는:
+- **코드 변경 금지** (sub-agent들이 작업 중인 파일을 main이 동시 수정하면 락 충돌)
+- 가능한 작업: PR 검토, 다른 worktree에서 docs 작업, 사용자 보고
+- Sub-agent 완료 알림 받으면 → 결과 검증 → main 머지 → 다음 work item 분배
+
+### Worktree 회수
+
+`isolation: "worktree"`로 만든 임시 worktree는 sub-agent 변경 없으면 자동 cleanup. 변경 있으면 worktree path + branch 반환됨 → main이 PR 머지 후 `git worktree remove` + branch 삭제 + `tools/worktree-registry.sh remove`.
+
+이 룰 위반 = git 상태 섞임 + 시간 낭비. 작업 시작 전 반드시 확인.
+
 ## Vercel Deploy Guardrail
 
 - Treat Vercel production deploy as a dedicated release lane, not as a side-effect of agent branches.
