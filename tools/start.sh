@@ -216,9 +216,23 @@ fi
 echo ""
 echo "Priorities (P0/P1):"
 if [ -f spec/PRIORITIES.md ]; then
-  grep -E "^## P[0-9]" spec/PRIORITIES.md | head -5 | sed 's/^/  /'
+  grep -E "^## P[0-9]|^## ✅" spec/PRIORITIES.md | head -6 | sed 's/^/  /'
 else
   echo "  (spec/PRIORITIES.md not yet created)"
+fi
+
+# ── 필수 문서 강제 안내 ────────────────────────────────────────────────────────
+echo ""
+echo "📋 MANDATORY READS (구현 전 반드시 확인):"
+echo "  1. docs/live/W-0220-product-prd-master.md   ← PRD v2.2 (D1~D15 결정·갭·로드맵)"
+echo "  2. docs/live/W-0220-status-checklist.md     ← Feature 체크리스트 (작업 단위)"
+echo ""
+echo "  🔴 P0 미완료 항목:"
+if [ -f docs/live/W-0220-status-checklist.md ]; then
+  grep -E "^- \[ \]" docs/live/W-0220-status-checklist.md \
+    | head -8 | sed 's/^/    /' || echo "    (없음 또는 파싱 실패)"
+else
+  echo "    (docs/live/W-0220-status-checklist.md 없음)"
 fi
 
 # 4. design verification summary
