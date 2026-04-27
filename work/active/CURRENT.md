@@ -1,4 +1,4 @@
-# CURRENT — Wave 4 실행 설계 확정 (2026-04-27)
+# CURRENT — Agent OS W-0264 Domain 설계 완료 + W-0271 Event Store 머지 (2026-04-27)
 
 > 신규 진입자는 `./tools/start.sh` 출력 + 아래 파일만 본다.
 > - `spec/CHARTER.md` — product core / frozen gate
@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`d6893cb8` — origin/main (2026-04-28) — PR #498(W-0265~W-0268 설계 4종) 머지
+`f502bd3c` — origin/main (2026-04-27) — PR #504 (W-0271 Event Store Phase 1) 머지
 
 ---
 
