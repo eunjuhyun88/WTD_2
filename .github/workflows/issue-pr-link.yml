@@ -1,0 +1,47 @@
+name: Issue–PR Link Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  check-issue-link:
+    name: Verify PR links a GitHub Issue
+    runs-on: ubuntu-latest
+    # Only check feat/, fix/, hotfix/, task/ branches
+    if: |
+      startsWith(github.head_ref, 'feat/') ||
+      startsWith(github.head_ref, 'fix/') ||
+      startsWith(github.head_ref, 'hotfix/') ||
+      startsWith(github.head_ref, 'task/')
+    steps:
+      - name: Check PR body for Closes/Fixes/Resolves #N
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BRANCH: ${{ github.head_ref }}
+        run: |
+          echo "Branch: $PR_BRANCH"
+          echo "Checking PR body for issue link..."
+
+          if echo "$PR_BODY" | grep -qiE "(Closes|Fixes|Resolves)[[:space:]]+#[0-9]+"; then
+            echo "✅ Issue link found in PR body"
+            exit 0
+          fi
+
+          # Also accept W-#### reference in body (map lookup not available in CI)
+          if echo "$PR_BODY" | grep -qE "W-[0-9]{4}"; then
+            echo "✅ W-#### work item reference found in PR body"
+            exit 0
+          fi
+
+          echo ""
+          echo "❌ PR body에 Issue 링크가 없습니다."
+          echo ""
+          echo "PR body에 다음 중 하나를 추가하세요:"
+          echo "  Closes #N"
+          echo "  Fixes #N"
+          echo "  Resolves #N"
+          echo ""
+          echo "면제 브랜치: chore/, docs/"
+          echo ""
+          exit 1

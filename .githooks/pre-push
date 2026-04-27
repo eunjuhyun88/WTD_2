@@ -31,7 +31,62 @@ if [[ -n "$BRANCH" ]]; then
   fi
 fi
 
-# ── 2. Design invariant check ─────────────────────────────────────────────────
+# ── 2. Closes #N enforcement (feat/fix 브랜치만, chore/docs 면제) ────────────
+# push 대상 커밋 중 "Closes #N" / "Fixes #N" 패턴 또는
+# state/work-issue-map.jsonl 에 W-#### 매핑이 있으면 통과.
+
+REQUIRE_CLOSE_PATTERN='^(feat/|fix/|hotfix/|task/)'
+
+if [[ -n "$BRANCH" ]] && echo "$BRANCH" | grep -qE "$REQUIRE_CLOSE_PATTERN"; then
+  MAP_FILE="${REPO_ROOT}/state/work-issue-map.jsonl"
+
+  # Check 1: W-#### in branch name and exists in map
+  MAP_HAS_ISSUE=false
+  W_ID="$(echo "$BRANCH" | grep -oE 'W-[0-9]{4}' | head -1 || true)"
+  if [[ -n "$W_ID" && -f "$MAP_FILE" ]]; then
+    if grep -q "\"w_id\":[[:space:]]*\"$W_ID\"" "$MAP_FILE"; then
+      MAP_HAS_ISSUE=true
+    fi
+  fi
+
+  # Check 2: any commit being pushed contains Closes/Fixes/Resolves #N
+  CLOSES_IN_COMMITS=false
+  if [[ "$MAP_HAS_ISSUE" == false ]]; then
+    while read -r local_ref local_sha remote_ref remote_sha; do
+      [[ -z "$local_sha" || "$local_sha" == "0000000000000000000000000000000000000000" ]] && continue
+      if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
+        log_range="${local_sha}~20..${local_sha}"
+      else
+        log_range="${remote_sha}..${local_sha}"
+      fi
+      if git log --format="%B" "$log_range" 2>/dev/null \
+          | grep -qiE "(Closes|Fixes|Resolves)[[:space:]]+#[0-9]+"; then
+        CLOSES_IN_COMMITS=true
+        break
+      fi
+    done
+  fi
+
+  if [[ "$MAP_HAS_ISSUE" == false && "$CLOSES_IN_COMMITS" == false ]]; then
+    echo ""
+    echo "❌ PUSH BLOCKED: GitHub Issue 연결 없음"
+    echo "   Branch '$BRANCH' 에 Issue 링크가 없습니다."
+    echo ""
+    if [[ -n "$W_ID" ]]; then
+      echo "   $W_ID 가 state/work-issue-map.jsonl 에 없습니다."
+      echo "   → /설계 를 통해 issue를 생성하면 자동 등록됩니다."
+    else
+      echo "   commit message 에 'Closes #N' 또는 'Fixes #N' 를 추가하세요."
+    fi
+    echo ""
+    echo "   면제 브랜치: chore/, docs/, main, release"
+    echo "   긴급 override: git push --no-verify"
+    echo ""
+    exit 1
+  fi
+fi
+
+# ── 3. Design invariant check ─────────────────────────────────────────────────
 if [ -f "$REPO_ROOT/tools/verify_design.sh" ]; then
   echo "-> Verifying design invariants..."
   if ! bash "$REPO_ROOT/tools/verify_design.sh" --summary 2>/dev/null; then
