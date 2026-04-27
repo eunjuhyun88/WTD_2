@@ -1,3 +1,10 @@
 {
-  "model": "sonnet"
+  "model": "sonnet",
+  "permissions": {
+    "allow": [
+      "Bash(cd engine && python -m pytest*)",
+      "Bash(npm --prefix app run check)",
+      "Bash(npm --prefix app run build)"
+    ]
+  }
 }

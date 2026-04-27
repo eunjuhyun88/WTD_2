@@ -13,6 +13,8 @@ _F60_ACCURACY_THRESHOLD = 0.55
 
 def _require_self(user_id: str, request: Request) -> None:
     requesting_user = getattr(request.state, "user_id", None)
+    if requesting_user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
     if requesting_user != user_id:
         raise HTTPException(status_code=403, detail="Cannot view another user's data")
 
