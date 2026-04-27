@@ -5,8 +5,6 @@
 > - `spec/PRIORITIES.md` — Wave 1/2/3 P0/P1/P2
 > - `docs/live/W-0220-status-checklist.md` — 체크리스트 (단일 진실)
 > - `docs/live/wave-execution-plan.md` — 운영 가이드
-> - `work/active/W-0230-tradingview-grade-viz-design.md` — TradingView-grade Viz design
-> - `work/active/W-0232-h07-f60-gate-design.md` — H-07 F-60 Gate design (본 PR)
 
 ---
 
@@ -14,8 +12,6 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0214-mm-hunter-core-theory-and-validation` | research | v1.3 LOCKED-IN + §14 Appendix B 완성 (PR #415) |
-| `W-0215-pattern-search-py-audit` | research | v1.2 PRD + V-00 audit 완료 (PR #415, Issue #417) |
 | `W-0216-falsifiable-test-protocol` | research | v1.1 PRD ready (F1~F7) (PR #415, Issue #418) |
 | `W-0217-v01-purged-kfold-cv` | research | v1.0 PRD ready (Issue #420) |
 | `W-0218-v02-phase-eval-m1` | research | v1.0 PRD ready (Issue #421) |
@@ -25,10 +21,8 @@
 | `W-0222-v04-sequence-test-m3` | research | v1.0 PRD ready (Issue #427, thin wrapper 가장 쉬움) |
 | `W-0223-v05-regime-test-m4` | research | v1.0 PRD ready (Issue #428) |
 | `W-0224-v11-gate-v2-integration` | research | v1.0 PRD ready (Issue #429) |
-| `W-0223-wave1-execution-design` | contract | PR #369 머지 완료 |
-| `W-0230-tradingview-grade-viz-design` | contract | PR #375 머지 완료 |
-| `W-0232-h07-f60-gate-design` | contract | PR #392 머지 완료 |
 
+> 머지 완료된 design/audit work item 5종은 `work/completed/`로 이동: W-0214 mm-hunter-core-theory, W-0215 pattern-search-py-audit, W-0223 wave1-execution-design, W-0230 tradingview-grade-viz-design, W-0232 h07-f60-gate-design.
 > W-0220 PRD v2.2는 `docs/live/W-0220-product-prd-master.md`로 canonical.
 
 ## Wave 2 PRs (전부 머지 완료 ✅)
@@ -63,7 +57,7 @@
 
 ## main SHA
 
-`8a3566fe` — origin/main (2026-04-27) — PR #405 `/start` auto-bootstrap fix 머지. W-0214 v1.3 LOCKED-IN (PR #396).
+`86152319` — origin/main (2026-04-27) — PR #431 W-0225 design verification 머지 후. Wave 4 work items 추가 (W-0241~W-0250, PR #425/#430).
 
 ---
 
