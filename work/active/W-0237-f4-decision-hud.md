@@ -81,6 +81,11 @@ feature (UI)
 3. 5개 카드 컴포넌트 작성
 4. terminal에 HUD 통합
 
+## Open Questions
+
+- **Q1**: HUD 데이터 집계를 app BFF fan-out으로 할지 engine 단일 endpoint로 할지?
+- **Q2**: Evidence card에서 유사 캡처 클릭 시 새 탭 vs 동일 terminal 내 이동?
+
 ## Handoff Checklist
 
 - [ ] `engine/api/routes/captures.py` GET capture 스키마 확인

@@ -31,7 +31,7 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0214-mm-hunter-core-theory` | research | ✅ v1.3 LOCKED-IN |
+| `W-0214-mm-hunter-core-theory-and-validation` | research | ✅ v1.3 LOCKED-IN |
 | `W-0215-pattern-search-py-audit` | research | ✅ V-00 완료 (PR #415) |
 | `W-0217-v01-purged-kfold-cv` | research | ⏳ Issue #420 |
 | `W-0218-v02-phase-eval-m1` | research | ⏳ Issue #421, V-01과 병렬 |
