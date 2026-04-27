@@ -32,6 +32,7 @@ _CACHE_TTL_SECONDS = 300  # 5 minutes
 
 # ── F-60 Gate Constants ───────────────────────────────────────────────────
 F60_MIN_VERDICT_COUNT = 200            # need 200+ verdicts before measuring
+F60_MIN_SAMPLES_PER_WINDOW = 10       # each rolling window needs ≥10 samples (W-0253)
 F60_NUM_WINDOWS = 3                    # 3 rolling 30-day windows
 F60_WINDOW_DAYS = 30
 F60_MEDIAN_THRESHOLD = 0.55            # median(W1,W2,W3) must reach this
@@ -168,13 +169,13 @@ def _compute_gate_status(slug: str, outcomes: list[Any], now: datetime | None = 
     for w in windows:
         wins = sum(1 for o in w if getattr(o, "user_verdict", None) in F60_WIN_LABELS)
         total = len(w)
-        if total > 0:
+        if total >= F60_MIN_SAMPLES_PER_WINDOW:
             accuracies.append(wins / total)
             counts.append(total)
         else:
-            counts.append(0)
+            counts.append(total)
 
-    if len([a for a in accuracies if a > 0]) < 2:
+    if len(accuracies) < 2:
         return GateStatus(
             slug=slug,
             passed=False,
