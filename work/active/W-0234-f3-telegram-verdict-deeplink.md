@@ -50,6 +50,8 @@ feature (deep link routing + UI)
 3. `PATCH /outcomes/{id}/verdict` — H-08 PR #377에서 구현 완료 (user_verdict 업데이트).
 4. `APP_ORIGIN` env var — `engine/api/config.py` 또는 `.env`에 설정 필요.
 5. Supabase Auth — app에 이미 구현. 비인증 redirect 패턴 존재.
+6. **[코드 실측 2026-04-27]** F-02-fix(migration 022) 완료 후 시작 필수 — verdict 버튼 레이블이 `near_miss/too_early`로 변경, deep link UI에 반영 필요.
+7. **선행 조건**: F-02-fix BLOCKER 완료 후 시작 (W-0252 §5 Week 1 A-1).
 
 ## Assumptions
 

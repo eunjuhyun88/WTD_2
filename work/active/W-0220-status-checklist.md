@@ -38,22 +38,31 @@
 
 ## 🟥 P0 (7주, 4-5주 동시작업 시) — 입구 + 라벨 + 결과보고
 
+> **Wave 4 단일 진실**: `work/active/W-0252-wave4-final-verified-design.md` (3-perspective 검증, 오류 7건 수정)
+
+### 🔴 F-02-fix — Verdict 레이블 정합 (BLOCKER, Wave 4 Week 0)
+- [ ] **migration 022** — `missed` → `near_miss`, `unclear` → `too_early` (DB 이관)
+- [ ] `engine/ledger/types.py:54` VerdictLabel Literal 변경
+- [ ] `engine/stats/engine.py:40-41` F60_WIN_LABELS/DENOM_LABELS 동시 업데이트
+- [ ] `app VerdictInboxPanel` 버튼 5개 텍스트/value 업데이트
+
 ### F-0a Chart Drag → PatternDraft (A-04)
-- [ ] **A-04-eng** `POST /patterns/draft-from-range` — 12 features 추출 (oi_change, funding, cvd, liq_volume, price, volume, btc_corr, higher_lows, lower_highs, compression, smart_money, venue_div) [M]
-- [ ] **A-04-app** UI — range 드래그 → 하이라이트 → 확인 팝업 → Draft 미리보기 → 저장 [M-L]
+- [x] **A-04-eng** `POST /patterns/draft-from-range` — `routes/patterns.py:427` Wave 1 완료
+  - 실측 수정 (W-0252 §2): range 제한 7일 (4h 아님), btc_corr/venue_div = null, 10 effective features
+- [x] **A-04-app** UI — DraftFromRangePanel Wave 2 PR #386
 
 ### F-0b AI Parser (A-03)
-- [ ] **A-03-eng** `POST /patterns/parse` — ContextAssembler → Claude Sonnet → PatternDraftBody. **스키마/Assembler/downstream 이미 있음** [M, 3-4일]
-- [ ] **A-03-app** UI — 텍스트 입력 + Parse 버튼 + Draft 미리보기 → 저장 → capture [M]
+- [x] **A-03-eng** `POST /patterns/parse` — `routes/patterns.py:190` Claude Sonnet 4.6 Wave 1 완료
+- [x] **A-03-app** UI — AIParserModal Wave 2 PR #390
 
 ### F-1 5-cat Verdict (F-02)
-- [ ] **F-02** `engine/ledger/types.py:54` + `captures.py:66` + `verdict.py` + 앱 버튼. AC: 5값 200 / 기존 3값 호환 [S, Q1 결정 후]
-- [ ] **L-04** Verdict Inbox 5-cat 버튼 UI 추가
+- [x] **F-02-eng** `engine/ledger/types.py:54` 5-cat 구현됨 (레이블 이름은 F-02-fix에서 수정)
+- [x] **L-04** Verdict Inbox 5-cat 버튼 UI — Wave 2 PR #381
 - [ ] **F-2-test** end-to-end: UI submit → DB → stats → wiki → refinement 통합 테스트
 
 ### F-2 Search Result List + 1-click Watch (D-03)
-- [ ] **D-03-eng** `POST /captures/{id}/watch` — monitoring row 생성, idempotent [M]
-- [ ] **D-03-app** Watch 버튼 (Verdict Inbox 카드) [S]
+- [x] **D-03-eng** `POST /captures/{id}/watch` — `routes/captures.py:698` Wave 1 완료
+- [x] **D-03-app** WatchToggle — Wave 2 PR #383
 - [ ] **F-2-list** Search result top 10~20 + similarity score + 차트 미리보기 + 1-click Watch UX
 
 ### F-3 Telegram → Verdict deep link
@@ -85,7 +94,9 @@
 ### F-10 Stats Engine 보강 (대부분 BUILT)
 - [x] H-01 PatternStats Engine 5-min TTL — `engine/stats/engine.py` (8.8KB)
 - [x] H-02/H-03 Pattern stats endpoints
-- [ ] **H-08** per-user verdict accuracy 추가 [S, 1일]
+- [x] F-60 gate 로직 — `stats/engine.py:141` `_compute_gate_status()` 3-window median/floor 구현됨
+- [ ] **H-07** `GET /users/{user_id}/f60-status` 엔드포인트 노출 (로직 이미 존재, route만 추가) [S]
+- [ ] **H-08** per-user verdict accuracy breakdown [S, 1일]
 
 ### F-11 Dashboard WATCHING + Pattern Candidate Review
 - [ ] WATCHING 섹션 풀 구현 (현재 BTC/ETH 2-item 정적 placeholder)
