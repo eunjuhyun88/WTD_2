@@ -13,6 +13,14 @@ Modules:
 
 from .sequence import SequenceCompletionResult, measure_sequence_completion
 from .phase_eval import PhaseConditionalReturn, measure_phase_conditional_return, measure_random_baseline
+from .ablation import AblationResult, run_ablation, get_signal_list
+from .pipeline import (
+    ValidationPipelineConfig,
+    ValidationReport,
+    HorizonReport,
+    GateResult,
+    run_validation_pipeline,
+)
 
 __all__ = [
     "SequenceCompletionResult",
@@ -20,4 +28,12 @@ __all__ = [
     "PhaseConditionalReturn",
     "measure_phase_conditional_return",
     "measure_random_baseline",
+    "ValidationPipelineConfig",
+    "ValidationReport",
+    "HorizonReport",
+    "GateResult",
+    "run_validation_pipeline",
+    "AblationResult",
+    "run_ablation",
+    "get_signal_list",
 ]
