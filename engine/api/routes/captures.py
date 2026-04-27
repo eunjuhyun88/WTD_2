@@ -13,7 +13,7 @@ Cold-start lane (design: docs/product/flywheel-closure-design.md):
     outcome_resolver closes them via the same pipeline as pattern_candidate.
   - Bulk import is the founder's seed lane before external users arrive.
   - Verdict label closes axis 3: founder reviews resolved outcomes and
-    annotates them as valid/invalid/missed/too_late/unclear so axis 4 (refinement) can train.
+    annotates them as valid/invalid/near_miss/too_early/too_late so axis 4 (refinement) can train.
 
 Verdict Inbox (W-0088 Phase C, flywheel axis 3):
   - outcome_resolver flips pending_outcome → outcome_ready once the
@@ -63,8 +63,8 @@ _benchmark_pack_store = BenchmarkPackStore()
 _pattern_search_artifact_store = PatternSearchArtifactStore()
 
 # Literal alias documents the accepted values and lets pydantic validate.
-# 5-cat verdict (F-02): valid / invalid / missed / too_late / unclear
-VerdictLabel = Literal["valid", "invalid", "missed", "too_late", "unclear"]
+# 5-cat verdict (F-02): valid / invalid / near_miss / too_early / too_late
+VerdictLabel = Literal["valid", "invalid", "near_miss", "too_early", "too_late"]
 
 
 def _status_for_kind(kind: CaptureKind) -> str:
@@ -648,7 +648,7 @@ async def get_chart_annotations(
       tp2_price       — from chart_context.tp2 (null if not set)
       eval_window_ms  — evaluation window in ms (for shading end x)
       p_win           — float 0–1 if recorded
-      user_verdict    — "valid" | "invalid" | "missed" | "too_late" | "unclear" | null
+      user_verdict    — "valid" | "invalid" | "near_miss" | "too_early" | "too_late" | null
     """
     captures = await asyncio.to_thread(
         _capture_store.list,
@@ -702,6 +702,50 @@ async def watch_capture(capture_id: str) -> dict:
     if not found:
         raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
     return {"ok": True, "status": "watching", "capture_id": capture_id}
+
+
+@router.post("/{capture_id}/verdict-link")
+async def create_verdict_deeplink(capture_id: str, request: Request) -> dict:
+    """F-3: Generate a signed 72h deep-link token for Telegram verdict submission.
+
+    Token = HMAC-SHA256 signed payload (stateless, no DB write).
+    The app /verdict?token=xxx validates and pre-fills the VerdictModal.
+    """
+    import hashlib
+    import hmac
+    import json as json_lib
+    import os
+    import base64
+
+    secret = os.environ.get("VERDICT_LINK_SECRET", "")
+    if not secret:
+        raise HTTPException(status_code=503, detail="VERDICT_LINK_SECRET not configured")
+
+    capture = _capture_store.load(capture_id)
+    if not capture:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+
+    expires_at = int(time.time()) + 72 * 3600
+    payload = {
+        "capture_id": capture_id,
+        "symbol": capture.symbol,
+        "pattern_slug": capture.pattern_slug,
+        "expires_at": expires_at,
+    }
+    payload_b64 = base64.urlsafe_b64encode(
+        json_lib.dumps(payload, separators=(",", ":")).encode()
+    ).decode()
+    sig = hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
+    token = f"{payload_b64}.{sig}"
+
+    app_origin = os.environ.get("APP_ORIGIN", "https://cogochi.app")
+    return {
+        "ok": True,
+        "token": token,
+        "url": f"{app_origin}/verdict?token={token}",
+        "expires_at": expires_at,
+        "capture_id": capture_id,
+    }
 
 
 @router.get("/{capture_id}")

@@ -38,12 +38,11 @@ def test_insufficient_data_under_200():
     assert gs.remaining_to_threshold == 150
 
 
-def test_unclear_excluded_from_count():
-    """unclear는 denominator 제외 — 기여 안 함."""
-    outcomes = [_make("unclear") for _ in range(300)]
+def test_near_miss_and_too_early_in_denominator():
+    """near_miss / too_early는 loss — denominator에 포함."""
+    outcomes = [_make("near_miss") for _ in range(200)] + [_make("too_early") for _ in range(200)]
     gs = _compute_gate_status("test_slug", outcomes)
-    assert gs.verdict_count == 0
-    assert gs.reason == "insufficient_data"
+    assert gs.verdict_count == 400
 
 
 def test_passed_high_accuracy_uniform():
@@ -107,7 +106,7 @@ def test_failed_median_below_threshold():
 
 
 def test_too_late_counted_as_loss():
-    """too_late는 denominator에 포함 (loss). unclear와 다름."""
+    """too_late는 denominator에 포함 (loss)."""
     outcomes = []
     for i in range(225):
         days_ago = (i % 90) + 1

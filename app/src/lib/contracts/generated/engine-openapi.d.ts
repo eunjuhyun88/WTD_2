@@ -1101,7 +1101,7 @@ export interface paths {
          *
          *     Returns:
          *         passed: bool — gate 통과 여부 (median≥0.55 AND floor≥0.40 AND count≥200)
-         *         verdict_count: int — 누적 verdict 수 (unclear 제외)
+         *         verdict_count: int — 누적 verdict 수 (all 5 cats included)
          *         remaining_to_threshold: int — 200까지 남은 수
          *         median_accuracy / floor_accuracy: float — W1/W2/W3 통계
          *         window_accuracies / window_counts: list — 30d 윈도우 3개 분포
@@ -1560,7 +1560,7 @@ export interface paths {
          *       tp2_price       — from chart_context.tp2 (null if not set)
          *       eval_window_ms  — evaluation window in ms (for shading end x)
          *       p_win           — float 0–1 if recorded
-         *       user_verdict    — "valid" | "invalid" | "missed" | "too_late" | "unclear" | null
+         *       user_verdict    — "valid" | "invalid" | "near_miss" | "too_early" | "too_late" | null
          */
         get: operations["get_chart_annotations_captures_chart_annotations_get"];
         put?: never;
@@ -1585,6 +1585,29 @@ export interface paths {
          * @description Mark a capture as watching. Idempotent — calling twice is safe.
          */
         post: operations["watch_capture_captures__capture_id__watch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/verdict-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Verdict Deeplink
+         * @description F-3: Generate a signed 72h deep-link token for Telegram verdict submission.
+         *
+         *     Token = HMAC-SHA256 signed payload (stateless, no DB write).
+         *     The app /verdict?token=xxx validates and pre-fills the VerdictModal.
+         */
+        post: operations["create_verdict_deeplink_captures__capture_id__verdict_link_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2301,6 +2324,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{user_id}/f60-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get F60 Status
+         * @description H-07: F-60 copy-signal gate status for a user.
+         *
+         *     Returns verdicts remaining + current accuracy + pass/fail.
+         *     Cached 5 min (same TTL as PatternStatsEngine).
+         */
+        get: operations["get_f60_status_users__user_id__f60_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{user_id}/verdict-accuracy": {
         parameters: {
             query?: never;
@@ -2310,10 +2356,7 @@ export interface paths {
         };
         /**
          * Get Verdict Accuracy
-         * @description Return per-user verdict accuracy stats.
-         *
-         *     Only the requesting user (or admin) may query their own accuracy.
-         *     Powers the H-07 F-60 Gate eligibility check.
+         * @description H-08: per-user verdict accuracy detail. Alias of f60-status for compatibility.
          */
         get: operations["get_verdict_accuracy_users__user_id__verdict_accuracy_get"];
         put?: never;
@@ -4831,7 +4874,7 @@ export interface components {
              * Verdict
              * @enum {string}
              */
-            verdict: "valid" | "invalid" | "missed" | "too_late" | "unclear";
+            verdict: "valid" | "invalid" | "near_miss" | "too_early" | "too_late";
             /** User Note */
             user_note?: string | null;
         };
@@ -5684,6 +5727,7 @@ export interface operations {
                 pattern_slug?: string | null;
                 symbol?: string | null;
                 status?: string | null;
+                watching?: boolean | null;
                 limit?: number;
             };
             header?: never;
@@ -7643,6 +7687,39 @@ export interface operations {
             };
         };
     };
+    create_verdict_deeplink_captures__capture_id__verdict_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_capture_captures__capture_id__get: {
         parameters: {
             query?: never;
@@ -8772,6 +8849,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LogoutResponse"];
+                };
+            };
+        };
+    };
+    get_f60_status_users__user_id__f60_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

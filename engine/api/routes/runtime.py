@@ -173,6 +173,7 @@ async def list_runtime_captures(
     pattern_slug: str | None = None,
     symbol: str | None = None,
     status: str | None = None,
+    watching: bool | None = None,
     limit: int = 100,
 ) -> RuntimeCaptureListResponse:
     user_id = getattr(request.state, "user_id", None)
@@ -209,6 +210,7 @@ async def list_runtime_captures(
         definition_id=definition_ref["definition_id"] if definition_ref is not None else None,
         symbol=symbol,
         status=status,
+        is_watching=watching,
         limit=max(1, min(limit, 500)),
     )
 

@@ -59,7 +59,7 @@
 
   async function submitVerdict(
     captureId: string,
-    verdict: 'valid' | 'invalid' | 'missed' | 'too_late' | 'unclear',
+    verdict: 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late',
   ) {
     submitting = { ...submitting, [captureId]: true };
     try {
@@ -191,17 +191,17 @@
               title="Setup was valid but entry timing too late"
             >⏰ Too Late</button>
             <button
-              class="verdict-btn verdict-missed"
-              onclick={() => submitVerdict(cap.capture_id, 'missed')}
+              class="verdict-btn verdict-near-miss"
+              onclick={() => submitVerdict(cap.capture_id, 'near_miss')}
               disabled={busy}
-              title="Missed the entry"
-            >~ Missed</button>
+              title="Setup was valid but entry missed by a little"
+            >~ Near Miss</button>
             <button
-              class="verdict-btn verdict-unclear"
-              onclick={() => submitVerdict(cap.capture_id, 'unclear')}
+              class="verdict-btn verdict-too-early"
+              onclick={() => submitVerdict(cap.capture_id, 'too_early')}
               disabled={busy}
-              title="Outcome unclear / cannot label"
-            >? Unclear</button>
+              title="Entry too early — structure not confirmed yet"
+            >⏫ Too Early</button>
           </div>
         </div>
       {/each}
@@ -425,19 +425,19 @@
   }
   .verdict-too-late:hover { background: rgba(250,204,21,0.2); }
 
-  .verdict-missed {
+  .verdict-near-miss {
     background: rgba(102,102,102,0.1);
     border-color: rgba(102,102,102,0.3);
     color: rgba(247,242,234,0.7);
   }
-  .verdict-missed:hover { background: rgba(102,102,102,0.2); }
+  .verdict-near-miss:hover { background: rgba(102,102,102,0.2); }
 
-  .verdict-unclear {
-    background: rgba(72,72,72,0.1);
-    border-color: rgba(72,72,72,0.3);
-    color: rgba(247,242,234,0.55);
+  .verdict-too-early {
+    background: rgba(147,51,234,0.1);
+    border-color: rgba(147,51,234,0.3);
+    color: rgba(196,168,255,0.85);
   }
-  .verdict-unclear:hover { background: rgba(72,72,72,0.2); }
+  .verdict-too-early:hover { background: rgba(147,51,234,0.2); }
 
   .verdict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 

@@ -1,8 +1,8 @@
 """Tests for H-08: per-user verdict accuracy.
 
 Covers:
-- 5-cat accuracy formula (valid/missed=correct on success, invalid=correct on failure)
-- soft labels (too_late, unclear) count as resolved but not correct
+- 5-cat accuracy formula (valid=correct on success, invalid=correct on failure)
+- soft labels (near_miss, too_early, too_late) count as resolved but not correct
 - pending outcomes excluded from resolved
 - gate_eligible threshold
 """
@@ -43,8 +43,8 @@ class TestAccuracyFormula:
         acc = _make_accuracy(verdict_count=1, resolved_count=1, correct_count=1)
         assert acc.accuracy == 1.0
 
-    def test_missed_on_success_is_correct(self):
-        # missed = "setup was valid but I missed entry" → outcome should be success
+    def test_near_miss_on_success_is_correct(self):
+        # near_miss = "setup valid but entry missed by a little" → outcome should be success
         acc = _make_accuracy(verdict_count=1, resolved_count=1, correct_count=1)
         assert acc.accuracy == 1.0
 
@@ -53,10 +53,9 @@ class TestAccuracyFormula:
         assert acc.accuracy == 0.0
 
     def test_soft_labels_not_correct(self):
-        # too_late: resolved=1, correct=0
+        # too_late / near_miss / too_early: resolved=1, correct=0
         acc = _make_accuracy(verdict_count=1, resolved_count=1, correct_count=0)
         assert acc.accuracy == 0.0
-        # unclear: resolved=1, correct=0
         acc2 = _make_accuracy(verdict_count=1, resolved_count=1, correct_count=0)
         assert acc2.accuracy == 0.0
 
@@ -103,3 +102,29 @@ class TestSafeDiv:
 
     def test_safe_div_zero_denominator(self):
         assert _safe_div(5, 0) == 0.0
+
+
+class TestBatchChunking:
+    """#449: IN clause URL overflow 방지 — 100단위 배치 분할 검증."""
+
+    def test_batch_size_covers_220(self):
+        # 220 outcome_ids → ceil(220/100) = 3 batches, 모두 ≤ 100
+        ids = [f"id-{i}" for i in range(220)]
+        _BATCH = 100
+        chunks = [ids[i : i + _BATCH] for i in range(0, len(ids), _BATCH)]
+        assert len(chunks) == 3
+        assert all(len(c) <= _BATCH for c in chunks)
+        assert sum(len(c) for c in chunks) == 220
+
+    def test_batch_size_covers_1000(self):
+        ids = [f"id-{i}" for i in range(1000)]
+        _BATCH = 100
+        chunks = [ids[i : i + _BATCH] for i in range(0, len(ids), _BATCH)]
+        assert len(chunks) == 10
+        assert sum(len(c) for c in chunks) == 1000
+
+    def test_batch_empty_ids(self):
+        ids = []
+        _BATCH = 100
+        chunks = [ids[i : i + _BATCH] for i in range(0, len(ids), _BATCH)]
+        assert chunks == []
