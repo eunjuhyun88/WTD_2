@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`4367bc94` — origin/main (2026-04-27) — PR #436(V-01) #438(V-06) #440(V-02) #448(cleanup) 머지
+`8b9c44b6` — origin/main (2026-04-28) — PR #472 (W-0253 F-02-fix audit) + PR #482 (W-0252/W-0256 close) + PR #483 (PRIORITIES sync) 머지
 
 ---
 
@@ -20,10 +20,10 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| **F-02-fix** (migration 022 + label 정합) | engine + app | 🔴 **BLOCKER — Week 0 즉시** |
+| ~~F-02-fix~~ (migration 023 + label 정합) | engine + app | ✅ **COMPLETE (PR #472, 2026-04-28)** — 운영 DB 검증 #481 |
 | `W-0237-f4-decision-hud` | app | ⏳ Week 2 (A-2) |
 | `W-0243-f5-ide-split-pane` | app | ⏳ Week 2 (A-3, F-4 후) |
-| H-07 + H-08 (stats endpoints) | engine | ⏳ Week 1 (C-1, F-02-fix 후) |
+| H-07 + H-08 (stats endpoints) | engine | 🟢 **즉시 가능** (#460, F-02-fix 차단 해제) |
 
 ### MM Hunter (Research Track) — V layer (다른 에이전트)
 
@@ -44,7 +44,7 @@
 | A-03-eng `POST /patterns/parse` | `routes/patterns.py:190` | Claude Sonnet 4.6 function calling |
 | A-04-eng `POST /patterns/draft-from-range` | `routes/patterns.py:427` | 10 effective features |
 | D-03-eng `POST /captures/{id}/watch` | `routes/captures.py:698` | idempotent |
-| F-02-eng 5-cat verdict (engine) | `ledger/types.py:54` | ⚠️ 레이블 불일치 → F-02-fix 필요 |
+| F-02-eng 5-cat verdict (engine) | `ledger/types.py:54` | ✅ 5-cat 정합 완료 (PR #437+#472, 2026-04-28) |
 | A-03-app AIParserModal | Wave 2 PR #390 | |
 | A-04-app DraftFromRangePanel | Wave 2 PR #386 | |
 | D-03-app WatchToggle | Wave 2 PR #383 | |
@@ -52,27 +52,25 @@
 
 ---
 
-## 🔴 BLOCKER — F-02-fix (즉시)
+## ✅ ~~BLOCKER — F-02-fix~~ 해소 (PR #472, 2026-04-28)
 
-**레이블 불일치**: 현재 코드 `missed/unclear` ↔ PRD 확정 `near_miss/too_early`
+audit 결과 모든 핵심 변경 머지 완료 확인:
+- `engine/ledger/types.py:54` Literal 5-cat ✅
+- `engine/stats/engine.py:40-41` F60_DENOM_LABELS 5-cat ✅
+- `app/supabase/migrations/023_verdict_label_rename.sql` ✅
+- `app/src/components/terminal/peek/VerdictInboxPanel.svelte` ✅
+- 회귀 테스트 17/17 PASS
 
-```
-migration 022:  missed → near_miss, unclear → too_early
-engine/ledger/types.py:54    — VerdictLabel Literal 변경
-engine/stats/engine.py:40-41 — F60_WIN_LABELS/DENOM_LABELS 동시 업데이트
-app VerdictInboxPanel        — 버튼 텍스트/value 업데이트
-```
-
-→ 이 작업 없이 LightGBM 학습 데이터 오염. 모든 Stream 시작 전 완료 필수.
-
-상세: `work/active/W-0252-wave4-final-verified-design.md §1`
+**잔여 ⚠️**: 운영 Supabase에 023 적용 여부 미검증 — issue #481.
+**Down script**: 반가역 분석으로 forward-only 결정.
+**상세**: `work/completed/W-0253-f02-fix-verdict-label.md`
 
 ---
 
 ## Wave 4 실행 계획 (W-0252 §5 기준)
 
 ```
-Week 0: F-02-fix (BLOCKER) + F-7 Meta automation (1.5일)
+Week 0: ✅ F-02-fix 해소 (PR #472) + F-7 Meta automation (1.5일, post-merge hook 이미 ½ 됨)
 Week 1: H-07+H-08 / F-3 Telegram deeplink / F-11 WATCHING
 Week 2: F-4 Decision HUD / F-5 IDE split-pane / F-12 Korea features
 Week 3: F-18 Stripe / F-14 Pattern lifecycle / F-16 recall
