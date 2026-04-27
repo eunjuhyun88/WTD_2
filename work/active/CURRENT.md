@@ -21,7 +21,6 @@
 | Work Item | Owner | 상태 |
 |---|---|---|
 | ~~F-02-fix~~ (migration 023 + label 정합) | engine + app | ✅ **COMPLETE (PR #472, 2026-04-28)** — 운영 DB 검증 #481 |
-| `W-0237-f4-decision-hud` | app | ⏳ Week 2 (A-2) |
 | `W-0243-f5-ide-split-pane` | app | ⏳ Week 2 (A-3, F-4 후) |
 | H-07 + H-08 (stats endpoints) | engine | 🟢 **즉시 가능** (#460, F-02-fix 차단 해제) |
 
