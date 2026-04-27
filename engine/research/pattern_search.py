@@ -131,6 +131,12 @@ class BenchmarkCase:
     role: Literal["reference", "holdout"] = "reference"
     notes: list[str] = field(default_factory=list)
     case_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    # W-0256 D8: phase taxonomy identifier. Defaults to legacy 5-phase OI
+    # Reversal sequence so existing JSON cases load unchanged.  Switch to
+    # ``"wyckoff_4"`` (or any registered key in
+    # ``patterns.phase_taxonomies.TAXONOMY_REGISTRY``) to declare a
+    # different canonical phase grammar.
+    phase_taxonomy_id: str = "oi_reversal_5"
 
     def to_dict(self) -> dict:
         payload = asdict(self)
@@ -149,6 +155,7 @@ class BenchmarkCase:
             role=payload.get("role", "reference"),
             notes=list(payload.get("notes", [])),
             case_id=payload.get("case_id", str(uuid.uuid4())),
+            phase_taxonomy_id=payload.get("phase_taxonomy_id", "oi_reversal_5"),
         )
 
 
@@ -236,6 +243,14 @@ class VariantCaseResult:
     entry_next_open: float | None = None
     realistic_forward_peak_return_pct: float | None = None
     canonical_feature_snapshot: dict = field(default_factory=dict)
+    # W-0256 D3: cost-adjusted forward peak return.  When PromotionGate
+    # policy applies cost (apply_cost=True and roundtrip_cost_bps>0), this
+    # column carries forward_peak_return_pct minus the round-trip cost in
+    # percentage points.  ``None`` when entry_hit was False or cost was
+    # not applied.  Strict gate logic still uses forward_peak_return_pct
+    # by default to preserve historical behaviour; cost-adjusted metric
+    # is opt-in.
+    cost_adjusted_forward_peak_return_pct: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -397,6 +412,15 @@ class PromotionGatePolicy:
     min_entry_profit_pct: float = 5.0
     entry_profit_horizon_bars: int = 48
     min_entry_profitable_rate: float | None = 0.5
+    # W-0256 D3: round-trip cost in basis points (0.01% per bp).
+    # MM Hunter D3 lock-in target = 15 bps (Binance perp: 10 fee + 5
+    # slippage).  Default 0.0 keeps production gate behaviour unchanged;
+    # set explicitly when a policy needs cost-aware forward returns.
+    roundtrip_cost_bps: float = 0.0
+    # When True and ``roundtrip_cost_bps > 0``, ``_promotion_metrics_from_cases``
+    # uses cost-adjusted forward return for the entry-profitable rate.
+    # When False, the legacy paper return is used regardless of cost.
+    apply_cost: bool = True
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -1501,8 +1525,16 @@ def _promotion_metrics_from_cases(
     case_results: list[VariantCaseResult],
     *,
     min_entry_profit_pct: float = 5.0,
+    apply_cost: bool = False,
 ) -> dict[str, float | None]:
-    """Compute promotion-gate metrics from per-case replay outcomes."""
+    """Compute promotion-gate metrics from per-case replay outcomes.
+
+    W-0256 D3: when ``apply_cost=True`` the entry-profitable rate is
+    computed against ``cost_adjusted_forward_peak_return_pct`` instead
+    of the paper ``forward_peak_return_pct``.  Cases without a
+    cost-adjusted value fall back to the paper field so legacy data
+    (BenchmarkPack JSON written before W-0256) continues to evaluate.
+    """
     reference_cases = [case for case in case_results if case.role == "reference"]
     holdout_cases = [case for case in case_results if case.role == "holdout"]
 
@@ -1549,15 +1581,23 @@ def _promotion_metrics_from_cases(
     # measured forward return >= threshold. Undefined (None) when no
     # entered case has a measured forward return, so callers can tell
     # "metric absent" from "metric present and zero".
+    #
+    # W-0256 D3: when ``apply_cost`` is True we prefer the cost-adjusted
+    # forward return; otherwise (or when the cost-adjusted column is
+    # absent on legacy results) we use the paper return.
+    def _resolve_return(case: VariantCaseResult) -> float | None:
+        if apply_cost and case.cost_adjusted_forward_peak_return_pct is not None:
+            return case.cost_adjusted_forward_peak_return_pct
+        return case.forward_peak_return_pct
+
     measured_entered = [
-        case for case in entered_cases if case.forward_peak_return_pct is not None
+        case for case in entered_cases if _resolve_return(case) is not None
     ]
     if measured_entered:
         profitable = sum(
             1
             for case in measured_entered
-            if case.forward_peak_return_pct is not None
-            and case.forward_peak_return_pct >= min_entry_profit_pct
+            if (_resolve_return(case) or 0.0) >= min_entry_profit_pct
         )
         entry_profitable_rate: float | None = round(profitable / len(measured_entered), 6)
     else:
@@ -1600,6 +1640,7 @@ def build_promotion_report(
     metrics = _promotion_metrics_from_cases(
         winner.case_results,
         min_entry_profit_pct=policy.min_entry_profit_pct,
+        apply_cost=policy.apply_cost and policy.roundtrip_cost_bps > 0.0,
     )
     holdout_passed_bool = bool((metrics["holdout_passed"] or 0.0) >= 1.0)
     entry_profitable_rate = metrics["entry_profitable_rate"]
@@ -2778,6 +2819,7 @@ def evaluate_variant_on_case(
     warmup_bars: int = 240,
     entry_profit_horizon_bars: int = DEFAULT_ENTRY_PROFIT_HORIZON_BARS,
     entry_slippage_pct: float = 0.1,
+    roundtrip_cost_bps: float = 0.0,
 ) -> VariantCaseResult:
     scaled_warmup_bars = _scale_warmup_bars(
         warmup_bars,
@@ -2839,6 +2881,7 @@ def evaluate_variant_on_case(
     forward_peak_return_pct: float | None = None
     entry_next_open: float | None = None
     realistic_forward_peak_return_pct: float | None = None
+    cost_adjusted_forward_peak_return_pct: float | None = None
     if entry_hit and entry_ts is not None:
         entry_close, forward_peak_return_pct, entry_next_open, realistic_forward_peak_return_pct = (
             _measure_forward_peak_return(
@@ -2849,6 +2892,16 @@ def evaluate_variant_on_case(
                 entry_slippage_pct=entry_slippage_pct,
             )
         )
+        # W-0256 D3: subtract round-trip cost (in basis points) from the
+        # paper forward return.  When ``roundtrip_cost_bps == 0`` the
+        # cost-adjusted column equals ``forward_peak_return_pct`` so the
+        # downstream gate logic can opt-in via ``apply_cost`` without any
+        # numeric drift.
+        if forward_peak_return_pct is not None:
+            cost_adjusted_forward_peak_return_pct = round(
+                forward_peak_return_pct - (roundtrip_cost_bps / 100.0),
+                6,
+            )
     lead_score = _lead_score_from_minutes(
         lead_bars,
         variant_timeframe=timeframe,
@@ -2895,6 +2948,7 @@ def evaluate_variant_on_case(
         forward_peak_return_pct=forward_peak_return_pct,
         entry_next_open=entry_next_open,
         realistic_forward_peak_return_pct=realistic_forward_peak_return_pct,
+        cost_adjusted_forward_peak_return_pct=cost_adjusted_forward_peak_return_pct,
     )
 
 
@@ -2903,10 +2957,17 @@ def evaluate_variant_against_pack(
     variant: PatternVariantSpec,
     *,
     warmup_bars: int = 240,
+    roundtrip_cost_bps: float = 0.0,
 ) -> VariantSearchResult:
     pattern = build_variant_pattern(variant.pattern_slug, variant)
     case_results = [
-        evaluate_variant_on_case(pattern, case, timeframe=variant.timeframe, warmup_bars=warmup_bars)
+        evaluate_variant_on_case(
+            pattern,
+            case,
+            timeframe=variant.timeframe,
+            warmup_bars=warmup_bars,
+            roundtrip_cost_bps=roundtrip_cost_bps,
+        )
         for case in pack.cases
     ]
     reference_scores = [case.score for case in case_results if case.role == "reference"]
