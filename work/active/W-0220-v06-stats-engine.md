@@ -229,15 +229,18 @@ def hit_rate(samples: Sequence[float]) -> float:
     return float((arr > 0).mean())
 
 
-def profit_factor(samples: Sequence[float]) -> float:
-    """sum(positive) / abs(sum(negative)). W-0216 §15.1 F1 강화."""
+def profit_factor(samples: Sequence[float], *, cap: float = 999.0) -> float:
+    """sum(positive) / abs(sum(negative)). W-0216 §15.1 F1 강화.
+
+    ⚠️ W-0225 §6.3 N-1 fix: cap inf at 999.0 (JSON-safe).
+    """
     arr = np.asarray(samples, dtype=float)
     arr = arr[~np.isnan(arr)]
     pos = arr[arr > 0].sum()
     neg = arr[arr < 0].sum()
     if abs(neg) < 1e-9:
-        return float("inf") if pos > 0 else 0.0
-    return float(pos / abs(neg))
+        return cap if pos > 0 else 0.0  # FIX: cap not inf (JSON serializable)
+    return min(float(pos / abs(neg)), cap)
 ```
 
 ### 6.2 F1 측정 통합 (W-0216)
@@ -317,11 +320,26 @@ def measure_F1(p0_patterns, horizons=[1, 4, 24], cost_bps=15.0):
 
 → 15 tests에서 false discovery rate 차단 충분. m≥30이면 더 strict한 BY 권장.
 
-### 7.3 DSR 정당성
+### 7.3 DSR 정당성 (W-0225 §6.2 M-2 fix)
 
-W-0214 P0 5 패턴 × 53 PatternObject 라이브러리에서 selection. n_trials=15가 너무 작아 DSR이 과도하게 conservative할 수 있음.
+⚠️ **이전 가이드 결함**: `n_trials = len(p0) * len(horizons) = 15`은 selection bias 미반영. 우리는 53 PatternObject + variants에서 P0 5개 selection했으므로 search universe 반영 필요.
 
-→ V-06에서 `n_trials` 인자 외부 노출. F1에서 `len(p0) * len(horizons)` 이지만, F2/F4 etc.에서 다른 값 사용.
+**Fix — n_trials 권장값 가이드**:
+
+| Use case | n_trials 권장 | 근거 |
+|---|---|---|
+| F1 measurement (P0 검증) | **53 (library) × 3 (horizons) × ~3 (phases) ≈ 500** | search universe 전체 |
+| Single-pattern G2 gate | **n_variants_searched_for_this_pattern × n_horizons** | 변형 검색 공간 |
+| Wave 2 dev test | 15 (낮은 임계, dev only) | 빠른 iteration |
+| Production F1 (보수적) | **1000** (전체 + variants margin) | 보수적 |
+
+→ V-06 함수 시그니처는 `n_trials` 외부 주입 강제 (default 없음 또는 명시적 1). F1 measurement 코드 (W-0218 후속)에서 explicit 500.
+
+```python
+# 사용 예 (falsifiable_kill.py)
+N_TRIALS_F1 = 500  # 53 library × 3 horizons × 3 phases ~ 500
+dsr = deflated_sharpe(samples, n_trials=N_TRIALS_F1)
+```
 
 ## 8. Quant Trader 설계
 

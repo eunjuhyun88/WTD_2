@@ -121,13 +121,16 @@ def measure_phase_conditional_return(
     samples_realistic = []
     for entry_ts in entry_timestamps:
         # composition: 기존 함수 호출
+        # ⚠️ FIX (W-0225 §6.1 Issue C-1): cost double-counting 차단.
+        # entry_slippage_pct=0.0 → entry_next_open에 slippage 미주입.
+        # cost_bps만 단일 차감 (clean accounting).
         entry_close, peak_pct, entry_next_open, realistic_peak_pct = \
             _measure_forward_peak_return(
                 symbol=symbol,
                 timeframe=timeframe,
                 entry_ts=entry_ts,
                 horizon_bars=horizon_bars,
-                entry_slippage_pct=0.05,  # 5bps slip (W-0214 D3 fee 10 + slip 5 = 15bps)
+                entry_slippage_pct=0.0,  # ← FIX: 0.0 (cost는 cost_bps에서 단일 처리)
             )
         if entry_close is None:
             continue
@@ -271,14 +274,16 @@ W-0214 §3.2 M1 acceptance:
 
 **현재 `pattern_search.py`**: `entry_slippage_pct=0.1` (10bps one-way), fee 부재.
 
-**W-0214 D3**: round-trip 15bps = 10bps fee + 5bps slip.
+**W-0214 D3**: round-trip 15bps = 10bps fee + 5bps slip (전체 round-trip 합).
 
-**V-02 구현**:
-- `cost_bps: float = 15.0` default (round-trip)
-- `entry_slippage_pct=0.05` (5bps one-way → call to `_measure_forward_peak_return`)
-- 추가로 `cost_bps - 5*2 = 5bps`는 fee 분 — phase_eval에서 직접 차감
+**V-02 구현 (W-0225 §6.1 Issue C-1 fix 후)**:
+- `cost_bps: float = 15.0` default (round-trip 전체)
+- `entry_slippage_pct=0.0` (slippage 미주입 — cost_bps에서 단일 처리)
+- 단일 차감: `return_net = return_at_h - cost_bps / 100.0`
 
-→ Quant 표준 cost 명시. **D3 정합성 ✅**.
+⚠️ **이전 버전 버그**: `entry_slippage_pct=0.05` + `cost_bps=15.0` → 20bps 중복 차감 (5bps slip이 entry_next_open에 이미 반영). W-0225 §6.1 C-1로 수정.
+
+→ Quant 표준 cost 명시. **D3 정합성 ✅** (정확히 15bps).
 
 ### 8.2 Slippage source
 
