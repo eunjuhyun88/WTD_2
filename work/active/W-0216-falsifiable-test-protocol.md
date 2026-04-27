@@ -333,7 +333,7 @@ F7 — Decay (신규)
 ### 15.10 KILL 의사결정 매트릭스
 
 ```
-F1 fail → 1주 redesign (frame critical)
+F1 fail → 1주 redesign (frame critical) — ⚠️ false positive guard 필수 (§15.11 참조)
 F2 fail → 2주 evidence 분리 ADR
 F3 fail → 4주 product UX redesign
 F4 fail → 6주 variant 폐기 가능성
@@ -341,6 +341,42 @@ F5 fail → 패턴 retail-only 재포지셔닝 (frame 유지)
 F6 fail → alpha → beta 재포지셔닝 (frame 일부 깨짐)
 F7 fail → 자동 decay (frame 유지, 운영 자동화)
 ```
+
+### 15.11 F1 KILL False Positive Guard (W-0225 §6.2 M-1 fix)
+
+**문제**: `pass_rate == 0` 단일 측정은 noise(특정 fold 데이터 결손, cache miss, 시드 효과)에 너무 민감. False positive로 system 폐기 위험.
+
+**Fix — KILL trigger only if ALL 3 of below**:
+
+```
+1. 1차 측정: pass_rate == 0
+2. Random seed rotation (3 seeds: 42, 7, 123) 모두 0
+3. Holdout 기간 변경 (다른 1년) 0
+   ├ default: 직전 1년 → 그 직전 1년 (slide back 365 days)
+   └ no recent 1년 더 → "데이터 부족" warn + 자동 KILL **보류**
+```
+
+**구현** (W-0218 후속 falsifiable_kill.py):
+```python
+def measure_F1_with_guard(p0_patterns, horizons=[1,4,24]):
+    primary = measure_F1(p0_patterns, horizons, seed=42)
+    if primary["pass_rate"] > 0:
+        return {"kill": False, "primary": primary}
+    # Step 2: rotate seeds
+    rescue_seeds = [measure_F1(p0_patterns, horizons, seed=s) for s in (7, 123)]
+    if any(r["pass_rate"] > 0 for r in rescue_seeds):
+        return {"kill": False, "rescued_by_seed": True}
+    # Step 3: holdout shift
+    holdout_shifted = measure_F1(p0_patterns, horizons, seed=42, holdout_offset_days=-365)
+    if holdout_shifted["pass_rate"] > 0:
+        return {"kill": False, "rescued_by_holdout": True}
+    if holdout_shifted.get("data_insufficient"):
+        return {"kill": False, "warn": "data_insufficient_for_KILL_decision"}
+    # ALL 3 fail → genuine KILL
+    return {"kill": True, "primary": primary, "rescues": rescue_seeds + [holdout_shifted]}
+```
+
+→ False positive 차단 + 진짜 KILL만 trigger.
 
 → F1, F2가 frame-critical. F5, F6, F7은 운영 조정.
 

@@ -140,7 +140,10 @@ class HorizonReport:
 
 @dataclass(frozen=True)
 class ValidationReport:
-    """1개 PatternObject × 모든 (phase, horizon) 통합."""
+    """1개 PatternObject × 모든 (phase, horizon) 통합.
+
+    ⚠️ W-0225 §6.1 Issue C-2 fix: V-11 gate v2가 read하는 sub_results 추가.
+    """
     pattern_slug: str
     timestamp: pd.Timestamp
     config: ValidationPipelineConfig
@@ -149,6 +152,21 @@ class ValidationReport:
     overall_pass_count: int                    # 통과한 horizon 수
     overall_pass_rate: float
     f1_kill: bool                               # W-0216 F1 KILL?
+
+    # ── Sub-results (W-0225 C-2 fix): V-11 gate v2가 G3/G5/G6/G7 검증 시 read ──
+    # V-01 PurgedKFold (G3)
+    fold_pass_count: int = 0                    # 5 fold 중 G1+G4 통과한 수
+    fold_total_count: int = 0                   # 5 (config.cv_config.n_splits)
+
+    # V-03 Ablation (G5) — list of AblationResult
+    ablation_results: list = field(default_factory=list)  # validation/ablation.py:AblationResult
+
+    # V-04 Sequence (G6) — SequenceCompletionResult
+    sequence_result: dict | None = None          # serialized SequenceCompletionResult
+
+    # V-05 Regime (G7) — list of RegimeConditionalReturn
+    regime_results: list = field(default_factory=list)
+    regime_pass_count: int = 0                   # G7 t≥2 통과 regime 수
 
     def to_dashboard_json(self) -> dict:
         """V-10 Hunter UI 입력 spec."""
