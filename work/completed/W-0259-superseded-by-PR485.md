@@ -111,3 +111,25 @@ W-0252 audit에서 식별된 V-track integration surface = 0 갭을 **augment-on
 - W-0256 (선행 dependency): `work/active/W-0256-mm-hunter-augment-priority-a.md`
 - 머지된 V-track PR (소비 대상): #435 V-04, #436 V-01, #438 V-06, #440 V-02
 - W-0214 D6: V-track schedule
+
+
+---
+
+## ❌ Status: SUPERSEDED — Cancelled 2026-04-28
+
+**Cancellation reason**: PR #485 (W-0221 V-08 validation pipeline) merged 2026-04-27 already implements V-track integration (V-01 PurgedKFold + V-02 phase_eval + V-06 stats) directly in `engine/research/validation/pipeline.py`. ~75% scope overlap with this work item.
+
+**Public surface in PR #485**:
+- `class ValidationPipelineConfig`
+- `class GateResult`
+- `class HorizonReport`
+- `class ValidationReport`
+- `def run_validation_pipeline(*, pack: ReplayBenchmarkPack, ...)`
+
+**What PR #485 did NOT cover** (potential follow-up):
+- V-04 sequence completion integration
+- Artifact-dict adapter pattern (PatternSearchRunArtifact JSON → V-track input)
+
+**Decision**: Issue #476 closed without implementation. New, smaller work item to be created if/when V-04 sequence integration becomes blocking.
+
+**CTO confirmation**: 2026-04-28 (Agent A045)
