@@ -57,6 +57,19 @@ Execution rules for humans and coding agents.
 - state (자동): `state/state.json`, `state/current_agent.txt`
 - ledger: `memory/sessions/{date}.jsonl` (timeline), `memory/sessions/agents/A###.jsonl` (per-agent)
 
+### ⚠️ 경로 혼동 주의 (모든 에이전트 필독)
+
+프로젝트에는 **서로 다른 두 개의 memory 경로**가 존재한다. 절대 혼동하지 말 것.
+
+| 경로 | 정체 | 용도 |
+|---|---|---|
+| `memory/` (프로젝트 루트) | **프로젝트 메모리** (MemKraft) | 에이전트 세션 기록, 결정, 인시던트, live-notes |
+| `~/.claude/projects/.../memory/` | **Claude Code 자동 메모리** | Claude Code 개인 메모리 (별개 시스템) |
+
+- 에이전트 세션 기록 찾을 때: `memory/sessions/agents/A###.jsonl` (프로젝트 루트)
+- `work/active/W-xxxx-*.md` 파일은 **메인 프로젝트 트리** 기준 — worktree에서 찾으면 없을 수 있음
+- worktree 내에서 메인 프로젝트 파일이 필요하면: `/Users/ej/Projects/wtd-v2/` 절대경로 사용
+
 ## Default Read Scope
 
 Read in this order:
