@@ -7,28 +7,11 @@ description: 세션 시작 — Agent ID 발번 + memkraft brief + state + P0/P1 
 다음 bash를 먼저 실행하세요. `tools/start.sh` 부재 시 자동 sync:
 
 ```bash
-# Step 0a — Stale agent worktree guard (PR #491 multi-agent isolation rule)
-# 이 가드는 tools/start.sh가 부재할 때도 작동해야 하므로 bootstrap 최상단에 위치.
-CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "detached")
-if echo "$CURRENT_BRANCH" | grep -qE '^(claude/|codex/|worktree-agent-)'; then
-  echo "❌ Stale agent worktree detected: $CURRENT_BRANCH"
-  echo ""
-  echo "Multi-agent isolation rule: claude/* 와 codex/* 는 에이전트 내부 브랜치."
-  echo "신규 작업은 항상 origin/main 기준 새 worktree에서 시작."
-  echo ""
-  echo "다음 명령어로 새 worktree 생성:"
-  echo "  git worktree add ../wtd-v2-<TASK> origin/main -b feat/<TASK>"
-  echo "  cd ../wtd-v2-<TASK>"
-  echo "  # 그 안에서 새 채팅 세션을 열고 /start 다시 호출"
-  echo ""
-  echo "(이전 가드는 tools/start.sh:152에만 있어서 bootstrap merge 충돌이 먼저 났음.)"
-  exit 1
-fi
-
-# Step 0b — Auto-sync main if tools/ missing (legitimate branch only)
+# Step 0 — Auto-sync main if tools/ missing
 if [ ! -f tools/start.sh ] || [ ! -f spec/PRIORITIES.md ]; then
   echo "🔄 tools/ or spec/ missing — auto-syncing main..."
   git fetch origin main
+  CURRENT_BRANCH=$(git branch --show-current)
 
   # 충돌 회피: untracked .claude/commands/는 stash
   git stash push -u -m "auto-sync-untracked-$(date +%s)" >/dev/null 2>&1 || true
@@ -82,8 +65,7 @@ fi
 
 | 증상 | 원인 | 해결 |
 |---|---|---|
-| `❌ Stale agent worktree detected: claude/...` | stale agent worktree에서 /start 호출 | 새 worktree 생성 (메시지에 명령어 표시됨) |
-| `tools/start.sh: No such file or directory` | worktree가 옛 main 기준 (단, claude/* 아님) | bootstrap Step 0b가 자동 sync |
+| `tools/start.sh: No such file or directory` | worktree가 옛 main 기준 | bootstrap이 자동 sync (위 Step 0) |
 | `merge conflict` | main과 worktree 양쪽 동일 파일 수정 | 수동 resolve → `git commit` → `./tools/start.sh` 재실행 |
 | `permission denied` | tools/*.sh 실행권한 없음 | `chmod +x tools/*.sh` |
 | `gh: not found` | GitHub CLI 미설치 | `brew install gh` (mac) |
