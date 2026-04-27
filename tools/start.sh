@@ -145,6 +145,9 @@ fi
 # Worktree registry 자동 등록 (SSOT — state/worktrees.json)
 "$SCRIPT_DIR/worktree-registry.sh" register --agent "$NEXT_ID" --status active >/dev/null 2>&1 || true
 
+# W-0275 soft guard: sweep expired capability tokens (non-blocking)
+node "$SCRIPT_DIR/capability-issuer.mjs" sweep 2>/dev/null || true
+
 if [ $QUIET -eq 1 ]; then
   echo "Agent: $NEXT_ID | main: ${MAIN_SHA:0:8} | branch: $CURRENT_BRANCH"
   exit 0

@@ -1,0 +1,65 @@
+{
+  "name": "parallel-4agent-impl",
+  "description": "4-agent parallel implementation saga for W-0275/W-0276/W-0277/W-0278 Phase 5-8",
+  "steps": [
+    {
+      "step_id": "stp_001",
+      "name": "W-0275 capability tokens",
+      "agent_id": null,
+      "work_item": "W-0275",
+      "action": {
+        "type": "create_pr",
+        "branch_pattern": "feat/W-0275-*",
+        "description": "Implement capability-issuer.mjs — issue/check/revoke tokens"
+      },
+      "compensating_action": {
+        "type": "close_pr",
+        "description": "Close W-0275 PR if saga fails before completion"
+      }
+    },
+    {
+      "step_id": "stp_002",
+      "name": "W-0276 quorum validator",
+      "agent_id": null,
+      "work_item": "W-0276",
+      "action": {
+        "type": "create_pr",
+        "branch_pattern": "feat/W-0276-*",
+        "description": "Implement quorum-validator.mjs — consensus voting sessions"
+      },
+      "compensating_action": {
+        "type": "close_pr",
+        "description": "Close W-0276 PR if saga fails"
+      }
+    },
+    {
+      "step_id": "stp_003",
+      "name": "W-0277 saga coordinator",
+      "agent_id": null,
+      "work_item": "W-0277",
+      "action": {
+        "type": "create_pr",
+        "branch_pattern": "feat/W-0277-*",
+        "description": "Implement saga-coordinator.mjs — distributed transaction pattern"
+      },
+      "compensating_action": {
+        "type": "close_pr",
+        "description": "Close W-0277 PR if saga fails"
+      }
+    },
+    {
+      "step_id": "stp_004",
+      "name": "Integration verification",
+      "agent_id": null,
+      "work_item": "W-0275-W-0277",
+      "action": {
+        "type": "run_smoke_tests",
+        "description": "Run smoke tests for all 3 tools and verify CI green"
+      },
+      "compensating_action": {
+        "type": "revert_prs",
+        "description": "Revert merged PRs if integration smoke tests fail"
+      }
+    }
+  ]
+}
