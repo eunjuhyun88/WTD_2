@@ -12,14 +12,20 @@
     "deploymentEnabled": {
       "main": false,
       "master": false,
+      "release": true,
       "claude/**": false,
       "claude-*": false,
       "codex/**": false,
-      "codex-*": false
+      "codex-*": false,
+      "feat/**": false,
+      "fix/**": false,
+      "chore/**": false,
+      "docs/**": false
     }
   },
   "github": {
-    "silent": false
+    "silent": true,
+    "autoAlias": false
   },
   "ignoreCommand": "\\! git log -1 --pretty=%B | grep -qF \"[deploy]\""
 }
