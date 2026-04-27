@@ -265,25 +265,25 @@ CSS Grid, resizable, min-width per pane
 | **Q4** | Parser 입력: **자유 텍스트** | Telegram refs 4채널 형식 그대로 붙여넣기 지원 |
 | **Q5** | Parser 모델: **claude-sonnet-4-6** | function calling 안정성. Haiku는 KOL caption(M-02)에 사용 |
 
-### ⬜ 미확정 (사용자 결정 필요)
+### ✅ Lock-in 완료 (CTO 확정 2026-04-27)
 
-| # | 질문 | AI Researcher 권고 |
+| # | 결정 | CTO 근거 |
 |---|---|---|
-| **D1** | Pricing $29/mo Pro | 83% gross margin. 7-Doc cost model 기준 적정 |
-| **D2** | NSM = WVPL (Weekly Verified Pattern Loops) per user | 플라이휠 전 구간 포함. 단일 지표로 최적 |
-| **D3** | Persona = Jin 단일 | anti-persona 명시 후 확정 권장 |
-| **D4** | Decision HUD 5-card 구성 | 위 F-4 설계 기준 확정 필요 |
-| **D5** | IDE split-pane (free-form canvas 폐기) | 위 F-5 설계 기준 확정 필요 |
-| **D6** | L6 1-table 유지 (4-table P2) | 운영 안정성 > 학습 효율성. 단기 OK |
-| **D7** | L3 file-first 유지 | 53패턴 file 등록 안정적. lifecycle UI(F-14)만 추가 |
-| **D9** | Wiki = L7 ledger-driven job | engine/wiki/ 이미 BUILT, 별도 AI agent 아님 |
-| **D10** | DESIGN_V3.1 features 즉시 P1 | kimchi_premium Korea persona 직결. 권장 확정 |
-| **D11** | Forward search tool (복기 저널 아님) | 핵심 포지셔닝. 확정 권장 |
-| **D12** | 카피시그널 = F-60 gate 후 | verdict 200+ 없이 publish = 신뢰도 0 |
-| **D13** | AI Parser P0 입구 #1 | /parse Wave 1 완료. 이미 실현됨 |
-| **D14** | Chart drag + AI Parser 둘 다 P0 | 둘 다 Wave 1 완료. 이미 실현됨 |
-| **D15** | Telegram alert → 1-click verdict deep link | F-3 설계 기준 확정 필요 |
-| **Q2** | F-60 accuracy threshold | **0.55** 시작 권고 → 90일 후 데이터 기반 조정 |
+| **D1** | Pricing **$29/mo Pro** | 83% gross margin. 7-Doc cost model 적정. 단일 tier = 의사결정 속도 최우선 |
+| **D2** | NSM = **WVPL** | 플라이휠 전 구간(input→search→verdict→refine) 포함. 단일 지표로 목표 분산 방지 |
+| **D3** | Persona = **Jin 단일** | Anti-persona 확정: casual investor/algo bot/institutional 제외. 단일 페르소나 = 날카로운 제품 결정 |
+| **D4** | Decision HUD **5-card** | Pattern/Evidence/Risk/Next/Actions — 정보 아키텍처 완결. F-4 설계 그대로 실행 |
+| **D5** | **IDE split-pane** (free-form canvas 폐기) | 리사이저블 고정 레이아웃 > 자유 캔버스. 집중력 > 자유도. F-5 설계 그대로 |
+| **D6** | L6 **1-table 유지** (4-table P2) | M3 전 스키마 변경 금지. F-30은 Week 4 최후순위로 유지 |
+| **D7** | L3 **file-first** 유지 | 53패턴 버전 관리 trivial. DB sync = read path. lifecycle UI(F-14)만 추가 |
+| **D9** | Wiki = **L7 ledger-driven job** | engine/wiki/ BUILT. 별도 AI agent 시스템 불필요. 야크쉐이빙 방지 |
+| **D10** | DESIGN_V3.1 features **즉시 P1** | kimchi_premium = Korea OI 급등 선행지표. Jin 페르소나 핵심. Week 2 F-12 확정 |
+| **D11** | **Forward search tool** (복기 저널 아님) | "다음에 무슨 일이?" vs "무슨 일이 있었나?" — 제품 전체 thesis. 영구 lock-in |
+| **D12** | 카피시그널 = **F-60 gate 후** | verdict 200+ 없이 publish = 신뢰도 0. Gate = 신뢰 메커니즘, 기술 제약 아님 |
+| **D13** | AI Parser = **P0 입구 #1** | /parse Wave 1 완료. 이미 실현됨 |
+| **D14** | Chart drag + AI Parser **둘 다 P0** | 둘 다 Wave 1 완료. 이미 실현됨 |
+| **D15** | Telegram → **1-click verdict deep link** | verdict 속도 = LightGBM 훈련 속도. 마찰 제거가 플라이휠 속도 결정. F-3 설계 확정 |
+| **Q2** | F-60 threshold = **0.55** | random(0.50) 초과 + M1-M3 신호 통과 가능 수준. 90일 후 데이터 기반 재조정 |
 
 ---
 
