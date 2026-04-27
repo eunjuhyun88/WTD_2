@@ -81,3 +81,8 @@ memory/memory/
 
 # Live agent heartbeat files (ephemeral, not tracked)
 state/agents/*.live.json
+
+# W-0272 tracing — per-session ephemeral state
+state/current_trace.txt
+state/current_session_span.txt
+state/spans/

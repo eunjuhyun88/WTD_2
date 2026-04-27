@@ -99,6 +99,17 @@ echo "$ENTRY" >> "$AGENT_FILE"
 # 5. live 파일 갱신 (다른 에이전트가 볼 수 있게)
 "$SCRIPT_DIR/live.sh" update "" "$NEXT" 2>/dev/null || true
 
+# 5a. W-0272 Phase 2 — emit checkpoint event on the active session span (best-effort)
+if [ -f state/current_session_span.txt ] && command -v node >/dev/null 2>&1 && [ -f tools/trace-emit.mjs ]; then
+  SESSION_SPAN_ID="$(cat state/current_session_span.txt 2>/dev/null || true)"
+  if [ -n "$SESSION_SPAN_ID" ]; then
+    NEXT_ESC="$(printf '%s' "$NEXT" | tr '\n' ' ' | head -c 200)"
+    node tools/trace-emit.mjs add-event "$SESSION_SPAN_ID" checkpoint \
+      --attr "next=$NEXT_ESC" \
+      --attr "head_sha=$HEAD_SHA" >/dev/null 2>&1 || true
+  fi
+fi
+
 # 6. 출력
 echo "✓ Checkpoint 저장됨 ($AGENT @ $HEAD_SHA)"
 echo ""

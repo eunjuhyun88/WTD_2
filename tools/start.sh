@@ -112,6 +112,19 @@ echo "$NEXT_ID" > state/current_agent.txt
 AGENT_FILE="memory/sessions/agents/${NEXT_ID}.jsonl"
 mkdir -p memory/sessions/agents
 
+# W-0272 Phase 2 — emit session start-span (best-effort, never blocks).
+# Captured span_id is consumed by end.sh + save.sh via state/current_session_span.txt.
+if command -v node >/dev/null 2>&1 && [ -f tools/trace-emit.mjs ]; then
+  TRACE_OUT=$(node tools/trace-emit.mjs start-span session \
+    --agent "$NEXT_ID" \
+    --attr "branch=$CURRENT_BRANCH" \
+    --attr "baseline=$MAIN_SHA" 2>/dev/null || true)
+  if [ -n "$TRACE_OUT" ]; then
+    SESSION_SPAN_ID=$(echo "$TRACE_OUT" | jq -r '.span_id // empty' 2>/dev/null || true)
+    [ -n "$SESSION_SPAN_ID" ] && echo "$SESSION_SPAN_ID" > state/current_session_span.txt
+  fi
+fi
+
 if [ ! -s "$AGENT_FILE" ]; then
   START_ENTRY=$(jq -nc \
     --arg ts "$TS" \
