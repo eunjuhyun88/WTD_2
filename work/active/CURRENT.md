@@ -21,6 +21,10 @@
 | `W-0218-v02-phase-eval-m1` | research | v1.0 PRD ready (Issue #421) |
 | `W-0220-v06-stats-engine` | research | v1.0 PRD ready (Issue #422) |
 | `W-0221-v08-validation-pipeline` | research | v1.0 PRD ready (Issue #423) |
+| `W-0219-v03-ablation-m2` | research | v1.0 PRD ready (Issue #426) |
+| `W-0222-v04-sequence-test-m3` | research | v1.0 PRD ready (Issue #427, thin wrapper 가장 쉬움) |
+| `W-0223-v05-regime-test-m4` | research | v1.0 PRD ready (Issue #428) |
+| `W-0224-v11-gate-v2-integration` | research | v1.0 PRD ready (Issue #429) |
 | `W-0223-wave1-execution-design` | contract | PR #369 머지 완료 |
 | `W-0230-tradingview-grade-viz-design` | contract | PR #375 머지 완료 |
 | `W-0232-h07-f60-gate-design` | contract | PR #392 머지 완료 |
