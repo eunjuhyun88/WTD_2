@@ -110,6 +110,20 @@ fi
 # 5. live heartbeat 파일 삭제 (세션 종료 표시)
 "$SCRIPT_DIR/live.sh" delete 2>/dev/null || true
 
+# 5a. W-0272 Phase 2 — close session span if one was opened by start.sh
+if [ -f state/current_session_span.txt ] && command -v node >/dev/null 2>&1 && [ -f tools/trace-emit.mjs ]; then
+  SESSION_SPAN_ID="$(cat state/current_session_span.txt 2>/dev/null || true)"
+  if [ -n "$SESSION_SPAN_ID" ]; then
+    SHIPPED_ESC="$(printf '%s' "$SHIPPED" | tr '\n' ' ' | head -c 200)"
+    HANDOFF_ESC="$(printf '%s' "$HANDOFF" | tr '\n' ' ' | head -c 200)"
+    node tools/trace-emit.mjs end-span "$SESSION_SPAN_ID" \
+      --status ok \
+      --attr "shipped=$SHIPPED_ESC" \
+      --attr "handoff=$HANDOFF_ESC" >/dev/null 2>&1 || true
+    rm -f state/current_session_span.txt state/current_trace.txt 2>/dev/null || true
+  fi
+fi
+
 # 5b. worktree registry status=done (SSOT)
 "$SCRIPT_DIR/worktree-registry.sh" set status done >/dev/null 2>&1 || true
 

@@ -1,6 +1,23 @@
 # W-0272 — Distributed Tracing (Agent OS Phase 2)
 
 > W-0270 §Pillar 4 구현체 — Dapper/OpenTelemetry 스타일 span_id + parent_span_id 인과관계 추적
+>
+> **Status (2026-04-28 audit by A071)**: 라이브러리는 PR #515에서 이미 구현됨 (`tools/trace-emit.mjs` 412줄, OTel-style spans + tree visualization). 이 문서는 #515에 대한 acceptance audit + 누락된 shell 연동 갭을 본 PR에서 메운다.
+
+## Audit Results — PR #515 (2026-04-27 머지)
+
+| # | Exit Criteria | 현재 상태 |
+|---|---|---|
+| 1 | CLI start session → JSON+span_id | ✅ `start-span session --agent A071` 동작 확인 |
+| 2 | CLI end → span_end emit | ✅ `end-span <span_id> --status ok` 동작 확인 |
+| 3 | CLI replay → 인과관계 트리 | ✅ `show-tree <trace_id>` 동작 확인 (PRD `replay`와 시그니처만 다름) |
+| 4 | start.sh session_start emit | 🔧 본 PR에서 wiring 추가 |
+| 5 | end.sh session_end emit | 🔧 본 PR에서 wiring 추가 |
+| 6 | save.sh checkpoint emit | 🔧 본 PR에서 wiring 추가 |
+| 7 | event-store regression | ✅ `verify`: files=1 events=2 errors=0 |
+| 8 | span_id nullable backward-compat | ✅ payload-based, 기존 이벤트 무영향 |
+
+**남은 작업 (이 PR scope)**: 4/5/6 — `start.sh`/`end.sh`/`save.sh`가 `tools/trace-emit.mjs`를 호출하도록 연결.
 
 ---
 

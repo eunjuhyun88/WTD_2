@@ -81,3 +81,12 @@ memory/memory/
 
 # Live agent heartbeat files (ephemeral, not tracked)
 state/agents/*.live.json
+
+# W-0271 event store — daily partition logs (folder tracked via .gitkeep)
+memory/events/*.jsonl
+!memory/events/.gitkeep
+
+# W-0272 tracing — per-session ephemeral state
+state/current_trace.txt
+state/current_session_span.txt
+state/spans/
