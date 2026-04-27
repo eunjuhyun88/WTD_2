@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`8b9c44b6` — origin/main (2026-04-28) — PR #472 (W-0253 F-02-fix audit) + PR #482 (W-0252/W-0256 close) + PR #483 (PRIORITIES sync) 머지
+`fd54b314` — origin/main (2026-04-28) — PR #479(W-0254 GateBar) #484(W-0219 ablation) #485(W-0221 pipeline) #493(W-0264 Agent OS) 머지
 
 ---
 
@@ -93,7 +93,7 @@ Week 4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 ## 다음 실행 가이드
 
 ```bash
-git checkout main && git pull           # → 4367bc94
+git checkout main && git pull           # → fd54b314
 ./tools/start.sh                        # Agent ID + P0 미완료 항목
 gh issue list --search "no:assignee" --state open
 ```
