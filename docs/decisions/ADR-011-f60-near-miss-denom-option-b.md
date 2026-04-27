@@ -1,4 +1,4 @@
-# ADR-008 — F-60 Gate: near_miss DENOM 처리 Option B 확정
+# ADR-011 — F-60 Gate: near_miss DENOM 처리 Option B 확정
 
 **Date**: 2026-04-28
 **Work Item**: W-0253 (issue #451)
