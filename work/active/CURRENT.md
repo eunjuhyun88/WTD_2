@@ -89,3 +89,27 @@ gh issue list --search "no:assignee" --state open
 ```
 
 상세: `docs/live/wave-execution-plan.md`
+
+---
+
+## 🛤 2-Track 병렬 실행 (2026-04-27)
+
+상세: `docs/live/track-separation-2026-04-27.md`
+
+### Track 1 — Wave (UX / Gate / 입구)
+- W-0241 H-07-eng (engine endpoint)
+- W-0242 H-07-app (UI)
+- W-0243 W-0102 Slice 1+2 mop-up
+- W-0244 SaveSetupModal × Draft integration
+- W-0234 F-3 Telegram deep link (별도)
+
+### Track 2 — MM Hunter (Engine Core 검증)
+- W-0214 LOCKED-IN ✅
+- W-0215 V-00 pattern_search.py audit
+- W-0216 validation/ 모듈
+
+### 영역 disjoint (충돌 0)
+- Track 1: `app/`, `engine/api/routes/users.py`, `engine/stats/engine.py`
+- Track 2: `engine/research/`, `engine/validation/`
+
+→ 다른 에이전트는 트랙 결정 후 자기 영역만 작업.
