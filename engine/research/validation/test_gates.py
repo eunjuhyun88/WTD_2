@@ -186,3 +186,21 @@ class TestEvaluateGateV2:
         json.dumps(d)  # should not raise
         assert isinstance(d["new_passes"], dict)
         assert isinstance(d["overall_pass"], bool)
+
+    def test_custom_config_thresholds(self) -> None:
+        """Custom GateV2Config thresholds are respected."""
+        # Raise t_min to 10 → G1 should fail even with t=3
+        cfg = GateV2Config(t_min=10.0)
+        result = evaluate_gate_v2(_make_validation_report(), existing_pass=True, config=cfg)
+        assert result.new_passes[Gate.G1] is False
+        assert result.overall_pass is False
+
+    def test_both_existing_and_new_fail(self) -> None:
+        """both existing_pass=False AND new gates fail → reason mentions both."""
+        vr = _make_validation_report(
+            horizon_reports=[_make_horizon_report(t_vs_b0=0.5)]  # G1 fail
+        )
+        result = evaluate_gate_v2(vr, existing_pass=False)
+        assert result.overall_pass is False
+        assert "existing_gate=FAIL" in result.reason
+        assert "G1" in result.reason
