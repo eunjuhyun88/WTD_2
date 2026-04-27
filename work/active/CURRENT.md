@@ -19,6 +19,8 @@
 | `W-0216-falsifiable-test-protocol` | research | v1.1 PRD ready (F1~F7) (PR #415, Issue #418) |
 | `W-0217-v01-purged-kfold-cv` | research | v1.0 PRD ready (Issue #420) |
 | `W-0218-v02-phase-eval-m1` | research | v1.0 PRD ready (Issue #421) |
+| `W-0220-v06-stats-engine` | research | v1.0 PRD ready (Issue #422) |
+| `W-0221-v08-validation-pipeline` | research | v1.0 PRD ready (Issue #423) |
 | `W-0223-wave1-execution-design` | contract | PR #369 머지 완료 |
 | `W-0230-tradingview-grade-viz-design` | contract | PR #375 머지 완료 |
 | `W-0232-h07-f60-gate-design` | contract | PR #392 머지 완료 |
