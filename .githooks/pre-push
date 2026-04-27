@@ -7,30 +7,23 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null || echo '')"
 
-# ── 1. Branch naming enforcement ──────────────────────────────────────────────
-# Forbidden: claude/* and codex/* (auto-generated random names, no issue link)
-# Allowed:   feat/{Issue-ID}-{desc} | chore/... | docs/... | fix/... | automation/... | main | release
+# ── 1. Branch naming guidance (warn, not block) ──────────────────────────────
+# Auto-generated 이름(claude/* codex/* worktree-agent-*)도 push 허용한다.
+# 이중 worktree 생성을 피하기 위해서다 — 차단 대신 rename hint를 안내한다.
+# Issue 링크가 필요하면 PR 본문 + worktree registry에서 추적한다.
 
-BLOCKED_PATTERN='^(claude/|codex/)'
-ALLOWED_PATTERN='^(main|release|feat/.+|chore/.+|docs/.+|fix/.+|automation/.+|hotfix/.+)$'
+AUTO_PATTERN='^(claude/|codex/|worktree-agent-)'
+ALLOWED_PATTERN='^(main|release|feat/.+|chore/.+|docs/.+|fix/.+|automation/.+|hotfix/.+|task/.+)$'
 
 if [[ -n "$BRANCH" ]]; then
-  if echo "$BRANCH" | grep -qE "$BLOCKED_PATTERN"; then
+  if echo "$BRANCH" | grep -qE "$AUTO_PATTERN"; then
     echo ""
-    echo "ERROR: Branch '$BRANCH' is forbidden."
+    echo "ℹ️  '$BRANCH'은 auto-generated 브랜치명입니다."
+    echo "   PR 머지 전 rename 권장 (worktree는 그대로 유지):"
+    echo "     git branch -m feat/{Issue-ID}-{slug}    # 또는 feat/{W-NNNN}-{slug}"
+    echo "   그 후 다시 push: git push -u origin <new-name>"
     echo ""
-    echo "  'claude/*' and 'codex/*' are auto-generated names with no issue link."
-    echo "  Required naming: feat/{Issue-ID}-{desc}"
-    echo ""
-    echo "  Steps:"
-    echo "  1. Check docs/live/feature-implementation-map.md for your Issue ID"
-    echo "  2. git checkout -b feat/{Issue-ID}-{desc}"
-    echo "  3. git push origin feat/{Issue-ID}-{desc}"
-    echo ""
-    exit 1
-  fi
-
-  if ! echo "$BRANCH" | grep -qE "$ALLOWED_PATTERN"; then
+  elif ! echo "$BRANCH" | grep -qE "$ALLOWED_PATTERN"; then
     echo ""
     echo "WARNING: '$BRANCH' does not match naming convention."
     echo "  Expected: feat/{Issue-ID}-{desc} | chore/... | docs/... | fix/..."

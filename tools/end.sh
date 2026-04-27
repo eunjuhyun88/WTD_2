@@ -110,6 +110,24 @@ fi
 # 5. live heartbeat 파일 삭제 (세션 종료 표시)
 "$SCRIPT_DIR/live.sh" delete 2>/dev/null || true
 
+# 5b. worktree registry status=done (SSOT)
+"$SCRIPT_DIR/worktree-registry.sh" set status done >/dev/null 2>&1 || true
+
+# 5c. branch push hint (본인 commit 있고 PR 없을 때만)
+LOCAL_AHEAD_END=0
+UPSTREAM_END="$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || echo "")"
+[ -n "$UPSTREAM_END" ] && LOCAL_AHEAD_END="$(git rev-list --count "$UPSTREAM_END..HEAD" 2>/dev/null || echo 0)"
+HAS_PR=0
+if command -v gh >/dev/null 2>&1; then
+  gh pr view --json number 2>/dev/null | jq -e '.number' >/dev/null 2>&1 && HAS_PR=1
+fi
+if [ "${LOCAL_AHEAD_END:-0}" -gt 0 ] && [ "$HAS_PR" = "0" ]; then
+  echo ""
+  echo "📤 미푸시 commit ${LOCAL_AHEAD_END}개 — 권장:"
+  echo "   git push -u origin $BRANCH"
+  echo "   gh pr create --fill"
+fi
+
 # 6. state 갱신
 ./tools/refresh_state.sh >/dev/null
 

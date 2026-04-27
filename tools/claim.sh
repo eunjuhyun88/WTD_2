@@ -131,6 +131,15 @@ echo "| $AGENT | $DOMAIN | $BRANCH | $NOW |" >> spec/CONTRACTS.md
 # live 파일에 claimed domain 반영 (다른 에이전트가 실시간으로 볼 수 있게)
 "$SCRIPT_DIR/live.sh" update "$DOMAIN" 2>/dev/null || true
 
+# worktree registry에 issue + work_item 매핑 (SSOT)
+REG_ARGS=()
+[ -n "$ISSUE_NUM" ] && REG_ARGS+=(--issue "$ISSUE_NUM")
+WI_FROM_BRANCH="$(echo "$BRANCH" | grep -oE 'W-[0-9]{4}' | head -1)"
+[ -n "$WI_FROM_BRANCH" ] && REG_ARGS+=(--work-item "$WI_FROM_BRANCH")
+if [ ${#REG_ARGS[@]} -gt 0 ]; then
+  "$SCRIPT_DIR/worktree-registry.sh" register --agent "$AGENT" "${REG_ARGS[@]}" >/dev/null 2>&1 || true
+fi
+
 echo "✓ $AGENT locked: $DOMAIN"
 if [ -n "$ISSUE_NUM" ]; then
   echo "  GitHub Issue: #$ISSUE_NUM (assignee: @me)"

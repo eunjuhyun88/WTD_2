@@ -142,15 +142,18 @@ fi
 # live heartbeat 파일 생성 (동시 실행 에이전트 가시성)
 "$SCRIPT_DIR/live.sh" write 2>/dev/null || true
 
+# Worktree registry 자동 등록 (SSOT — state/worktrees.json)
+"$SCRIPT_DIR/worktree-registry.sh" register --agent "$NEXT_ID" --status active >/dev/null 2>&1 || true
+
 if [ $QUIET -eq 1 ]; then
   echo "Agent: $NEXT_ID | main: ${MAIN_SHA:0:8} | branch: $CURRENT_BRANCH"
   exit 0
 fi
 
-# 3. 브랜치 명명 규칙 경고
-BRANCH_BLOCKED=0
-if echo "$CURRENT_BRANCH" | grep -qE '^(claude/|codex/)'; then
-  BRANCH_BLOCKED=1
+# 3. 브랜치 명명 정보 (auto-generated 이름은 정보용 — 차단하지 않음)
+BRANCH_AUTO=0
+if echo "$CURRENT_BRANCH" | grep -qE '^(claude/|codex/|worktree-agent-)'; then
+  BRANCH_AUTO=1
 fi
 
 # 4. 부팅 출력 헤더
@@ -167,33 +170,39 @@ EOF
 jq -r '.open_prs[] | "  #\(.number) — \(.title) [\(.mergeable // "?")]"' state/state.json 2>/dev/null \
   | head -10 || echo "  (none or gh CLI unavailable)"
 
-# ── 브랜치 명명 규칙 경고 + stale 차단 ────────────────────────────────────────
-if [ "$BRANCH_BLOCKED" -eq 1 ]; then
-  echo ""
-  echo "══════════════════════════════════════════════════"
-  echo "  BRANCH WARNING: '$CURRENT_BRANCH' is FORBIDDEN"
-  echo "══════════════════════════════════════════════════"
-  echo "  'claude/*' and 'codex/*' branches are not allowed."
-  echo ""
-  echo "  WORKTREE 규칙:"
-  echo "    신규 작업은 항상 origin/main 기준 새 worktree로 생성."
-  echo "    기존 agent worktree(claude/*, codex/*) 재사용 금지."
-  echo ""
-  echo "    git worktree add ../wtd-v2-<TASK> origin/main -b feat/<TASK>"
-  echo ""
-  echo "  Allowed branch formats:"
-  echo "    feat/F02-verdict-5cat"
-  echo "    feat/A03-ai-parser-engine"
-  echo "    chore/cleanup-stale-branches"
-  echo "══════════════════════════════════════════════════"
+# ── 이 worktree의 registry 매핑 (재진입 시 진행 중 작업 자동 인식) ────────────
+echo ""
+echo "This worktree (registry):"
+WT_INFO="$("$SCRIPT_DIR/worktree-registry.sh" get 2>/dev/null || echo 'null')"
+if [ "$WT_INFO" != "null" ] && [ -n "$WT_INFO" ]; then
+  echo "$WT_INFO" | jq -r '
+    "  agent:     \(.agent_id // "-")",
+    "  issue:     #\(.issue // "-")",
+    "  work_item: \(.work_item // "-")",
+    "  status:    \(.status // "-")",
+    "  last_active: \(.last_active // "-")"
+  ' 2>/dev/null
+else
+  echo "  (registry empty — /claim 또는 /save 시 매핑 자동 갱신)"
+fi
 
-  # Stale 차단: forbidden 브랜치 + origin/main 50 커밋 이상 뒤 → exit 1
-  if [ "${AHEAD:-0}" -gt 50 ] 2>/dev/null; then
-    echo ""
-    echo "❌ STALE WORKTREE (${AHEAD} commits behind origin/main) — bootstrap 중단" >&2
-    echo "   위 worktree 명령어로 새 worktree 생성 후 다시 시작하세요." >&2
-    exit 1
-  fi
+# ── 브랜치 정보 출력 (자동 생성 이름은 정보일 뿐 — 차단 ❌) ───────────────────
+# Claude Code SDK / codex CLI는 자동 worktree 생성 시 무작위 이름을 만든다.
+# 이중 worktree 생성을 피하려면 `git branch -m` 으로 의미있는 이름으로 rename 권장.
+if [ "$BRANCH_AUTO" -eq 1 ]; then
+  echo ""
+  echo "ℹ️  Auto-generated branch: '$CURRENT_BRANCH'"
+  echo "   PR 시점 전에 의미있는 이름으로 rename 권장:"
+  echo "     git branch -m feat/{Issue-ID}-{slug}     # 또는 feat/{W-NNNN}-{slug}"
+  echo "   worktree는 그대로 유지됨 — 이중 생성 회피."
+  echo ""
+fi
+
+# ── Stale 가드: 진짜 위험할 때만 차단 ────────────────────────────────────────
+# 위험 = origin/main 대비 매우 뒤처짐 + dirty/local-ahead 충돌 위험
+# 안전한 경우(clean worktree)는 단계 1의 자동 fast-forward가 처리한 상태.
+if [ "${AHEAD:-0}" -gt 200 ] 2>/dev/null; then
+  echo "⚠️  Worktree behind origin/main by ${AHEAD} commits — 'git merge origin/main' 또는 폐기 권장"
 fi
 
 echo ""
@@ -261,7 +270,7 @@ fi
 echo ""
 echo "Priorities (P0/P1):"
 if [ -f spec/PRIORITIES.md ]; then
-  grep -E "^## P[0-9]|^## ✅" spec/PRIORITIES.md | head -6 | sed 's/^/  /'
+  { grep -E "^## P[0-9]|^## ✅" spec/PRIORITIES.md || true; } | head -6 | sed 's/^/  /'
 else
   echo "  (spec/PRIORITIES.md not yet created)"
 fi
