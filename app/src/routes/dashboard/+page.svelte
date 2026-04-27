@@ -370,20 +370,20 @@
               onclick={() => submitVerdict(capture.capture_id, 'invalid')}
             >실패</button>
             <button
-              class="verdict-btn verdict-btn--missed"
+              class="verdict-btn verdict-btn--near-miss"
               disabled={busy}
-              onclick={() => submitVerdict(capture.capture_id, 'missed')}
-            >놓침</button>
+              onclick={() => submitVerdict(capture.capture_id, 'near_miss')}
+            >니어미스</button>
             <button
               class="verdict-btn verdict-btn--too-late"
               disabled={busy}
               onclick={() => submitVerdict(capture.capture_id, 'too_late')}
             >늦은진입</button>
             <button
-              class="verdict-btn verdict-btn--unclear"
+              class="verdict-btn verdict-btn--too-early"
               disabled={busy}
-              onclick={() => submitVerdict(capture.capture_id, 'unclear')}
-            >불명확</button>
+              onclick={() => submitVerdict(capture.capture_id, 'too_early')}
+            >너무이름</button>
           </div>
         </div>
       {/each}
@@ -794,7 +794,7 @@
     color: #f87171;
   }
 
-  .verdict-btn--missed:hover:not(:disabled) {
+  .verdict-btn--near-miss:hover:not(:disabled) {
     background: rgba(251, 191, 36, 0.18);
     border-color: rgba(251, 191, 36, 0.35);
     color: #fbbf24;
@@ -806,10 +806,10 @@
     color: #fb923c;
   }
 
-  .verdict-btn--unclear:hover:not(:disabled) {
-    background: rgba(148, 163, 184, 0.18);
-    border-color: rgba(148, 163, 184, 0.35);
-    color: #94a3b8;
+  .verdict-btn--too-early:hover:not(:disabled) {
+    background: rgba(147, 51, 234, 0.18);
+    border-color: rgba(147, 51, 234, 0.35);
+    color: #a78bfa;
   }
 
   .verdict-error {
