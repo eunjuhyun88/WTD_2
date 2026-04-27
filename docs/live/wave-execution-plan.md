@@ -153,7 +153,7 @@ A. 단기적으로 W-#### 유지. 장기적으로 Issue 번호로 이전 (별도
 
 - 상세: `docs/live/track-separation-2026-04-27.md`
 - Track 1 영역: `app/`, `engine/api/routes/users.py`, `engine/stats/engine.py`
-- Track 2 영역: `engine/research/`, `engine/validation/`
+- Track 2 영역: `engine/research/`, `engine/research/validation/`
 - 두 트랙은 파일 영역 disjoint → 충돌 0
 
 ### Wave 트랙 차기 작업 (W-0241~W-0244, 본 PR #430)

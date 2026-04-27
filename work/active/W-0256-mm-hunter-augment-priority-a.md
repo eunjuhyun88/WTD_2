@@ -23,7 +23,7 @@ W-0252 audit에서 식별된 🔴 갭 2개 (D3 cost model, D8 phase taxonomy)를
 - 테스트: D3 cost-adjusted return / D8 multi-taxonomy switching
 
 ### Non-Scope
-- ❌ Priority A1 `engine/validation/` wrapper module (별도 work item, V-track 통합용)
+- ❌ Priority A1 `engine/research/validation/` V-track 통합 작업 (별도 work item)
 - ❌ Priority B1 D2 horizon parametrization (M3 출시 전, 별도 work item)
 - ❌ Priority B2 D5 F-60 Layer B subjective gate (별도 work item)
 - ❌ pattern_search.py의 기존 함수 **rename / signature 변경 / 함수 삭제** 일체 금지
@@ -186,6 +186,6 @@ W-0252 audit에서 식별된 🔴 갭 2개 (D3 cost model, D8 phase taxonomy)를
   - evaluate_variant_on_case L2773
 - 머지된 V-track PR (downstream consumers): #435 #436 #438 #440
 - 후속 work item:
-  - Priority A1: `engine/validation/` wrapper module (별도 발번 예정)
+  - Priority A1: `engine/research/validation/` V-track 통합 (별도 발번 예정)
   - Priority B1: D2 horizon parametrization (M3 출시 전)
   - Priority B2: D5 F-60 Layer B subjective gate (M3 출시 전)

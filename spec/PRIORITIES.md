@@ -18,7 +18,7 @@
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
 열린 갭:    19개 (P0=3 / P1=10 / P2=10 / P3=10) — F-02-fix ✅ (#472) + W-0256 D3+D8 ✅ (#478) + W-0252 audit ✅ (#467)
-즉시 P0:   W-0259 engine/validation/ wrapper (V-track 4 모듈 통합) / W-0254 H-07+H-08 (#460, F-02-fix 차단 해제됨)
+즉시 P0:   W-0259 engine/research/validation/ V-track 통합 검증 / W-0254 H-07+H-08 (#460, F-02-fix 차단 해제됨)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.
@@ -119,7 +119,7 @@ H-08 / F-30 / F-17
 | **W-0252** | `engine/research/pattern_search.py` V-00 audit | ✅ main (#467) | 100% coverage, F1 미발동, 🔴 갭 2개(D3/D8) → augment-only 진행 |
 | **W-0256** | D3 cost + D8 phase taxonomy augment | ✅ main (#478) | 461줄 추가/0줄 삭제, 178/178 PASS |
 | **W-0253** | F-60 gate min-samples 경화 | 🔴 **즉시** | 설계만 완료, 구현 필요 |
-| **W-0259** | `engine/validation/` wrapper (V-01/V-02/V-04/V-06 통합) | 🟡 **즉시 시작** | 설계 #477 머지, 구현 미시작 |
+| **W-0259** | `engine/research/validation/` V-01/V-02/V-04/V-06 통합 검증 | 🟡 **즉시 시작** | 설계 #477 머지, 구현 미시작. 모듈은 이미 `engine/research/validation/`에 9개 존재 |
 | **W-0257** | D2 horizon parametrization (4h primary) | ⬜ Priority B1 (P1) | 설계 #477 머지 |
 | **W-0258** | D5 F-60 Layer B subjective gate | ⬜ Priority B2 (P1) | 설계 #477 머지 |
 
@@ -419,10 +419,10 @@ promotion_gate_pass_rate_30d > 0
 | W-0252 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 (Issue #462, design PR #463) |
 | W-0216 | `validation/` 모듈 구현 | engine | W-0252 후 (ID 재발번 검토) |
 
-→ 영역: `engine/research/`, `engine/validation/`
+→ 영역: `engine/research/`, `engine/research/validation/`
 
 ### 트랙 충돌 방지 룰
 
 - Track 1 작업 → `app/src/components/`, `app/src/routes/api/users/`, `app/src/routes/api/captures/`, `engine/api/routes/users.py`, `engine/stats/engine.py`만
-- Track 2 작업 → `engine/research/pattern_search.py`, `engine/validation/`, MM Hunter 도메인만
+- Track 2 작업 → `engine/research/pattern_search.py`, `engine/research/validation/`, MM Hunter 도메인만
 - 두 트랙 모두 `docs/live/W-0220-status-checklist.md` 토글 가능 (line-level merge OK)
