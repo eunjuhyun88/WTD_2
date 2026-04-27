@@ -421,6 +421,21 @@ class PromotionGatePolicy:
     # uses cost-adjusted forward return for the entry-profitable rate.
     # When False, the legacy paper return is used regardless of cost.
     apply_cost: bool = True
+    # W-0257 D2: forward-return horizon parametrization.
+    # ``"default"`` keeps the legacy ``entry_profit_horizon_bars`` value;
+    # ``"1h"`` / ``"4h"`` / ``"24h"`` are normalised to bar counts at
+    # measurement time using the variant timeframe.  Bar counts < 1 fall
+    # back to ``entry_profit_horizon_bars`` so meaningless horizons are
+    # never measured.
+    horizon_label: Literal["default", "1h", "4h", "24h"] = "default"
+    # W-0258 D5: F-60 gate Layer B (subjective override).
+    # ``require_subjective_gate=False`` keeps Layer A only (legacy).
+    # When True, ``build_promotion_report`` requires a non-empty
+    # ``subjective_gate_signature`` to consider the candidate promoted
+    # via the layer_b path; otherwise the candidate is rejected even if
+    # all Layer A gates pass.
+    require_subjective_gate: bool = False
+    subjective_gate_signature: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -465,6 +480,17 @@ class PromotionReport:
     entry_profitable_rate: float | None = None
     entry_profitable_gate: bool | None = None
     decision_path: str = "rejected"
+    # W-0258 D5: F-60 gate Layer B (subjective override).
+    # ``subjective_gate_passed`` is True iff the policy required Layer B
+    # AND a non-empty signature was provided.  ``None`` when the policy
+    # did not require Layer B (legacy behaviour).  ``decision_path`` is
+    # extended with two new values to distinguish promotion paths:
+    # ``"strict_layer_a"`` (legacy ``"strict"`` semantics, kept for
+    # backward-compat as ``"strict"``), ``"trading_edge_layer_a"``
+    # (legacy ``"trading_edge"``), and ``"layer_b_override"`` (Layer A
+    # rejected but Layer B signature-approved).  Existing string values
+    # (``"strict"``, ``"trading_edge"``, ``"rejected"``) are preserved.
+    subjective_gate_passed: bool | None = None
     # W-0158: canonical feature diagnostics — populated when case results have snapshots
     canonical_feature_scored_case_count: int = 0
     canonical_feature_score: float | None = None
@@ -1679,12 +1705,35 @@ def build_promotion_report(
         and strict_gate_results["holdout_passed"]
     )
 
+    # W-0258 D5: F-60 gate Layer B (subjective override).
+    # When ``policy.require_subjective_gate`` is True, layer A pass alone
+    # is NOT sufficient — a non-empty signature must accompany the policy.
+    # Layer B can also override a Layer A rejection via the same signature.
+    subjective_gate_passed: bool | None
+    if policy.require_subjective_gate:
+        subjective_gate_passed = bool(
+            policy.subjective_gate_signature
+            and policy.subjective_gate_signature.strip()
+        )
+    else:
+        subjective_gate_passed = None
+
     if strict_pass:
-        decision = "promote_candidate"
         decision_path = "strict"
-    elif trading_edge_pass:
         decision = "promote_candidate"
+        if policy.require_subjective_gate and not subjective_gate_passed:
+            decision = "reject"
+            decision_path = "rejected"
+    elif trading_edge_pass:
         decision_path = "trading_edge"
+        decision = "promote_candidate"
+        if policy.require_subjective_gate and not subjective_gate_passed:
+            decision = "reject"
+            decision_path = "rejected"
+    elif policy.require_subjective_gate and subjective_gate_passed:
+        # Layer A rejected, Layer B signature-approved → layer_b_override.
+        decision = "promote_candidate"
+        decision_path = "layer_b_override"
     else:
         decision = "reject"
         decision_path = "rejected"
@@ -1779,6 +1828,7 @@ def build_promotion_report(
         entry_profitable_rate=entry_profitable_rate,
         entry_profitable_gate=entry_profitable_gate,
         decision_path=decision_path,
+        subjective_gate_passed=subjective_gate_passed,
         canonical_feature_scored_case_count=canonical_feature_scored_case_count,
         canonical_feature_score=canonical_feature_score,
         reference_canonical_feature_score=ref_score,
@@ -2734,6 +2784,44 @@ def build_search_variants(
 DEFAULT_ENTRY_PROFIT_HORIZON_BARS = 48
 
 
+# W-0257 D2: forward-return horizon parametrization.
+# Maps human-friendly horizon labels to wall-clock minutes.  At
+# measurement time the variant ``timeframe`` is divided into the label
+# minutes to derive a bar count.  Bar counts < 1 fall back to the
+# legacy ``entry_profit_horizon_bars`` argument.
+_HORIZON_LABEL_MINUTES: dict[str, int] = {
+    "1h": 60,
+    "4h": 240,
+    "24h": 1440,
+}
+
+
+def _resolve_horizon_bars(
+    *,
+    horizon_label: str,
+    timeframe: str,
+    fallback_bars: int,
+) -> int:
+    """Convert a horizon label + timeframe into a bar count.
+
+    Returns ``fallback_bars`` when the label is ``"default"`` or when
+    the conversion would yield fewer than 1 bar (which would make the
+    measurement meaningless).
+    """
+    if horizon_label == "default":
+        return fallback_bars
+    minutes = _HORIZON_LABEL_MINUTES.get(horizon_label)
+    if minutes is None:
+        return fallback_bars
+    bar_minutes = tf_string_to_minutes(timeframe)
+    if bar_minutes <= 0:
+        return fallback_bars
+    bars = minutes // bar_minutes
+    if bars < 1:
+        return fallback_bars
+    return int(bars)
+
+
 def _measure_forward_peak_return(
     *,
     symbol: str,
@@ -2820,6 +2908,7 @@ def evaluate_variant_on_case(
     entry_profit_horizon_bars: int = DEFAULT_ENTRY_PROFIT_HORIZON_BARS,
     entry_slippage_pct: float = 0.1,
     roundtrip_cost_bps: float = 0.0,
+    horizon_label: str = "default",
 ) -> VariantCaseResult:
     scaled_warmup_bars = _scale_warmup_bars(
         warmup_bars,
@@ -2883,12 +2972,20 @@ def evaluate_variant_on_case(
     realistic_forward_peak_return_pct: float | None = None
     cost_adjusted_forward_peak_return_pct: float | None = None
     if entry_hit and entry_ts is not None:
+        # W-0257 D2: resolve horizon_label to bar count for this variant
+        # timeframe.  Falls back to entry_profit_horizon_bars when the
+        # label is "default" or the conversion is meaningless (<1 bar).
+        resolved_horizon_bars = _resolve_horizon_bars(
+            horizon_label=horizon_label,
+            timeframe=timeframe,
+            fallback_bars=entry_profit_horizon_bars,
+        )
         entry_close, forward_peak_return_pct, entry_next_open, realistic_forward_peak_return_pct = (
             _measure_forward_peak_return(
                 symbol=case.symbol,
                 timeframe=timeframe,
                 entry_ts=entry_ts,
-                horizon_bars=entry_profit_horizon_bars,
+                horizon_bars=resolved_horizon_bars,
                 entry_slippage_pct=entry_slippage_pct,
             )
         )
@@ -2958,6 +3055,7 @@ def evaluate_variant_against_pack(
     *,
     warmup_bars: int = 240,
     roundtrip_cost_bps: float = 0.0,
+    horizon_label: str = "default",
 ) -> VariantSearchResult:
     pattern = build_variant_pattern(variant.pattern_slug, variant)
     case_results = [
@@ -2967,6 +3065,7 @@ def evaluate_variant_against_pack(
             timeframe=variant.timeframe,
             warmup_bars=warmup_bars,
             roundtrip_cost_bps=roundtrip_cost_bps,
+            horizon_label=horizon_label,
         )
         for case in pack.cases
     ]
