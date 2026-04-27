@@ -18,7 +18,7 @@
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
 열린 갭:    22개 (P0=5 / P1=11 / P2=10 / P3=10)
-즉시 P0:   W-0215 pattern_search.py audit (MM Hunter V-00)
+즉시 P0:   W-0252 pattern_search.py audit (MM Hunter V-00) — 기존 W-0215는 ledger-supabase-cutover로 점유
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: F-02 레이블 불일치.
@@ -116,8 +116,8 @@ H-08 / F-30 / F-17
 | Work Item | Feature | 상태 | 비고 |
 |---|---|---|---|
 | **W-0214** | MM Hunter design D1~D8 | ✅ main (#396) | 설계 완료 |
-| **W-0215** | `engine/research/pattern_search.py:3283줄` V-00 audit | 🟡 **즉시 시작** | augment-only 정책 |
-| **W-0216** | `validation/` 모듈 구현 | ⬜ W-0215 후 | |
+| **W-0252** | `engine/research/pattern_search.py:3283줄` V-00 audit | 🟡 **즉시 시작** | augment-only, Issue #462, PR #463 design merged |
+| **W-0216** | `validation/` 모듈 구현 | ⬜ W-0252 후 | (W-0216 ID는 falsifiable-test-protocol/verdict-loop와도 충돌 — 후속 work item 발번 시 재할당) |
 
 ---
 
@@ -377,10 +377,10 @@ promotion_gate_pass_rate_30d > 0
 ## 14. 즉시 다음 액션 (CTO 지시)
 
 ```
-1. [즉시]   W-0215 시작 — pattern_search.py:3283줄 audit (V-00)
-2. [즉시]   F-02-fix — verdict 레이블 이관 migration 작성 (기존 missed→near_miss 포함)
-3. [이번 주] F-02-fix migration 022 배포 (missed→near_miss + stats/engine.py 동시)
-4. [이번 주] W-0216 — validation/ 모듈 구현 (W-0215 완료 후)
+1. [즉시]   W-0252 시작 — pattern_search.py:3283줄 audit (V-00) — Issue #462
+2. [완료]   F-02-fix — verdict 레이블 이관 PR #437 머지됨 (missed→near_miss + unclear→too_early)
+3. [이번 주] F-02-fix migration 022 배포 검증 + stats/engine.py 일관성 확인
+4. [이번 주] W-0216 — validation/ 모듈 구현 (W-0252 완료 후, ID 재발번 검토)
 5. [다음 주] F-3 Telegram→Verdict deep link / F-4 Decision HUD / F-7 메타 자동화
 6. [M1]     F-5 IDE split-pane + F-11 Dashboard WATCHING + H-07 F-60 Gate
 ```
@@ -414,8 +414,8 @@ promotion_gate_pass_rate_30d > 0
 | W-# | Feature | Owner | 상태 |
 |---|---|---|---|
 | W-0214 | MM Hunter Core Theory v1.3 | contract | ✅ LOCKED-IN (#396) |
-| W-0215 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 |
-| W-0216 | `validation/` 모듈 구현 | engine | W-0215 후 |
+| W-0252 | V-00 `pattern_search.py` audit (3283줄) | engine | 다음 즉시 시작 (Issue #462, design PR #463) |
+| W-0216 | `validation/` 모듈 구현 | engine | W-0252 후 (ID 재발번 검토) |
 
 → 영역: `engine/research/`, `engine/validation/`
 
