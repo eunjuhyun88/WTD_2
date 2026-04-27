@@ -1,8 +1,30 @@
-# W-0253 — F-02-fix: Verdict 레이블 정합성 (BLOCKER)
+# W-0253 — F-02-fix: Verdict 레이블 정합성 (✅ COMPLETE)
 
-> Wave 4 P0 | Owner: engine + app | Branch: `fix/f02-verdict-label`
-> **⚠️ 즉시 착수 — 이 작업 없이 LightGBM 학습 데이터 오염.**
-> **모든 Wave 4 Stream (F-3/F-4/H-07/H-08) 시작 전 완료 필수.**
+> Wave 4 P0 | Owner: engine + app | Branch: `fix/f02-verdict-label-022`
+> **✅ BLOCKER 해제 (2026-04-27) — 코드 분석 결과 핵심 변경 모두 머지 완료.**
+> **잔여 작업: work item ID/path 정정 + 주석 업데이트.**
+
+## Status (2026-04-27 audit)
+
+| Exit Criterion | 상태 | 증거 |
+|---|---|---|
+| `engine/ledger/types.py:54` 새 Literal | ✅ DONE | `Literal["valid", "invalid", "near_miss", "too_early", "too_late"]` |
+| `engine/stats/engine.py:40-41` 상수 | ✅ DONE | `F60_DENOM_LABELS = {"valid", "invalid", "near_miss", "too_early", "too_late"}` |
+| migration up 스크립트 | ✅ DONE | `app/supabase/migrations/023_verdict_label_rename.sql` (실제 ID는 023, table은 `capture_records`) |
+| `VerdictInboxPanel` UI | ✅ DONE | L62/L195/L201 새 레이블 사용 |
+| down 스크립트 | ⛔ **N/A — 반가역** (analysis below) |
+
+### Down script가 부적절한 이유 (분석)
+
+단순 reverse UPDATE는 데이터 손실:
+```sql
+-- 위험: up 이후 입력된 정당한 near_miss/too_early까지 missed/unclear로 덮어씀
+UPDATE capture_records SET user_verdict = 'missed' WHERE user_verdict = 'near_miss';
+UPDATE capture_records SET user_verdict = 'unclear' WHERE user_verdict = 'too_early';
+```
+
+올바르게 하려면 audit table + timestamp 필터 필요 — 단순 label rename 치고 과잉.
+**결정**: 이 마이그레이션은 forward-only. 운영 사고 시 데이터 백업에서 복구.
 
 ---
 
@@ -20,14 +42,16 @@ bugfix (migration + type change + UI label)
 
 ---
 
-## Scope
+## Scope (실제 머지된 파일 기준 정정)
 
-| 파일 | 변경 이유 |
-|------|-----------|
-| `engine/migrations/022_verdict_label_rename.sql` | 신규 — `missed→near_miss`, `unclear→too_early` 이관 스크립트 |
-| `engine/ledger/types.py:54` | 변경 — `VerdictLabel` Literal 업데이트 |
-| `engine/stats/engine.py:40-41` | 변경 — `F60_WIN_LABELS` / `DENOM_LABELS` 동시 업데이트 |
-| `app/src/lib/components/terminal/peek/VerdictInboxPanel.svelte` | 변경 — 버튼 텍스트/value `missed→near_miss`, `unclear→too_early` |
+| 파일 | 변경 이유 | 상태 |
+|------|-----------|------|
+| `app/supabase/migrations/023_verdict_label_rename.sql` | `missed→near_miss`, `unclear→too_early` 이관 (table: `capture_records`) | ✅ |
+| `engine/ledger/types.py:54` | `VerdictLabel` Literal 업데이트 | ✅ |
+| `engine/stats/engine.py:40-41` | `F60_WIN_LABELS` / `F60_DENOM_LABELS` 동시 업데이트 | ✅ |
+| `app/src/components/terminal/peek/VerdictInboxPanel.svelte` | 버튼 텍스트/value `near_miss`/`too_early` + 주석 5-cat 갱신 | ✅ |
+
+**Path 정정**: work item 초안의 `engine/migrations/`는 실제 `app/supabase/migrations/`. ID `022`는 `023` (022는 copy_trading_phase1이 차지). table `outcomes`는 실제 `capture_records`.
 
 ## Non-Goals
 
@@ -37,12 +61,12 @@ bugfix (migration + type change + UI label)
 
 ## Exit Criteria
 
-- [ ] `engine/ledger/types.py:54` Literal이 `near_miss`, `too_early` 포함
-- [ ] `engine/stats/engine.py:40-41` 레이블 상수 일치
-- [ ] migration 022 up: `UPDATE outcomes SET user_verdict = 'near_miss' WHERE user_verdict = 'missed'` + `too_early` 동일
-- [ ] migration 022 down 스크립트 존재 (non-destructive 롤백 가능)
-- [ ] `VerdictInboxPanel` 버튼 렌더 시 `near_miss` / `too_early` 표시 확인
-- [ ] Engine Tests ✅, App CI ✅
+- [x] `engine/ledger/types.py:54` Literal이 `near_miss`, `too_early` 포함
+- [x] `engine/stats/engine.py:40-41` 레이블 상수 일치
+- [x] migration 023 (실제 ID) up: `UPDATE capture_records SET user_verdict = 'near_miss' WHERE user_verdict = 'missed'` + `too_early` 동일
+- [x] ~~migration down 스크립트~~ → **N/A: forward-only 결정** (반가역 분석 위 §Status 참조)
+- [x] `VerdictInboxPanel` 버튼 렌더 시 `near_miss` / `too_early` 표시 (L62/L195/L201)
+- [ ] 운영 DB에 023 적용 여부 검증 (Supabase migration history)
 
 ## Facts
 

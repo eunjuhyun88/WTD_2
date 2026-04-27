@@ -3,7 +3,8 @@
    * VerdictInboxPanel — Flywheel Axis 3
    *
    * Shows resolved captures (outcome_ready) awaiting user verdict.
-   * User labels each as valid / invalid / missed to close the feedback loop.
+   * User labels each as valid / invalid / near_miss / too_early / too_late
+   * (PRD 5-cat) to close the feedback loop.
    */
 
   import WatchToggle from '../WatchToggle.svelte';
