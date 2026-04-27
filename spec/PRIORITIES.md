@@ -1,165 +1,390 @@
 # Cogochi — Master PRD + Priority Document
 
-> **Single source of truth**: docs/live/W-0220-product-prd-master.md + feature-implementation-map.md v3.0 + Wave 4 work items
-> **Updated**: 2026-04-27 | Base SHA: 6d7de4fe
-> Charter: `spec/CHARTER.md` In-Scope(L3–L7) 안에만. Non-Goal 진입 금지.
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (6d7de4fe) | 2026-04-27
+> **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
+> Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
 ---
 
-## Vision
+## 0. CTO 현황 요약 (2026-04-27)
 
-**Cogochi = "Pattern Research OS"**: 트레이더가 자연어/드래그로 패턴을 가리키면 시스템이 PatternObject로 외화해서 53패턴 × 92블록 카탈로그에 합류시키고, 12개 백그라운드 잡이 시장 전체에서 자동으로 매칭·검증·학습을 돌린다.
+```
+시스템 성숙도: 86.7% Built (163/188 features)
+핵심 인프라: 53 PatternObjects × 92 Building Blocks
+           L1~L7 전 레이어 구조 완성
+           11 APScheduler jobs 자동 운영 중
+           138,915 feature_window rows
+주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
+           POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
+           POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
+열린 갭:    22개 (P0=5 / P1=11 / P2=10 / P3=10)
+즉시 P0:   W-0215 pattern_search.py audit (MM Hunter V-00)
+```
 
-- **핵심 차별점**: on-demand search + verdict-validated archive (broadcasting 채널 모방 아님)
-- **단일 페르소나 "Jin"**: 28-38세, 크립토 perp 전업/반전업, WTP $29-79/mo
-- **Core Loop**: `[Input 3-mode] → Resolve → Search → Watch → Verdict → Refinement → [Monetize]`
+**가장 위험한 갭 (AI Researcher 진단)**: F-02 레이블 불일치.
+현재 코드 `engine/ledger/types.py:54` = `valid/invalid/missed/too_late/unclear`.
+PRD 스펙 = `valid/invalid/near_miss/too_early/too_late`.
+`missed ≠ near_miss`, `unclear`은 PRD에 없음 → **LightGBM 훈련 라벨 노이즈 발생**.
+이대로 verdicts가 쌓이면 Layer C 재학습 시 라벨 이관 비용 급등. **즉시 정리 필요**.
 
 ---
 
-## Architecture Reality (L1~L7 코드 실측)
+## 1. Vision + Core Loop
 
-| Layer | 상태 | 비고 |
+**Cogochi = "Pattern Research OS"**
+트레이더가 자연어/드래그로 패턴을 가리키면 → PatternObject로 외화 → 53패턴 × 92블록 카탈로그 합류 → 12개 백그라운드 잡이 매칭·검증·학습 자동 운영.
+
+**차별점**: on-demand search + verdict-validated archive. Broadcasting 시그널 채널 아님.
+**단일 페르소나 "Jin"**: 28-38세, 크립토 perp 전업/반전업, WTP $29-79/mo.
+
+```
+[Input — 3 modes]
+  A. 차트 드래그 → POST /patterns/draft-from-range (12 features 자동 추출)
+  B. 자유 텍스트 → POST /patterns/parse → ContextAssembler → claude-sonnet-4-6
+  C. 53 카탈로그 선택 + threshold 수정
+
+[Resolve]   PatternDraft → Validator → SearchQuerySpec
+[Search]    3-layer blend: A(40+dim L1, 0.45) + B(LCS phase path, 0.30) + C(LightGBM*, 0.25)
+            *Layer C: 코드 BUILT, 미훈련 시 None → 실질 가중 A:0.60 / B:0.40
+
+[Watch]     1-click Watch → pattern_scan 15min → ACCUMULATION alert → capture pending_outcome
+[Verdict]   72h → outcome_resolver → HIT/MISS/EXPIRED
+            유저 5-cat: valid/invalid/near_miss/too_early/too_late + comment
+[Refine]    10+ verdicts → refinement_trigger → Hill Climbing + LightGBM 재학습
+[Monetize]  F-60 gate: verdict 200+ × accuracy ≥ 0.55 → 카피시그널 publish
+```
+
+---
+
+## 2. Architecture Reality (L1~L7, 코드 검증)
+
+| Layer | 구성 | 상태 | 갭 |
+|---|---|---|---|
+| **L1** Market Data | 27 modules (Binance/Bybit/Coinbase/OKX) | ✅ | — |
+| **L2** Feature Window | migration 021, 40+col, 138,915 rows | ✅ | DESIGN_V3.1 미반영 (F-12) |
+| **L3** Pattern Object | **53 PatternObjects × 92 Building Blocks** | ✅ | lifecycle UI (F-14) |
+| **L4** State Machine | SQLite WAL + Supabase dual-write, 15m scan | ✅ | — |
+| **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) |
+| **L6** Ledger | 8-type Python, Supabase 1-table | 🟡 | F-02 레이블 불일치 ⚠️ |
+| **L7** AutoResearch | Hill Climbing + LightGBM Phase A+B | ✅/❌ | Phase C/D GPU 필요 (P3) |
+
+**PARTIAL 3개 (AI Researcher 주의)**:
+- `C-11` Layer C LightGBM: predict_one() 존재, 미훈련 시 None 반환. verdicts 50+ 누적 후 자동 활성화됨 — 별도 작업 불필요, **verdicts 속도가 핵심**
+- `S-17` 동시 100명+: read-heavy Supabase 라우팅 미검증 — M3 launch 전 부하테스트 필요
+- `S-08` ContextAssembler: `engine/agents/context.py` — Wave 1에서 `/parse` 연결 완료. 토큰 예산 Parser ~10K
+
+**Scheduler 11 jobs (APScheduler)**:
+```
+universe_scan      15m   Alpha Score + block signals
+pattern_scan       15m   53패턴 phase 추적
+auto_evaluate      15m   알림 품질 피드백 (1h ±1%)
+outcome_resolver   1h    capture outcome (72h +15%/-10%)
+pattern_refinement daily threshold 개선 제안
+refinement_trigger daily 10+ verdicts → Hill Climbing 재학습
+alpha_observer     —     Alpha Score 모니터
+alpha_warm         —     cache warming
+search_corpus      —     feature_windows 업데이트
+feature_materialization — 주기적 프리패치
+__init__           —     APScheduler 등록
+```
+
+---
+
+## 3. Wave Completion (코드 실측 검증)
+
+### ✅ Wave 1 — 완료 (PR #370~#373, 코드 검증됨)
+
+| Feature | 코드 위치 | 검증 |
 |---|---|---|
-| L1 Market Data | ✅ | 27 modules, Binance/Bybit/Coinbase/OKX |
-| L2 Feature Window | ✅ | migration 021, 40+ col, 138,915 rows backfill |
-| L3 Pattern Object | ✅✅ | **53 PatternObjects × 92 Building Blocks** |
-| L4 State Machine | ✅ | SQLite WAL + Supabase dual-write |
-| L5 Search | ✅ | 3-layer blend (Layer A 0.45 / B LCS 0.30 / C LightGBM 0.25) |
-| L6 Ledger | 🟡 | 1-table 운영, 5-cat verdict 미구현 |
-| L7 AutoResearch | ✅/❌ | Phase A+B ✅, Phase C+D ❌ (GPU 필요) |
-
-**Scheduler 11 jobs** (APScheduler): universe_scan 15m / pattern_scan / auto_evaluate 1h / outcome_resolver 1h / refinement_trigger daily + 6 more.
-
----
-
-## Wave Completion
-
-### ✅ Wave 1 — 완료 (PR #370~#373)
-
-F-02(5-cat verdict) / A-03-eng(AI Parser engine) / A-04-eng(Chart Drag engine) / D-03-eng(Watch engine)
+| F-02 engine (5-cat 확장) | `engine/ledger/types.py:54` | ✅ (레이블 불일치 있음 → F-02-fix 필요) |
+| A-03-eng `POST /patterns/parse` | `engine/api/routes/patterns.py:190` | ✅ Claude Sonnet 4.6 function calling |
+| A-04-eng `POST /patterns/draft-from-range` | `engine/api/routes/patterns.py:427` | ✅ 12 features 추출 |
+| D-03-eng `POST /captures/{id}/watch` | `engine/api/routes/captures.py:698` | ✅ idempotent |
 
 ### ✅ Wave 2 — 완료 (PR #377~#392)
 
 H-07(F-60 gate) / A-03-app(AI Parser UI) / A-04-app(Chart Drag UI) / D-03-app(Watch UI) / H-08(per-user stats) / F-17(Intent Router) / F-30(Ledger 4-table) / L-3(recall verify)
 
-### ✅ Wave 3 — 완료
+### ✅ Wave 3 — 완료 (Wave 2 병렬 처리)
 
-H-08 / F-30 / F-17 Wave 2 내 병렬 완료.
-
----
-
-## P0 — MM Hunter (현재)
-
-| Work Item | Feature | 상태 |
-|---|---|---|
-| W-0214 | MM Hunter design D1~D8 LOCKED-IN | ✅ main (#396) |
-| W-0215 | `pattern_search.py` audit (V-00) | 🟡 즉시 시작 가능 |
-| W-0216 | `validation/` 모듈 구현 | ⬜ W-0215 후 |
+H-08 / F-30 / F-17
 
 ---
 
-## P1 — Wave 4 (다음)
+## 4. P0 — 현재 집중 (MM Hunter, 즉시)
 
-| Work Item | Feature | Owner | 선행 |
+| Work Item | Feature | 상태 | 비고 |
 |---|---|---|---|
-| W-0241 | A-03-eng: `POST /patterns/parse` (AI Parser) | engine | — |
-| W-0242 | A-04-eng: `POST /patterns/draft-from-range` (Chart Drag) | engine | — |
-| W-0233 | F-3: Telegram alert → 1-click Verdict deep link | infra+L7 | — |
-| W-0234 | F-4: 5-card Decision HUD | app | — |
-| W-0235 | F-5/F-6: IDE split-pane (Observe/Analyze/Execute) | app | — |
-| W-0243 | F-5: IDE split-pane CSS Grid + resizable | app | — |
-| W-0244 | F-7: meta 자동화 (CURRENT.md hook + worktree cron) | meta | — |
-| W-0236 | F-12: DESIGN_V3.1 features (kimchi/session/oi_norm) | engine | — |
-| W-0237 | F-13: Telegram Bot 연결 UI (6자리 코드) | app | — |
-| W-0245 | F-14: PatternObject lifecycle (Draft→Candidate→Object) | engine+app | A-03-eng |
-| W-0246 | F-15: PersonalVariant runtime threshold override | engine | — |
-| W-0247 | F-16: search recall@10 ≥ 0.7 검증 | engine | — |
-| W-0238 | F-18: Stripe + tier enforcement + rate limit | app | — |
-| W-0248 | F-18: Stripe $29/mo + migration 028 | app | — |
-| W-0239 | F-19: Sentry + observability (p95 / error / cost/WAA) | infra | — |
-| W-0249 | F-19: observability dashboard | infra | — |
-| W-0240 | F-11: Dashboard WATCHING + Candidate Review UI | app | — |
-| W-0250 | F-20~22: Vercel guardrail + GCP Cloud Build | infra | — |
+| **W-0214** | MM Hunter design D1~D8 | ✅ main (#396) | 설계 완료 |
+| **W-0215** | `engine/research/pattern_search.py:3283줄` V-00 audit | 🟡 **즉시 시작** | augment-only 정책 |
+| **W-0216** | `validation/` 모듈 구현 | ⬜ W-0215 후 | |
 
 ---
 
-## P2 — M6 출시
+## 5. P0 — 다음 (Wave 4, MM Hunter 이후)
 
-| # | 항목 |
+### F-02-fix: Verdict 레이블 정합성 ← **⚠️ 긴급 / S사이즈**
+
+```
+현재: valid / invalid / missed / too_late / unclear
+목표: valid / invalid / near_miss / too_early / too_late
+변경:  missed  → near_miss   (semantic: 패턴 자체 유효했지만 타점 미스)
+      unclear → too_early   (semantic: 타이밍 조기 진입)
+      추가:     too_late     (기존 too_late 유지)
+파일: engine/ledger/types.py:54 + verdict.py + label_maker.py + UI 5-cat 버튼
+선행: DB migration (기존 missed/unclear 값 이관 스크립트 포함)
+```
+
+**AI Researcher 근거**: LightGBM Layer C 훈련 시 near_miss는 "패턴 정확, 타점만 틀림" 라벨 → refinement 방향이 threshold shift. missed는 패턴 자체 무효 → 다른 학습 신호. 혼재 시 recall 저하 직결.
+
+### F-3: Telegram alert → 1-click Verdict deep link (M, 3일)
+
+```
+POST /alerts/{alert_id}/verdict-link → signed JWT (72h TTL, HMAC-SHA256)
+포함: { alert_id, capture_id, symbol, pattern_slug, expires_at }
+앱: /verdict?token=xxx → 자동 로그인 + VerdictModal 즉시 팝업
+목표: 알림 클릭 → verdict 제출 ≤ 30초
+```
+
+**AI Researcher 근거**: verdict 제출률이 LightGBM 훈련 속도를 결정함. 알림 → 앱 열기 → 탐색 → verdict = 마찰 최대. Deep link = 마찰 제거.
+
+### F-4: 5-card Decision HUD (M, 4일)
+
+```
+카드 1: Pattern Status (phase, alert_count, 최근 capture)
+카드 2: Top Evidence (building blocks 상위 3개 + 신호 강도)
+카드 3: Risk (invalidation 조건 2-3개)
+카드 4: Next Transition (다음 예상 phase + 조건)
+카드 5: Actions (Watch / Capture / Verdict / Benchmark)
+```
+
+### F-5: IDE-style resizable split-pane (M-L, 5일)
+
+```
+Observe mode:  Chart 70% | HUD 30%
+Analyze mode:  Chart 50% | Search results 30% | HUD 20%   (default)
+Execute mode:  Chart 40% | Workspace 30% | Quick-trade 30%
+CSS Grid, resizable, min-width per pane
+```
+
+### F-7: 메타 자동화 (S, 1.5일)
+
+```
+① post-merge hook: main push → CURRENT.md SHA 자동 업데이트
+② worktree cron: 매일 00:00 → worktree 10개 초과 시 Slack/log 경고
+③ spec/PRIORITIES.md validation: D/Q 미확정 항목 출력
+```
+
+---
+
+## 6. P1 — M3 출시 전 (Wave 4 실행 순서)
+
+| Feature | Work Item | Effort | 선행 | 코드 현황 |
+|---|---|---|---|---|
+| F-11 Dashboard WATCHING 풀 구현 | W-0240 | M | — | placeholder BTC/ETH 2-item 정적 코드 |
+| F-11 Pattern Candidate Review UI | W-0240 | M | — | `/patterns/candidates` API BUILT |
+| F-12 DESIGN_V3.1 features | W-0236 | M | — | migration 021 40+col에 3개 미반영 |
+| ↳ kimchi_premium / session_apac/us/eu / oi_normalized_cvd | | | | Korea persona 직결 |
+| F-13 Telegram Bot 연결 UI | W-0237 | M | — | alert 발송 인프라 BUILT, UI 없음 |
+| ↳ 6자리 코드 인증 + 알림 라우팅 설정 | | | | |
+| F-14 PatternObject lifecycle | W-0245 | M | A-03-eng | Draft→Candidate→Object promote |
+| F-15 PersonalVariant runtime UI | W-0246 | S-M | — | `active_variant_registry.py` BUILT |
+| F-16 Search recall@10 ≥ 0.7 | W-0247 | M | — | Layer C 미훈련 → A:0.6 / B:0.4 현재 |
+| ↳ 50 query eval set + LCS 가중 튜닝 (0.6/0.3/0.1) | | | | |
+| H-07 F-60 Gate | W-0238 | S-M | F-02-fix | 라우트 없음 |
+| ↳ `GET /users/{id}/f60-status` → verdict_count / accuracy / gate_passed | | | | |
+| H-08 per-user verdict accuracy | W-0239 | S | F-02-fix | `engine/stats/engine.py`에 추가만 |
+| F-18 Stripe $29/mo + tier enforcement | W-0248 | M | — | JWT Auth BUILT, Stripe 미연결 |
+| ↳ tier enforcement (Free/Pro) + rate limit + migration 028 | | | | |
+| F-19 Sentry + observability | W-0249 | M | — | H-04/H-05 flywheel 체크 BUILT |
+| ↳ p95 latency / error rate / cost-per-WAA 대시보드 | | | | |
+| F-20~22 Infra cleanup | W-0250 | S | — | Vercel guardrail + GCP Cloud Build |
+
+---
+
+## 7. P2 — M6 출시
+
+| Feature | 비고 |
 |---|---|
-| F-31 | LightGBM Reranker 1차 학습 (verdict 50+) NDCG@5 +0.05 |
-| F-32 | Capture duplicate detection |
-| F-33 | Negative set curation (hard_negative / near_miss / fake_hit) |
-| F-34 | Isotonic calibration |
-| F-35 | Regime-conditioned stats (bull/bear/range) |
-| F-36 | Push/Telegram alerts 정밀화 |
-| F-37 | Personal stats panel + X 공유 |
-| F-38 | Pattern decay monitor |
-| F-39 | Screener Sprint 2 (Twitter API + 섹터 LLM + 이벤트 크롤러) |
+| **F-30** Ledger 4-table 분리 (entries/scores/outcomes/verdicts) | Python 타입은 4종 분리됨, DB는 1 table (운영 안정성 tradeoff) |
+| **F-31** LightGBM Reranker 1차 학습 (verdict 50+, NDCG@5 +0.05) | C-11 PARTIAL → 훈련 후 자동 활성화 |
+| **F-32** Capture duplicate detection + selection range 재호출 | |
+| **F-33** Negative set curation (hard_negative / near_miss / fake_hit) | AI Researcher: 양질의 negative set이 recall 개선 핵심 |
+| **F-34** Isotonic calibration | LightGBM confidence score 신뢰도 보정 |
+| **F-35** Regime-conditioned stats (bull/bear/range) | |
+| **F-36** Push/Telegram alerts 정밀화 | false positive < 15% gate |
+| **F-37** Personal stats panel + Telegram/X 공유 | |
+| **F-38** Pattern decay monitor | win_rate 급락 감지 → 자동 비활성화 |
+| **F-39** Screener Sprint 2 (Twitter 7% + 섹터 LLM 5% + 이벤트 4% + 봇 2% + 아스터 2%) | Sprint 1 80% BUILT |
 
 ---
 
-## P3 — Phase 2+
+## 8. P3 — Phase 2+
 
-| # | 항목 | 선행 |
+| Feature | 선행조건 | CTO 메모 |
 |---|---|---|
-| F-50 | LLM Judge (Stage 4 advisory) | reranker 안정 |
-| F-51 | Chart Interpreter (multimodal) | F-50 |
-| F-52 | Auto-Discovery agent (새 패턴 후보 제안) | verdict 1000+ |
-| F-55 | LambdaRank reranker | verdict 200+ |
-| F-56 | Pattern Wiki 본격화 | Phase 2 |
-| F-57 | Semantic RAG (pgvector + news) | F-50 |
-| F-59 | ORPO/DPO Phase C + per-user LoRA Phase D | GPU + 500+ samples |
-| **F-60** | **카피시그널 Phase 1** — kol_style_engine.py 캡션 + 알림 구독 | verdict 200+ × 5 |
-| **F-61** | **카피시그널 Phase 2** — revenue share marketplace | F-60 + KYC |
+| F-50 LLM Judge (Stage 4 advisory) | reranker 안정 | |
+| F-51 Chart Interpreter (multimodal) | F-50 | |
+| F-52 Auto-Discovery (새 패턴 후보 제안) | verdict 1000+ | |
+| F-53 Multi-TF search + benchmark pack | F-16 | |
+| F-54 Team workspace + shared library | M6 후 | |
+| **F-55** LambdaRank reranker | verdict 200+ + NDCG label | Layer C LightGBM 이후 단계 |
+| F-56 Pattern Wiki 본격화 | Phase 2 | engine/wiki/ BUILT, ingest 일부 |
+| F-57 Semantic RAG (pgvector + news) | F-50 직전 | |
+| F-59 ORPO/DPO Phase C + per-user LoRA | GPU + 500+ samples | |
+| **F-60** 카피시그널 Phase 1 | verdict 200+ × 5패턴 × accuracy ≥ 0.55 | kol_style_engine.py ✅ 준비됨 |
+| **F-61** 카피시그널 Phase 2 marketplace | F-60 + KYC + KOL guardrail | N-05/N-06 신규 구현 필요 |
 
 ---
 
-## 확정된 결정 (D/Q)
+## 9. 9-이슈 Canonical 등록 단위 (원소 분류)
 
-| # | 결정 |
-|---|---|
-| D1 | Pricing **$29/mo Pro** |
-| D2 | NSM = **WVPL per user** (Weekly Verified Pattern Loops) |
-| D3 | Persona = **Jin** (28-38세 perp 전업/반전업) |
-| D5 | Layout = **IDE split-pane** (free-form canvas 폐기) |
-| D6 | L6 **1-table 유지** (P2 4-table 분리) |
-| D7 | L3 **file-first** 유지 (53패턴 file 등록 OK) |
-| D8 | 5-cat verdict **P0 즉시** (reranker 라벨 = moat) |
-| D11 | Mental model = **Forward search tool** (복기 저널 아님) |
-| D12 | 카피시그널 = **F-60 gate** (verdict 200+ × 5 패턴 후) |
-| D13 | AI Parser = **P0 입구 #1** |
-| D15 | Telegram alert → verdict = **P0 1-click 링크** |
-| Q1 | missed vs too_late = **분리** |
-| Q3 | Chart Drag = **실제 드래그 UI** |
-| Q4 | AI Parser 입력 = **자유 텍스트** |
-| Q5 | AI Parser 모델 = **claude-sonnet-4-6** |
+> feature-implementation-map.md v3.0 기준. 독립 4개 → 의존 5개 순으로 병렬 시작 가능.
+
+| 이슈 | 기능 | Effort | 선행 | 현재 상태 |
+|---|---|---|---|---|
+| **F-02-fix** | Verdict 레이블 정합 (missed→near_miss, unclear→too_early) | S | — | ⚠️ 즉시 필요 |
+| **A-03-eng** | `POST /patterns/parse` | — | — | ✅ Wave 1 완료 |
+| **A-04-eng** | `POST /patterns/draft-from-range` | — | — | ✅ Wave 1 완료 |
+| **D-03-eng** | `POST /captures/{id}/watch` | — | — | ✅ Wave 1 완료 |
+| **H-07** | F-60 Gate `GET /users/{id}/f60-status` | S-M | F-02-fix 권장 | NOT BUILT |
+| **H-08** | per-user verdict accuracy in stats engine | S | F-02-fix 권장 | NOT BUILT |
+| **N-05** | Marketplace listing + subscribe | L | H-07 | P3 |
 
 ---
 
-## Success Metrics
+## 10. 의사결정 상태 (D/Q)
 
-| Metric | Target |
-|---|---|
-| **NSM** WVPL per user | M1: 2 / M3: 3 / M6: 4 / M12: 5 |
-| Search hit@5 | M3: 55% / M6: 70% |
-| Parser schema compliance | ≥ 95% |
-| Revenue MRR | M3: $1K / M6: $15K / M12: $80K |
-| Infra cost/WAA | < $8 |
-| p95 latency | < 2s |
-| Error rate | < 0.5% |
+### ✅ Lock-in 완료
 
-**Kill switch**: M3 WVPL < 1.0 → 재설계 / M6 총 < 1500 WAA → positioning kill.
+| # | 결정 | 근거 |
+|---|---|---|
+| **D8** | 5-cat verdict P0 즉시 | reranker 라벨 = moat. 지연 시 학습 데이터 노이즈 누적 |
+| **Q1** | missed vs too_late: **분리** | 학습 노이즈 다름. missed = 패턴 무효, too_late = 타이밍 실패 |
+| **Q3** | Chart Drag: **실제 드래그 UI** | D11 forward search mental model 일치. form은 fallback |
+| **Q4** | Parser 입력: **자유 텍스트** | Telegram refs 4채널 형식 그대로 붙여넣기 지원 |
+| **Q5** | Parser 모델: **claude-sonnet-4-6** | function calling 안정성. Haiku는 KOL caption(M-02)에 사용 |
+
+### ⬜ 미확정 (사용자 결정 필요)
+
+| # | 질문 | AI Researcher 권고 |
+|---|---|---|
+| **D1** | Pricing $29/mo Pro | 83% gross margin. 7-Doc cost model 기준 적정 |
+| **D2** | NSM = WVPL (Weekly Verified Pattern Loops) per user | 플라이휠 전 구간 포함. 단일 지표로 최적 |
+| **D3** | Persona = Jin 단일 | anti-persona 명시 후 확정 권장 |
+| **D4** | Decision HUD 5-card 구성 | 위 F-4 설계 기준 확정 필요 |
+| **D5** | IDE split-pane (free-form canvas 폐기) | 위 F-5 설계 기준 확정 필요 |
+| **D6** | L6 1-table 유지 (4-table P2) | 운영 안정성 > 학습 효율성. 단기 OK |
+| **D7** | L3 file-first 유지 | 53패턴 file 등록 안정적. lifecycle UI(F-14)만 추가 |
+| **D9** | Wiki = L7 ledger-driven job | engine/wiki/ 이미 BUILT, 별도 AI agent 아님 |
+| **D10** | DESIGN_V3.1 features 즉시 P1 | kimchi_premium Korea persona 직결. 권장 확정 |
+| **D11** | Forward search tool (복기 저널 아님) | 핵심 포지셔닝. 확정 권장 |
+| **D12** | 카피시그널 = F-60 gate 후 | verdict 200+ 없이 publish = 신뢰도 0 |
+| **D13** | AI Parser P0 입구 #1 | /parse Wave 1 완료. 이미 실현됨 |
+| **D14** | Chart drag + AI Parser 둘 다 P0 | 둘 다 Wave 1 완료. 이미 실현됨 |
+| **D15** | Telegram alert → 1-click verdict deep link | F-3 설계 기준 확정 필요 |
+| **Q2** | F-60 accuracy threshold | **0.55** 시작 권고 → 90일 후 데이터 기반 조정 |
 
 ---
 
-## Frozen / Non-Goals
+## 11. Success Metrics + Kill Switch
 
-- ❌ Copy Trading (대중형 소셜/카피) — W-0132 영구 폐기
-- ❌ Chart UX polish / TradingView feature parity
-- ❌ MemKraft / Multi-Agent OS 추가 개발
-- ❌ AI 차트 분석 툴 / 범용 스크리너 / 자동매매 실행
-- ❌ Broadcasting-only 시그널 채널 모방 (Alpha Hunter 방식)
-- ❌ 자유 텍스트 LLM chat (AI Parser 외)
-- ❌ 모바일 native 앱 (PWA 우선, Phase 2+)
-- ❌ Portfolio P&L / social comments / paper trading / options / price prediction
+### NSM: WVPL (Weekly Verified Pattern Loops) per user
+
+| 시점 | 목표 | Kill |
+|---|---|---|
+| M1 | ≥ 2 | — |
+| **M3** | **≥ 3** | < 1.0 → **재설계** |
+| M6 | ≥ 4 | total WAA < 1,500 → positioning kill |
+| M12 | ≥ 5 | MRR < $40K → GTM 재검토 |
+
+### Funnel @ M3
+
+```
+land→signup 4% / signup→capture 55% / capture→search 75%
+search→verdict 40% / W1→W4 retention 50%
+```
+
+### Search Quality
+
+```
+hit@5:      M3 55% / M6 70%
+recall@10:  ≥ 0.7 (F-16, 50 query eval set)
+reranker:   NDCG@5 vs baseline +0.05 (verdict 50+ 후, F-31)
+```
+
+### AI Quality
+
+```
+Parser schema compliance ≥ 95% (10 test cases)
+Parser confidence ≥ 0.75 @ M3
+False positive alert < 15%
+LLM hallucination < 0.1/WAA/주
+```
+
+### Revenue
+
+```
+Free→Pro 5% @ M6
+MRR: M3 $1K / M6 $15K / M12 $80K
+Churn ≤ 10%/월 / LTV/CAC ≥ 5×
+Infra cost/WAA < $8 / p95 < 2s / error < 0.5%
+```
+
+### Flywheel Guardrails (GTM 동결 조건)
+
+```
+captures_per_day_7d > 0
+captures_to_outcome_rate > 0.9
+outcomes_to_verdict_rate > 0.5
+verdicts_to_refinement_7d > 0
+active_models_per_pattern ≥ 1
+promotion_gate_pass_rate_30d > 0
+```
+
+---
+
+## 12. 수익화 4단계
+
+| Stage | 시점 | 모델 | Gate |
+|---|---|---|---|
+| 1 | M1-M6 | SaaS Pro $29/mo | WVPL ≥ 3/user |
+| 2 | M6-M12 | + Team desk ARPU $200-1000 | F-54 (team workspace) |
+| 3 | M12+ | + 카피시그널 알림 구독 | F-60 (verdict 200+ × 5패턴) |
+| 4 | M18+ | + Marketplace revenue share | F-61 + KYC + KOL guardrail |
+
+---
+
+## 13. Frozen / Non-Goals
+
+```
+❌ Copy Trading 직접 주문 실행 — 영구. 시그널 알림은 OK (F-60), order 실행은 X
+❌ TradingView feature parity — 영구
+❌ 자동매매 in-product — 영구
+❌ Broadcasting-only 시그널 (Alpha Hunter 방식 모방) — 영구
+❌ Multi-Agent OS / MemKraft 추가 개발 — 야크쉐이빙
+❌ 자유 텍스트 LLM chat (AI Parser 외) — 영구
+❌ 모바일 native 앱 — Phase 2+ (PWA 우선)
+❌ Free-form floating canvas — 폐기 (IDE split-pane으로 대체)
+❌ Portfolio P&L / social comments / paper trading / options / price prediction
+❌ 성과 수수료 / KOL 유료방 / 초보자 교육 / 블랙박스 SaaS
+❌ Customer-facing LLM chat (parser 외)
+❌ Pine Script Generator 확장 — W-0211 완료, Phase 2+ LLM-only 보류
+```
+
+---
+
+## 14. 즉시 다음 액션 (CTO 지시)
+
+```
+1. [즉시]   W-0215 시작 — pattern_search.py:3283줄 audit (V-00)
+2. [즉시]   F-02-fix — verdict 레이블 이관 migration 작성 (기존 missed→near_miss 포함)
+3. [이번 주] D1/D2/D3/D5/D11/D15 사용자 lock-in (미확정 결정 5개 우선)
+4. [이번 주] W-0216 — validation/ 모듈 구현 (W-0215 완료 후)
+5. [다음 주] F-3 Telegram→Verdict deep link / F-4 Decision HUD / F-7 메타 자동화
+6. [M1]     F-5 IDE split-pane + F-11 Dashboard WATCHING + H-07 F-60 Gate
+```
+
+---
+
+*코드 실측 SHA: 6d7de4fe | CTO+AI Researcher A024 | 2026-04-27*

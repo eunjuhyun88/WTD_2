@@ -1,7 +1,9 @@
 # W-0241 — A-03-eng: AI Parser Engine `POST /patterns/parse`
 
-> Wave 4 P0 | Owner: engine | Branch: `feat/A03-ai-parser-engine`
-> **독립 실행 가능 — A-03-app(UI)은 이미 Wave 2에서 완료됨. engine만 남음**
+> ~~Wave 4 P0~~ **✅ COMPLETED — Wave 1 (코드 검증: engine/api/routes/patterns.py:190)**
+> `POST /patterns/parse` 라우트 존재 확인 (2026-04-27 코드 실측).
+> claude-sonnet-4-6 function calling + 재시도 2회 구현됨.
+> **이 work item은 stale. 추가 구현 불필요.**
 
 ---
 

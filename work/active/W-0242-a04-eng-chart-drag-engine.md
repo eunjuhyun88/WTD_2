@@ -1,6 +1,8 @@
 # W-0242 — A-04-eng: Chart Drag Engine `POST /patterns/draft-from-range`
 
-> Wave 4 P0 | Owner: engine | Branch: `feat/A04-chart-drag-engine`
+> ~~Wave 4 P0~~ **✅ COMPLETED — Wave 1 (코드 검증: engine/api/routes/patterns.py:427)**
+> `POST /patterns/draft-from-range` 라우트 존재 확인 (2026-04-27 코드 실측).
+> **이 work item은 stale. 추가 구현 불필요.**
 > **독립 실행 가능 — A-04-app(UI)은 이미 Wave 2에서 완료됨. engine만 남음**
 
 ---
