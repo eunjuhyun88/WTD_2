@@ -37,7 +37,7 @@ ml = [
 research-cli = "research.cli:main"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "research/validation"]
 # "." → cogochi imports (models.signal, scanner.feature_calc, etc.)
 # ".." → wizard imports (wizard.composer, wizard.schema, etc.) tested from
 #        the same env without needing a separate wizard pyproject.
