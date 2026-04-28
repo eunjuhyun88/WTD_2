@@ -15,6 +15,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/post-edit-pytest.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit-commit.sh"
           }
         ]
       },
@@ -24,6 +28,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/post-edit-pytest.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit-commit.sh"
           }
         ]
       }
