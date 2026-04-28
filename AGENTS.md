@@ -97,6 +97,20 @@ Read in this order:
 - Default pack = `AGENTS.md` + one active work item + one relevant domain doc + minimum code files.
 - Expand context only when the default pack cannot support the next action safely.
 - Use owner and primary change type to keep the default pack narrow.
+
+### /컨텍스트 — On-demand Context Pack (W-0299)
+
+작업 시작 전 관련 코드·문서·메모리를 8k token 이하로 압축해서 즉시 출력한다.
+
+```
+/컨텍스트 "V-PV-01 구현"      # engine 도메인, W-0298 work item
+/컨텍스트 "GateV2 확장"        # engine + gate 관련 코드
+/컨텍스트 W-0299               # W-0299 work item 직접 지정
+/컨텍스트 "차트 그리기 툴"     # app 도메인
+```
+
+Pack 구성: Work Item (Goal+Scope+AC) + Domain sub-file + 관련 코드 + Domain Doc + Memory 스니펫.
+코드 레이어는 MCP serena 우선, fallback git grep.
 - Expand packs by need:
   - `app` pack: active work item + relevant product/domain docs + touched app files
   - `engine` pack: active work item + relevant domain docs + touched engine files/tests
