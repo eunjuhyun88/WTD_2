@@ -1,4 +1,4 @@
-# W-0292 — 자동화 하네스 runbook (hook + cycle-smoke 정착)
+# W-0296 — 자동화 하네스 runbook (hook + cycle-smoke 정착)
 
 > Wave: 5 (Productivity) | Priority: P2 | Effort: XS (1시간)
 > Charter: In-Scope (문서화 — 이미 빌드된 것)
