@@ -39,7 +39,7 @@ _PROGRESS_PATH = Path(__file__).parent / "market_data" / ".progress.json"
 # Binance klines max rows per request
 _KLINES_LIMIT = 1000
 # Global rate limit: max requests per second across all workers
-_RATE_LIMIT_RPS = 18  # safe margin below Binance 2400/min = 40/s
+_RATE_LIMIT_RPS = 10  # conservative: 10 req/s = 600/min (25% of Binance 2400/min limit)
 _MIN_SLEEP_S = 0.05   # minimum sleep even when bucket has tokens
 
 
@@ -83,7 +83,7 @@ class BackfillPipeline:
     def __init__(
         self,
         store: ParquetStore | None = None,
-        workers: int = 8,
+        workers: int = 4,
         rate_per_sec: float = _RATE_LIMIT_RPS,
     ) -> None:
         self.store = store or ParquetStore()
@@ -123,7 +123,7 @@ class BackfillPipeline:
 
     # ── HTTP helpers ──────────────────────────────────────────────────────────
 
-    async def _get_json(self, url: str, params: dict, retries: int = 3) -> list | dict:
+    async def _get_json(self, url: str, params: dict, retries: int = 6) -> list | dict:
         assert self._client is not None and self._bucket is not None
         for attempt in range(retries):
             await self._bucket.acquire()
@@ -165,6 +165,7 @@ class BackfillPipeline:
         start_ms = _ms(start)
         all_rows: list[list] = []
 
+        consecutive_errors = 0
         while True:
             try:
                 batch = await self._get_json(base_url, {
@@ -173,9 +174,16 @@ class BackfillPipeline:
                     "limit": _KLINES_LIMIT,
                     "endTime": end_ms,
                 })
+                consecutive_errors = 0
             except Exception as exc:
-                log.warning("[%s] klines error at %d: %s", symbol, end_ms, exc)
-                break
+                consecutive_errors += 1
+                if consecutive_errors >= 5:
+                    log.warning("[%s] klines giving up after %d errors: %s", symbol, consecutive_errors, exc)
+                    break
+                wait = min(60 * consecutive_errors, 300)
+                log.warning("[%s] klines page error (%d), retry in %ds: %s", symbol, consecutive_errors, wait, exc)
+                await asyncio.sleep(wait)
+                continue
             if not batch:
                 break
             all_rows = list(batch) + all_rows
