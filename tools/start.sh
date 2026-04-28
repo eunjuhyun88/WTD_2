@@ -293,11 +293,31 @@ else
 fi
 
 echo ""
-echo "Active locks (legacy CONTRACTS.md — DEPRECATED):"
+echo "🔒 File-domain locks (spec/CONTRACTS.md):"
 if [ -f spec/CONTRACTS.md ]; then
-  grep -E "^\| A[0-9]+" spec/CONTRACTS.md 2>/dev/null \
-    | sed 's/^/  /' \
-    | head -10 || echo "  (none)"
+  ACTIVE_LOCKS=0
+  while IFS= read -r line; do
+    if echo "$line" | grep -qE '^\| A[0-9]+'; then
+      row_pid=$(echo "$line" | awk -F'|' '{print $6}' | tr -d ' ')
+      if [ -n "$row_pid" ] && [ "$row_pid" != "PID" ]; then
+        if kill -0 "$row_pid" 2>/dev/null; then
+          echo "  ⛔ LIVE: $line"
+          ACTIVE_LOCKS=$((ACTIVE_LOCKS + 1))
+        else
+          echo "  💀 stale (PID $row_pid dead — ./tools/claim.sh 재실행 시 자동 해제): $line"
+        fi
+      else
+        echo "  🔑 $line"
+        ACTIVE_LOCKS=$((ACTIVE_LOCKS + 1))
+      fi
+    fi
+  done < spec/CONTRACTS.md
+  if [ "$ACTIVE_LOCKS" -eq 0 ]; then
+    echo "  (none)"
+  else
+    echo ""
+    echo "  ⚠️  위 도메인은 다른 창/에이전트가 작업 중 — 겹치지 않게 확인 후 /claim"
+  fi
 else
   echo "  (none)"
 fi
