@@ -17,6 +17,7 @@
 | `W-0293-1cycle-infra-on` | P0 | ✅ gcloud cogotchi(asia-southeast1) ENABLE_*_JOB=true 배포 완료 |
 | `W-0298-v-pv-01-impl` | P1 | 🟡 PR #601 OPEN — CI pending |
 | `W-0297-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 |
+| `W-0299-harness-reliability-design` | P1 | 🟡 Design Draft — verify/hook/drift 신뢰성 수리 |
 | `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L |
 | `W-0296-automation-harness-runbook` | P2 | ✅ runbook 문서화 완료 |
 
