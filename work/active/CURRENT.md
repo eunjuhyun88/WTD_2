@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`e0b2b2e1` — origin/main (2026-04-29) — PR #613 CURRENT.md W-0299 완료 반영
+`52fb9591` — origin/main (2026-04-29) — PR #616 W-0297+W-0300 LSP+serena+/컨텍스트 머지
 
 ---
 
@@ -15,9 +15,8 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0283-f11-watching-candidates-impl` | P1 | 🟡 Design Ready — dashboard P&L 색상 + 30s 갱신 + /patterns/candidates UI |
-| `W-0297-cursor-grade-code-accuracy` | P1 | 🟢 Phase A+B 완료 (.mcp.json + LSP allow + agents/) — AC1~AC3 검증 대기 |
-| `W-0300-cursor-context-manager` | P1 | 🟡 구현 완료 (/컨텍스트 skill + context-pack.sh) — PR 미생성, AC 검증 대기 |
-| `W-0302-git-stash-purge` | P1 | 🟡 git stash 92개 정리 (즉시 실행 가능) |
+| `W-0297-cursor-grade-code-accuracy` | P1 | 🟢 PR #616 머지 — AC4/5/6 ✅, AC1(LSP)/AC2(serena) 재시작 후 검증 필요 |
+| `W-0300-cursor-context-manager` | P1 | 🟢 PR #616 머지 — AC3/5 ✅, AC1/2(/컨텍스트 실행) 재시작 후 검증 필요 |
 | `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L |
 
 ---

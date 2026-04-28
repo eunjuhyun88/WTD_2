@@ -1,6 +1,6 @@
-# W-0243 — Wave 3 Phase 1.1: W-0102 Slice 1+2 mop-up
+# W-0303 — Wave 3 Phase 1.1: W-0102 Slice 1+2 mop-up
 
-> Wave 3 entry | Owner: app | Branch: `feat/W-0243-w0102-slice-1-2`
+> Wave 3 entry | Owner: app | Branch: `feat/W-0303-w0102-slice-1-2`
 > **선행: 없음 (W-0241/W-0242와 병렬 가능)**
 
 ## Goal
@@ -36,7 +36,7 @@ Product surface change (URL routing + SSE handler)
 
 ## Canonical Files
 
-- `work/active/W-0243-w0102-slice-1-2-mop-up.md` (this)
+- `work/active/W-0303-w0102-slice-1-2-mop-up.md` (this)
 - `work/completed/W-0102-prompt-agent-chart-control.md` (선행 spec)
 - `work/active/W-0230-tradingview-grade-viz-design.md` (상위 설계)
 - `app/src/routes/terminal/+page.svelte`
@@ -68,11 +68,11 @@ Product surface change (URL routing + SSE handler)
 
 ## Decisions
 
-- D-W-0243-1: URL `?q=` clear via `history.replaceState` (재실행 방지)
-- D-W-0243-2: chart_action event는 Svelte writable store로 broadcast (chartActionBus)
-- D-W-0243-3: ChartBoard subscribe해서 indicator/symbol 변경
-- D-W-0243-4: 에러 시 toast 또는 console.warn (silent fail X)
-- D-W-0243-5: 대상 사용자 = 기존 terminal 사용자 (회귀 0 보장)
+- D-W-0303-1: URL `?q=` clear via `history.replaceState` (재실행 방지)
+- D-W-0303-2: chart_action event는 Svelte writable store로 broadcast (chartActionBus)
+- D-W-0303-3: ChartBoard subscribe해서 indicator/symbol 변경
+- D-W-0303-4: 에러 시 toast 또는 console.warn (silent fail X)
+- D-W-0303-5: 대상 사용자 = 기존 terminal 사용자 (회귀 0 보장)
 
 ## Next Steps
 
