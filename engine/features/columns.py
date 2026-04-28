@@ -43,4 +43,16 @@ _REGISTRY_COLUMNS: tuple[str, ...] = tuple(
     all_macro_columns() + all_onchain_columns()
 )
 
-FEATURE_COLUMNS: tuple[str, ...] = _CORE_FEATURE_COLUMNS + _REGISTRY_COLUMNS
+_KOREA_FEATURE_COLUMNS: tuple[str, ...] = (
+    "kimchi_premium_pct",
+    "kimchi_premium_7d_mean",
+    "kimchi_premium_zscore",
+    "session_return_apac",
+    "session_return_us",
+    "session_return_eu",
+    "session_dominance",
+    "oi_normalized_cvd",
+    "oi_normalized_cvd_1h",
+)
+
+FEATURE_COLUMNS: tuple[str, ...] = _CORE_FEATURE_COLUMNS + _KOREA_FEATURE_COLUMNS + _REGISTRY_COLUMNS
