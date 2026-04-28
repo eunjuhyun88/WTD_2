@@ -23,6 +23,35 @@ import logging
 log = logging.getLogger(__name__)
 
 
+def _fetch_btc_returns() -> "pd.Series | None":
+    """Load BTCUSDT 1d klines and compute 30-day rolling return (%).
+
+    Used to activate V-05 regime-conditional wiring in production.
+    Returns ``None`` on CacheMiss or any failure (V-05 silently skipped).
+
+    Returns:
+        UTC-indexed ``pd.Series`` where each value is the 30-day percentage
+        return of BTC at that timestamp, or ``None`` if data unavailable.
+    """
+    try:
+        import pandas as pd
+        from data_cache.loader import CacheMiss, load_klines
+
+        klines = load_klines("BTCUSDT", "1d", offline=True)
+        if klines.empty or "close" not in klines.columns:
+            return None
+        close = klines["close"].sort_index()
+        # 30-day rolling return: (close_t / close_{t-30} - 1) * 100
+        returns = (close / close.shift(30) - 1) * 100.0
+        # Ensure UTC-aware index for asof() in pipeline.py
+        if returns.index.tzinfo is None:
+            returns.index = returns.index.tz_localize("UTC")
+        return returns.dropna()
+    except Exception as exc:
+        log.debug("_fetch_btc_returns: unavailable — %s", exc)
+        return None
+
+
 def run_full_validation(
     research_run_id: str,
     *,
@@ -41,8 +70,10 @@ def run_full_validation(
         research_run_id: ID of the ``ResearchRun`` produced by
             :func:`run_pattern_benchmark_search`.
         btc_returns: optional UTC-indexed ``pd.Series`` of BTC 30-day
-            return percentages.  When provided, V-05 regime-conditional
-            wiring is activated inside :func:`run_validation_pipeline`.
+            return percentages.  When ``None`` (default), :func:`_fetch_btc_returns`
+            is called automatically to activate V-05 from the local data cache.
+            Pass an explicit ``pd.Series`` to override, or pass a sentinel to
+            disable V-05 if needed.
 
     Returns:
         :class:`GateV2Result` on success, ``None`` when the artifact or
@@ -51,6 +82,11 @@ def run_full_validation(
     from research.pattern_search import BenchmarkPackStore, PatternSearchArtifactStore
     from research.validation.gates import evaluate_gate_v2
     from research.validation.pipeline import ValidationPipelineConfig, run_validation_pipeline
+
+    # Activate V-05 automatically — fetch BTC returns from local cache.
+    # Fails silently (returns None) when cache is unavailable.
+    if btc_returns is None:
+        btc_returns = _fetch_btc_returns()
 
     artifact = PatternSearchArtifactStore().load(research_run_id)
     if artifact is None:
