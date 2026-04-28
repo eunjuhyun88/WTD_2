@@ -4,25 +4,25 @@
     "allow": [
       "Bash(cd engine && python -m pytest*)",
       "Bash(npm --prefix app run check)",
-      "Bash(npm --prefix app run build)"
+      "Bash(npm --prefix app run build)",
+      "LSP(go-to-definition)",
+      "LSP(find-references)",
+      "LSP(hover)"
     ]
   },
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Write",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
+            "if": "Write(*/engine/tests/test_*.py)",
             "command": "bash .claude/hooks/post-edit-pytest.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
+          },
           {
             "type": "command",
+            "if": "Edit(*/engine/tests/test_*.py)",
             "command": "bash .claude/hooks/post-edit-pytest.sh"
           }
         ]
