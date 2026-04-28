@@ -6,7 +6,7 @@
 > Created: 2026-04-28 by Agent A073
 > Issue: #547
 
-## Goal (1줄)
+## Goal
 Dashboard WATCHING 섹션에 실시간 P&L 색상 + 자동갱신을 추가하고, `/patterns/candidates` 페이지를 신규 구현해 프로모션 후보 패턴을 검토·승인할 수 있다.
 
 ## Scope

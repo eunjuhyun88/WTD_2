@@ -228,6 +228,18 @@ meta (agent productivity)
 - skills/ 디렉토리 위치 미확인 → Q-0299-1.
 - W-0297 Phase B (.mcp.json) 미완 → 코드 레이어 degraded로 먼저 구현 후 W-0297과 함께 PR.
 
+## Assumptions
+
+- Claude Code `.claude/commands/` 디렉토리 자동 인식 (slash command 등록 조건).
+- `tools/context-pack.sh` 실행 권한 확보 (`chmod +x` 또는 `bash` 직접 호출).
+- W-0297 Phase B (.mcp.json + serena MCP) 완료 후 code 레이어 serena 우선 사용 가능.
+
+## Next Steps
+
+1. Claude Code 재시작 후 AC1~AC5 수동 검증 (`/컨텍스트` slash command 동작 확인).
+2. W-0297 AC1~AC3 검증과 함께 PR #616 머지.
+3. CURRENT.md main SHA 업데이트.
+
 ## Handoff Checklist
 
 - [ ] Q-0299-1 해소 (skill 파일 위치 확인)
