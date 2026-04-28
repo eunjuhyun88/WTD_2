@@ -91,7 +91,7 @@ def calc_oi_normalized_cvd(cvd: float, oi: float) -> float:
 | `engine/features/columns.py` | 변경 — 신규 6개 컬럼 추가 |
 | `engine/features/compute.py` | 변경 — kimchi/session/oi_cvd 계산 로직 |
 | `engine/features/materialization.py` | 변경 — 신규 feature 재계산 등록 |
-| `app/supabase/migrations/026_feature_v31.sql` | 신규 — `feature_windows` 컬럼 추가 |
+| `app/supabase/migrations/027_feature_v31.sql` | 신규 — `feature_windows` 컬럼 추가 |
 | `engine/tests/test_feature_v31.py` | 신규 — 3개 feature group 유닛 테스트 |
 
 ## Non-Goals
@@ -102,7 +102,7 @@ def calc_oi_normalized_cvd(cvd: float, oi: float) -> float:
 
 ## Exit Criteria
 
-- [ ] `feature_windows` 6개 신규 컬럼 추가 (migration 026)
+- [ ] `feature_windows` 6개 신규 컬럼 추가 (migration 027)
 - [ ] Upbit BTC/KRW 5분 수집 작동
 - [ ] `kimchi_premium_pct` / `session_dominance` / `oi_normalized_cvd` 값 검증 (spot-check)
 - [ ] `engine/building_blocks/` 에 `kimchi_premium_extreme` 블록 추가
@@ -119,7 +119,7 @@ def calc_oi_normalized_cvd(cvd: float, oi: float) -> float:
 ## Assumptions
 
 1. Upbit API 무료 공개 사용 허용.
-2. migration 026은 `ALTER TABLE feature_windows ADD COLUMN IF NOT EXISTS ...` — non-destructive.
+2. migration 027은 `ALTER TABLE feature_windows ADD COLUMN IF NOT EXISTS ...` — non-destructive.
 3. 기존 feature_windows row는 신규 컬럼 NULL → 다음 재계산 시 채워짐.
 
 ## Canonical Files
@@ -128,7 +128,7 @@ def calc_oi_normalized_cvd(cvd: float, oi: float) -> float:
 - `engine/features/columns.py`
 - `engine/features/compute.py`
 - `engine/features/materialization.py`
-- `app/supabase/migrations/026_feature_v31.sql`
+- `app/supabase/migrations/027_feature_v31.sql`
 - `engine/tests/test_feature_v31.py`
 
 ## Decisions
