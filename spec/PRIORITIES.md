@@ -17,10 +17,11 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 → **14개** (P0=0 / P1=10 / P2=10 / P3=10) — W-0257 ✅ (#489) + W-0279 ✅ (#541) + W-0280 ✅ (#541)
-즉시 P0:   ~~W-0259 engine/validation/ wrapper~~ → **✅ 해소** (PR #541 W-0279/W-0280 — pipeline + production runner wiring)
-다음 P1:   W-0281 gate_v2 Phase2 (#548) + W-0282 F-3 Telegram deeplink (#546) + W-0283 F-11 WATCHING (#547)
-퀀트 경화:  **W-0286 ✅ PR #560** (8-axis: log returns / 365d / n_trials=500 / G1+G2 mandatory / hit≥0.55 / OI 7d / DSR horizon_hours / ddof=1) → 다음: W-0287 BH cross-pattern
+열린 갭:    17개 → **11개** (P0=0 / P1=8 / P2=10 / P3=10) — W-0284 ✅ (#565) + W-0289 ✅ (#573) + W-0290~W-0294 ✅ (#587)
+즉시 P0:   W-0290 Phase2 walkforward.py + W-0292 Phase2 Glassnode + W-0287 BH cross-pattern FDR
+다음 P1:   W-0282 F-3 Telegram deeplink (#546) + W-0283 F-11 WATCHING (#547)
+퀀트 경화:  **W-0286 ✅ PR #560** + **W-0290~W-0293 ✅ PR #587** (Cursor-grade accuracy infra + context trim + harness)
+하네스:     **PR #574 ✅** (verify.py + inventory) + **PR #575 ✅** (Supabase timeout) + **PR #588 ✅** (PID stale lock)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.

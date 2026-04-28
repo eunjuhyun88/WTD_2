@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from api.main import include_engine_routes
 from features.materialization_store import FeatureMaterializationStore
 from scanner.jobs.feature_materialization import materialize_symbol_window
+from search.corpus import SearchCorpusStore
 
 
 def create_app() -> FastAPI:
@@ -40,6 +41,7 @@ def _make_bars(n: int = 80) -> pd.DataFrame:
 @pytest.fixture()
 def _seeded_store(tmp_path, monkeypatch):
     store = FeatureMaterializationStore(tmp_path / "test.sqlite")
+    corpus_store = SearchCorpusStore(tmp_path / "corpus.sqlite")
     bars = _make_bars()
     materialize_symbol_window(
         symbol="BTCUSDT",
@@ -48,6 +50,7 @@ def _seeded_store(tmp_path, monkeypatch):
         offline=True,
         store=store,
         bars=bars,
+        corpus_store=corpus_store,
     )
     monkeypatch.setattr("api.routes.features._store", store)
     return store
@@ -70,6 +73,11 @@ def test_get_feature_window_on_demand(client, tmp_path, monkeypatch):
     monkeypatch.setattr(
         "scanner.jobs.feature_materialization.load_perp",
         lambda symbol, **_: pd.DataFrame(),
+    )
+    corpus_db = tmp_path / "corpus.sqlite"
+    monkeypatch.setattr(
+        "scanner.jobs.feature_materialization.SearchCorpusStore",
+        lambda *a, **kw: SearchCorpusStore(corpus_db),
     )
 
     resp = client.get("/features/window?symbol=BTCUSDT&timeframe=1h")

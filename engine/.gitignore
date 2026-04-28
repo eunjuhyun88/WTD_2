@@ -6,3 +6,4 @@ memory/state/*.sqlite
 research/state/*.sqlite
 research/state/reports/*.md
 .env
+data_cache/historical/

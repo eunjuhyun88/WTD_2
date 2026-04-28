@@ -181,77 +181,80 @@ class PatternStateMachine:
         if next_phase_idx < len(self.pattern.phases):
             next_phase = self.pattern.phases[next_phase_idx]
 
-            # v2: min_bars enforcement — must stay in current phase long enough
-            if state.phase_entered_at is not None and state.bars_in_phase < current_phase.min_bars:
-                return None, None, None
+            # Cannot advance until we have actually entered the current phase.
+            # phase_entered_at=None means we are still waiting for phase-0 entry
+            # conditions — skip advance and fall through to _phase0_satisfied.
+            if state.phase_entered_at is not None:
+                # v2: min_bars enforcement — must stay in current phase long enough
+                if state.bars_in_phase < current_phase.min_bars:
+                    return None, None, None
 
-            evaluation = self._phase_satisfied(
-                state=state,
-                current_phase=current_phase,
-                next_phase=next_phase,
-                blocks=blocks_triggered,
-            )
-            state.last_phase_scores[next_phase.phase_id] = evaluation.phase_score
-            if evaluation.satisfied:
-                old_phase_id = current_phase.phase_id
-                state.current_phase_idx = next_phase_idx
-                state.phase_entered_at = timestamp
-                state.bars_in_phase = 1
-                state.phase_history.append((next_phase.phase_id, timestamp))
-
-                is_entry = next_phase.phase_id == self.pattern.entry_phase
-                is_success = next_phase.phase_id == self.pattern.target_phase
-
-                t = PhaseTransition(
-                    symbol=symbol,
-                    pattern_slug=self.pattern.slug,
-                    from_phase=old_phase_id,
-                    to_phase=next_phase.phase_id,
-                    timestamp=timestamp,
-                    reason="condition_met",
-                    is_entry_signal=is_entry,
-                    is_success=is_success,
-                    confidence=evaluation.confidence,
-                    feature_snapshot=feature_snapshot,
-                    pattern_version=self.pattern.version,
-                    timeframe=self.pattern.timeframe,
-                    from_phase_idx=next_phase_idx - 1,
-                    to_phase_idx=next_phase_idx,
-                    trigger_bar_ts=trigger_bar_ts or timestamp,
-                    scan_id=scan_id,
-                    blocks_triggered=list(blocks_triggered),
-                    block_scores=self._build_block_scores(blocks_triggered),
-                    data_quality=data_quality,
+                evaluation = self._phase_satisfied(
+                    state=state,
+                    current_phase=current_phase,
+                    next_phase=next_phase,
+                    blocks=blocks_triggered,
                 )
-                state.last_transition_id = t.transition_id
-                state.phase_transition_ids[next_phase.phase_id] = t.transition_id
+                state.last_phase_scores[next_phase.phase_id] = evaluation.phase_score
+                if evaluation.satisfied:
+                    old_phase_id = current_phase.phase_id
+                    state.current_phase_idx = next_phase_idx
+                    state.phase_entered_at = timestamp
+                    state.bars_in_phase = 1
+                    state.phase_history.append((next_phase.phase_id, timestamp))
 
-                log.info(
-                    "TRANSITION: %s %s → %s (conf=%.0f%%) [%s]",
-                    symbol, old_phase_id, next_phase.phase_id,
-                    evaluation.confidence * 100, self.pattern.slug,
-                )
+                    is_entry = next_phase.phase_id == self.pattern.entry_phase
+                    is_success = next_phase.phase_id == self.pattern.target_phase
 
-                return t, None, None
+                    t = PhaseTransition(
+                        symbol=symbol,
+                        pattern_slug=self.pattern.slug,
+                        from_phase=old_phase_id,
+                        to_phase=next_phase.phase_id,
+                        timestamp=timestamp,
+                        reason="condition_met",
+                        is_entry_signal=is_entry,
+                        is_success=is_success,
+                        confidence=evaluation.confidence,
+                        feature_snapshot=feature_snapshot,
+                        pattern_version=self.pattern.version,
+                        timeframe=self.pattern.timeframe,
+                        from_phase_idx=next_phase_idx - 1,
+                        to_phase_idx=next_phase_idx,
+                        trigger_bar_ts=trigger_bar_ts or timestamp,
+                        scan_id=scan_id,
+                        blocks_triggered=list(blocks_triggered),
+                        block_scores=self._build_block_scores(blocks_triggered),
+                        data_quality=data_quality,
+                    )
+                    state.last_transition_id = t.transition_id
+                    state.phase_transition_ids[next_phase.phase_id] = t.transition_id
 
-            if evaluation.should_record_attempt:
-                attempt = PhaseAttemptRecord(
-                    symbol=symbol,
-                    pattern_slug=self.pattern.slug,
-                    timeframe=self.pattern.timeframe,
-                    from_phase=current_phase.phase_id,
-                    attempted_phase=next_phase.phase_id,
-                    attempted_at=timestamp,
-                    phase_score=evaluation.phase_score,
-                    missing_blocks=evaluation.missing_blocks,
-                    failed_reason=evaluation.failed_reason or "unknown",
-                    anchor_transition_id=evaluation.anchor_transition_id,
-                    scan_id=scan_id,
-                    blocks_triggered=list(blocks_triggered),
-                    feature_snapshot=feature_snapshot,
-                )
-                # Don't return early — fall through to NONE→phase0 check below
-                # (original behavior: fire callback then continue)
+                    log.info(
+                        "TRANSITION: %s %s → %s (conf=%.0f%%) [%s]",
+                        symbol, old_phase_id, next_phase.phase_id,
+                        evaluation.confidence * 100, self.pattern.slug,
+                    )
+
+                    return t, None, None
+
+                if evaluation.should_record_attempt:
+                    attempt = PhaseAttemptRecord(
+                        symbol=symbol,
+                        pattern_slug=self.pattern.slug,
+                        timeframe=self.pattern.timeframe,
+                        from_phase=current_phase.phase_id,
+                        attempted_phase=next_phase.phase_id,
+                        attempted_at=timestamp,
+                        phase_score=evaluation.phase_score,
+                        missing_blocks=evaluation.missing_blocks,
+                        failed_reason=evaluation.failed_reason or "unknown",
+                        anchor_transition_id=evaluation.anchor_transition_id,
+                        scan_id=scan_id,
+                        blocks_triggered=list(blocks_triggered),
+                        feature_snapshot=feature_snapshot,
+                    )
+                    # Don't return early — fall through to NONE→phase0 check below
         else:
             # Already at last phase — success phase, reset after max_bars
             if state.bars_in_phase and state.bars_in_phase > current_phase.max_bars:
