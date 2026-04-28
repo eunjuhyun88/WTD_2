@@ -61,7 +61,7 @@ WTD 검증 루프를 **사람 판단 (JUDGE/Verdict)** 에서 **시장 판단 (P
 
 ---
 
-## Non-Goals (격리 선언)
+## Non-Goals
 
 | 금지 | 이유 |
 |---|---|
@@ -119,7 +119,7 @@ WTD 검증 루프를 **사람 판단 (JUDGE/Verdict)** 에서 **시장 판단 (P
 
 ---
 
-## Open Questions (구현 전 결정 필요)
+## Open Questions
 
 | # | 질문 | 영향 | 권고 |
 |---|---|---|---|
