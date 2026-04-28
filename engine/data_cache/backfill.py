@@ -29,6 +29,14 @@ def _cache_path(symbol: str, dtype: str) -> Path:
     return _CACHE_DIR / f"{symbol}_{dtype}.csv"
 
 
+def _ts(dt: datetime) -> "pd.Timestamp":
+    """Ensure datetime becomes a UTC-aware pd.Timestamp for safe comparison."""
+    ts = pd.Timestamp(dt)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    return ts
+
+
 def _fetch_binance_json(path: str) -> list | dict:
     import json
     import urllib.request
@@ -56,9 +64,10 @@ def backfill_klines(
         if df.index.tz is None:
             df.index = df.index.tz_localize("UTC")
         # If cache covers the requested range, return it
-        if df.index.min() <= pd.Timestamp(start, tz="UTC"):
+        if df.index.min() <= _ts(start):
             log.info("[%s] klines cache hit (%d rows)", symbol, len(df))
-            return df[df.index >= pd.Timestamp(start, tz="UTC")]
+            
+            return df[df.index >= _ts(start)]
 
     end = end or datetime.now(tz=timezone.utc)
     end_ms = int(end.timestamp() * 1000)
@@ -102,7 +111,7 @@ def backfill_klines(
     df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
     df = df.set_index("timestamp")[["open", "high", "low", "close", "volume"]]
     df = df[~df.index.duplicated(keep="last")].sort_index()
-    df = df[df.index >= pd.Timestamp(start, tz="UTC")]
+    df = df[df.index >= _ts(start)]
 
     _write_cache(df, path)
     log.info("[%s] klines done: %d rows, %s → %s", symbol, len(df), df.index[0].date(), df.index[-1].date())
@@ -122,20 +131,22 @@ def backfill_funding(
     path = _cache_path(symbol, "funding")
     if not force and path.exists():
         df = pd.read_csv(path, index_col="timestamp", parse_dates=True)
-        if df.index.tz is None:
+        if hasattr(df.index, "tz") and df.index.tz is None:
             df.index = df.index.tz_localize("UTC")
-        if df.index.min() <= pd.Timestamp(start, tz="UTC"):
+        if df.index.min() <= _ts(start):
             log.info("[%s] funding cache hit (%d rows)", symbol, len(df))
-            return df[df.index >= pd.Timestamp(start, tz="UTC")]
+            return df[df.index >= _ts(start)]
 
     end = end or datetime.now(tz=timezone.utc)
     end_ms = int(end.timestamp() * 1000)
     start_ms = int(start.timestamp() * 1000)
     all_rows: list[dict] = []
 
+    # Funding API uses startTime for forward pagination (unlike klines which uses endTime)
+    current_start_ms = start_ms
     log.info("[%s] backfilling funding from %s to %s", symbol, start.date(), end.date())
-    while True:
-        path_q = f"/fapi/v1/fundingRate?symbol={symbol}&limit=1000&endTime={end_ms}"
+    while current_start_ms < end_ms:
+        path_q = f"/fapi/v1/fundingRate?symbol={symbol}&limit=1000&startTime={current_start_ms}"
         try:
             batch = _fetch_binance_json(path_q)
         except Exception as exc:
@@ -143,11 +154,11 @@ def backfill_funding(
             break
         if not batch:
             break
-        all_rows = list(batch) + all_rows
-        oldest = batch[0]["fundingTime"]
-        if oldest <= start_ms:
+        all_rows.extend(batch)
+        newest = batch[-1]["fundingTime"]
+        if newest >= end_ms:
             break
-        end_ms = oldest - 1
+        current_start_ms = newest + 1
         time.sleep(_SLEEP)
 
     if not all_rows:
@@ -158,7 +169,7 @@ def backfill_funding(
     df["funding_rate"] = df["fundingRate"].astype(float)
     df = df.set_index("timestamp")[["funding_rate"]]
     df = df[~df.index.duplicated(keep="last")].sort_index()
-    df = df[df.index >= pd.Timestamp(start, tz="UTC")]
+    df = df[df.index >= _ts(start)]
 
     _write_cache(df, path)
     log.info("[%s] funding done: %d rows", symbol, len(df))
@@ -181,9 +192,10 @@ def backfill_oi_coinalyze(
         df = pd.read_csv(path, index_col="timestamp", parse_dates=True)
         if df.index.tz is None:
             df.index = df.index.tz_localize("UTC")
-        if df.index.min() <= pd.Timestamp(start, tz="UTC"):
+        if df.index.min() <= _ts(start):
             log.info("[%s] OI cache hit (%d rows)", symbol, len(df))
-            return df[df.index >= pd.Timestamp(start, tz="UTC")]
+            
+            return df[df.index >= _ts(start)]
 
     end = end or datetime.now(tz=timezone.utc)
 
@@ -202,7 +214,7 @@ def backfill_oi_coinalyze(
     try:
         df = _fetch_binance_oi_fallback(symbol, timeframe=timeframe)
         if len(df) > 0:
-            df = df[df.index >= pd.Timestamp(start, tz="UTC")]
+            df = df[df.index >= _ts(start)]
             _write_cache(df, path)
             log.info("[%s] OI from Binance fallback: %d rows", symbol, len(df))
             return df

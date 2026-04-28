@@ -152,8 +152,25 @@ result = _fetch_json("open-interest-history", {
 - [ ] AC8: CI green
 - [ ] AC9: 보고서 `docs/live/W-0294-backtest-report.md` 생성
 
+## Q1 Spike Result (2026-04-29 확인)
+
+| 질문 | 결과 |
+|---|---|
+| Coinalyze OI 최대 기간 | **85일 (현재 플랜 한도)** — 약 2026-02-02부터 조회 가능 |
+| Coinalyze OI 필드 | `c` (close of OHLC format) — `v` 아님 |
+| 6mo 백필 결과 | klines 4,320행 × 3종목, funding 540행, OI 2,017행 (85일) |
+
+## Backfill Status (2026-04-29)
+
+```
+BTCUSDT: klines 4320 (6mo), funding 540 (6mo), OI 2017 (85d)
+ETHUSDT: klines 4320 (6mo), funding 540 (6mo), OI 2017 (85d)
+SOLUSDT: klines 4320 (6mo), funding 540 (6mo), OI 2017 (85d)
+Storage: engine/data_cache/historical/
+```
+
 ## Open Questions
 
-- [ ] [Q-01] Coinalyze OI `/v1/open-interest-history` 최대 기간? → 스파이크 필요
+- [x] [Q-01] ~~Coinalyze OI 최대 기간?~~ → 85일 (CLOSED)
 - [ ] [Q-02] Retroactive detection 시 phase_transitions SQLite 재생? 아니면 feature_calc 재실행?
-- [ ] [Q-03] 6mo 기간 중 OI 없는 구간 처리 전략 (feature 0 imputation vs. skip)
+- [ ] [Q-03] 6mo 기간 중 OI 없는 구간 처리 전략 (feature 0 imputation vs. skip → 현재는 OI 없는 구간은 패턴 미적용)
