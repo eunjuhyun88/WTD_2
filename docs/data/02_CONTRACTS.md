@@ -23,7 +23,7 @@ alter table pattern_runtime_state
   add foreign key (pattern_id, pattern_version)
   references pattern_objects (pattern_id, version);
 
-alter table phase_transition_events
+alter table phase_transitions  -- ★ 실제 테이블명 (phase_transition_events 아님)
   add foreign key (pattern_id, pattern_version)
   references pattern_objects (pattern_id, version);
 
@@ -36,7 +36,7 @@ alter table ledger_verdicts add foreign key (entry_id) references ledger_entries
 
 ```sql
 create index on pattern_runtime_state (current_phase_index) where current_phase_index > 0;
-create index on phase_transition_events (symbol, occurred_at desc);
+create index on phase_transitions (symbol, occurred_at desc);
 create index on ledger_entries (pattern_id, entry_at desc);
 create index on ledger_verdicts (user_id, judged_at desc);
 create index on feature_windows (symbol, timeframe, window_end_ts desc);
@@ -45,7 +45,7 @@ create index on pattern_candidates (review_status) where review_status = 'pendin
 
 ### 1.3 Partitioning (scale 이후)
 
-- `phase_transition_events` → monthly partitions
+- `phase_transitions` → monthly partitions
 - `ledger_entries` → quarterly partitions
 - `feature_windows` → by timeframe + monthly
 
@@ -497,7 +497,7 @@ Phase 2에서 필수. Day-1은 optional.
 ```
 1. Scanner (tier-1 1min cycle) reads feature_windows
 2. evaluate_phase_transition() per symbol × pattern
-3. If advance: INSERT phase_transition_events
+3. If advance: INSERT phase_transitions ★실제 테이블명
 4. If entry_phase reached: INSERT ledger_entries
 5. If entry_phase == actionable: emit entry.created event
 6. Alert fanout → user dashboard

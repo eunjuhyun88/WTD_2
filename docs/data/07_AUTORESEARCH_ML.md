@@ -19,6 +19,19 @@ Define the AutoResearch expansion and feedback-to-improvement pipeline contract 
 - Does not own Day-1 surface UI composition.
 - Exposes contract-safe status summaries for dashboard/lab visibility.
 
+## 현재 구현 상태 (2026-04-29 확인)
+
+> ⚠️ **이 문서는 목표 상태 설명이지 현재 구현 상태가 아님.**
+> Phase A0 = 스캐너 + 저장이 동작 중. A~D 전체 = 미구현.
+>
+> | Phase | 상태 | 비고 |
+> |---|---|---|
+> | A0: capture-driven search/monitoring | 🔄 부분 | 스캐너 동작, Layer P/reranker 미연동 |
+> | A: weight optimization | ❌ 미구현 | |
+> | B: KTO-like preference | ❌ 미구현 | |
+> | C: DPO/ORPO | ❌ 미구현 | |
+> | D: per-user adapter | ❌ 미구현 | |
+
 ## Day-1 Operational Baseline
 
 AutoResearch is not only "later ML."
