@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`ab188089` — origin/main (2026-04-29) — PR #601 W-0298 V-PV-01 OPEN (CI pending merge)
+`d7c8a0f6` — origin/main (2026-04-29) — PR #604 W-0298 paper verification API 머지
 
 ---
 
@@ -15,7 +15,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0293-1cycle-infra-on` | P0 | ✅ gcloud cogotchi(asia-southeast1) ENABLE_*_JOB=true 배포 완료 |
-| `W-0298-v-pv-01-impl` | P1 | 🟡 PR #601 OPEN — CI pending |
+| `W-0298-v-pv-01-impl` | P1 | ✅ PR #604 merged — outcome ledger 기반 verify-paper API |
 | `W-0297-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 |
 | `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L |
 | `W-0296-automation-harness-runbook` | P2 | ✅ runbook 문서화 완료 |
@@ -48,7 +48,6 @@ Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 
 ```bash
 ./tools/start.sh
-# PR #601 CI 확인 후 merge
-gh pr checks 601
-gh pr merge 601 --squash
+# 별도 기능으로 분리된 context/LLM runtime 변경 정리
+# W-0297 Cursor-grade context management or W-0295 context trim 중 하나 선택
 ```
