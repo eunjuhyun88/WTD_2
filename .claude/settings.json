@@ -6,5 +6,27 @@
       "Bash(npm --prefix app run check)",
       "Bash(npm --prefix app run build)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit-pytest.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit-pytest.sh"
+          }
+        ]
+      }
+    ]
   }
 }
