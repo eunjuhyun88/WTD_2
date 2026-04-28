@@ -289,6 +289,28 @@ async def send_pattern_entry_alert(
         )
         return False
 
+    # W-0284 gate_v2 filter: skip alert if V-track validation explicitly failed
+    if os.environ.get("GATE_V2_ALERT_FILTER", "1") == "1":
+        try:
+            from patterns.active_variant_registry import ActivePatternVariantStore
+            from research.validation.actuator import GateV2DecisionStore
+            slug = record.get("slug") or record.get("pattern_slug")
+            if slug is not None:
+                variant_entry = ActivePatternVariantStore().get(slug)
+                research_run_id = variant_entry.research_run_id if variant_entry else None
+                if research_run_id is not None:
+                    gate_validated = GateV2DecisionStore().load(research_run_id)
+                    if gate_validated is False:  # explicit False only; None = no data = pass through
+                        log.info(
+                            "alert suppressed by gate_v2: slug=%s research_run_id=%s",
+                            slug, research_run_id,
+                        )
+                        return False
+                else:
+                    log.debug("gate_v2 check: no research_run_id for slug=%s — passing through", slug)
+        except Exception as _g2_exc:
+            log.debug("gate_v2 check failed (non-fatal): %s", _g2_exc)
+
     text     = format_entry_alert(record)
 
     # F-3: append verdict deep-link URL (graceful degrade if unavailable)
