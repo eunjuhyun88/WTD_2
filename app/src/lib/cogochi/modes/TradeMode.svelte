@@ -1,5 +1,6 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
+  import ChartGridLayout from '../../../components/terminal/workspace/ChartGridLayout.svelte';
   import {
     fetchAnalyze,
     fetchAnalyzeAndChart,
@@ -81,6 +82,9 @@
   // chartPayload is only for ChartBoard's initialData; ChartBoard owns live updates via DataFeed.
   // analyzeData is refreshed on candle close via ChartBoard's onCandleClose callback.
   let chartPayload = $state<ChartSeriesPayload | null>(null);
+
+  // W-0288: multi-chart grid toggle
+  let multiChartMode = $state(false);
   let microstructurePayload = $state<MarketMicrostructurePayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
@@ -1637,20 +1641,37 @@
         <span class="conf-val">{confidenceAlpha}</span>
       </div>
       <button class="chart-save-compact" type="button" onclick={startSaveSetup}>SAVE RANGE</button>
+      <!-- W-0288: multi-chart toggle -->
+      <button
+        class="chart-save-compact multichart-toggle"
+        class:active={multiChartMode}
+        type="button"
+        title={multiChartMode ? '단일 차트로 전환' : '멀티 차트 레이아웃'}
+        aria-pressed={multiChartMode}
+        onclick={() => { multiChartMode = !multiChartMode; }}
+      >⊞</button>
     </div>
     <div class="chart-body">
       <div class="chart-live">
-        <ChartBoard
-          {symbol}
-          tf={timeframe}
-          initialData={chartPayload ?? undefined}
-          surfaceStyle="velo"
-          verdictLevels={verdictLevels}
-          change24hPct={analyzeData?.change24h ?? null}
-          contextMode="chart"
-          onCandleClose={handleCandleClose}
-          {gammaPin}
-        />
+        {#if multiChartMode}
+          <ChartGridLayout
+            {symbol}
+            tf={timeframe}
+            surfaceStyle="velo"
+          />
+        {:else}
+          <ChartBoard
+            {symbol}
+            tf={timeframe}
+            initialData={chartPayload ?? undefined}
+            surfaceStyle="velo"
+            verdictLevels={verdictLevels}
+            change24hPct={analyzeData?.change24h ?? null}
+            contextMode="chart"
+            onCandleClose={handleCandleClose}
+            {gammaPin}
+          />
+        {/if}
       </div>
     </div>
 
@@ -4464,6 +4485,21 @@
     border-color: rgba(74,187,142,0.56);
     background: rgba(74,187,142,0.13);
     color: #a8f1dc;
+  }
+
+  .multichart-toggle {
+    font-size: 13px;
+    padding: 2px 7px;
+  }
+  .multichart-toggle.active {
+    border-color: rgba(59,130,246,0.5);
+    background: rgba(59,130,246,0.12);
+    color: #93c5fd;
+  }
+  .multichart-toggle.active:hover {
+    border-color: rgba(59,130,246,0.7);
+    background: rgba(59,130,246,0.2);
+    color: #bfdbfe;
   }
 
   .observe-mode .layout-c .chart-section.lc-main {
