@@ -114,7 +114,11 @@
     }
   }
 
-  $effect(() => { loadWatching(); });
+  $effect(() => {
+    loadWatching();
+    const interval = setInterval(loadWatching, 30_000);
+    return () => clearInterval(interval);
+  });
 
   const strategies = $derived($allStrategies);
   const prices = $derived($priceStore);
