@@ -2,8 +2,8 @@
 
 > Wave: Wave4/C | Priority: P1 | Effort: M
 > Charter: In-Scope L5 (Search) + L7 (Refinement)
-> Status: 🟡 Design Draft
-> Created: 2026-04-28 by Agent A073
+> Status: 🟡 Design Ready (Q-001/Q-002 해소 — 구현 가능)
+> Created: 2026-04-28 by Agent A073 | Updated: 2026-04-29 by A081
 > Issue: #547
 
 ## Goal (1줄)
@@ -16,13 +16,16 @@ Dashboard WATCHING 섹션에 실시간 P&L 색상 + 자동갱신을 추가하고
   - `app/src/routes/patterns/candidates/+page.ts` (신규): load function
   - `app/src/routes/api/patterns/candidates/+server.ts` (신규): engine proxy
 - 파일/모듈: `app/src/routes/dashboard/`, `app/src/routes/patterns/candidates/`
-- API surface: `GET /patterns/candidates` (engine 기존 존재), `PATCH /patterns/{slug}/status`
+- API surface: `GET /patterns/candidates` (engine 기존 존재), `PATCH /patterns/{slug}/status` (**신규 구현**)
+- `engine/patterns/candidate_review_store.py` (신규 ~60줄)
+- `engine/api/routes/patterns.py` — PATCH endpoint 추가 (~30줄)
+- `engine/tests/patterns/test_candidate_review.py` (신규 ≥3 tests)
 
 ## Non-Goals
-- 백엔드 API 추가 없음 (engine `GET /patterns/candidates` 이미 존재)
 - 실시간 WebSocket 업데이트 없음 (polling으로 충분)
 - 모바일 최적화 별도 (기존 반응형 그대로)
 - 복잡한 approve flow 없음 (1-click approve/reject)
+- Supabase 별도 테이블 신규 생성 없음 (in-memory store + JSON 파일 persist)
 
 ## CTO 관점 (Engineering)
 
@@ -76,18 +79,85 @@ Dashboard WATCHING 섹션에 실시간 P&L 색상 + 자동갱신을 추가하고
 - [D-004] approve/reject: 각 카드에 2버튼 → `PATCH /patterns/{slug}/status` 호출
   - 거절: confirm dialog 추가 → 마찰 과다
 
+## PATCH /patterns/{slug}/status — 신규 엔드포인트 설계 (Q-001 해소)
+
+> 2026-04-29 코드 실측으로 확인: 해당 endpoint **존재하지 않음** → 신규 구현 필요
+
+### 목적
+PatternCandidate Review UI에서 후보 패턴에 대해 사용자가 `approve` (모니터링 확정) / `reject` (무시)를 기록.
+
+### 기존 코드 분석
+- `POST /{slug}/verdict` — 거래 *결과* (valid/invalid/missed) 판정 → 다른 목적
+- `PatternStateStore` — phase transition 담당 (entry/active/exit 등) → 직접 변경 위험
+- `get_all_candidates_sync()` — entry_phase 진입 symbols 반환 (read-only query)
+- candidate 자체에 review 상태 필드 없음
+
+### 설계 결정
+
+**방식**: `CandidateReviewStore` (in-memory dict + JSON 파일 persist)
+
+```python
+# engine/patterns/candidate_review_store.py
+CandidateReviewAction = Literal["approved", "rejected"]
+
+@dataclass
+class CandidateReview:
+    slug: str
+    symbol: str
+    action: CandidateReviewAction
+    reviewed_at: str  # ISO
+    note: str | None = None
+```
+
+**저장**: `engine/data_cache/candidate_reviews.json` (append-only, 최신 slug+symbol 기준 dedup)
+
+**Endpoint**:
+```
+PATCH /patterns/{slug}/status
+Body:  { "symbol": str, "action": "approved" | "rejected", "note": str | None }
+Returns: { "ok": true, "slug": str, "symbol": str, "action": str }
+```
+
+**GET /patterns/candidates 응답 확장** (Q-002 동시 해소):
+```json
+{
+  "entry_candidates": { "slug": ["BTC", "ETH"] },
+  "candidate_records": [...],
+  "reviews": { "BTC": "approved", "ETH": null }   ← 신규 필드
+}
+```
+
+### 영향 범위
+- 신규: `engine/patterns/candidate_review_store.py` (~60줄)
+- 수정: `engine/api/routes/patterns.py` — `PATCH /{slug}/status` 추가 (~30줄)
+- 수정: `engine/api/routes/patterns_thread.py` — `get_all_candidates_sync()` reviews 필드 주입
+- 신규: `engine/tests/patterns/test_candidate_review.py` (≥3 tests)
+
+### Scope 갱신
+원래 Non-Goals에 "백엔드 API 추가 없음"이었으나 → **engine endpoint 구현 포함으로 Scope 확장**
+
+---
+
 ## Open Questions
 
-- [ ] [Q-001] `PATCH /patterns/{slug}/status` engine endpoint 존재 여부 + 스키마는? (구현 전 확인 필수)
-- [ ] [Q-002] `GET /patterns/candidates` response schema? (field names, pagination)
+- [x] [Q-001] `PATCH /patterns/{slug}/status` engine endpoint → **설계 완료 (위 섹션)**
+- [x] [Q-002] `GET /patterns/candidates` response schema → **실측 완료**: `entry_candidates`, `raw_entry_candidates`, `candidate_records`, `candidate_records_by_pattern`, `total_count`
 
 ## Implementation Plan
 
-1. Dashboard pnl_pct 색상 클래스 추가 + 30초 자동갱신 (`setInterval`)
-2. `GET /patterns/candidates` 엔진 API 스키마 확인 → TypeScript interface 정의
-3. `/api/patterns/candidates/+server.ts` proxy 작성
-4. `/patterns/candidates/+page.svelte` 구현: 리스트 + approve/reject 버튼
-5. `PATCH /patterns/{slug}/status` API 없으면 → engine route 추가 (scope 확장)
+**Phase 1 — engine (1일)**
+1. `engine/patterns/candidate_review_store.py` — CandidateReview dataclass + JSON persist store
+2. `engine/api/routes/patterns.py` — `PATCH /{slug}/status` endpoint 추가
+3. `engine/api/routes/patterns_thread.py` — `get_all_candidates_sync()` reviews 필드 주입
+4. `engine/tests/patterns/test_candidate_review.py` — ≥3 unit tests
+5. `pytest engine/tests/patterns/` green 확인
+
+**Phase 2 — app (1일)**
+6. Dashboard pnl_pct 색상 클래스 추가 + 30초 자동갱신 (`setInterval`)
+7. `GET /patterns/candidates` TypeScript interface 정의 (실측 schema 기반)
+8. `/api/patterns/candidates/+server.ts` proxy 작성
+9. `/patterns/candidates/+page.svelte` 구현: 리스트 + approve/reject 버튼
+10. TS 에러 0건, CI green 확인
 
 ## Exit Criteria
 

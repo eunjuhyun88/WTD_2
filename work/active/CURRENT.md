@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`ab188089` — origin/main (2026-04-29) — PR #601 W-0298 V-PV-01 OPEN (CI pending merge)
+`52fb9591` — origin/main (2026-04-29) — PR #616 A080 session close merged
 
 ---
 
@@ -14,19 +14,19 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0293-1cycle-infra-on` | P0 | ✅ gcloud cogotchi(asia-southeast1) ENABLE_*_JOB=true 배포 완료 |
-| `W-0298-v-pv-01-impl` | P1 | 🟡 PR #601 OPEN — CI pending |
-| `W-0297-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 |
-| `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L |
-| `W-0296-automation-harness-runbook` | P2 | ✅ runbook 문서화 완료 |
+| `W-0283-f11-watching-candidates-impl` | P1 | 🟡 Design Ready — Q-001/Q-002 해소, engine endpoint 설계 완료 |
+| `W-0297-cursor-grade-code-accuracy` | P1 | 🟢 Phase A+B 완료 — AC1~AC3 수동 검증 대기 (Claude Code 재시작 필요) |
+| `W-0300-cursor-context-manager` | P1 | ✅ PR #609 merged (context-pack.sh + /컨텍스트 skill) |
+| `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L (W-0297 의존) |
+| `W-0298-haiku-model-tiering` | P1 | 🟡 PR #610 OPEN — 검증/빠른검증/검색 Haiku tiering |
 
 ---
 
 ## Wave 4 실행 계획 요약
 
 ```
-즉시:  W-0293 (P0, 5분) → GAP-B/D 인프라 ON
-Week1: H-07+H-08 / F-3 Telegram deeplink / F-11 WATCHING
+즉시:  W-0283 Ph1 engine endpoint (1일) → Ph2 app UI (1일)
+Week1: W-0297 AC1~AC3 수동 검증 / W-0295 Ph2 trim
 Week2: F-4 Decision HUD / F-5 IDE split-pane / F-12 Korea features
 Week3: F-18 Stripe / F-14 Pattern lifecycle / F-16 recall
 Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
@@ -48,7 +48,8 @@ Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 
 ```bash
 ./tools/start.sh
-# PR #601 CI 확인 후 merge
-gh pr checks 601
-gh pr merge 601 --squash
+# W-0283 Ph1 engine 구현 시작
+# engine/patterns/candidate_review_store.py 신규
+# engine/api/routes/patterns.py PATCH /{slug}/status 추가
+cat work/active/W-0283-f11-watching-candidates-impl.md
 ```
