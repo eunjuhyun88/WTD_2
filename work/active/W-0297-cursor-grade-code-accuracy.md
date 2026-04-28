@@ -1,4 +1,4 @@
-# W-0290 — Cursor-grade 코드 정확도 인프라 (LSP + MCP + 도메인 분기)
+# W-0297 — Cursor-grade 코드 정확도 인프라 (LSP + MCP + 도메인 분기)
 
 > Wave: 5 (Productivity) | Priority: P1 | Effort: M (1.5일)
 > Charter: In-Scope (코어 갭 작업 효율 향상 — 도구 사용, 빌드 아님)
