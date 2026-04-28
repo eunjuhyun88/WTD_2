@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`a7c45202` — origin/main (2026-04-28) — PR #550 (W-0281 closure + W-0282 V-PV-01 design) 머지
+`ae102b3c` — origin/main (2026-04-28) — PR #555 (V-05 fix 3종: alignment guard + logging + btc_returns injection) 머지
 
 ---
 

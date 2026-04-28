@@ -1,4 +1,4 @@
-# W-0281 — gate_v2 → 실제 promote 결정 반영 (Phase 2)
+# W-0284 — gate_v2 → 실제 promote 결정 반영 (Phase 2)
 
 > Wave: MM | Priority: P1 | Effort: M
 > Charter: In-Scope L7 (Refinement — verdict loop)
