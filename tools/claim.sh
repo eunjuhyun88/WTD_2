@@ -36,6 +36,7 @@ done
 AGENT="$(cat state/current_agent.txt 2>/dev/null || echo unknown)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 NOW="$(date -u +%H:%M)"
+PID="$$"
 
 # ── GitHub Issue assignee 통합 (primary mutex, CHARTER §Coordination) ──
 # --issue N 지정 시 Issue assignee를 먼저 획득 → file-domain claim 진행.
@@ -110,8 +111,28 @@ if [ ! -f spec/CONTRACTS.md ]; then
 EOF
 fi
 
-# 충돌 검사 — lock table row만 검사한다. 설명 문구/예시 텍스트에서
-# domain 문자열이 발견되어 false-positive가 나는 것을 막는다.
+# 충돌 검사 — lock table row만 검사 + stale PID 자동 해제
+# 각 행 형식: | AGENT | DOMAIN | BRANCH | HH:MM | PID |
+_sweep_stale_locks() {
+  local tmp
+  tmp=$(mktemp)
+  while IFS= read -r line; do
+    if echo "$line" | grep -qE '^\| A[0-9]+'; then
+      local row_pid
+      row_pid=$(echo "$line" | awk -F'|' '{print $6}' | tr -d ' ')
+      if [ -n "$row_pid" ] && [ "$row_pid" != "PID" ]; then
+        if ! kill -0 "$row_pid" 2>/dev/null; then
+          echo "  ⚰️  stale lock removed (PID $row_pid dead): $line" >&2
+          continue
+        fi
+      fi
+    fi
+    echo "$line"
+  done < spec/CONTRACTS.md > "$tmp"
+  mv "$tmp" spec/CONTRACTS.md
+}
+_sweep_stale_locks
+
 for d in $(echo "$DOMAIN" | tr ',' '\n' | sed 's/^ *//;s/ *$//'); do
   if grep -E '^\| A[0-9]+' spec/CONTRACTS.md | grep -F "$d" >/dev/null 2>&1; then
     EXISTING=$(grep -E '^\| A[0-9]+' spec/CONTRACTS.md | grep -F "$d" | head -1)
@@ -125,8 +146,8 @@ for d in $(echo "$DOMAIN" | tr ',' '\n' | sed 's/^ *//;s/ *$//'); do
   fi
 done
 
-# Lock 추가
-echo "| $AGENT | $DOMAIN | $BRANCH | $NOW |" >> spec/CONTRACTS.md
+# Lock 추가 (PID 포함 → stale 자동 감지 가능)
+echo "| $AGENT | $DOMAIN | $BRANCH | $NOW | $PID |" >> spec/CONTRACTS.md
 
 # live 파일에 claimed domain 반영 (다른 에이전트가 실시간으로 볼 수 있게)
 "$SCRIPT_DIR/live.sh" update "$DOMAIN" 2>/dev/null || true
