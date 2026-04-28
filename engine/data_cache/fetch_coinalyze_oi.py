@@ -86,8 +86,8 @@ def probe_oi_history_range(symbol: str, timeframe: str = "1h") -> tuple[datetime
     interval_secs = _INTERVAL_SECONDS[interval]
     now = int(datetime.now(timezone.utc).timestamp())
 
-    # Try fetching a small batch near the beginning of time (2020-01-01)
-    from_ts = 1577836800  # 2020-01-01
+    # Probe range: start from 120 days ago (max that free/mid tier allows)
+    from_ts = now - 120 * 86400
     to_ts = from_ts + interval_secs * 10
 
     try:
@@ -180,6 +180,8 @@ def fetch_coinalyze_oi_history(
                     continue
                 t = point.get("t")
                 v = point.get("v")  # open interest value
+                # Coinalyze returns OHLC format: o/h/l/c — use close (c) for OI
+                v = point.get("c")
                 if t is not None and v is not None:
                     all_rows.append({"t": int(t), "oi_usd": float(v)})
 
