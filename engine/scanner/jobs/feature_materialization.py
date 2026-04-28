@@ -108,6 +108,7 @@ def materialize_symbol_window(
     store: FeatureMaterializationStore | None = None,
     bars: pd.DataFrame | None = None,
     perp: pd.DataFrame | None = None,
+    corpus_store: SearchCorpusStore | None = None,
 ) -> dict[str, Any]:
     store = store or FeatureMaterializationStore()
     bars_df = bars if bars is not None else load_klines(symbol, timeframe, offline=offline)
@@ -136,7 +137,7 @@ def materialize_symbol_window(
 
     corpus_windows = build_corpus_windows(symbol, timeframe, bars_df)
     if corpus_windows:
-        SearchCorpusStore().upsert_windows(corpus_windows)
+        (corpus_store or SearchCorpusStore()).upsert_windows(corpus_windows)
 
     return {
         "feature_window": bundle.feature_window,
