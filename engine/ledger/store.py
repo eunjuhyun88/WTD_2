@@ -871,10 +871,15 @@ def _is_production() -> bool:
 def get_ledger_store():
     """Return SupabaseLedgerStore if env configured, else FileLedgerStore (local dev).
 
+    Set FORCE_FILE_LEDGER=true to always use FileLedgerStore (useful for local dev
+    when Supabase credentials are present but network is slow/unavailable).
+
     W-0215: Raises RuntimeError in production when Supabase env is missing so that
     silent JSON-only writes (which survive only the container lifetime) are caught at
     startup rather than silently losing judgment ledger data.
     """
+    if os.environ.get("FORCE_FILE_LEDGER", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return FileLedgerStore()
     has_supabase = bool(
         os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     )
