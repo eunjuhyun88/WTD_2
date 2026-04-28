@@ -17,6 +17,7 @@
   import SaveStrip from './SaveStrip.svelte';
   import ResearchPanel from './ResearchPanel.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
+  import ChartBoardHeader from './ChartBoardHeader.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
@@ -301,9 +302,6 @@
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
   let contextStripOpen = $state(false);
 
-  /** TradingView-style “Indicators” popover (add studies to chart). */
-  let studiesPanelOpen = $state(false);
-  let studiesWrapEl = $state<HTMLDivElement | undefined>(undefined);
   let studyQuery = $state('');
 
   let activeIndicatorCount = $derived.by(() => {
@@ -1882,23 +1880,7 @@
     }
   });
 
-  // Close indicators panel on outside click (deferred so the opening click does not close it).
-  $effect(() => {
-    if (!studiesPanelOpen || typeof document === 'undefined') return;
-    const onDocClick = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node) || !studiesWrapEl?.contains(t)) {
-        studiesPanelOpen = false;
-      }
-    };
-    const id = window.setTimeout(() => {
-      document.addEventListener('click', onDocClick, true);
-    }, 0);
-    return () => {
-      window.clearTimeout(id);
-      document.removeEventListener('click', onDocClick, true);
-    };
-  });
+
 </script>
 
 <div
@@ -1913,161 +1895,26 @@
   <ChartToolbar {tf} onTfChange={selectTf} />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
-  <div class="chart-header chart-header--tv">
-    <div class="tv-row tv-row--top">
-      <!-- Single compact toolbar: venue tag + regime (unique to this pane) +
-           chart mode + studies popover + capture controls. Price/%/TF are
-           handled by the global CommandBar directly above. -->
-      <div class="chart-symbol tv-symbol-cluster chart-symbol--compact">
-        <span class="sym-quote">PERP</span>
-        {#if quantRegime?.label}
-          <span class="sym-regime-pill" data-tone={quantRegime.tone}>{quantRegime.label}</span>
-        {/if}
-      </div>
-
-      <div class="tv-actions">
-        <div class="mode-switch" role="group" aria-label="차트 타입">
-          {#each [
-            { mode: 'candle', label: 'Candles' },
-            { mode: 'heikin', label: 'HA' },
-            { mode: 'bar', label: 'Bar' },
-            { mode: 'line', label: 'Line' },
-            { mode: 'area', label: 'Area' },
-          ] as t (t.mode)}
-            <button
-              class="mode-btn"
-              class:active={chartMode === t.mode}
-              onclick={() => { chartMode = t.mode as typeof chartMode; }}
-              title={t.label}
-            >{t.label}</button>
-          {/each}
-        </div>
-        <div class="scale-btns" role="group" aria-label="가격 스케일 모드">
-          {#each [
-            { mode: 'normal', label: 'Auto' },
-            { mode: 'log', label: 'Log' },
-            { mode: 'percent', label: '%' },
-          ] as s (s.mode)}
-            <button
-              class="mode-btn scale-btn"
-              class:active={priceScaleMode === s.mode}
-              onclick={() => {
-                priceScaleMode = s.mode as typeof priceScaleMode;
-                if (mainChart) {
-                  mainChart.priceScale('right').applyOptions({
-                    mode: s.mode === 'log' ? PriceScaleMode.Logarithmic
-                        : s.mode === 'percent' ? PriceScaleMode.Percentage
-                        : PriceScaleMode.Normal,
-                  });
-                }
-              }}
-            >{s.label}</button>
-          {/each}
-        </div>
-      </div>
-      <!-- Studies / capture / save actions inline on the same row -->
-      <!-- (tv-studies-wrap and following siblings continue below inside tv-row--top) -->
-      <div class="tv-studies-wrap" bind:this={studiesWrapEl}>
-        <button
-          type="button"
-          class="tv-indicators-trigger"
-          class:is-open={studiesPanelOpen}
-          onclick={(e) => {
-            e.stopPropagation();
-            studiesPanelOpen = !studiesPanelOpen;
-          }}
-          aria-expanded={studiesPanelOpen}
-          aria-controls="tv-indicators-panel"
-          id="tv-indicators-trigger"
-        >
-          <span class="tv-indicators-glyph" aria-hidden="true">fx</span>
-          Indicators
-          {#if activeIndicatorCount > 0}
-            <span class="tv-ind-count">{activeIndicatorCount}</span>
-          {/if}
-        </button>
-        {#if studiesPanelOpen}
-          <div
-            class="tv-studies-panel"
-            id="tv-indicators-panel"
-            role="dialog"
-            aria-labelledby="tv-indicators-trigger"
-          >
-            <p class="tv-panel-baseline">Moving averages <strong>5 / 20 / 60</strong> are always drawn.</p>
-
-            <label class="tv-search-wrap" for="tv-study-search">
-              <span class="tv-study-sublabel">Search studies</span>
-              <input
-                id="tv-study-search"
-                class="tv-study-search"
-                type="search"
-                bind:value={studyQuery}
-                placeholder="EMA, VWAP, CVD, MACD..."
-              />
-            </label>
-
-            {#if studySections.length > 0}
-              {#each studySections as section (section.category)}
-                <section class="tv-panel-section" aria-label={section.category}>
-                  <h3 class="tv-panel-section-title">{section.category}</h3>
-                  {#each section.items as study (study.id)}
-                    <button
-                      type="button"
-                      class="tv-study-button"
-                      class:is-active={study.active}
-                      onclick={() => toggleStudy(study.id)}
-                    >
-                      <span class="tv-study-main">
-                        <strong>{study.label}</strong>
-                        <small>{study.description}</small>
-                      </span>
-                      <span class="tv-study-meta">
-                        {#if study.meta}
-                          <em>{study.meta}</em>
-                        {/if}
-                        <span class="tv-study-state">{study.active ? 'On' : 'Off'}</span>
-                      </span>
-                    </button>
-                    {#if study.id === 'ema' && showEMA && emaTfOptions.length > 0}
-                      <div class="tv-study-nested">
-                        <label class="tv-study-sublabel" for="tv-ema-tf">EMA resolution</label>
-                        <select id="tv-ema-tf" class="tv-panel-select" bind:value={emaTf}>
-                          <option value="">Same as chart</option>
-                          {#each emaTfOptions as et (et)}
-                            <option value={et}>{et}</option>
-                          {/each}
-                        </select>
-                        <p class="tv-study-help">Higher TF EMA is stepped onto chart bars to preserve the TradingView-style MTF read.</p>
-                      </div>
-                    {/if}
-                  {/each}
-                </section>
-              {/each}
-            {:else}
-              <div class="tv-study-empty">No matching studies. Try EMA, VWAP, RSI, MACD, CVD, or funding.</div>
-            {/if}
-          </div>
-        {/if}
-      </div>
-      <div class="capture-inline" aria-label="Visible capture window">
-        <span class="capture-kicker">CAPTURE</span>
-        <strong class="capture-label">{captureWindowLabel}</strong>
-        {#if captureBarCount !== null}
-          <span class="capture-meta">· {captureBarCount} bars</span>
-        {/if}
-      </div>
-      <div class="capture-actions">
-        <button class="capture-save-btn" onclick={handleSaveSetup} aria-label="Save current visible range">
-          Save Setup
-        </button>
-        {#if savedCaptureId}
-          <a class="capture-open-btn" href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}&autorun=1`}>
-            이거 찾아줘 →
-          </a>
-        {/if}
-      </div>
-    </div>
-  </div>
+  <ChartBoardHeader
+    {chartMode}
+    {priceScaleMode}
+    mainChart={mainChart}
+    quantRegime={quantRegime}
+    {studySections}
+    {activeIndicatorCount}
+    {studyQuery}
+    {showEMA}
+    {emaTfOptions}
+    {emaTf}
+    {captureWindowLabel}
+    {captureBarCount}
+    {savedCaptureId}
+    onChartModeChange={(mode) => { chartMode = mode; }}
+    onPriceScaleModeChange={(mode) => { priceScaleMode = mode; }}
+    onToggleStudy={(id) => toggleStudy(id)}
+    onSaveSetup={handleSaveSetup}
+    onEmaTfChange={(t) => { emaTf = t; }}
+  />
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
   {#if loading}
