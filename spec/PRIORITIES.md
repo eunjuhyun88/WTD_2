@@ -17,8 +17,9 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 (P0=1 / P1=10 / P2=10 / P3=10) — W-0253 ✅ (#512) + W-0254 ✅ (#509) + W-0244 ✅ (#505) + V-05 ✅ (#507) + V-11 ✅ (#508)
-즉시 P0:   W-0259 engine/validation/ wrapper (V-track 통합) — V-01/02/04/05/06/11 모듈 존재, 통합 pipeline 미구현
+열린 갭:    17개 → **14개** (P0=0 / P1=10 / P2=10 / P3=10) — W-0257 ✅ (#489) + W-0279 ✅ (#541) + W-0280 ✅ (#541)
+즉시 P0:   ~~W-0259 engine/validation/ wrapper~~ → **✅ 해소** (PR #541 W-0279/W-0280 — pipeline + production runner wiring)
+다음 P1:   W-0281 gate_v2 Phase2 (#548) + W-0282 F-3 Telegram deeplink (#546) + W-0283 F-11 WATCHING (#547)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.
@@ -124,7 +125,7 @@ H-08 / F-30 / F-17
 | **W-0244** | F-7 meta automation workflows | ✅ PR #505 | CURRENT.md SHA auto-update + worktree cron |
 | **W-0254** | F60GateBar UI component | ✅ PR #509 | Svelte 5 dual progress bars + badge |
 | **W-0259** | `engine/research/validation/` pipeline 통합 (V-05+V-11 연결) | 🔴 **즉시** (W-0273) | regime_results 플레이스홀더 충전 + GateV2 export |
-| **W-0257** | D2 horizon parametrization (4h primary) | ⬜ Priority B1 (P1) | 설계 #477 머지 |
+| **W-0257** | D2 horizon parametrization (4h primary) | ✅ PR #489 MERGED | 구현 완료 2026-04-27 |
 | **W-0258** | D5 F-60 Layer B subjective gate | ⬜ Priority B2 (P1) | 설계 #477 머지 |
 
 ---
@@ -426,7 +427,10 @@ promotion_gate_pass_rate_30d > 0
 | W-0223 | V-05 regime-conditional return M4 | engine | ✅ PR #507 |
 | W-0224 | V-11 gate v2 G1~G7 + PromotionPolicy | engine | ✅ PR #508 |
 | W-0253 | F-60 gate min-samples hardening | engine | ✅ PR #512 |
-| W-0259 | `engine/validation/` pipeline wrapper (V-01~V-11 통합) | engine | 🔴 즉시 — 모듈 OK, pipeline 미구현 |
+| W-0279/W-0280 | V-track core loop closure (V-05 wiring + production runner) | engine | ✅ PR #541 — 170 passed, pipeline wired |
+| W-0281 | gate_v2 Phase2 — promote actuator (#548) | engine | 🟡 Design |
+| W-0282 | F-3 Telegram verdict deep link impl (#546) | engine+app | 🟡 Design |
+| W-0283 | F-11 Dashboard WATCHING + Candidates (#547) | app | 🟡 Design |
 
 → 영역: `engine/research/`, `engine/research/validation/`
 
