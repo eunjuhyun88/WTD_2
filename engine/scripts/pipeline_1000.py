@@ -2,7 +2,7 @@
 
 Steps (run in order):
   1. universe  — build/refresh universe.parquet (CMC 1000 ranks)
-  2. ohlcv     — backfill 12mo 1h OHLCV for all symbols (parallel, 40 workers)
+  2. ohlcv     — backfill 6yr 1h OHLCV for all symbols (parallel, 4 workers)
   3. derivatives — funding + OI + L/S for Futures symbols (parallel)
   4. onchain   — fetch on-chain data for BTC/ETH/SOL/BNB
   5. indicators — compute RSI/MACD/BB/ATR and save back to Parquet
@@ -188,7 +188,7 @@ def main() -> None:
         choices=["all", "universe", "ohlcv", "derivatives", "onchain", "indicators", "status"],
         help="Pipeline step to run",
     )
-    parser.add_argument("--months", type=int, default=12, help="History months (default: 12)")
+    parser.add_argument("--months", type=int, default=72, help="History months (default: 72 = 6yr)")
     parser.add_argument("--tf", default="1h", help="Timeframe (default: 1h)")
     parser.add_argument("--force", action="store_true", help="Force re-fetch (ignore cache)")
     parser.add_argument("--limit", type=int, default=None, help="Limit to first N symbols (testing)")
