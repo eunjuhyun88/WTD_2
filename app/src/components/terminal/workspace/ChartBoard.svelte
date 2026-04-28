@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, createSeriesMarkers } from 'lightweight-charts';
+  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, BarSeries, AreaSeries, createSeriesMarkers } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
   import {
     chartIndicators,
@@ -296,7 +296,7 @@
   let showComparison = $derived($chartIndicators.comparison);
   let isVeloSurface = $derived(surfaceStyle === 'velo');
 
-  let chartMode = $state<'candle' | 'line'>('candle');
+  let chartMode = $state<'candle' | 'line' | 'bar' | 'area' | 'heikin'>('candle');
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
   let contextStripOpen = $state(false);
 
@@ -988,7 +988,7 @@
     // price pane (user feedback 2026-04-19: "보조지표만 같이 나오고 나머지는
     // 하단으로 붙어야지").
     const hasFundingOverlay =
-      derivativesOnMain && chartMode === 'candle' && Boolean(fundingBars?.length);
+      derivativesOnMain && (chartMode === 'candle' || chartMode === 'bar' || chartMode === 'heikin') && Boolean(fundingBars?.length);
     const mainChartHeight = measureChartHostHeight();
 
     // ── Main (candles + overlays) ────────────────────────────────────────────
@@ -1023,7 +1023,60 @@
       priceSeries = lineSeries;
       candleSeriesForAnnotations = null;
       candleMarkerApi = null;
+    } else if (chartMode === 'area') {
+      const areaSeries = mainChart.addSeries(AreaSeries, {
+        lineColor: '#63b3ed',
+        topColor: 'rgba(99,179,237,0.3)',
+        bottomColor: 'rgba(99,179,237,0)',
+        lineWidth: 2,
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+      areaSeries.setData(klines.map((k) => ({ time: k.time as UTCTimestamp, value: k.close })));
+      priceSeries = areaSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
+    } else if (chartMode === 'bar') {
+      const barSeries = mainChart.addSeries(BarSeries, {
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        openVisible: true,
+        thinBars: false,
+      });
+      barSeries.setData(klines.map((bar) => ({
+        time: bar.time as UTCTimestamp,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+      })));
+      priceSeries = barSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
+    } else if (chartMode === 'heikin') {
+      // Heikin Ashi calculation
+      const haBars = klines.map((bar, i) => {
+        const prev = i > 0 ? klines[i - 1] : bar;
+        const haClose = (bar.open + bar.high + bar.low + bar.close) / 4;
+        const haOpen = i === 0 ? (bar.open + bar.close) / 2 : (prev.open + prev.close) / 2;
+        const haHigh = Math.max(bar.high, haOpen, haClose);
+        const haLow = Math.min(bar.low, haOpen, haClose);
+        return { time: bar.time as UTCTimestamp, open: haOpen, high: haHigh, low: haLow, close: haClose };
+      });
+      const haSeries = mainChart.addSeries(CandlestickSeries, {
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderUpColor: '#26a69a',
+        borderDownColor: '#ef5350',
+        wickUpColor: 'rgba(38,166,154,0.7)',
+        wickDownColor: 'rgba(239,83,80,0.7)',
+      });
+      haSeries.setData(haBars);
+      priceSeries = haSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
     } else {
+      // Default: candlestick
       const candleSeries = mainChart.addSeries(CandlestickSeries, {
         upColor:        '#26a69a',
         downColor:      '#ef5350',
@@ -1866,9 +1919,21 @@
       </div>
 
       <div class="tv-actions">
-        <div class="mode-switch">
-          <button class="mode-btn" class:active={chartMode === 'candle'} onclick={() => { chartMode = 'candle'; }}>Candles</button>
-          <button class="mode-btn" class:active={chartMode === 'line'} onclick={() => { chartMode = 'line'; }}>Line</button>
+        <div class="mode-switch" role="group" aria-label="차트 타입">
+          {#each [
+            { mode: 'candle', label: 'Candles' },
+            { mode: 'heikin', label: 'HA' },
+            { mode: 'bar', label: 'Bar' },
+            { mode: 'line', label: 'Line' },
+            { mode: 'area', label: 'Area' },
+          ] as t (t.mode)}
+            <button
+              class="mode-btn"
+              class:active={chartMode === t.mode}
+              onclick={() => { chartMode = t.mode as typeof chartMode; }}
+              title={t.label}
+            >{t.label}</button>
+          {/each}
         </div>
       </div>
       <!-- Studies / capture / save actions inline on the same row -->
