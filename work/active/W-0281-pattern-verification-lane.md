@@ -10,6 +10,28 @@
 
 ---
 
+## Owner
+
+- **Design**: A066 (relaxed-chatelet, 2026-04-28) — design lock-in only
+- **Implementation**: TBD (V-PV-01 시작 시 새 에이전트 assign)
+- **Reviewer**: CTO hat — Frozen 격리 위반 검사 의무
+
+---
+
+## Canonical Files
+
+- `docs/live/W-0220-product-prd-master.md` § 0.3 — 부모 PRD
+- `docs/live/PRD.md` § 5b — canonical PRD
+- `spec/CHARTER.md` §Frozen Pattern Verification Lane 예외절
+- `work/active/W-0281-pattern-verification-lane.md` (이 문서)
+- `work/active/CURRENT.md` Verification Track
+
+신규 코드 (구현 단계에서 생성):
+- `engine/verification/` — paper executor, backtest, signal card builder
+- `app/routes/paper/` — UI surface
+
+---
+
 ## Goal
 
 WTD 검증 루프를 **사람 판단 (JUDGE/Verdict)** 에서 **시장 판단 (Paper P&L)** 까지 확장한다. 패턴이 "사람이 보기에 좋은가"와 "진짜 시장에서 먹히는가"를 동시에 측정해서, refinement 학습 라벨을 2배로 만든다.
@@ -152,6 +174,62 @@ WTD 검증 루프를 **사람 판단 (JUDGE/Verdict)** 에서 **시장 판단 (P
 - **선행**: W-0254 (H-07/H-08 F-60 Gate) 머지 — F-60 게이트가 paper-verified 시그널 진입 조건에 포함됨
 - **병행 가능**: V-08 pipeline (별 lane, 충돌 없음)
 - **후행**: N-05 Copy Signal Marketplace (paper-verified 게이트 추가만)
+
+---
+
+## Facts
+
+- 코드 실측: `engine/copy_trading/` 디렉토리 존재 (Frozen W-0132). 본 lane은 격리 의무.
+- main에 머지된 `ce1ed0be feat(W-0279/W-0280): V-track core loop closure` — V-track 다른 lane과 ID 분리 완료 (W-0280 → W-0281 정정).
+- `engine/stats/engine.py` BUILT (PatternPerf dataclass, 5-min TTL) — paper P&L 누적 계산에 재사용 가능.
+- `app/routes/terminal/` TradeMode WS 채널 BUILT — paper executor live feed 재사용 가능.
+- W-0254 H-07/H-08 활성 worktree 2개 (`.claude/worktrees/W-0254-h07-h08`, `.claude/worktrees/feat-H08`) — 충돌 회피 의무.
+
+## Assumptions
+
+- Paper P&L 신호와 JUDGE valid 비율 사이 상관관계가 측정 가능 (KPI ≥ 0.5). **검증 필요**: V-PV-04 머지 후 30일 데이터.
+- 사용자가 paper 결과를 실자금처럼 *오인하지 않음* (UI 헤더 + onboarding 모달로 mitigate).
+- perp 선물 슬리피지가 고정 10 bps로 충분히 보수적. orderbook depth 시뮬은 P5.
+- 3-mode (수동/AI/rule-based) 모두 구현 비용이 lane 가치를 넘지 않음. 비용 초과 시 Mode 비교는 분리 머지.
+- 기존 corpus seed-search 결과가 backtest hit rate ground truth로 신뢰 가능 (±5%p).
+
+## Decisions
+
+| # | 결정 | 근거 | 일자 |
+|---|---|---|---|
+| D1 | Pattern Verification Lane을 **별 surface로 격리** (engine/verification 신규) | Frozen W-0132 copy_trading 보호 + 검증 도구 정체성 명확화 | 2026-04-28 |
+| D2 | 4-phase 점진 머지 (Signal Card → Backtest → Paper Exec → Mode 비교) | 부분 가치 보존, P1만 머지해도 시그널 카드 가치 발생 | 2026-04-28 |
+| D3 | Mode A/B/C 3종 모두 구현 — mode 자체가 데이터 | 사용자 결정 (2026-04-28 세션) | 2026-04-28 |
+| D4 | Paper Trading은 CHARTER §Frozen 위반 아님 (예외절 추가) | 검증 도구 ≠ 자동매매 도구. 실자금 미사용 | 2026-04-28 |
+| D5 | W-0281 ID 채택 (W-0280 충돌 정정) | main commit ce1ed0be와 ID 충돌 회피 | 2026-04-28 |
+
+---
+
+## Next Steps
+
+1. **이 PR (#543) 머지** — design lock-in 확정
+2. **W-0254 H-07/H-08 머지 대기** — 현재 활성 worktree 2개 작업 종료 알림 수신
+3. **V-PV-01 issue 생성** — `engine/verification/` scaffold + paper_executor 인터페이스 (M)
+4. **새 worktree** `.claude/worktrees/feat-V-PV-01` 생성 후 본 worktree와 격리
+5. **PV-Q1~Q7 사용자 결정 세션** — V-PV-01 진입 시점에 슬리피지/수수료/사이즈/horizon/라벨 우선순위 확정
+6. **CI 가드 추가 검토** — `import.*copy_trading` grep PR 차단 (V-PV-01 동시)
+
+---
+
+## Handoff Checklist
+
+다음 에이전트(V-PV-01 implementer)가 받아갈 정보:
+
+- [ ] 본 문서 (`work/active/W-0281-pattern-verification-lane.md`) 정독
+- [ ] PRD master § 0.3 v3 섹션 정독
+- [ ] CHARTER §Frozen Pattern Verification Lane 예외절 정독
+- [ ] PV-Q1~Q7 open question 사용자 결정 세션 진행
+- [ ] W-0254 H-07/H-08 PR 머지 확인 (`gh pr list --search "W-0254"`)
+- [ ] 새 worktree 생성 (`.claude/worktrees/feat-V-PV-01`), 본 worktree와 격리
+- [ ] V-PV-01 GitHub Issue 생성 + assignee 지정 (mutex)
+- [ ] `engine/copy_trading/` import 금지 확인 (CI 가드 또는 수동 grep)
+- [ ] Phase 1 Exit Criteria 충족 후 V-PV-02부터 V-PV-06까지 순차 진행
+- [ ] 각 phase별 Success Metrics KPI 측정 + PRD master § 0.3.7 업데이트
 
 ---
 
