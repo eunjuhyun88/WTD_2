@@ -17,8 +17,10 @@ v2 improvements (CTO review):
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from dataclasses import dataclass
 import logging
+import threading
 from datetime import datetime
 from typing import Callable
 
@@ -62,6 +64,11 @@ class PatternStateMachine:
         self.on_invalidated = on_invalidated
         self.on_phase_attempt = on_phase_attempt
         self._states: dict[str, SymbolPhaseState] = {}
+        # A3: per-machine RLock — protects _states from concurrent symbol evaluations
+        self._lock = threading.RLock()
+        # A1: in-memory LRU dedupe keyed by (symbol, to_phase, trigger_bar_ts_iso, pattern_version)
+        self._emitted_keys: OrderedDict[tuple, None] = OrderedDict()
+        self._EMIT_LRU = 4096
 
     def evaluate(
         self,
@@ -85,6 +92,46 @@ class PatternStateMachine:
         Returns:
             PhaseTransition if a phase change occurred, None otherwise.
         """
+        # A3: Hold lock for all state mutations; fire callbacks outside.
+        with self._lock:
+            t, invalidated_phase, attempt = self._evaluate_state(
+                symbol=symbol,
+                blocks_triggered=blocks_triggered,
+                timestamp=timestamp,
+                feature_snapshot=feature_snapshot,
+                scan_id=scan_id,
+                trigger_bar_ts=trigger_bar_ts,
+                data_quality=data_quality,
+            )
+
+        # Callbacks run outside the lock so I/O (Supabase, ledger) never blocks
+        # concurrent symbol evaluations.
+        if emit_callbacks:
+            if t is not None:
+                self._emit_transition(t)
+            if invalidated_phase and self.on_invalidated:
+                self.on_invalidated(symbol, invalidated_phase)
+            if attempt and self.on_phase_attempt:
+                self.on_phase_attempt(attempt)
+
+        return t
+
+    def _evaluate_state(
+        self,
+        symbol: str,
+        blocks_triggered: list[str],
+        timestamp: datetime,
+        feature_snapshot: dict | None,
+        scan_id: str | None,
+        trigger_bar_ts: datetime | None,
+        data_quality: dict | None,
+    ) -> tuple[PhaseTransition | None, str | None, PhaseAttemptRecord | None]:
+        """State-mutation core of evaluate(); always called under self._lock.
+
+        Returns:
+            (transition, invalidated_old_phase_id, attempt_record)
+        """
+        attempt: PhaseAttemptRecord | None = None
         state = self._states.get(symbol)
         if state is None or state.invalidated:
             state = SymbolPhaseState(
@@ -127,11 +174,7 @@ class PatternStateMachine:
                 )
                 state.last_transition_id = t.transition_id
                 state.phase_transition_ids[self.pattern.phases[0].phase_id] = t.transition_id
-                if emit_callbacks:
-                    self._emit_transition(t)
-                if emit_callbacks and self.on_invalidated:
-                    self.on_invalidated(symbol, old_phase_id)
-                return t
+                return t, old_phase_id, None
 
         # --- Check if we can advance to next phase ---
         next_phase_idx = state.current_phase_idx + 1
@@ -140,8 +183,7 @@ class PatternStateMachine:
 
             # v2: min_bars enforcement — must stay in current phase long enough
             if state.phase_entered_at is not None and state.bars_in_phase < current_phase.min_bars:
-                # Not enough bars in current phase yet — don't advance
-                return None
+                return None, None, None
 
             evaluation = self._phase_satisfied(
                 state=state,
@@ -190,28 +232,26 @@ class PatternStateMachine:
                     evaluation.confidence * 100, self.pattern.slug,
                 )
 
-                if emit_callbacks:
-                    self._emit_transition(t)
+                return t, None, None
 
-                return t
-            if emit_callbacks and evaluation.should_record_attempt and self.on_phase_attempt:
-                self.on_phase_attempt(
-                    PhaseAttemptRecord(
-                        symbol=symbol,
-                        pattern_slug=self.pattern.slug,
-                        timeframe=self.pattern.timeframe,
-                        from_phase=current_phase.phase_id,
-                        attempted_phase=next_phase.phase_id,
-                        attempted_at=timestamp,
-                        phase_score=evaluation.phase_score,
-                        missing_blocks=evaluation.missing_blocks,
-                        failed_reason=evaluation.failed_reason or "unknown",
-                        anchor_transition_id=evaluation.anchor_transition_id,
-                        scan_id=scan_id,
-                        blocks_triggered=list(blocks_triggered),
-                        feature_snapshot=feature_snapshot,
-                    )
+            if evaluation.should_record_attempt:
+                attempt = PhaseAttemptRecord(
+                    symbol=symbol,
+                    pattern_slug=self.pattern.slug,
+                    timeframe=self.pattern.timeframe,
+                    from_phase=current_phase.phase_id,
+                    attempted_phase=next_phase.phase_id,
+                    attempted_at=timestamp,
+                    phase_score=evaluation.phase_score,
+                    missing_blocks=evaluation.missing_blocks,
+                    failed_reason=evaluation.failed_reason or "unknown",
+                    anchor_transition_id=evaluation.anchor_transition_id,
+                    scan_id=scan_id,
+                    blocks_triggered=list(blocks_triggered),
+                    feature_snapshot=feature_snapshot,
                 )
+                # Don't return early — fall through to NONE→phase0 check below
+                # (original behavior: fire callback then continue)
         else:
             # Already at last phase — success phase, reset after max_bars
             if state.bars_in_phase and state.bars_in_phase > current_phase.max_bars:
@@ -249,13 +289,26 @@ class PatternStateMachine:
                 )
                 state.last_transition_id = t.transition_id
                 state.phase_transition_ids[phase0.phase_id] = t.transition_id
-                if emit_callbacks:
-                    self._emit_transition(t)
-                return t
+                return t, None, attempt
 
-        return None
+        return None, None, attempt
 
     def _emit_transition(self, transition: PhaseTransition) -> None:
+        # A1: LRU dedupe — skip if same (symbol, to_phase, trigger_bar_ts, version) already emitted.
+        # Uses self._lock (RLock) so this method must NOT be called while holding the lock.
+        key = (
+            transition.symbol,
+            transition.to_phase,
+            (transition.trigger_bar_ts or transition.timestamp).isoformat(),
+            transition.pattern_version,
+        )
+        with self._lock:
+            if key in self._emitted_keys:
+                return
+            self._emitted_keys[key] = None
+            if len(self._emitted_keys) > self._EMIT_LRU:
+                self._emitted_keys.popitem(last=False)
+
         if self.on_transition:
             self.on_transition(transition)
         if transition.is_entry_signal and self.on_entry_signal:
@@ -276,22 +329,46 @@ class PatternStateMachine:
     def hydrate_states(self, records: dict[str, PatternStateRecord] | list[PatternStateRecord]) -> None:
         """Restore current states from durable PatternStateRecord rows."""
         iterable = records.values() if isinstance(records, dict) else records
+        new_states: dict[str, SymbolPhaseState] = {}
         for record in iterable:
             if record.pattern_slug != self.pattern.slug or record.invalidated or not record.active:
                 continue
             if not (0 <= record.current_phase_idx < len(self.pattern.phases)):
                 continue
-            self._states[record.symbol] = SymbolPhaseState(
+            new_states[record.symbol] = SymbolPhaseState(
                 symbol=record.symbol,
                 pattern_slug=record.pattern_slug,
                 current_phase_idx=record.current_phase_idx,
                 phase_entered_at=record.entered_at,
                 bars_in_phase=record.bars_in_phase,
                 phase_history=[(record.current_phase, record.entered_at)] if record.entered_at else [],
+                # A4: only current_phase here; full phase_transition_ids populated by
+                # hydrate_transition_ids() after transition history is available.
                 phase_transition_ids={record.current_phase: record.last_transition_id} if record.last_transition_id else {},
                 last_transition_id=record.last_transition_id,
                 invalidated=record.invalidated,
             )
+        with self._lock:
+            self._states.update(new_states)
+
+    def hydrate_transition_ids(self, transitions_by_symbol: dict[str, list]) -> None:
+        """A4: After hydrate_states(), backfill phase_transition_ids from full history.
+
+        transitions_by_symbol: {symbol: [PhaseTransitionRecord, ...]} sorted by transitioned_at ASC.
+        Last-write-wins per to_phase ensures each phase maps to its most recent transition.
+        """
+        with self._lock:
+            for symbol, records in transitions_by_symbol.items():
+                state = self._states.get(symbol)
+                if state is None:
+                    continue
+                ids: dict[str, str] = {}
+                for rec in records:
+                    if rec.to_phase and rec.transition_id:
+                        ids[rec.to_phase] = rec.transition_id
+                # Merge into existing map (don't overwrite, just fill gaps)
+                for phase_id, tid in ids.items():
+                    state.phase_transition_ids.setdefault(phase_id, tid)
 
     def _phase_satisfied(
         self,
@@ -538,10 +615,11 @@ class PatternStateMachine:
 
     def reset_symbol(self, symbol: str) -> None:
         """Force reset a specific symbol."""
-        self._states[symbol] = SymbolPhaseState(
-            symbol=symbol,
-            pattern_slug=self.pattern.slug,
-        )
+        with self._lock:
+            self._states[symbol] = SymbolPhaseState(
+                symbol=symbol,
+                pattern_slug=self.pattern.slug,
+            )
 
     def get_symbol_state(self, symbol: str) -> SymbolPhaseState | None:
         return self._states.get(symbol)

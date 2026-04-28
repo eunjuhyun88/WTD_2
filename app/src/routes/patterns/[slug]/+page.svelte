@@ -1,0 +1,323 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+
+  const slug = $derived($page.params.slug ?? '');
+
+  interface StateEntry {
+    symbol: string;
+    phase_id: string;
+    phase_idx: number;
+    phase_label: string;
+    entered_at: string | null;
+    bars_in_phase: number;
+    max_bars: number;
+    progress_pct: number;
+  }
+  interface Transition {
+    transition_id: string;
+    symbol: string;
+    pattern_slug: string;
+    from_phase: string | null;
+    to_phase: string;
+    transition_kind: string;
+    reason: string;
+    transitioned_at: string | null;
+    confidence: number;
+  }
+  interface Stats {
+    total_instances: number;
+    hit_rate: number | null;
+    avg_gain_pct: number | null;
+    recent_30d_count: number;
+  }
+
+  let states = $state<StateEntry[]>([]);
+  let transitions = $state<Transition[]>([]);
+  let stats = $state<Stats | null>(null);
+  let loading = $state(true);
+  let error = $state<string | null>(null);
+
+  // Phase distribution: count symbols per phase_id
+  let phaseCounts = $derived(
+    states.reduce((acc: Record<string, number>, s) => {
+      acc[s.phase_id] = (acc[s.phase_id] ?? 0) + 1;
+      return acc;
+    }, {})
+  );
+
+  async function loadAll() {
+    loading = true;
+    error = null;
+    try {
+      const [statesRes, transRes, statsRes] = await Promise.allSettled([
+        fetch(`/api/patterns/states`),
+        fetch(`/api/patterns/transitions?slug=${encodeURIComponent(slug)}&limit=30`),
+        fetch(`/api/patterns/${encodeURIComponent(slug)}/stats`),
+      ]);
+
+      if (statesRes.status === 'fulfilled' && statesRes.value.ok) {
+        const d = await statesRes.value.json();
+        const symbolMap: Record<string, any> = (d.patterns ?? {})[slug] ?? {};
+        states = Object.entries(symbolMap)
+          .filter(([, st]: [string, any]) => st.phase_idx >= 0)
+          .map(([sym, st]: [string, any]) => ({
+            symbol: sym,
+            phase_id: st.phase_id ?? 'UNKNOWN',
+            phase_idx: st.phase_idx ?? 0,
+            phase_label: st.phase_label ?? st.phase_id ?? 'UNKNOWN',
+            entered_at: st.entered_at ?? null,
+            bars_in_phase: st.bars_in_phase ?? 0,
+            max_bars: st.max_bars ?? 0,
+            progress_pct: st.progress_pct ?? 0,
+          }))
+          .sort((a, b) => b.phase_idx - a.phase_idx);
+      }
+
+      if (transRes.status === 'fulfilled' && transRes.value.ok) {
+        const d = await transRes.value.json();
+        transitions = (d.transitions ?? []) as Transition[];
+      }
+
+      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+        const d = await statsRes.value.json();
+        stats = d ?? null;
+      }
+    } catch (e) {
+      error = String(e);
+    } finally {
+      loading = false;
+    }
+  }
+
+  onMount(loadAll);
+
+  function fmt(iso: string | null): string {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('ko-KR', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+      });
+    } catch {
+      return iso;
+    }
+  }
+</script>
+
+<svelte:head>
+  <title>{slug} — Pattern Detail</title>
+</svelte:head>
+
+<main>
+  <header>
+    <a href="/patterns" class="back">← Patterns</a>
+    <h1>{slug}</h1>
+  </header>
+
+  {#if loading}
+    <p class="loading">Loading…</p>
+  {:else if error}
+    <p class="error">{error}</p>
+  {:else}
+
+    <!-- Stats strip -->
+    {#if stats}
+      <section class="stats-strip">
+        <div class="stat">
+          <span class="stat-val">{stats.total_instances}</span>
+          <span class="stat-label">Total entries</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">{stats.hit_rate != null ? (stats.hit_rate * 100).toFixed(0) + '%' : '—'}</span>
+          <span class="stat-label">Hit rate</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">{stats.avg_gain_pct != null ? '+' + stats.avg_gain_pct.toFixed(1) + '%' : '—'}</span>
+          <span class="stat-label">Avg gain</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">{stats.recent_30d_count}</span>
+          <span class="stat-label">Last 30d</span>
+        </div>
+      </section>
+    {/if}
+
+    <!-- Phase distribution -->
+    {#if Object.keys(phaseCounts).length > 0}
+      <section class="section">
+        <h2>Phase distribution</h2>
+        <div class="phase-dist">
+          {#each Object.entries(phaseCounts).sort((a, b) => Number(b[1]) - Number(a[1])) as [phaseId, count]}
+            <div class="phase-pill">
+              <span class="phase-label">{phaseId}</span>
+              <span class="phase-count">{count}</span>
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    <!-- Active states -->
+    <section class="section">
+      <h2>Active symbols ({states.length})</h2>
+      {#if states.length === 0}
+        <p class="empty">No active symbols for this pattern.</p>
+      {:else}
+        <div class="states-grid">
+          {#each states as s}
+            <div class="state-card">
+              <div class="state-symbol">{s.symbol}</div>
+              <div class="state-phase">{s.phase_id}</div>
+              <div class="state-meta">
+                <span>{s.bars_in_phase} / {s.max_bars} bars</span>
+                <span>{s.progress_pct}%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width:{Math.min(s.progress_pct, 100)}%"></div>
+              </div>
+              {#if s.entered_at}
+                <div class="state-entered">{fmt(s.entered_at)}</div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </section>
+
+    <!-- Recent transitions -->
+    <section class="section">
+      <h2>Recent transitions</h2>
+      {#if transitions.length === 0}
+        <p class="empty">No transitions recorded yet.</p>
+      {:else}
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Conf</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each transitions as t}
+              <tr>
+                <td class="symbol">{t.symbol}</td>
+                <td class="phase from">{t.from_phase ?? '—'}</td>
+                <td class="phase to">{t.to_phase}</td>
+                <td>{t.confidence != null ? (t.confidence * 100).toFixed(0) + '%' : '—'}</td>
+                <td class="time">{fmt(t.transitioned_at)}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </section>
+
+  {/if}
+</main>
+
+<style>
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #e8ede4;
+  }
+  header { margin-bottom: 24px; }
+  .back {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: #a0a8a4;
+    text-decoration: none;
+    margin-bottom: 8px;
+  }
+  .back:hover { color: #e8ede4; }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  h2 {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin: 0 0 12px;
+  }
+  .loading, .empty { color: #6b7280; font-size: 0.85rem; }
+  .error { color: #f87171; font-size: 0.85rem; }
+
+  .stats-strip {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat-val { font-size: 1.25rem; font-weight: 600; }
+  .stat-label { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .section { margin-bottom: 40px; }
+
+  .phase-dist { display: flex; flex-wrap: wrap; gap: 8px; }
+  .phase-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    font-size: 0.75rem;
+  }
+  .phase-label { color: #a0a8a4; }
+  .phase-count { font-weight: 600; }
+
+  .states-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .state-card {
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+  }
+  .state-symbol { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+  .state-phase { font-size: 0.7rem; color: #4ade80; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .state-meta { display: flex; justify-content: space-between; font-size: 0.65rem; color: #6b7280; margin-bottom: 4px; }
+  .progress-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-bottom: 6px; }
+  .progress-fill { height: 100%; background: #4ade80; border-radius: 2px; }
+  .state-entered { font-size: 0.65rem; color: #6b7280; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th {
+    text-align: left;
+    padding: 6px 8px;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  td.symbol { font-weight: 600; }
+  td.phase { font-size: 0.7rem; letter-spacing: 0.05em; }
+  td.from { color: #94a3b8; }
+  td.to { color: #4ade80; }
+  td.time { color: #6b7280; font-size: 0.7rem; }
+
+  @media (max-width: 600px) {
+    .states-grid { grid-template-columns: 1fr 1fr; }
+    .stats-strip { gap: 16px; }
+  }
+</style>

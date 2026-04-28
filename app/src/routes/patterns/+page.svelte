@@ -10,8 +10,12 @@
    */
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
+  import { page } from '$app/stores';
   import { buildCanonicalHref } from '$lib/seo/site';
   import VerdictInboxSection from '$lib/components/patterns/VerdictInboxSection.svelte';
+  import PatternCard from '$lib/components/patterns/PatternCard.svelte';
+  import TransitionRow from '$lib/components/patterns/TransitionRow.svelte';
+  import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface PhaseState {
@@ -68,15 +72,44 @@
     } | null;
   }
 
+  interface Transition {
+    transition_id: string;
+    symbol: string;
+    pattern_slug: string;
+    from_phase: string | null;
+    to_phase: string;
+    confidence: number | null;
+    transitioned_at: string | null;
+  }
+
   // ── State ──────────────────────────────────────────────────────────────────
   let candidates   = $state<Candidate[]>([]);
   let states       = $state<PhaseState[]>([]);
   let stats        = $state<PatternStats[]>([]);
+  let transitions  = $state<Transition[]>([]);
   let lastScan     = $state<string | null>(null);
   let loading      = $state(true);
   let scanning     = $state(false);
   let savingCandidateIds = $state(new Set<string>());
   let error        = $state<string | null>(null);
+
+  // Symbol filter — driven by ?symbol= URL param
+  let symbolFilter = $state($page.url.searchParams.get('symbol') ?? '');
+
+  const symbolOptions = $derived(
+    [...new Set(states.map((s) => s.symbol))].sort()
+  );
+  const filteredStates = $derived(
+    symbolFilter ? states.filter((s) => s.symbol === symbolFilter) : states
+  );
+
+  function setSymbolFilter(sym: string) {
+    symbolFilter = sym;
+    const url = new URL($page.url);
+    if (sym) url.searchParams.set('symbol', sym);
+    else url.searchParams.delete('symbol');
+    goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+  }
 
   // Phase display config
   const PHASE_META: Record<number, { label: string; color: string }> = {
@@ -91,10 +124,11 @@
   async function loadAll() {
     error = null;
     try {
-      const [candRes, stateRes, statsRes] = await Promise.allSettled([
+      const [candRes, stateRes, statsRes, transRes] = await Promise.allSettled([
         fetch('/api/patterns'),
         fetch('/api/patterns/states'),
         fetch('/api/patterns/stats'),
+        fetch('/api/patterns/transitions?limit=30'),
       ]);
 
       if (candRes.status === 'fulfilled' && candRes.value.ok) {
@@ -151,6 +185,10 @@
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
         const d = await statsRes.value.json();
         stats = d.stats ?? [];
+      }
+      if (transRes.status === 'fulfilled' && transRes.value.ok) {
+        const d = await transRes.value.json();
+        transitions = (d.transitions ?? []) as Transition[];
       }
     } catch (e) {
       error = String(e);
@@ -214,6 +252,9 @@
 
   const accumulationCount = $derived(candidates.filter((c) => c.phase_name === 'ACCUMULATION').length);
   const breakoutCount = $derived(states.filter((s) => s.current_phase === 4).length);
+  const filteredTransitions = $derived(
+    symbolFilter ? transitions.filter((t) => t.symbol === symbolFilter) : transitions
+  );
 
   let refreshInterval: ReturnType<typeof setInterval>;
   onMount(() => {
@@ -333,15 +374,33 @@
               <span class="surface-kicker">Live States</span>
               <h2>전체 심볼 상태</h2>
             </div>
-            <span class="surface-chip">활성 {states.length}개</span>
+            <div class="section-head-right">
+              <select
+                class="sym-filter"
+                value={symbolFilter}
+                onchange={(e) => setSymbolFilter((e.target as HTMLSelectElement).value)}
+                aria-label="Filter by symbol"
+              >
+                <option value="">전체 심볼</option>
+                {#each symbolOptions as sym}
+                  <option value={sym}>{sym.replace('USDT', '')}</option>
+                {/each}
+              </select>
+              <span class="surface-chip">활성 {filteredStates.length}개</span>
+            </div>
           </div>
 
           {#if states.length === 0}
             <div class="surface-card empty-card">
               <p>추적 중인 심볼 없음 — 스캔을 실행하면 상태가 채워집니다</p>
             </div>
+          {:else if filteredStates.length === 0}
+            <div class="surface-card empty-card">
+              <p>{symbolFilter} — 활성 상태 없음</p>
+            </div>
           {:else}
-            <div class="surface-card states-shell">
+            <!-- Desktop table -->
+            <div class="surface-card states-shell desktop-only">
               <div class="states-table">
                 <div class="table-header">
                   <span>심볼</span>
@@ -350,7 +409,7 @@
                   <span>진입 시간</span>
                   <span>캔들 수</span>
                 </div>
-                {#each states as s}
+                {#each filteredStates as s}
                   {@const meta = PHASE_META[s.current_phase] ?? { label: String(s.current_phase), color: 'rgba(255,255,255,0.4)' }}
                   <div class="table-row" class:highlight={s.current_phase === 3}>
                     <span class="row-sym">
@@ -363,6 +422,19 @@
                   </div>
                 {/each}
               </div>
+            </div>
+            <!-- Mobile card grid -->
+            <div class="mobile-cards-grid mobile-only">
+              {#each filteredStates as s}
+                <PatternCard
+                  symbol={s.symbol}
+                  patternId={s.pattern_id}
+                  phase={s.current_phase}
+                  phaseId={s.phase_name}
+                  enteredAt={s.entered_at}
+                  candlesInPhase={s.candles_in_phase}
+                />
+              {/each}
             </div>
           {/if}
         </div>
@@ -433,11 +505,57 @@
         </div>
       </section>
 
+      <!-- Recent Transitions panel -->
+      <section class="surface-grid">
+        <div class="surface-section-head">
+          <div>
+            <span class="surface-kicker">Transitions</span>
+            <h2>최근 페이즈 전이</h2>
+          </div>
+          <span class="surface-chip">{filteredTransitions.length} records</span>
+        </div>
+        {#if filteredTransitions.length === 0}
+          <div class="surface-card empty-card">
+            <p>아직 기록된 전이 없음</p>
+          </div>
+        {:else}
+          <div class="surface-card transitions-shell">
+            <table class="transitions-table">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th class="hide-sm">Pattern</th>
+                  <th>From</th>
+                  <th class="arrow-th"></th>
+                  <th>To</th>
+                  <th class="hide-sm">Conf</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each filteredTransitions as t}
+                  <TransitionRow
+                    symbol={t.symbol}
+                    slug={t.pattern_slug}
+                    fromPhase={t.from_phase}
+                    toPhase={t.to_phase}
+                    confidence={t.confidence}
+                    transitionedAt={t.transitioned_at}
+                  />
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      </section>
+
       <!-- Verdict Inbox — flywheel axis 3 -->
       <VerdictInboxSection />
     {/if}
   </div>
 </div>
+
+<FeedbackButton />
 
 <style>
   .patterns-copy {
@@ -512,6 +630,51 @@
   .row-phase { font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 700; color: var(--phase-color); }
   .row-time, .row-candles { font-family: var(--sc-font-mono, monospace); font-size: 10px; color: rgba(255,255,255,0.3); }
 
+  .section-head-right { display: flex; align-items: center; gap: 8px; }
+
+  .sym-filter {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    color: rgba(255,255,255,0.7);
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    padding: 3px 6px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .sym-filter:focus { outline: none; border-color: rgba(255,255,255,0.25); }
+
+  .desktop-only { display: block; }
+  .mobile-only  { display: none; }
+
+  .mobile-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+
+  .transitions-shell { padding: 0; overflow: hidden; overflow-x: auto; }
+  .transitions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+  }
+  .transitions-table th {
+    padding: 6px 8px;
+    text-align: left;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.25);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.03);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .arrow-th { width: 16px; padding: 6px 2px; }
+
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
   .stat-card {
     display: flex;
@@ -541,17 +704,10 @@
   }
 
   @media (max-width: 640px) {
-    .cand-actions {
-      flex-wrap: wrap;
-    }
-    .table-header,
-    .table-row {
-      grid-template-columns: 72px 1fr;
-      gap: 8px;
-    }
-    .table-header span:nth-child(n + 3),
-    .table-row span:nth-child(n + 3) {
-      display: none;
-    }
+    .cand-actions { flex-wrap: wrap; }
+    .desktop-only { display: none; }
+    .mobile-only  { display: grid; }
+    .hide-sm { display: none; }
+    .transitions-table { font-size: 10px; }
   }
 </style>

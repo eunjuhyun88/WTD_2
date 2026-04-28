@@ -12,6 +12,8 @@ declare global {
 				phase: number;
 				wallet_address: string | null;
 			} | null;
+			/** B1: true when user authenticated but wallet not in beta_allowlist */
+			betaPending: boolean;
 		}
 		// interface PageData {}
 		// interface PageState {}
