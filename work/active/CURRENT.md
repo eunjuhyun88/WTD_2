@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`ab188089` — origin/main (2026-04-29) — PR #592 (W-0294 히스토리컬 데이터 파이프라인 + multiple_testing) 머지
+`ab188089` — origin/main (2026-04-29) — PR #601 W-0298 V-PV-01 OPEN (CI pending merge)
 
 ---
 
@@ -14,11 +14,11 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0293-1cycle-infra-on` | P0 | 🔴 **즉시** — gcloud env var 1줄 (GAP-B/D) |
+| `W-0293-1cycle-infra-on` | P0 | ✅ gcloud cogotchi(asia-southeast1) ENABLE_*_JOB=true 배포 완료 |
+| `W-0298-v-pv-01-impl` | P1 | 🟡 PR #601 OPEN — CI pending |
 | `W-0297-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 |
 | `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L |
 | `W-0296-automation-harness-runbook` | P2 | ✅ runbook 문서화 완료 |
-| `W-0282-v-pv-01-engine-verification-scaffold` | P1 | 📐 설계 lock-in — W-0254 머지 대기 |
 
 ---
 
@@ -48,7 +48,7 @@ Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 
 ```bash
 ./tools/start.sh
-! gcloud run services update cogotchi-engine \
-  --region asia-northeast3 \
-  --update-env-vars "ENABLE_PATTERN_REFINEMENT_JOB=true,ENABLE_SEARCH_CORPUS_JOB=true"
+# PR #601 CI 확인 후 merge
+gh pr checks 601
+gh pr merge 601 --squash
 ```

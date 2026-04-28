@@ -151,8 +151,8 @@ def run_engine_tests(dry_run: bool) -> tuple[bool, str, float]:
 
     t0 = time.monotonic()
     result = run(
-        [uv, "run", "pytest", "engine/tests/", "-x", "-q", "--tb=short"],
-        cwd=REPO_ROOT,
+        [uv, "run", "pytest", "tests/", "-x", "-q", "--tb=short"],
+        cwd=ENGINE_DIR,
     )
     elapsed = time.monotonic() - t0
 
@@ -231,8 +231,10 @@ Examples:
         surfaces = classify(files)
 
         if not files:
-            print("변경: 없음\n\n결과: PASS \u2705 (변경 없음)", flush=True)
-            return EXIT_PASS
+            print("변경: 없음", flush=True)
+            if not args.engine_only and not args.app_only:
+                print("\n결과: PASS \u2705 (변경 없음)", flush=True)
+                return EXIT_PASS
 
         engine_count = sum(1 for f in files if f.startswith("engine/"))
         app_count = sum(1 for f in files if f.startswith("app/"))
@@ -246,17 +248,20 @@ Examples:
             parts.append(f"기타 {other_count}파일")
         print(f"변경: {', '.join(parts) or '없음'}", flush=True)
 
-        if surfaces["docs_only"]:
-            print("\n결과: PASS \u2705 (docs-only — 테스트 스킵)", flush=True)
-            return EXIT_PASS
-
-    # Apply overrides
+    # Apply overrides before docs_only check so --engine-only / --app-only
+    # force the requested verification surface even when the diff is docs-only.
     if args.engine_only:
         surfaces["engine"] = True
         surfaces["app"] = False
+        surfaces["docs_only"] = False
     if args.app_only:
         surfaces["engine"] = False
         surfaces["app"] = True
+        surfaces["docs_only"] = False
+
+    if surfaces["docs_only"]:
+        print("\n결과: PASS \u2705 (docs-only — 테스트 스킵)", flush=True)
+        return EXIT_PASS
 
     # --- Build step list ---
     steps: list[tuple[str, str]] = []
