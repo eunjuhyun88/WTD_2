@@ -2,14 +2,22 @@
 
 Use this repository as a low-context AI research operating system.
 
+## 도메인 분기 (작업 유형별 추가 로드)
+
+| 작업 유형 | 추가 로드 파일 |
+|---|---|
+| `engine/` 수정 / pytest | `agents/engine.md` |
+| `app/src/` 수정 / Svelte | `agents/app.md` |
+| worktree · PR · 머지 · 멀티 에이전트 | `agents/coordination.md` |
+
 ## Canonical Read Order
 
 1. `AGENTS.md`
 2. `work/active/CURRENT.md`
-3. `state/inventory.md` — tools, endpoints, commands 전체 목록
-4. Relevant `work/active/*.md` listed in `CURRENT.md`
-5. Relevant `docs/domains/*.md`
-6. Relevant `docs/product/*.md`
+3. 도메인 sub-file (`agents/engine.md` or `agents/app.md` — 작업 유형 기준)
+4. `state/inventory.md` — tools, endpoints, commands 전체 목록
+5. Relevant `work/active/*.md` listed in `CURRENT.md`
+6. Relevant `docs/domains/*.md`
 7. Minimal required code files
 
 ## Canonical Truth

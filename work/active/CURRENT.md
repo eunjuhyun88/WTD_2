@@ -1,89 +1,38 @@
-# CURRENT — Agent OS W-0264 Domain 설계 완료 + W-0271 Event Store 머지 (2026-04-27)
+# CURRENT — 2026-04-29
 
-> 신규 진입자는 `./tools/start.sh` 출력 + 아래 파일만 본다.
-> - `spec/CHARTER.md` — product core / frozen gate
-> - `spec/PRIORITIES.md` — 전체 우선순위
-> - `work/active/W-0252-wave4-final-verified-design.md` — **Wave 4 단일 진실 (3-perspective 검증, 오류 7건 수정)**
-> - `docs/live/W-0220-status-checklist.md` — 체크리스트
+> 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
 ---
 
 ## main SHA
 
-`1e0cc514` — origin/main (2026-04-29) — PR #560 (8-axis quant hardening: log returns, 365d year, DSR horizon_hours, ddof=1, G1+G2 mandatory, hit_rate≥0.55, OI 7d, n_trials=500) 머지
+`cc84df95` — origin/main (2026-04-29) — PR #573 (W-0289 1cycle verify) 머지
 
 ---
 
 ## 활성 Work Items
 
-### Wave (UX Track) — W-0252 §5 실행 계획 기준
-
-| Work Item | Owner | 상태 |
+| Work Item | Priority | 상태 |
 |---|---|---|
-| ~~F-02-fix~~ (migration 023 + label 정합) | engine + app | ✅ **COMPLETE (PR #472, 2026-04-28)** — 운영 DB 검증 #481 |
-| `W-0243-f5-ide-split-pane` | app | ⏳ Week 2 (A-3, F-4 후) |
-| H-07 + H-08 (stats endpoints) | engine | 🟢 **즉시 가능** (#460, F-02-fix 차단 해제) |
-
-### MM Hunter (Research Track) — V layer (다른 에이전트)
-
-> 머지 완료된 design/audit work item 5종은 `work/completed/`로 이동: W-0214 mm-hunter-core-theory, W-0215 pattern-search-py-audit, W-0223 wave1-execution-design, W-0230 tradingview-grade-viz-design, W-0232 h07-f60-gate-design. (PR #415 / #369 / #375 / #392)
-
-| Work Item | Owner | 상태 |
-|---|---|---|
-
-### Verification Track (PRD v3, 2026-04-28)
-
-| Work Item | Owner | 상태 |
-|---|---|---|
-| `W-0282-v-pv-01-engine-verification-scaffold` | engine | 📐 **설계 lock-in 완료** (구현 차단: W-0254 H-07/H-08 머지 대기) — Phase 1 첫 piece, `engine/backtest/` 재사용 |
-
-> 머지 완료: W-0281 (PR #543, design lock-in) — `work/completed/`
-
-> 부모: PRD master § 0.3 / Canonical PRD § 5b / CHARTER §Frozen 예외절. Frozen W-0132 copy_trading과 격리 의무.
+| `W-0293-1cycle-infra-on` | P0 | 🔴 **즉시** — gcloud env var 1줄 (GAP-B/D) |
+| `W-0290-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 |
+| `W-0291-context-boot-trim` | P2 | 🟡 토큰 ≥50% 절감 (W-0290 후) |
+| `W-0292-automation-harness-runbook` | P2 | 🟡 runbook 문서화 |
+| `W-0282-v-pv-01-engine-verification-scaffold` | P1 | 📐 설계 lock-in — W-0254 머지 대기 |
 
 ---
 
-## ✅ Wave 1 / Wave 2 완료 (코드 실측 확인)
-
-| 항목 | 코드 위치 | 비고 |
-|---|---|---|
-| A-03-eng `POST /patterns/parse` | `routes/patterns.py:190` | Claude Sonnet 4.6 function calling |
-| A-04-eng `POST /patterns/draft-from-range` | `routes/patterns.py:427` | 10 effective features |
-| D-03-eng `POST /captures/{id}/watch` | `routes/captures.py:698` | idempotent |
-| F-02-eng 5-cat verdict (engine) | `ledger/types.py:54` | ✅ 5-cat 정합 완료 (PR #437+#472, 2026-04-28) |
-| A-03-app AIParserModal | Wave 2 PR #390 | |
-| A-04-app DraftFromRangePanel | Wave 2 PR #386 | |
-| D-03-app WatchToggle | Wave 2 PR #383 | |
-| F-02-app 5-cat 버튼 UI | Wave 2 PR #381 | |
-
----
-
-## ✅ ~~BLOCKER — F-02-fix~~ 해소 (PR #472, 2026-04-28)
-
-audit 결과 모든 핵심 변경 머지 완료 확인:
-- `engine/ledger/types.py:54` Literal 5-cat ✅
-- `engine/stats/engine.py:40-41` F60_DENOM_LABELS 5-cat ✅
-- `app/supabase/migrations/023_verdict_label_rename.sql` ✅
-- `app/src/components/terminal/peek/VerdictInboxPanel.svelte` ✅
-- 회귀 테스트 17/17 PASS
-
-**잔여 ⚠️**: 운영 Supabase에 023 적용 여부 미검증 — issue #481.
-**Down script**: 반가역 분석으로 forward-only 결정.
-**상세**: `work/completed/W-0253-f02-fix-verdict-label.md`
-
----
-
-## Wave 4 실행 계획 (W-0252 §5 기준)
+## Wave 4 실행 계획 요약
 
 ```
-Week 0: ✅ F-02-fix 해소 (PR #472) + F-7 Meta automation (1.5일, post-merge hook 이미 ½ 됨)
-Week 1: H-07+H-08 / F-3 Telegram deeplink / F-11 WATCHING
-Week 2: F-4 Decision HUD / F-5 IDE split-pane / F-12 Korea features
-Week 3: F-18 Stripe / F-14 Pattern lifecycle / F-16 recall
-Week 4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
+즉시:  W-0293 (P0, 5분) → GAP-B/D 인프라 ON
+Week1: H-07+H-08 / F-3 Telegram deeplink / F-11 WATCHING
+Week2: F-4 Decision HUD / F-5 IDE split-pane / F-12 Korea features
+Week3: F-18 Stripe / F-14 Pattern lifecycle / F-16 recall
+Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 ```
 
-병렬 스트림 상세: `work/active/W-0252-wave4-final-verified-design.md §5`
+상세: `work/active/W-0252-wave4-final-verified-design.md §5`
 
 ---
 
@@ -92,16 +41,14 @@ Week 4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 - Copy Trading Phase 1+ (N-05 marketplace → F-60 gate 후)
 - Chart UX polish (W-0212류)
 - Phase C/D ORPO/DPO (GPU 필요)
-- Screener Sprint 2 (20% 결손)
 
 ---
 
-## 다음 실행 가이드
+## 다음 실행
 
 ```bash
-git checkout main && git pull           # → fd54b314
-./tools/start.sh                        # Agent ID + P0 미완료 항목
-gh issue list --search "no:assignee" --state open
+./tools/start.sh
+! gcloud run services update cogotchi-engine \
+  --region asia-northeast3 \
+  --update-env-vars "ENABLE_PATTERN_REFINEMENT_JOB=true,ENABLE_SEARCH_CORPUS_JOB=true"
 ```
-
-상세: `work/active/W-0252-wave4-final-verified-design.md`
