@@ -34,6 +34,7 @@ is READ-ONLY (W-0214 §14.8). This module does not import or modify it.
 from __future__ import annotations
 
 import json
+import logging
 import warnings
 from dataclasses import dataclass, field
 from typing import Any
@@ -629,48 +630,76 @@ def run_validation_pipeline(
     f1_kill = overall_pass_rate == 0.0
 
     # --- V-05 regime-conditional return (W-0279) ---
+    # Strategy: classify ALL pack.cases by BTC regime, then measure forward
+    # returns per regime group via measure_phase_conditional_return().
+    # This avoids the index-alignment problem (raw_results[*].samples skips
+    # cases with missing market data, so len(samples) ≤ len(pack.cases)).
     regime_results_list: list = []
     regime_pass_count: int = 0
-    if btc_returns is not None and raw_results and len(raw_results[0].samples) > 0:
+    _log_v05 = logging.getLogger(__name__)
+    if btc_returns is not None and pack.cases:
         try:
             from research.validation.regime import (
                 RegimeLabel,
                 label_regime,
                 measure_regime_conditional_return,
             )
-            first_samples = raw_results[0].samples
-            case_timestamps = [c.start_at for c in pack.cases]
-            if len(first_samples) == len(case_timestamps):
-                returns_by_regime: dict[RegimeLabel, list[float]] = {
-                    RegimeLabel.BULL: [],
-                    RegimeLabel.BEAR: [],
-                    RegimeLabel.RANGE: [],
-                }
-                for ts, ret in zip(case_timestamps, first_samples):
-                    btc_val = btc_returns.asof(pd.Timestamp(ts).tz_localize("UTC") if pd.Timestamp(ts).tzinfo is None else pd.Timestamp(ts))
-                    if btc_val is not None and not pd.isna(btc_val):
-                        regime = label_regime(float(btc_val))
-                        returns_by_regime[regime].append(ret)
-                if any(len(v) > 0 for v in returns_by_regime.values()):
-                    regime_result = measure_regime_conditional_return(returns_by_regime)
-                    regime_results_list = [{
-                        "g7_pass": regime_result.g7_pass,
-                        "active_regimes": [r.value for r in regime_result.active_regimes],
-                        "inactive_regimes": [r.value for r in regime_result.inactive_regimes],
-                        "per_regime": {
-                            r.value: {
-                                "mean_return": v.mean_return,
-                                "t_stat": v.t_stat,
-                                "n": v.n,
-                                "passes": v.passes,
-                            }
-                            for r, v in regime_result.per_regime.items()
-                        },
-                    }]
-                    regime_pass_count = 1 if regime_result.g7_pass else 0
+            # Group entry timestamps by BTC regime.
+            regime_timestamps: dict[RegimeLabel, list] = {
+                RegimeLabel.BULL: [],
+                RegimeLabel.BEAR: [],
+                RegimeLabel.RANGE: [],
+            }
+            for case in pack.cases:
+                ts = pd.Timestamp(case.start_at)
+                if ts.tzinfo is None:
+                    ts = ts.tz_localize("UTC")
+                btc_val = btc_returns.asof(ts)
+                if btc_val is not None and not pd.isna(btc_val):
+                    regime = label_regime(float(btc_val))
+                    regime_timestamps[regime].append(case.start_at)
+
+            # Measure forward returns per non-empty regime group.
+            returns_by_regime: dict[RegimeLabel, list[float]] = {}
+            for regime_label, ts_list in regime_timestamps.items():
+                if not ts_list:
+                    continue
+                r = measure_phase_conditional_return(
+                    pattern_slug=pack.pattern_slug,
+                    phase_name=phase_name,
+                    entry_timestamps=ts_list,
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    horizon_hours=config.horizons_hours[0] if config.horizons_hours else 4,
+                    cost_bps=config.cost_bps,
+                )
+                returns_by_regime[regime_label] = list(r.samples)
+
+            if returns_by_regime:
+                regime_result = measure_regime_conditional_return(returns_by_regime)
+                regime_results_list = [{
+                    "g7_pass": regime_result.g7_pass,
+                    "active_regimes": [r.value for r in regime_result.active_regimes],
+                    "inactive_regimes": [r.value for r in regime_result.inactive_regimes],
+                    "per_regime": {
+                        r.value: {
+                            "mean_return": v.mean_return,
+                            "t_stat": v.t_stat,
+                            "n": v.n,
+                            "passes": v.passes,
+                        }
+                        for r, v in regime_result.per_regime.items()
+                    },
+                }]
+                regime_pass_count = 1 if regime_result.g7_pass else 0
+                _log_v05.debug(
+                    "V-05: slug=%s g7_pass=%s regimes=%s",
+                    pack.pattern_slug,
+                    regime_result.g7_pass,
+                    [r.value for r in regime_result.active_regimes],
+                )
         except Exception as _exc:
-            import logging as _log_mod
-            _log_mod.getLogger(__name__).warning("V-05 regime wiring skipped: %s", _exc)
+            _log_v05.warning("V-05 regime wiring skipped: %s", _exc)
 
     return ValidationReport(
         pattern_slug=pack.pattern_slug,
