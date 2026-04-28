@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`ae102b3c` — origin/main (2026-04-28) — PR #555 (V-05 fix 3종: alignment guard + logging + btc_returns injection) 머지
+`1e0cc514` — origin/main (2026-04-29) — PR #560 (8-axis quant hardening: log returns, 365d year, DSR horizon_hours, ddof=1, G1+G2 mandatory, hit_rate≥0.55, OI 7d, n_trials=500) 머지
 
 ---
 
