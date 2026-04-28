@@ -21,10 +21,10 @@ Gate definitions (W-0214 §3.7 / W-0216 §15.1):
     G2  DSR > 0
     G4  Bootstrap CI lower bound > 0
     F1-SR   Annualized Sharpe ≥ 1.0
-    F1-Hit  Hit rate ≥ 0.52
+    F1-Hit  Hit rate ≥ 0.55
     F1-PF   Profit factor ≥ 1.2
 
-``overall_passed`` per horizon: ≥ 4 of 6 gates must pass.
+``overall_passed`` per horizon: G1 AND G2 mandatory + ≥ 4 of 6 gates must pass.
 ``f1_kill``: ``pass_rate == 0.0`` (zero horizons pass).
 
 V-00 augment-only enforcement: ``engine/research/pattern_search.py``
@@ -91,7 +91,7 @@ class ValidationPipelineConfig:
         bh_alpha: FDR target for BH correction across horizons.
         n_trials: selection-bias universe size for DSR calculation.
             W-0220 §7.3: use the real search-universe size, not the
-            number of horizons. Default 15 (low bar, dev/test only).
+            number of horizons. Default 500 (realistic search-universe floor).
     """
 
     cv_config: PurgedKFoldConfig = field(default_factory=PurgedKFoldConfig)
@@ -100,7 +100,7 @@ class ValidationPipelineConfig:
     baselines: tuple[str, ...] = ("B0", "B1")
     bootstrap_n_iter: int = 1000
     bh_alpha: float = 0.05
-    n_trials: int = 15
+    n_trials: int = 500
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +160,7 @@ class HorizonReport:
         hit_rate: fraction of strictly positive samples.
         profit_factor: sum(pos) / |sum(neg)|, capped at 999.
         gates: list of :class:`GateResult` (6 gates).
-        overall_passed: ``True`` iff ≥ 4 of 6 gates pass.
+        overall_passed: ``True`` iff G1 AND G2 pass AND ≥ 4 of 6 gates pass.
     """
 
     pattern_slug: str
@@ -280,7 +280,7 @@ _GATE_THRESHOLDS = {
     "G2": 0.0,       # DSR > 0
     "G4": 0.0,       # CI lower > 0
     "F1-SR": 1.0,    # Annualized Sharpe ≥ 1.0
-    "F1-Hit": 0.52,  # Hit rate ≥ 0.52
+    "F1-Hit": 0.55,  # Hit rate ≥ 0.55 (Kelly f*≈10% at 0.55 vs 4% at 0.52)
     "F1-PF": 1.2,    # Profit factor ≥ 1.2
 }
 
@@ -326,7 +326,7 @@ def _build_gates(
         ),
         GateResult(
             gate_id="F1-Hit",
-            name="Hit rate ≥ 0.52",
+            name="Hit rate ≥ 0.55",
             value=hit_val,
             threshold=_GATE_THRESHOLDS["F1-Hit"],
             passed=hit_val >= _GATE_THRESHOLDS["F1-Hit"],
@@ -585,7 +585,9 @@ def run_validation_pipeline(
             pf_val=hd["pf"],
         )
         n_passed = sum(g.passed for g in gates)
-        overall_passed = n_passed >= 4
+        g1_pass = any(g.gate_id == "G1" and g.passed for g in gates)
+        g2_pass = any(g.gate_id == "G2" and g.passed for g in gates)
+        overall_passed = g1_pass and g2_pass and n_passed >= 4
 
         p_bh = float(corrected_p[idx]) if idx < len(corrected_p) else 1.0
 

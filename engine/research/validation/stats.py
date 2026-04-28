@@ -204,7 +204,7 @@ def annualized_sharpe(
     returns_pct: Sequence[float],
     *,
     horizon_hours: int = 1,
-    periods_per_year: float = 252 * 24,
+    periods_per_year: float = 365 * 24,
 ) -> float:
     """Annualized Sharpe ratio (Sharpe 1966).
 
@@ -220,8 +220,8 @@ def annualized_sharpe(
         returns_pct: per-period returns (decimals or percent — annualization
             is scale-invariant for the ratio).
         horizon_hours: bar size in hours. Default 1h.
-        periods_per_year: trading periods per year. Default ``252 × 24``
-            for 1h crypto bars. (4h bar → 252 × 6 = 1512.)
+        periods_per_year: trading periods per year. Default ``365 × 24``
+            for 1h crypto bars (crypto trades 365 days/year). (4h bar → 365 × 6 = 2190.)
 
     Returns:
         Annualized Sharpe. Returns ``0.0`` when ``n < 2`` or ``std < 1e-9``
@@ -242,7 +242,7 @@ def deflated_sharpe(
     n_trials: int,
     skew: float | None = None,
     kurt: float | None = None,
-    periods_per_year: float = 252 * 24,
+    periods_per_year: float = 365 * 24,
 ) -> float:
     """Deflated Sharpe Ratio (Bailey & López de Prado 2014).
 

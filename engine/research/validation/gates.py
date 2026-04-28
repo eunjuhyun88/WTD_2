@@ -60,7 +60,7 @@ class GateV2Config:
     Attributes:
         t_min: minimum Welch t-stat for G1 (default 2.0).
         dsr_min: minimum deflated Sharpe for G2 (default 0.0).
-        hit_rate_min: minimum hit rate for G3 (default 0.52).
+        hit_rate_min: minimum hit rate for G3 (default 0.55).
         ci_lo_min: minimum bootstrap CI lower bound for G4 (default 0.0).
         profit_factor_min: minimum profit factor for G5 (default 1.2).
         fold_pass_min: minimum CV fold pass count for G6 (default 3).
@@ -70,7 +70,7 @@ class GateV2Config:
 
     t_min: float = 2.0
     dsr_min: float = 0.0
-    hit_rate_min: float = 0.52
+    hit_rate_min: float = 0.55
     ci_lo_min: float = 0.0
     profit_factor_min: float = 1.2
     fold_pass_min: int = 3
