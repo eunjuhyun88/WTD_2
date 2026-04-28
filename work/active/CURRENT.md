@@ -10,7 +10,7 @@
 
 ## main SHA
 
-`f502bd3c` — origin/main (2026-04-27) — PR #504 (W-0271 Event Store Phase 1) 머지
+`a7c45202` — origin/main (2026-04-28) — PR #550 (W-0281 closure + W-0282 V-PV-01 design) 머지
 
 ---
 
