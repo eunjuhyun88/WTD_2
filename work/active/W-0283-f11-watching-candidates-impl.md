@@ -99,6 +99,41 @@ Dashboard WATCHING 섹션에 실시간 P&L 색상 + 자동갱신을 추가하고
 - [ ] AC6: TS 에러 0건, CI green
 - [ ] PR merged + CURRENT.md SHA 업데이트
 
+## Owner
+
+app
+
+## Facts
+
+- `app/src/routes/dashboard/+page.svelte:418-430` — watcher-card 현재 구현 존재
+- `app/src/routes/dashboard/+page.svelte:430` — pnl_pct 조건 렌더링 이미 있음
+- engine OpenAPI `engine-openapi.d.ts:1585` — WATCHING API 이미 존재
+- `/patterns/candidates` 페이지 미구현 (placeholder 없음)
+
+## Assumptions
+
+- WATCHING API 백엔드는 완성됨, 프런트엔드만 연결 필요
+- P&L 색상 로직: pnl_pct > 0 → 녹색, < 0 → 빨간색
+
+## Canonical Files
+
+- `app/src/routes/dashboard/+page.svelte`
+- `app/src/routes/patterns/candidates/+page.svelte` (신규)
+- `app/src/lib/contracts/generated/engine-openapi.d.ts`
+
+## Next Steps
+
+1. `app/src/routes/dashboard/+page.svelte` watcher-card P&L 색상 + 30s 갱신 추가
+2. `/patterns/candidates` 페이지 신규 구현
+3. AC1~AC3 브라우저 검증
+
+## Handoff Checklist
+
+- [ ] WATCHING 섹션 P&L 색상 동작 확인
+- [ ] 30초 자동갱신 동작 확인
+- [ ] `/patterns/candidates` 페이지 로드 확인
+- [ ] PR merged + CURRENT.md SHA 업데이트
+
 ## References
 
 - `app/src/routes/dashboard/+page.svelte:418-430` — watcher-card 현재 구현
