@@ -157,17 +157,17 @@ def compute_snapshot(
     taker_buy_ratio_1h = max(0.0, min(1.0, taker_buy_ratio_1h))
     cvd_state = H.cvd_state(taker_buy_ratio_1h)
 
-    # --- Price changes ---
-    def _pct(n: int) -> float:
+    # --- Price changes — log returns (additive over horizons, cost-model accurate) ---
+    def _log_ret(n: int) -> float:
         if len(close) <= n:
             return 0.0
         past = float(close.iloc[-1 - n])
-        return float((price - past) / past) if past else 0.0
+        return float(np.log(price / past)) if past > 0 else 0.0
 
-    price_change_1h = _pct(_b1h)
-    price_change_4h = _pct(_b4h)
-    price_change_24h = _pct(_b24h)
-    price_change_7d = _pct(_b7d)
+    price_change_1h = _log_ret(_b1h)
+    price_change_4h = _log_ret(_b4h)
+    price_change_24h = _log_ret(_b24h)
+    price_change_7d = _log_ret(_b7d)
 
     # --- Momentum oscillators ---
     stoch_rsi_val = float(P.stoch_rsi(rsi_series, 14).iloc[-1])

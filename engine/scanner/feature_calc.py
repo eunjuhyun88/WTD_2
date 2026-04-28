@@ -744,18 +744,18 @@ def compute_snapshot(
     taker_buy_ratio_1h = max(0.0, min(1.0, taker_buy_ratio_1h))
     cvd_state = _cvd_state(taker_buy_ratio_1h)
 
-    # --- H. Price changes (from klines only) ---
-    def _pct_change_scalar(n: int) -> float:
+    # --- H. Price changes — log returns (additive over horizons, cost-model accurate) ---
+    def _log_return_scalar(n: int) -> float:
         if len(close) <= n:
             return 0.0
         past = float(close.iloc[-1 - n])
-        return float((price - past) / past) if past else 0.0
+        return float(np.log(price / past)) if past > 0 else 0.0
 
     # _b1h/_b4h/_b24h/_b7d are tf-scaled bar counts for time-labelled fields.
-    price_change_1h = _pct_change_scalar(_b1h)
-    price_change_4h = _pct_change_scalar(_b4h)
-    price_change_24h = _pct_change_scalar(_b24h)
-    price_change_7d = _pct_change_scalar(_b7d)
+    price_change_1h = _log_return_scalar(_b1h)
+    price_change_4h = _log_return_scalar(_b4h)
+    price_change_24h = _log_return_scalar(_b24h)
+    price_change_7d = _log_return_scalar(_b7d)
 
     # --- I. Additional momentum oscillators ---
     stoch_rsi_val = float(_stoch_rsi(rsi_series, 14).iloc[-1])
@@ -1429,18 +1429,18 @@ def compute_features_table(
         funding_rate=funding_rate_s,
         oi_raw=oi_raw_s,
         cvd_cumulative=cvd_cumulative,
-        oi_zscore_period=max(8, _b24h),
+        oi_zscore_period=max(8, _b7d),
         funding_rate_zscore_period=max(8, _b7d),
         volume_percentile_period=max(8, _b7d),
         pullback_period=max(4, _b24h),
         cvd_divergence_period=max(4, max(1, _b24h // 2)),
     )
 
-    # --- H. Price changes — tf-scaled bar counts ---
-    price_change_1h  = close.pct_change(_b1h).fillna(0.0)
-    price_change_4h  = close.pct_change(_b4h).fillna(0.0)
-    price_change_24h = close.pct_change(_b24h).fillna(0.0)
-    price_change_7d  = close.pct_change(_b7d).fillna(0.0)
+    # --- H. Price changes — log returns (additive over horizons, cost-model accurate) ---
+    price_change_1h  = np.log(close / close.shift(_b1h)).fillna(0.0)
+    price_change_4h  = np.log(close / close.shift(_b4h)).fillna(0.0)
+    price_change_24h = np.log(close / close.shift(_b24h)).fillna(0.0)
+    price_change_7d  = np.log(close / close.shift(_b7d)).fillna(0.0)
 
     # --- I. Additional momentum oscillators ---
     stoch_rsi_series = _stoch_rsi(rsi14, 14)

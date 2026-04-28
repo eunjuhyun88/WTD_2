@@ -204,7 +204,7 @@ def annualized_sharpe(
     returns_pct: Sequence[float],
     *,
     horizon_hours: int = 1,
-    periods_per_year: float = 252 * 24,
+    periods_per_year: float = 365 * 24,
 ) -> float:
     """Annualized Sharpe ratio (Sharpe 1966).
 
@@ -220,8 +220,8 @@ def annualized_sharpe(
         returns_pct: per-period returns (decimals or percent — annualization
             is scale-invariant for the ratio).
         horizon_hours: bar size in hours. Default 1h.
-        periods_per_year: trading periods per year. Default ``252 × 24``
-            for 1h crypto bars. (4h bar → 252 × 6 = 1512.)
+        periods_per_year: trading periods per year. Default ``365 × 24``
+            for 1h crypto bars (crypto trades 365 days/year). (4h bar → 365 × 6 = 2190.)
 
     Returns:
         Annualized Sharpe. Returns ``0.0`` when ``n < 2`` or ``std < 1e-9``
@@ -229,10 +229,10 @@ def annualized_sharpe(
     """
     arr = np.asarray(returns_pct, dtype=float)
     arr = arr[~np.isnan(arr)]
-    if len(arr) < 2 or arr.std() < 1e-9:
+    if len(arr) < 2 or arr.std(ddof=1) < 1e-9:
         return 0.0
     return float(
-        arr.mean() / arr.std() * np.sqrt(periods_per_year / horizon_hours)
+        arr.mean() / arr.std(ddof=1) * np.sqrt(periods_per_year / horizon_hours)
     )
 
 
@@ -240,9 +240,10 @@ def deflated_sharpe(
     returns_pct: Sequence[float],
     *,
     n_trials: int,
+    horizon_hours: int = 1,
     skew: float | None = None,
     kurt: float | None = None,
-    periods_per_year: float = 252 * 24,
+    periods_per_year: float = 365 * 24,
 ) -> float:
     """Deflated Sharpe Ratio (Bailey & López de Prado 2014).
 
@@ -292,6 +293,10 @@ def deflated_sharpe(
         skew: optional pre-computed sample skewness. ``None`` → compute.
         kurt: optional pre-computed sample kurtosis (non-Fisher, Pearson).
             ``None`` → compute.
+        horizon_hours: bar size in hours for annualisation. Default 1h.
+            Must match the horizon at which ``returns_pct`` were measured;
+            using the wrong value inflates SR by ``sqrt(horizon_hours)``
+            which propagates into Mertens sigma_SR² and corrupts DSR.
         periods_per_year: passed through to :func:`annualized_sharpe`.
 
     Returns:
@@ -315,7 +320,7 @@ def deflated_sharpe(
         return 0.0
 
     sr = annualized_sharpe(
-        arr, horizon_hours=1, periods_per_year=periods_per_year
+        arr, horizon_hours=horizon_hours, periods_per_year=periods_per_year
     )
     skew_val = (
         float(scipy_stats.skew(arr)) if skew is None else float(skew)
