@@ -77,9 +77,9 @@ def _supabase_get(url: str, key: str, table: str, params: dict) -> list[dict]:
 def fetch_transitions(url: str, key: str, signal: str, days: int) -> list[dict]:
     since = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
     rows = _supabase_get(url, key, "phase_transitions", {
-        "select": "symbol,to_phase,occurred_at",
+        "select": "symbol,to_phase,transitioned_at",
         "to_phase": f"eq.{signal}",
-        "occurred_at": f"gte.{since}",
+        "transitioned_at": f"gte.{since}",
         "limit": "5000",
     })
     log.info("fetched %d raw transitions for signal=%s (last %d days)", len(rows), signal, days)
@@ -92,8 +92,8 @@ def dedup_1h(rows: list[dict]) -> list[dict]:
     """Keep first signal per (symbol, 1h bucket) to reduce autocorrelation."""
     seen: set[tuple[str, str]] = set()
     result = []
-    for r in sorted(rows, key=lambda x: x["occurred_at"]):
-        ts = r["occurred_at"][:13]  # "2026-04-28T14"
+    for r in sorted(rows, key=lambda x: x["transitioned_at"]):
+        ts = r["transitioned_at"][:13]  # "2026-04-28T14"
         key = (r["symbol"], ts)
         if key not in seen:
             seen.add(key)
@@ -203,7 +203,7 @@ def run(signal: str, days: int, horizon_h: int) -> None:
     returns: list[float] = []
     skipped = 0
     for i, row in enumerate(rows):
-        fwd = compute_forward_return(row["symbol"], row["occurred_at"], horizon_h, close_cache)
+        fwd = compute_forward_return(row["symbol"], row["transitioned_at"], horizon_h, close_cache)
         if fwd is not None:
             returns.append(fwd)
         else:
