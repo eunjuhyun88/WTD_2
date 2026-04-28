@@ -374,7 +374,8 @@ promotion_gate_pass_rate_30d > 0
 ❌ 자유 텍스트 LLM chat (AI Parser 외) — 영구
 ❌ 모바일 native 앱 — Phase 2+ (PWA 우선)
 ❌ Free-form floating canvas — 폐기 (IDE split-pane으로 대체)
-❌ Portfolio P&L / social comments / paper trading / options / price prediction
+❌ Portfolio P&L / social comments / options / price prediction
+🟢 Paper trading: 검증 도구로 허용 (PRD v3 § 0.3, W-0281 design lock-in PR #543) — 실자금 자동매매는 ❌ 그대로
 ❌ 성과 수수료 / KOL 유료방 / 초보자 교육 / 블랙박스 SaaS
 ❌ Customer-facing LLM chat (parser 외)
 ❌ Pine Script Generator 확장 — W-0211 완료, Phase 2+ LLM-only 보류
