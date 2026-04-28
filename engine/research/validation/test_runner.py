@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import research.validation.runner as _runner_mod
 from research.validation.runner import run_full_validation
 
 
@@ -146,3 +147,44 @@ class TestRunFullValidation:
         assert result is not None
         # With existing_pass=False and no sample data → overall_pass=False
         assert result.overall_pass is False
+
+
+# ---------------------------------------------------------------------------
+# W-0288: _fetch_btc_returns TTL cache + exception handling
+# ---------------------------------------------------------------------------
+
+class TestFetchBtcReturns:
+    """Tests for the module-level TTL cache in _fetch_btc_returns."""
+
+    def setup_method(self) -> None:
+        """Reset the module-level cache before each test."""
+        _runner_mod._BTC_RETURNS_CACHE = None
+
+    def test_fetch_btc_returns_cache_hit(self) -> None:
+        """Second call hits the TTL cache — load_klines called only once."""
+        import pandas as pd
+
+        fake_df = pd.DataFrame(
+            {"close": [100.0, 101.0, 102.0] * 15},
+            index=pd.date_range("2025-01-01", periods=45, freq="D", tz="UTC"),
+        )
+
+        with patch("data_cache.loader.load_klines", return_value=fake_df) as mock_load:
+            first = _runner_mod._fetch_btc_returns()
+            second = _runner_mod._fetch_btc_returns()
+
+        # load_klines should have been called exactly once (second call hits cache)
+        assert mock_load.call_count == 1
+        # Both calls return the same Series
+        assert first is not None
+        assert second is not None
+        assert first.equals(second)
+
+    def test_fetch_btc_returns_exception_returns_none(self) -> None:
+        """Any exception from load_klines causes _fetch_btc_returns to return None."""
+        with patch("data_cache.loader.load_klines", side_effect=RuntimeError("network error")):
+            result = _runner_mod._fetch_btc_returns()
+
+        assert result is None
+        # Cache must remain empty after failure
+        assert _runner_mod._BTC_RETURNS_CACHE is None
