@@ -6,10 +6,11 @@ Use this repository as a low-context AI research operating system.
 
 1. `AGENTS.md`
 2. `work/active/CURRENT.md`
-3. Relevant `work/active/*.md` listed in `CURRENT.md`
-4. Relevant `docs/domains/*.md`
-5. Relevant `docs/product/*.md`
-6. Minimal required code files
+3. `state/inventory.md` — tools, endpoints, commands 전체 목록
+4. Relevant `work/active/*.md` listed in `CURRENT.md`
+5. Relevant `docs/domains/*.md`
+6. Relevant `docs/product/*.md`
+7. Minimal required code files
 
 ## Canonical Truth
 

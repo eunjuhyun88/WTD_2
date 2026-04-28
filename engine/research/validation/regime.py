@@ -5,6 +5,9 @@ BTC 30-day return regime labelling (BULL / BEAR / RANGE) and per-regime
 M1 measurement.  Gate G7 fires when a pattern is active in at least one
 regime but inactive in at least one other (regime-conditional behaviour).
 
+W-0290 Phase 1 augment: classify_regime() adds high_vol / low_vol axis
+(orthogonal to bull/bear/range). Existing function signatures preserved.
+
 Dependencies:
     V-02 :func:`~research.validation.phase_eval.measure_phase_conditional_return`
     V-06 :mod:`~research.validation.stats`
@@ -18,6 +21,8 @@ import statistics
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Sequence
+
+import numpy as np
 
 
 # ---------------------------------------------------------------------------
@@ -50,6 +55,85 @@ def label_regime(btc_return_30d_pct: float) -> RegimeLabel:
     if btc_return_30d_pct < -10.0:
         return RegimeLabel.BEAR
     return RegimeLabel.RANGE
+
+
+# ---------------------------------------------------------------------------
+# W-0290 Phase 1: 5-label vol axis (orthogonal to BULL/BEAR/RANGE)
+# ---------------------------------------------------------------------------
+
+
+class VolLabel(str, Enum):
+    """Realized volatility label derived from recent 30-bar log returns."""
+
+    HIGH_VOL = "high_vol"
+    NORMAL_VOL = "normal_vol"
+    LOW_VOL = "low_vol"
+
+
+def classify_regime(
+    closes: Sequence[float],
+    *,
+    vol_window: int = 30,
+    high_vol_pct: float = 75.0,
+    low_vol_pct: float = 25.0,
+) -> tuple[RegimeLabel, VolLabel]:
+    """Classify both trend-regime and vol-regime from a close-price series.
+
+    The trend regime is derived from the 30-bar return of the last bar.
+    The vol regime uses realized vol (std of log returns over ``vol_window``
+    bars) compared to 25th/75th percentile thresholds computed from the
+    full series.
+
+    Existing callers of :func:`label_regime` are unaffected — this function
+    is additive only.
+
+    Args:
+        closes: sequence of close prices (chronological order).
+        vol_window: number of bars for realized vol computation (default 30).
+        high_vol_pct: percentile threshold for HIGH_VOL (default 75).
+        low_vol_pct: percentile threshold for LOW_VOL (default 25).
+
+    Returns:
+        ``(RegimeLabel, VolLabel)`` tuple.
+    """
+    arr = np.asarray(closes, dtype=float)
+    n = len(arr)
+
+    # Trend regime: use last vol_window bars' cumulative return
+    if n >= 2:
+        lookback = min(vol_window, n - 1)
+        pct_return = (arr[-1] / arr[-1 - lookback] - 1.0) * 100.0
+    else:
+        pct_return = 0.0
+    trend = label_regime(pct_return)
+
+    # Vol regime: rolling realized vol for entire series, compare last window
+    if n < 2:
+        return trend, VolLabel.NORMAL_VOL
+
+    log_returns = np.diff(np.log(arr[arr > 0]))
+    if len(log_returns) < 2:
+        return trend, VolLabel.NORMAL_VOL
+
+    # Rolling std of log returns (window = vol_window bars)
+    if len(log_returns) >= vol_window:
+        windows = np.lib.stride_tricks.sliding_window_view(log_returns, vol_window)
+        rolling_vols = windows.std(axis=1, ddof=1)
+    else:
+        rolling_vols = np.array([log_returns.std(ddof=1)])
+
+    current_vol = rolling_vols[-1]
+    p75 = float(np.percentile(rolling_vols, high_vol_pct))
+    p25 = float(np.percentile(rolling_vols, low_vol_pct))
+
+    if current_vol > p75:
+        vol_label = VolLabel.HIGH_VOL
+    elif current_vol < p25:
+        vol_label = VolLabel.LOW_VOL
+    else:
+        vol_label = VolLabel.NORMAL_VOL
+
+    return trend, vol_label
 
 
 # ---------------------------------------------------------------------------

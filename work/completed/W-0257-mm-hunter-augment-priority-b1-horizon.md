@@ -2,7 +2,7 @@
 
 > Wave: MM Hunter Track 2 | Priority: **P1** (M3 출시 전) | Effort: **S-M (1.5d)**
 > Charter: ✅ In-Scope L5 Search
-> Status: ✅ Completed — PR #489 MERGED 2026-04-27
+> Status: 🟡 Design Draft (사용자 검토 대기)
 > Created: 2026-04-27 by Agent A045
 > Depends on: W-0256 augment 머지 (PromotionGatePolicy 신규 필드 추가 후)
 

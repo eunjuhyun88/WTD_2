@@ -492,3 +492,24 @@ def next_run_time() -> str | None:
     if job is None or job.next_run_time is None:
         return None
     return job.next_run_time.isoformat()
+
+
+def get_jobs_status() -> list[dict]:
+    """Return status snapshot of all registered APScheduler jobs.
+
+    Used by GET /api/agent-status for real-time harness observability.
+    Each entry: {id, name, next_run, pending, misfire_grace_time}.
+    """
+    if _scheduler is None:
+        return []
+    result = []
+    for job in _scheduler.get_jobs():
+        next_run = job.next_run_time.isoformat() if job.next_run_time else None
+        result.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": next_run,
+            "pending": job.pending,
+            "misfire_grace_time": job.misfire_grace_time,
+        })
+    return result

@@ -52,6 +52,7 @@ __all__ = [
     "annualized_sharpe",
     "hit_rate",
     "profit_factor",
+    "mann_whitney_u",
 ]
 
 
@@ -434,6 +435,26 @@ def hit_rate(samples: Sequence[float]) -> float:
     if len(arr) == 0:
         return 0.0
     return float((arr > 0).mean())
+
+
+def mann_whitney_u(
+    returns_a: np.ndarray,
+    returns_b: np.ndarray,
+) -> tuple[float, float]:
+    """Mann-Whitney U test (W-0290 Phase 1 addition).
+
+    Non-parametric alternative to Welch's t-test. Useful when return
+    distributions are non-normal (common in crypto).
+
+    Args:
+        returns_a: first sample array.
+        returns_b: second sample array.
+
+    Returns:
+        ``(U-statistic, p-value)`` two-sided test.
+    """
+    result = scipy_stats.mannwhitneyu(returns_a, returns_b, alternative="two-sided")
+    return float(result.statistic), float(result.pvalue)
 
 
 def profit_factor(
