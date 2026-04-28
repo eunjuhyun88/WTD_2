@@ -152,3 +152,30 @@ def compute_flywheel_health(
 @router.get("/flywheel/health")
 async def flywheel_health() -> dict[str, Any]:
     return {"ok": True, **compute_flywheel_health()}
+
+
+@router.get("/agent-status")
+async def agent_status() -> dict[str, Any]:
+    """Real-time harness observability — scheduler jobs + pattern scan state.
+
+    Feeds the /status page and CI canary checks.
+    Returns scheduler job list + flywheel health without full KPI compute.
+    """
+    from scanner.scheduler import get_jobs_status, is_running, next_run_time
+    from patterns.scanner import _REPLAYED, _MACHINES
+
+    jobs = get_jobs_status()
+    return {
+        "scheduler": {
+            "running": is_running(),
+            "next_universe_scan": next_run_time(),
+            "job_count": len(jobs),
+            "jobs": jobs,
+        },
+        "pattern_engine": {
+            "loaded_machines": len(_MACHINES),
+            "replayed_symbols": len(_REPLAYED),
+        },
+        "flywheel": compute_flywheel_health(),
+        "ts": datetime.utcnow().isoformat() + "Z",
+    }
