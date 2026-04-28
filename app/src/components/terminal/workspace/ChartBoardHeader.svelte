@@ -69,6 +69,10 @@
     onSaveSetup: () => void;
     /** Called when EMA TF selection changes. */
     onEmaTfChange: (tf: string) => void;
+    /** W-0289: Whether drawing tools panel is visible */
+    drawingToolsVisible?: boolean;
+    /** W-0289: Toggle drawing tools panel */
+    onToggleDrawingTools?: () => void;
   }
 
   let {
@@ -90,6 +94,8 @@
     onToggleStudy,
     onSaveSetup,
     onEmaTfChange,
+    drawingToolsVisible = false,
+    onToggleDrawingTools,
   }: Props = $props();
 
   let studiesPanelOpen = $state(false);
@@ -278,6 +284,16 @@
     </div>
 
     <div class="capture-actions">
+      <!-- W-0289: Drawing tools toggle -->
+      {#if onToggleDrawingTools}
+        <button
+          class="capture-save-btn drawing-toggle"
+          class:active={drawingToolsVisible}
+          onclick={onToggleDrawingTools}
+          title={drawingToolsVisible ? '드로잉 도구 닫기' : '드로잉 도구 열기'}
+          aria-pressed={drawingToolsVisible}
+        >✏</button>
+      {/if}
       <button class="capture-save-btn" onclick={onSaveSetup} aria-label="Save current visible range">
         Save Setup
       </button>
@@ -292,3 +308,11 @@
     </div>
   </div>
 </div>
+
+<style>
+  :global(.drawing-toggle.active) {
+    color: #93c5fd !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+  }
+</style>
