@@ -52,6 +52,7 @@ from research.pattern_search import (
 )
 from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
 from research.query_transformer import transform_pattern_draft
+from capture.token import sign_verdict_token, verdict_deeplink_url
 
 log = logging.getLogger("engine.captures")
 
@@ -711,11 +712,7 @@ async def create_verdict_deeplink(capture_id: str, request: Request) -> dict:
     Token = HMAC-SHA256 signed payload (stateless, no DB write).
     The app /verdict?token=xxx validates and pre-fills the VerdictModal.
     """
-    import hashlib
-    import hmac
-    import json as json_lib
     import os
-    import base64
 
     secret = os.environ.get("VERDICT_LINK_SECRET", "")
     if not secret:
@@ -725,25 +722,15 @@ async def create_verdict_deeplink(capture_id: str, request: Request) -> dict:
     if not capture:
         raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
 
-    expires_at = int(time.time()) + 72 * 3600
-    payload = {
-        "capture_id": capture_id,
-        "symbol": capture.symbol,
-        "pattern_slug": capture.pattern_slug,
-        "expires_at": expires_at,
-    }
-    payload_b64 = base64.urlsafe_b64encode(
-        json_lib.dumps(payload, separators=(",", ":")).encode()
-    ).decode()
-    sig = hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
-    token = f"{payload_b64}.{sig}"
+    token = sign_verdict_token(capture_id, capture.symbol, capture.pattern_slug)
+    if not token:
+        raise HTTPException(status_code=503, detail="VERDICT_LINK_SECRET not configured")
 
-    app_origin = os.environ.get("APP_ORIGIN", "https://cogochi.app")
+    url = verdict_deeplink_url(token)
     return {
         "ok": True,
         "token": token,
-        "url": f"{app_origin}/verdict?token={token}",
-        "expires_at": expires_at,
+        "url": url,
         "capture_id": capture_id,
     }
 
