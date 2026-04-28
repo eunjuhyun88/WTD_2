@@ -131,6 +131,7 @@ class PatternStateMachine:
         Returns:
             (transition, invalidated_old_phase_id, attempt_record)
         """
+        attempt: PhaseAttemptRecord | None = None
         state = self._states.get(symbol)
         if state is None or state.invalidated:
             state = SymbolPhaseState(
@@ -249,7 +250,8 @@ class PatternStateMachine:
                     blocks_triggered=list(blocks_triggered),
                     feature_snapshot=feature_snapshot,
                 )
-                return None, None, attempt
+                # Don't return early — fall through to NONE→phase0 check below
+                # (original behavior: fire callback then continue)
         else:
             # Already at last phase — success phase, reset after max_bars
             if state.bars_in_phase and state.bars_in_phase > current_phase.max_bars:
@@ -287,9 +289,9 @@ class PatternStateMachine:
                 )
                 state.last_transition_id = t.transition_id
                 state.phase_transition_ids[phase0.phase_id] = t.transition_id
-                return t, None, None
+                return t, None, attempt
 
-        return None, None, None
+        return None, None, attempt
 
     def _emit_transition(self, transition: PhaseTransition) -> None:
         # A1: LRU dedupe — skip if same (symbol, to_phase, trigger_bar_ts, version) already emitted.

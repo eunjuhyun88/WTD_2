@@ -62,5 +62,7 @@ def test_readyz_reports_runtime_role(monkeypatch) -> None:
 
     monkeypatch.setattr(main, "readiness_payload", _readiness_payload)
 
-    assert main.readyz()["runtime_role"] == "api"
-    assert main.readyz()["scheduler_enabled"] is False
+    import json
+    data = json.loads(main.readyz().body)
+    assert data["runtime_role"] == "api"
+    assert data["scheduler_enabled"] is False
