@@ -22,6 +22,7 @@ dependencies = [
     "PyJWT[cryptography]>=2.8",
     "memkraft>=1.0.1",
     "anthropic>=0.25",
+    "statsmodels>=0.14",
 ]
 
 [project.optional-dependencies]

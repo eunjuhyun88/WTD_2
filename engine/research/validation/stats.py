@@ -518,3 +518,227 @@ def profit_factor(
         # N-1 fix: cap instead of float('inf') so JSON serialization works.
         return cap if pos > 0 else 0.0
     return float(min(pos / abs(neg), cap))
+
+
+# ---------------------------------------------------------------------------
+# W-0300 Phase 2 additions — ADF, Ljung-Box, Block Bootstrap
+# ---------------------------------------------------------------------------
+
+from dataclasses import dataclass as _dataclass
+
+
+@_dataclass(frozen=True)
+class AdfResult:
+    """Result of Augmented Dickey-Fuller stationarity test."""
+    adf_stat: float
+    p_value: float
+    is_stationary: bool
+    n_lags: int
+
+
+def adf_test(
+    samples: Sequence[float],
+    *,
+    significance: float = 0.05,
+    max_lags: int | None = None,
+) -> AdfResult:
+    """Augmented Dickey-Fuller stationarity test (Dickey-Fuller 1979).
+
+    H0: unit root (non-stationary). Reject H0 at ``significance`` → stationary.
+    Used for: AC5 — non-stationary signals blocked from Layer P.
+
+    Args:
+        samples: time-series of returns.
+        significance: p-value threshold. Default 0.05.
+        max_lags: passed to adfuller; None → auto-select by BIC.
+
+    Returns:
+        :class:`AdfResult`. If n < 10, returns p_value=1.0, is_stationary=False.
+    """
+    try:
+        from statsmodels.tsa.stattools import adfuller
+    except ImportError as exc:
+        raise ImportError("statsmodels required for ADF test (W-0300)") from exc
+
+    arr = np.asarray(samples, dtype=float)
+    arr = arr[~np.isnan(arr)]
+    if len(arr) < 10:
+        return AdfResult(adf_stat=0.0, p_value=1.0, is_stationary=False, n_lags=0)
+
+    result = adfuller(arr, maxlag=max_lags, autolag="BIC")
+    adf_stat = float(result[0])
+    p_value = float(result[1])
+    n_lags = int(result[2])
+    return AdfResult(
+        adf_stat=adf_stat,
+        p_value=p_value,
+        is_stationary=p_value < significance,
+        n_lags=n_lags,
+    )
+
+
+@_dataclass(frozen=True)
+class LjungBoxResult:
+    """Result of Ljung-Box autocorrelation test."""
+    lb_stat: float
+    p_value: float
+    has_autocorrelation: bool
+    n_lags_tested: int
+
+
+def ljung_box_test(
+    samples: Sequence[float],
+    *,
+    n_lags: int = 10,
+    significance: float = 0.05,
+) -> LjungBoxResult:
+    """Ljung-Box test for residual autocorrelation (Ljung-Box 1978).
+
+    H0: no autocorrelation. Reject H0 → autocorrelated → use block bootstrap.
+    Used for: AC6 — IID assumption check before CI computation.
+
+    Args:
+        samples: time-series of returns.
+        n_lags: number of lags to test. Default 10.
+        significance: p-value threshold. Default 0.05.
+
+    Returns:
+        :class:`LjungBoxResult`. If n < 15, returns p_value=1.0 (test unreliable).
+    """
+    try:
+        from statsmodels.stats.diagnostic import acorr_ljungbox
+    except ImportError as exc:
+        raise ImportError("statsmodels required for Ljung-Box test (W-0300)") from exc
+
+    arr = np.asarray(samples, dtype=float)
+    arr = arr[~np.isnan(arr)]
+    if len(arr) < 15:
+        return LjungBoxResult(lb_stat=0.0, p_value=1.0, has_autocorrelation=False, n_lags_tested=0)
+
+    lags = min(n_lags, len(arr) // 4)
+    df = acorr_ljungbox(arr, lags=[lags], return_df=True)
+    lb_stat = float(df["lb_stat"].iloc[-1])
+    p_value = float(df["lb_pvalue"].iloc[-1])
+    return LjungBoxResult(
+        lb_stat=lb_stat,
+        p_value=p_value,
+        has_autocorrelation=p_value < significance,
+        n_lags_tested=lags,
+    )
+
+
+def block_bootstrap_ci(
+    samples: Sequence[float],
+    *,
+    n_iter: int = 1000,
+    ci: float = 0.95,
+    seed: int = 42,
+) -> tuple[float, float, float]:
+    """Stationary block bootstrap CI (Politis-Romano 1994, Politis-White 2004).
+
+    Uses overlapping blocks to preserve autocorrelation structure.
+    Block length auto-selected as ~ n^(1/3) (optimal for stationary series).
+
+    Used for: AC6 — block bootstrap when Ljung-Box p < 0.05.
+
+    Args:
+        samples: time-series of returns.
+        n_iter: bootstrap resamples.
+        ci: two-sided coverage.
+        seed: RNG seed for reproducibility.
+
+    Returns:
+        ``(lower, upper, point_estimate)``.
+    """
+    arr = np.asarray(samples, dtype=float)
+    arr = arr[~np.isnan(arr)]
+    n = len(arr)
+    if n < 10:
+        return 0.0, 0.0, 0.0
+
+    block_len = max(1, int(round(n ** (1 / 3))))
+    rng = np.random.default_rng(seed)
+    boot_means = []
+    for _ in range(n_iter):
+        indices = []
+        while len(indices) < n:
+            start = rng.integers(0, n)
+            block = arr[start: start + block_len]
+            if start + block_len > n:
+                block = np.concatenate([arr[start:], arr[: (start + block_len) - n]])
+            indices.extend(block.tolist())
+        sample = np.array(indices[:n])
+        boot_means.append(float(sample.mean()))
+
+    boot_means.sort()
+    alpha_lo = (1 - ci) / 2
+    alpha_hi = (1 + ci) / 2
+    lower = float(np.percentile(boot_means, alpha_lo * 100))
+    upper = float(np.percentile(boot_means, alpha_hi * 100))
+    return lower, upper, float(arr.mean())
+
+
+def layer_p_ci(
+    samples: Sequence[float],
+    *,
+    n_iter: int = 1000,
+    ci: float = 0.95,
+    seed: int = 42,
+) -> tuple[float, float, float]:
+    """Layer P CI with automatic IID/block bootstrap selection.
+
+    Runs Ljung-Box first; if autocorrelation detected, switches to
+    block bootstrap. Otherwise uses standard IID bootstrap.
+
+    Returns:
+        ``(lower, upper, point_estimate)``
+    """
+    lb = ljung_box_test(samples)
+    if lb.has_autocorrelation:
+        return block_bootstrap_ci(samples, n_iter=n_iter, ci=ci, seed=seed)
+    return bootstrap_ci(samples, n_iter=n_iter, ci=ci, seed=seed)
+
+
+# ---------------------------------------------------------------------------
+# W-0300 Phase 3 — Power Analysis
+# ---------------------------------------------------------------------------
+
+
+def power_check(
+    samples: Sequence[float],
+    *,
+    alpha: float = 0.05,
+) -> dict:
+    """Sample-size power analysis (Cohen 1988).
+
+    Computes Cohen's d and estimated power for the given sample.
+    Used for: AC8 — n<30 SKIP, 30≤n<200 WARN, n≥200 PASS.
+
+    Returns:
+        dict with keys: n, cohens_d, power_status ("SKIP"/"WARN"/"PASS"),
+        min_n_for_pass (200).
+    """
+    arr = np.asarray(samples, dtype=float)
+    arr = arr[~np.isnan(arr)]
+    n = len(arr)
+
+    if n == 0:
+        return {"n": 0, "cohens_d": 0.0, "power_status": "SKIP", "min_n_for_pass": 200}
+
+    mean = float(arr.mean())
+    std = float(arr.std(ddof=1)) if n > 1 else 0.0
+    cohens_d = abs(mean / std) if std > 0 else 0.0
+
+    if n < 30:
+        status = "SKIP"
+    elif n < 200:
+        status = "WARN"
+    else:
+        status = "PASS"
+
+    return {
+        "n": n,
+        "cohens_d": round(cohens_d, 4),
+        "power_status": status,
+        "min_n_for_pass": 200,
+    }
