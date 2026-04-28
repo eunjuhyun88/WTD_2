@@ -260,6 +260,20 @@ Each PR/change should be one primary type:
 
 Avoid mixing types in one change set when possible.
 
+## 회귀 가드
+
+| 도구 | 트리거 | 효과 |
+|---|---|---|
+| `.claude/hooks/post-edit-pytest.sh` | engine `test_*.py` Write/Edit | 자동 pytest, exit 2 = 실패 결과 모델 전달 |
+| `tools/cycle-smoke.py` | PR 머지 전 수동 실행 | 1사이클 5 AC (GAP-A/B/C/D/E) 17/17 검증 |
+
+```bash
+# 1사이클 회귀 검증
+cd engine && uv run python ../tools/cycle-smoke.py
+```
+
+상세: `docs/runbooks/cycle-smoke.md`, `docs/runbooks/post-edit-hook.md`
+
 ## Verification Minimum
 
 - Engine changes: run targeted engine tests first, then broader suite if needed.
