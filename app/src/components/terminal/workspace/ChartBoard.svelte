@@ -33,6 +33,7 @@
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
   import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
+  import { PriceLineManager } from '$lib/chart/usePriceLines';
   // ── Multi-pane indicator layer (W-0211 follow-up) ──────────────────────────
   import {
     PANE_INDICATORS as PANE_SPECS,
@@ -601,14 +602,8 @@
     }
   }
 
-  // Level price lines
-  let entryLine:  ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
-  let targetLine: ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
-  let stopLine:   ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
-  /** Liquidation / cluster levels on main chart (CryptoQuant-style price rails). */
-  let liqPriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
-  /** W-0210 Layer 2: Whale liq price lines — separate set for easy clear/rebuild. */
-  let whalePriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
+  // ── Price line manager (verdict / liq / whale) ─────────────────────────────
+  let priceLineMgr = new PriceLineManager();
 
   // ── Timeframes ────────────────────────────────────────────────────────────
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
@@ -1387,125 +1382,53 @@
     return positions;
   }
 
-  // ── Verdict level lines ───────────────────────────────────────────────────
+  // ── Verdict / whale level lines — delegated to PriceLineManager ─────────
   function updateLevels() {
-    if (!priceSeries) return;
-
-    // Clear existing lines
-    try { if (entryLine)  priceSeries.removePriceLine(entryLine);  } catch {}
-    try { if (targetLine) priceSeries.removePriceLine(targetLine); } catch {}
-    try { if (stopLine)   priceSeries.removePriceLine(stopLine);   } catch {}
-    entryLine = targetLine = stopLine = null;
-
-    if (!verdictLevels) return;
-
-    if (verdictLevels.entry != null) {
-      entryLine = priceSeries.createPriceLine({
-        price: verdictLevels.entry,
-        color: 'rgba(251,191,36,0.9)',
-        lineWidth: 1, lineStyle: 0,
-        axisLabelVisible: true, title: 'ENTRY',
-      });
-    }
-    if (verdictLevels.target != null) {
-      targetLine = priceSeries.createPriceLine({
-        price: verdictLevels.target,
-        color: 'rgba(38,166,154,0.9)',
-        lineWidth: 1, lineStyle: 1,
-        axisLabelVisible: true, title: 'TARGET',
-      });
-    }
-    if (verdictLevels.stop != null) {
-      stopLine = priceSeries.createPriceLine({
-        price: verdictLevels.stop,
-        color: 'rgba(239,83,80,0.9)',
-        lineWidth: 1, lineStyle: 1,
-        axisLabelVisible: true, title: 'STOP',
-      });
-    }
-  }
-
-  function clearLiqPriceLines() {
-    if (!priceSeries) return;
-    for (const pl of liqPriceLines) {
-      try {
-        priceSeries.removePriceLine(pl);
-      } catch {
-        /* removed with chart */
-      }
-    }
-    liqPriceLines = [];
+    priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+    priceLineMgr.updateVerdictLevels(verdictLevels);
   }
 
   // W-0210 Layer 2: Whale liquidation price lines
-  function clearWhalePriceLines() {
-    if (!priceSeries) return;
-    for (const pl of whalePriceLines) {
-      try { priceSeries.removePriceLine(pl); } catch { /* removed with chart */ }
-    }
-    whalePriceLines = [];
-  }
-
   function applyWhalePriceLines() {
-    clearWhalePriceLines();
-    if (!priceSeries) return;
-    const positions = $whaleStore.positions;
-    // Only show whales with known liquidation prices
-    const withLiq = positions.filter(p => p.liquidationPrice != null && Number.isFinite(p.liquidationPrice!));
-    // Show top 3 by sizeUsd
-    const top3 = [...withLiq].sort((a, b) => b.sizeUsd - a.sizeUsd).slice(0, 3);
-    for (const pos of top3) {
-      const liqPrice = pos.liquidationPrice!;
-      const col = pos.netPosition === 'long' ? 'rgba(248,113,113,0.5)' : 'rgba(52,211,153,0.5)';
-      const pl = priceSeries.createPriceLine({
-        price: liqPrice,
-        color: col,
-        lineWidth: 1,
-        lineStyle: 3, // dotted
-        axisLabelVisible: false,
-        title: `🐋 ${pos.address}`,
-      });
-      whalePriceLines.push(pl);
-    }
+    priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+    // Filter out 'unknown' netPosition — PriceLineManager only accepts 'long' | 'short'
+    const knownPositions = $whaleStore.positions.filter(
+      (p): p is typeof p & { netPosition: 'long' | 'short' } => p.netPosition !== 'unknown',
+    );
+    priceLineMgr.applyWhaleLines(knownPositions);
   }
 
-  /** Nearest long/short liq + strongest cluster prices — same time axis as candles. */
+  /** Nearest long/short liq + strongest cluster prices — adapted from ChartBoard liqData shape. */
   function applyLiqPriceLines() {
-    clearLiqPriceLines();
-    if (!priceSeries || !liqData) return;
-
-    const addLine = (price: number, color: string, title: string, lw: 1 | 2) => {
-      const pl = priceSeries!.createPriceLine({
-        price,
-        color,
-        lineWidth: lw,
-        lineStyle: 2,
-        axisLabelVisible: title.length > 0,
-        title,
-      });
-      liqPriceLines.push(pl);
-    };
-
-    if (liqData.nearestLong?.price != null && Number.isFinite(liqData.nearestLong.price)) {
-      addLine(liqData.nearestLong.price, 'rgba(248,113,113,0.92)', 'L-LIQ', 2);
+    priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+    if (!liqData) {
+      priceLineMgr.clearLiqLines();
+      return;
     }
-    if (liqData.nearestShort?.price != null && Number.isFinite(liqData.nearestShort.price)) {
-      addLine(liqData.nearestShort.price, 'rgba(52,211,153,0.92)', 'S-LIQ', 2);
-    }
-
-    const clusters = [...(liqData.clusters ?? [])].sort((a, b) => b.usd - a.usd).slice(0, 3);
+    // Adapt ChartBoard's liqData (clusters[] with usd/liquidatedSide) to LiqData shape
+    const clusters = [...(liqData.clusters ?? [])].sort((a, b) => b.usd - a.usd);
     const used = new Set<number>();
     for (const nl of [liqData.nearestLong, liqData.nearestShort]) {
       if (nl?.price != null) used.add(Math.round(nl.price * 100));
     }
-    for (const c of clusters) {
-      const key = Math.round(c.price * 100);
-      if (used.has(key)) continue;
-      used.add(key);
-      const a = 0.35 + Math.min(0.45, (c.usd / 500000) * 0.45);
-      const col = c.liquidatedSide === 'long' ? `rgba(248,113,113,${a})` : `rgba(52,211,153,${a})`;
-      addLine(c.price, col, '', 1);
-    }
+    const strongestClusters = clusters
+      .filter((c) => {
+        const key = Math.round(c.price * 100);
+        if (used.has(key)) return false;
+        used.add(key);
+        return true;
+      })
+      .slice(0, 4)
+      .map((c) => ({
+        price: c.price,
+        side: c.liquidatedSide as 'long' | 'short',
+        totalUsd: c.usd,
+      }));
+    priceLineMgr.applyLiqLines({
+      nearestLong: liqData.nearestLong ?? undefined,
+      nearestShort: liqData.nearestShort ?? undefined,
+      strongestClusters,
+    });
   }
 
   // ── Time scale sync ────────────────────────────────────────────────────────
@@ -1541,8 +1464,8 @@
   }
 
   function destroyCharts() {
-    clearLiqPriceLines();
-    clearWhalePriceLines();
+    priceLineMgr.clearAll();
+    priceLineMgr = new PriceLineManager(); // reset for next chart instance
     // W-0210: destroy alpha overlay before removing series
     _alphaOverlay?.destroy();
     _alphaOverlay = null;
@@ -1554,7 +1477,6 @@
     priceSeries = null;
     candleMarkerApi = null;
     candleSeriesForAnnotations = null;
-    entryLine = targetLine = stopLine = null;
     liqLongSeries = null;
     liqShortSeries = null;
     panePositions = { rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1 };
