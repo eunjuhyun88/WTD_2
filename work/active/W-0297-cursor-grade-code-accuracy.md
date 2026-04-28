@@ -139,6 +139,31 @@ W-0299가 이 도구들을 on-demand context pack 생성에 활용. `.claude/com
 
 meta (agent productivity)
 
+## Facts
+
+- `.claude/settings.json`에 LSP 허용 없으면 Claude Code LSP tool 호출 차단됨
+- `.mcp.json`이 repo root에 있어야 serena MCP 서버가 Claude Code에서 인식됨
+- `agents/engine.md`, `agents/app.md`, `agents/coordination.md` 이미 생성됨 (PR #587)
+- CLAUDE.md 도메인 분기 표 이미 추가됨
+
+## Assumptions
+
+- uv/node 환경에서 serena MCP 서버가 정상 실행 가능
+- Claude Code가 `.mcp.json`을 auto-detect하여 serena 서버를 등록함
+
+## Canonical Files
+
+- `.claude/settings.json` (LSP allow 추가)
+- `.mcp.json` (serena MCP config)
+- `agents/engine.md`, `agents/app.md`, `agents/coordination.md`
+- `CLAUDE.md` (도메인 분기 표)
+- `AGENTS.md` (/컨텍스트 섹션)
+
+## Next Steps
+
+1. Claude Code 재시작 후 AC1~AC3 수동 검증 (LSP + serena 동작 확인)
+2. W-0300 cursor-context-manager 구현 (이 work item 완료 후)
+
 ## Handoff Checklist
 
 - [x] agents/ 도메인 sub-file 3개 생성

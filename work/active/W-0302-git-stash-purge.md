@@ -49,6 +49,34 @@ tooling
 
 ---
 
+## Assumptions
+
+- stash@{0}는 이번 세션 rebase 시 생성된 것으로, 내용 확인 후 삭제 가능
+- stash@{1} 이후는 전부 구 세션 잔여물 — 현재 작업에 불필요
+
+## Open Questions
+
+- [ ] stash@{0} 내용이 복원 필요한 변경인가? (`git stash show stash@{0}` 확인)
+
+## Decisions
+
+- **D-0302-1**: git stash clear보다 stash@{0} 확인 후 선택적 drop 권장
+- **D-0302-2**: 완료 후 stash list 점검을 /시작 체크리스트에 추가하지 않음 (현재 start.sh가 stash 없음 확인됨)
+
+## Next Steps
+
+1. `git stash show stash@{0}` — 내용 확인
+2. `git stash list | awk -F: '{print $1}' | tail -n +2 | while read s; do git stash drop "$s"; done`
+3. `git stash list | wc -l` ≤ 2 확인
+
+## Handoff Checklist
+
+- [ ] stash@{0} 내용 확인
+- [ ] stash@{1} 이후 전부 drop
+- [ ] `git stash list | wc -l` ≤ 2
+
+---
+
 ## 실행 명령
 
 ```bash

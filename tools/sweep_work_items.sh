@@ -25,7 +25,7 @@ echo ""
 
 # Items to keep active even if merged (impl still in progress).
 # Format: space-separated W-XXXX or exact filename fragment.
-KEEP_NUMS="W-0212 W-0231 W-0233 W-0238 W-0239 W-0243 W-0245 W-0247 W-0248 W-0252 W-0263 W-0282 W-0283 W-0284"
+KEEP_NUMS="W-0212 W-0231 W-0233 W-0238 W-0239 W-0243 W-0245 W-0247 W-0248 W-0252 W-0263 W-0282 W-0283 W-0284 W-0295 W-0297"
 
 moved=0
 kept=0
@@ -42,7 +42,9 @@ while IFS= read -r fname; do
   fi
 
   # Check if merged to main
-  if git log origin/main --oneline | grep -q "$wnum"; then
+  # Note: grep -q exits early → SIGPIPE on writer with pipefail; use grep > /dev/null
+  MAIN_LOG="$(git log origin/main --oneline)"
+  if echo "$MAIN_LOG" | grep "$wnum" > /dev/null; then
     if [[ "$APPLY" == true ]]; then
       mv "${REPO_ROOT}/work/active/${fname}" "${REPO_ROOT}/work/completed/${fname}"
       echo "  ✅ moved  → work/completed/$fname"

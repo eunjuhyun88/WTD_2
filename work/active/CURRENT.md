@@ -14,6 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0283-f11-watching-candidates-impl` | P1 | 🟡 Design Ready — dashboard P&L 색상 + 30s 갱신 + /patterns/candidates UI |
 | `W-0297-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 (Design Approved) |
 | `W-0302-git-stash-purge` | P1 | 🟡 git stash 92개 정리 (즉시 실행 가능) |
 | `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L |
@@ -46,6 +47,7 @@ Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 
 ```bash
 ./tools/start.sh
-# 별도 기능으로 분리된 context/LLM runtime 변경 정리
-# W-0297 Cursor-grade context management or W-0295 context trim 중 하나 선택
+# F-11 WATCHING (W-0283): design ready, backend 존재 → 즉시 구현 가능
+# 또는 W-0302 git stash 92개 정리 (15분, 즉시)
+cat work/active/W-0283-f11-watching-candidates-impl.md
 ```

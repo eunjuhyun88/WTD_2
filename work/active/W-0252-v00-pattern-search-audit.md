@@ -2,7 +2,7 @@
 
 > Wave: MM Hunter Track 2 | Priority: **P0** (Week 1 즉시) | Effort: **M (1d audit + 0.5d report)**
 > Charter: ✅ In-Scope L5 Search (`spec/CHARTER.md`)
-> Status: 🟡 **Design Draft** (사용자 검토 대기)
+> Status: ✅ **Audit Complete** — docs/live/W-0252-v00-audit-report.md (100% coverage, 🔴 갭 2개: D3/D8)
 > Created: 2026-04-27 by Agent A045
 > Branch: `feat/W0252-v00-audit` (생성 예정, `claude/*` 금지)
 > Replaces ID: PRIORITIES.md "W-0215" (해당 ID는 `W-0215-ledger-supabase-cutover`가 점유 중 → drift 발생)
