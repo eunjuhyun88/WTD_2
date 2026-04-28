@@ -39,6 +39,7 @@ import pandas as pd
 from backtest.config import RiskConfig
 from backtest.simulator import run_backtest
 from backtest.types import EntrySignal
+from observability.logging import StructuredLogger
 from building_blocks.context import Context
 from building_blocks.triggers.breakout_above_high import breakout_above_high
 from building_blocks.triggers.recent_rally import recent_rally
@@ -133,6 +134,8 @@ class PatternResult(NamedTuple):
 
 _DEFAULT_RISK = RiskConfig()
 _DEFAULT_COSTS = ExecutionCosts()
+import io as _io
+_NULL_LOGGER = StructuredLogger(module="scanner", run_id="scan", stream=_io.StringIO())
 
 
 def _klines_for_context(df: pd.DataFrame) -> pd.DataFrame:
@@ -173,7 +176,7 @@ def _scan_one_symbol(
             return []
 
         klines = _klines_for_context(raw)
-        features = compute_features_table(klines)
+        features = compute_features_table(klines, symbol=symbol)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
@@ -216,6 +219,7 @@ def _scan_one_symbol(
                 risk_cfg=risk_cfg,
                 costs=costs,
                 threshold=0.55,
+                logger=_NULL_LOGGER,
             )
             m = bt.metrics
             results.append(PatternResult(

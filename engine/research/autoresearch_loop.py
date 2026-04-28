@@ -27,14 +27,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
-import numpy as np
 import pandas as pd
 
 from data_cache.parquet_store import ParquetStore
 from data_cache.universe_builder import load_universe
 from research.pattern_scan.scanner import PatternScanner, ALL_COMBOS
 from research.validation.stats import (
-    one_sample_t_test,
     bootstrap_ci,
     hit_rate,
 )
@@ -87,12 +85,8 @@ def _apply_stats_gate(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _compute_t_stat_from_row(row: pd.Series, returns: list[float] | None = None) -> float:
-    """Approximate t-stat from win_rate and n_executed when raw returns unavailable."""
-    if returns is not None and len(returns) >= 5:
-        result = one_sample_t_test(np.array(returns))
-        return result.t_stat
-    # Approximate: use win_rate as proxy
+def _compute_t_stat_from_row(row: pd.Series) -> float:
+    """Approximate t-stat from win_rate and n_executed."""
     n = row.get("n_executed", 0)
     if n < 2:
         return 0.0
