@@ -192,6 +192,8 @@ def _scan_one_symbol(
     for combo in combos:
         try:
             fired = combo.fire(ctx)
+            # Exclude the last bar: signal at bar T enters at T+1, needs T+1 to exist
+            last_valid_ts = klines.index[-2] if len(klines) > 1 else None
             signals: list[EntrySignal] = [
                 EntrySignal(
                     symbol=symbol,
@@ -200,7 +202,8 @@ def _scan_one_symbol(
                     predicted_prob=0.6,
                     source_model=combo.name,
                 )
-                for ts, val in fired.items() if val
+                for ts, val in fired.items()
+                if val and (last_valid_ts is None or ts <= last_valid_ts)
             ]
 
             if not signals:
@@ -292,6 +295,8 @@ class PatternScanner:
 
         df = pd.DataFrame(all_results, columns=PatternResult._fields)
         df = df[df["n_signals"] >= min_signals].copy()
+        # Cap spurious Sharpe from tiny-n results (std≈0 edge case)
+        df["sharpe"] = df["sharpe"].clip(-10, 10)
         df = df.sort_values("sharpe", ascending=False).reset_index(drop=True)
 
         self.save_results(df)
