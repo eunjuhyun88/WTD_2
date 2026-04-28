@@ -109,7 +109,8 @@ def backfill_klines(
     for col in ["open", "high", "low", "close", "volume", "quote_volume"]:
         df[col] = df[col].astype(float)
     df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
-    df = df.set_index("timestamp")[["open", "high", "low", "close", "volume"]]
+    df = df.rename(columns={"taker_buy_base_vol": "taker_buy_base_volume"})
+    df = df.set_index("timestamp")[["open", "high", "low", "close", "volume", "taker_buy_base_volume"]]
     df = df[~df.index.duplicated(keep="last")].sort_index()
     df = df[df.index >= _ts(start)]
 
