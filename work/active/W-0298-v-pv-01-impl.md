@@ -2,7 +2,7 @@
 
 > Wave: Wave4 | Priority: P1 | Effort: M (2-3일)
 > Charter: In-Scope L7 (AutoResearch — paper trading verification)
-> Status: 🟡 Implementation PR Ready
+> Status: ✅ Merged (PR #604, main d7c8a0f6)
 > Created: 2026-04-29
 > Issue: #595
 > Depends on: W-0282 (설계 lock-in ✅), W-0284 (GateV2DecisionStore ✅)
@@ -109,24 +109,24 @@ engine
 
 ## Exit Criteria
 
-- [ ] AC1: `engine/verification/__init__.py` + `executor.py` + `types.py` 생성
-- [ ] AC2: `pytest engine/tests/verification/` ≥ 5 tests, all pass
-- [ ] AC3: `POST /patterns/{slug}/verify-paper` — 200 OK + PaperVerificationResult JSON
-- [ ] AC4: CI green
-- [ ] AC5: CURRENT.md main SHA 업데이트
+- [x] AC1: `engine/verification/__init__.py` + `executor.py` + `types.py` 생성
+- [x] AC2: `pytest engine/tests/verification/` ≥ 5 tests, all pass
+- [x] AC3: `POST /patterns/{slug}/verify-paper` — route registered + PaperVerificationResult JSON
+- [x] AC4: CI green
+- [x] AC5: CURRENT.md main SHA 업데이트
 
 ## Next Steps
 
-1. 새 worktree `feat/W-0298-vpv01-impl` 생성
-2. `engine/backtest/*.py` 실측 후 타입 확인
-3. verification/ 모듈 구현
+1. V-PV-03에서 historical backtest endpoint를 별도 work item으로 설계
+2. n>=30/DSR/Calmar gate 승격 여부 결정
+3. app surface는 W-0297/W-0295 context lane과 분리해서 진행
 
 ## Handoff Checklist
 
-- [ ] 새 worktree 생성 + branch `feat/W-0298-vpv01-impl`
-- [ ] backtest/ grep 완료
-- [ ] paper_executor 구현 완료
-- [ ] pytest green
+- [x] branch `feat/W-0298-paper-verification-api`
+- [x] outcome ledger executor 구현 완료
+- [x] `POST /patterns/{slug}/verify-paper` route 추가
+- [x] pytest/CI green
 
 ---
 
