@@ -32,6 +32,7 @@
   import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
+  import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
   // ── Multi-pane indicator layer (W-0211 follow-up) ──────────────────────────
   import {
     PANE_INDICATORS as PANE_SPECS,
@@ -145,15 +146,6 @@
    * IChartApi, so they share crosshair + time axis natively.
    */
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
-
-  // ── UI state ───────────────────────────────────────────────────────────────
-  let loading  = $state(true);
-  let error    = $state<string | null>(null);
-  let rateLimitRetryIn = $state<number | null>(null);
-
-  // ── History lazy-load state ────────────────────────────────────────────────
-  let historyLoadingMore = $state(false);
-  let earliestBarTimeMs  = $state<number | null>(null);
 
   // ── Live WS reference (non-reactive) ──────────────────────────────────────
   let _ws: WebSocket | null = null;
@@ -738,12 +730,25 @@
     return 520; // sensible default — fills price + 4 panes comfortably
   }
 
-  // ── Data load ─────────────────────────────────────────────────────────────
-  let chartData = $state<ChartSeriesPayload | null>(null);
+  // ── Data load — delegated to useChartDataFeed composable ─────────────────
+  const feed = useChartDataFeed({
+    getSymbol: () => symbol,
+    getTf: () => tf,
+    getEmaTf: () => emaTf,
+    getInitialData: () => initialData ?? null,
+    getChart: () => mainChart,
+    getPriceSeries: () => priceSeries,
+  });
+
+  // Accessor aliases so existing code reads naturally
+  let loading = $derived(feed.loading);
+  let error = $derived(feed.error);
+  let rateLimitRetryIn = $derived(feed.rateLimitRetryIn);
+  let chartData = $derived(feed.chartData);
 
   // Keep chartSaveMode payload in sync so SaveStrip can slice indicators (W-0117 Slice B)
   $effect(() => {
-    chartSaveMode.setPayload(chartData);
+    chartSaveMode.setPayload(feed.chartData);
   });
 
   // ── Pane info chips (current value + Δ for each line in each pane) ───────
@@ -782,124 +787,8 @@
     liq: liqData,
     feedStatus: _dataFeed ? 'ws' : 'poll',
   });
-  const chartDataCache = new Map<string, ChartSeriesPayload>();
-  let loadToken = 0;
-  let lastDataKey = '';
-
-  async function loadData() {
-    if (!symbol) return;
-    const dataKey = `${symbol}:${tf}:${emaTf || 'chart'}`;
-    if (dataKey === lastDataKey && chartData) return;
-
-    if (chartDataCache.has(dataKey)) {
-      chartData = chartDataCache.get(dataKey) ?? null;
-      depthData = depthSnapshot;
-      liqData = liqSnapshot;
-      error = null;
-      loading = false;
-      lastDataKey = dataKey;
-      return;
-    }
-
-    if (initialData && !emaTf) {
-      chartDataCache.set(dataKey, initialData);
-      chartData = initialData;
-      depthData = depthSnapshot;
-      liqData = liqSnapshot;
-      error = null;
-      loading = false;
-      lastDataKey = dataKey;
-      return;
-    }
-
-    const token = ++loadToken;
-    loading = true;
-    error = null;
-    rateLimitRetryIn = null;
-    try {
-      const emaQ = emaTf ? `&emaTf=${encodeURIComponent(emaTf)}` : '';
-      const chartRes = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500${emaQ}`);
-      if (chartRes.status === 429) {
-        if (token !== loadToken) return;
-        loading = false;
-        rateLimitRetryIn = 10;
-        const countdown = setInterval(() => {
-          rateLimitRetryIn = (rateLimitRetryIn ?? 0) - 1;
-          if ((rateLimitRetryIn ?? 0) <= 0) {
-            clearInterval(countdown);
-            rateLimitRetryIn = null;
-            loadData();
-          }
-        }, 1_000);
-        return;
-      }
-      if (!chartRes.ok) throw new Error(`HTTP ${chartRes.status}`);
-      const data = await chartRes.json() as ChartSeriesPayload & { error?: unknown };
-      if (data.error) {
-        throw new Error(typeof data.error === 'string' ? data.error : 'Chart payload error');
-      }
-      if (token !== loadToken) return;
-      chartDataCache.set(dataKey, data);
-      chartData = data;
-      depthData = depthSnapshot;
-      liqData = liqSnapshot;
-      loading = false;
-      lastDataKey = dataKey;
-      const firstBar = (data.klines as Array<{time: number}>)[0];
-      if (firstBar) earliestBarTimeMs = firstBar.time * 1000;
-    } catch (e) {
-      if (token !== loadToken) return;
-      error = String(e);
-      loading = false;
-    }
-  }
-
   // ── History lazy-load ────────────────────────────────────────────────────
   const LAZY_TRIGGER_BARS = 30; // fetch more when within this many bars of the left edge
-
-  async function loadMoreHistory() {
-    if (historyLoadingMore || earliestBarTimeMs == null || !symbol) return;
-    const tfMs = tfMinutes(tf) * 60_000;
-    const startTime = earliestBarTimeMs - 500 * tfMs;
-    if (startTime < 0) return;
-
-    historyLoadingMore = true;
-    try {
-      const emaQ = emaTf ? `&emaTf=${encodeURIComponent(emaTf)}` : '';
-      const res = await fetch(
-        `/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500&startTime=${startTime}${emaQ}`,
-      );
-      if (!res.ok) return;
-      const older = await res.json() as { klines?: Array<{time: number; open: number; high: number; low: number; close: number; volume: number}> };
-      if (!older.klines?.length) return;
-
-      earliestBarTimeMs = older.klines[0].time * 1000;
-
-      // Prepend bars to existing series — restore visible range after setData
-      const savedRange = mainChart?.timeScale().getVisibleLogicalRange();
-      const current = (chartData?.klines ?? []) as Array<{time: number; open: number; high: number; low: number; close: number; volume: number}>;
-      const cutoff = older.klines[older.klines.length - 1].time;
-      const merged = [...older.klines, ...current.filter((k) => k.time > cutoff)];
-
-      if (priceSeries) {
-        priceSeries.setData(
-          merged.map((k) => ({
-            time: k.time as UTCTimestamp,
-            open: k.open, high: k.high, low: k.low, close: k.close,
-          })),
-        );
-      }
-      if (savedRange) {
-        // Shift range by the number of newly prepended bars so the view stays stable
-        const prepended = older.klines.length;
-        mainChart?.timeScale().setVisibleLogicalRange({
-          from: savedRange.from + prepended,
-          to:   savedRange.to  + prepended,
-        });
-      }
-    } catch { /* lazy load is best-effort */ }
-    finally { historyLoadingMore = false; }
-  }
 
   // ── DataFeed: resilient WS + polling (replaces bare connectKlineWS) ────────
 
@@ -1628,7 +1517,7 @@
     mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (!range) return;
       refreshCaptureWindowSummary();
-      if (range.from < LAZY_TRIGGER_BARS) void loadMoreHistory();
+      if (range.from < LAZY_TRIGGER_BARS) void feed.loadMoreHistory();
     });
   }
 
@@ -1800,7 +1689,7 @@
     void tf;
     void emaTf;
     void initialData;
-    void loadData();
+    void feed.loadData();
   });
 
   // WebSocket real-time candle feed — reconnects when symbol or tf changes.
@@ -1930,7 +1819,7 @@
   {:else if error}
     <div class="chart-state error">
       <span>! {error}</span>
-      <button onclick={loadData}>Retry</button>
+      <button onclick={() => void feed.loadData()}>Retry</button>
     </div>
   {:else}
     <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
