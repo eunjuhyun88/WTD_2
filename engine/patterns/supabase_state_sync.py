@@ -41,10 +41,11 @@ def _supabase_available() -> bool:
 
 
 def _sb():
-    from supabase import create_client  # type: ignore[import]
+    from supabase import create_client, ClientOptions  # type: ignore[import]
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    return create_client(url, key)
+    timeout = float(os.environ.get("SUPABASE_HTTP_TIMEOUT", "10"))
+    return create_client(url, key, options=ClientOptions(postgrest_client_timeout=timeout))
 
 
 def _iso(dt: datetime | None) -> str | None:
@@ -162,7 +163,12 @@ async def hydrate_from_supabase(store: PatternStateStore) -> int:
             log.warning("Pattern state hydration fetch failed: %s", exc)
             return []
 
-    rows = await asyncio.to_thread(_fetch_states)
+    _timeout = float(os.environ.get("HYDRATION_TIMEOUT_SECONDS", "10"))
+    try:
+        rows = await asyncio.wait_for(asyncio.to_thread(_fetch_states), timeout=_timeout)
+    except asyncio.TimeoutError:
+        log.warning("Pattern state hydration timed out after %.0fs — starting fresh", _timeout)
+        return 0
     if not rows:
         log.info("Pattern state hydration: no active states in Supabase")
         return 0
@@ -242,7 +248,12 @@ async def hydrate_transitions_from_supabase(
             log.warning("Phase transition hydration fetch failed: %s", exc)
             return []
 
-    rows = await asyncio.to_thread(_fetch_transitions)
+    _timeout = float(os.environ.get("HYDRATION_TIMEOUT_SECONDS", "10"))
+    try:
+        rows = await asyncio.wait_for(asyncio.to_thread(_fetch_transitions), timeout=_timeout)
+    except asyncio.TimeoutError:
+        log.warning("Phase transition hydration timed out after %.0fs — starting fresh", _timeout)
+        return 0
     if not rows:
         log.info("Phase transition hydration: no transitions in Supabase")
         return 0
