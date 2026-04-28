@@ -10,3 +10,4 @@
 {"ts":"2026-04-28T17:55:38Z","w_id":"W-0291","issue":569,"pr":[],"status":"design","agent":"unknown"}
 {"ts":"2026-04-28T17:55:39Z","w_id":"W-0292","issue":570,"pr":[],"status":"design","agent":"unknown"}
 {"work_id":"W-0294","issue":590,"status":"design","title":"Multi-Year Historical Data Pipeline + Quant-Grade Layer P Backtest"}
+{"work_item":"W-0301","issue":611,"branch":"feat/W-0301-cmc1000-data-pipeline","title":"CMC 1000+ 퀀트 데이터 파이프라인"}
