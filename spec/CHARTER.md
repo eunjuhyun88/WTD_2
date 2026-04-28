@@ -49,8 +49,15 @@
 - ❌ **AI 차트 분석 툴** / TradingView 대체 / 범용 스크리너
 - ❌ **대중형 소셜/카피트레이딩** (`copy.trad`, `copy_trading`, `leaderboard`, `subscription` 류)
 - ❌ **초보자용 "AI가 알려주는 매매"**
-- ❌ **자동매매 실행** (Phase 2+ 별도 레인)
+- ❌ **실자금 자동매매 실행** (Phase 2+ 별도 레인)
 - ❌ **TradingView feature parity**
+
+### Pattern Verification Lane 예외 (PRD v3, 2026-04-28)
+
+- ✅ **Paper Trading은 허용** — 단, **검증 도구**로만. PRD master § 0.3 참조.
+  - 허용: `engine/verification/` 신규 모듈 / 시뮬 체결 / paper P&L 추적 / backtest
+  - 금지: 실자금 주문 / 거래소 API key 보관 / `engine/copy_trading/` 코드 수정·import
+  - 원칙: "패턴이 진짜 먹히는지 보는 ground-truth 신호 수집"이지 "사용자 대신 매매하는 도구" 아님
 
 ### 메타 도구 동결 (야크쉐이빙 차단)
 

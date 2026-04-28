@@ -32,6 +32,14 @@
 | Work Item | Owner | 상태 |
 |---|---|---|
 
+### Verification Track (PRD v3, 2026-04-28)
+
+| Work Item | Owner | 상태 |
+|---|---|---|
+| `W-0281-pattern-verification-lane` | design-only | 📐 **설계 lock-in 완료** (구현은 W-0254 H-07/H-08 후) — Paper Trading 검증 도구 lane |
+
+> 부모: PRD master § 0.3 / Canonical PRD § 5b / CHARTER §Frozen 예외절. Frozen W-0132 copy_trading과 격리 의무.
+
 ---
 
 ## ✅ Wave 1 / Wave 2 완료 (코드 실측 확인)
