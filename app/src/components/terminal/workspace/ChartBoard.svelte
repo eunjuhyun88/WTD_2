@@ -640,6 +640,8 @@
   const BORDER = 'rgba(42,46,57,1)';
 
   const baseTheme = {
+    handleScroll: true,
+    handleScale: true,
     layout: { background: { color: BG }, textColor: TEXT, fontSize: 10, fontFamily: 'var(--sc-font-mono, monospace)' },
     grid:   { vertLines: { color: GRID }, horzLines: { color: GRID } },
     crosshair: {
@@ -1271,6 +1273,7 @@
 
     void tick().then(() => {
       handleResize();
+      mainChart?.timeScale().scrollToRealTime();
     });
   }
 
