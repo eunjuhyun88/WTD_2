@@ -4,6 +4,7 @@
   import { walletStore, isWalletConnected } from '$lib/stores/walletStore';
   import { openWalletModal } from '$lib/stores/walletModalStore';
   import { buildDeepLink } from '$lib/utils/deepLinks';
+  import LocaleToggle from '$lib/components/LocaleToggle.svelte';
 
   const wallet = $derived($walletStore);
   const connected = $derived($isWalletConnected);
@@ -48,6 +49,7 @@
   </div>
 
   <div class="topbar-right">
+    <LocaleToggle />
     {#if connected}
       <div class="profile-wrap">
         <button class="wallet-btn connected" onclick={toggleProfile}>

@@ -54,6 +54,10 @@ _CAPTURE_STORE = CaptureStore()
 # ── Singleton state machines — one per pattern in library ──────────────────
 _MACHINES: dict[str, PatternStateMachine] = {}
 
+# A2: Track which (slug, symbol) pairs have had their cold-start replay run.
+# Cleared whenever pattern definitions are reloaded (see reset_scanner_state()).
+_REPLAYED: set[tuple[str, str]] = set()
+
 
 def _get_machine(pattern_slug: str) -> PatternStateMachine:
     if pattern_slug not in _MACHINES:
@@ -70,6 +74,17 @@ def _get_machine(pattern_slug: str) -> PatternStateMachine:
     return _MACHINES[pattern_slug]
 
 
+def reset_scanner_state() -> None:
+    """Clear all singleton machines and the replay guard set.
+
+    Call this when pattern definitions are hot-reloaded so fresh machines
+    are built and cold-start replay runs again for all symbols.
+    """
+    global _REPLAYED
+    _MACHINES.clear()
+    _REPLAYED = set()
+
+
 # ── Callbacks ────────────────────────────────────────────────────────────────
 
 def _on_transition(transition: PhaseTransition) -> None:
@@ -81,24 +96,37 @@ def _on_phase_attempt(attempt: PhaseAttemptRecord) -> None:
     """Persist failed phase-advance evidence for refinement."""
     LEDGER_RECORD_STORE.append_phase_attempt_record(attempt)
 
+_BTC_TREND_CACHE: tuple[datetime, str] = (datetime(2000, 1, 1, tzinfo=timezone.utc), "unknown")
+
+
 def _detect_btc_trend() -> str:
-    """Detect BTC trend from cached klines. Returns 'bullish'|'bearish'|'sideways'."""
+    """Detect BTC trend from cached klines. Returns 'bullish'|'bearish'|'sideways'.
+
+    A9: Cached for one scan interval (15 min) to avoid reloading klines on every entry signal.
+    """
+    global _BTC_TREND_CACHE
+    cached_at, cached_result = _BTC_TREND_CACHE
+    if (datetime.now(timezone.utc) - cached_at).total_seconds() < 900:
+        return cached_result
     try:
         btc_klines = load_klines("BTCUSDT", offline=True)
         if btc_klines is None or btc_klines.empty or len(btc_klines) < 50:
-            return "unknown"
-        close = btc_klines["close"].astype(float)
-        sma20 = close.rolling(20).mean().iloc[-1]
-        sma50 = close.rolling(50).mean().iloc[-1]
-        last = close.iloc[-1]
-        if last > sma20 > sma50:
-            return "bullish"
-        elif last < sma20 < sma50:
-            return "bearish"
+            result = "unknown"
         else:
-            return "sideways"
+            close = btc_klines["close"].astype(float)
+            sma20 = close.rolling(20).mean().iloc[-1]
+            sma50 = close.rolling(50).mean().iloc[-1]
+            last = close.iloc[-1]
+            if last > sma20 > sma50:
+                result = "bullish"
+            elif last < sma20 < sma50:
+                result = "bearish"
+            else:
+                result = "sideways"
     except Exception:
-        return "unknown"
+        result = "unknown"
+    _BTC_TREND_CACHE = (datetime.now(timezone.utc), result)
+    return result
 
 
 def _get_entry_price(symbol: str) -> float | None:
@@ -309,23 +337,34 @@ def evaluate_symbol_for_patterns(
     # Feed into each pattern's state machine
     results: dict[str, str] = {}
     replay_cutoff = features_df.index[-1].to_pydatetime() if hasattr(features_df.index[-1], "to_pydatetime") else features_df.index[-1]
+    dq = {"has_perp": has_perp}
     for slug in PATTERN_LIBRARY:
         machine = _get_machine(slug)
-        replay_pattern_frames(
-            machine,
-            symbol,
-            features_df=features_df,
-            klines_df=klines_df,
-            timestamp_limit=replay_cutoff,
-            lookback_bars=336,
-            data_quality={"has_perp": has_perp},
-        )
+        replay_key = (slug, symbol)
+
+        # A2: Cold-start replay — run once per (slug, symbol) per process lifetime.
+        # Warm scans use machine state as-is; resetting every tick caused the
+        # transition flood (replay positions machine then live evaluate re-fires).
+        if replay_key not in _REPLAYED or machine.get_symbol_state(symbol) is None:
+            replay_pattern_frames(
+                machine,
+                symbol,
+                features_df=features_df,
+                klines_df=klines_df,
+                timestamp_limit=replay_cutoff,
+                lookback_bars=336,
+                data_quality=dq,
+            )
+            _REPLAYED.add(replay_key)
+
+        # Use replay_cutoff as trigger_bar_ts so the A1 dedupe key is bar-aligned,
+        # not wall-clock-aligned — prevents duplicate entries within the same bar window.
         machine.evaluate(
             symbol, triggered_blocks, timestamp,
             feature_snapshot=feature_snapshot,
             scan_id=scan_id,
-            trigger_bar_ts=timestamp,
-            data_quality={"has_perp": has_perp},
+            trigger_bar_ts=replay_cutoff,
+            data_quality=dq,
         )
         state_record = machine.get_state_record(symbol, last_eval_at=timestamp)
         if state_record is not None:
@@ -337,11 +376,13 @@ def evaluate_symbol_for_patterns(
 
 # ── Prewarm ──────────────────────────────────────────────────────────────────
 
-def prewarm_perp_cache(symbols: list[str], max_workers: int = 5) -> dict:
+async def prewarm_perp_cache(symbols: list[str], max_workers: int = 5) -> dict:
     """Fetch perp data for symbols that don't have cached data.
 
     Call this BEFORE run_pattern_scan() to ensure OI/funding blocks have data.
     Returns {fetched: N, cached: N, failed: N}.
+
+    A9: Converted to async using run_in_executor to avoid blocking the event loop.
     """
     stats = {"fetched": 0, "cached": 0, "failed": 0}
 
@@ -370,8 +411,11 @@ def prewarm_perp_cache(symbols: list[str], max_workers: int = 5) -> dict:
         return stats
 
     log.info("Prewarming perp cache for %d symbols...", len(need_fetch))
+    loop = asyncio.get_running_loop()
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        results = list(pool.map(_warm_one, need_fetch))
+        results = await asyncio.gather(
+            *[loop.run_in_executor(pool, _warm_one, sym) for sym in need_fetch]
+        )
 
     for r in results:
         if r == "ok":
@@ -405,7 +449,7 @@ async def run_pattern_scan(
     # v2: Prewarm perp cache so OI/funding blocks have real data
     prewarm_stats = {}
     if prewarm:
-        prewarm_stats = prewarm_perp_cache(symbols)
+        prewarm_stats = await prewarm_perp_cache(symbols)
 
     timestamp = datetime.now(timezone.utc)
     scan_id = str(uuid.uuid4())
@@ -422,9 +466,12 @@ async def run_pattern_scan(
         except Exception as exc:
             return (symbol, None, False, f"{symbol}: {exc}")
 
-    # v2: Parallel evaluation
+    # v2: Parallel evaluation — use run_in_executor to avoid blocking the event loop
+    import asyncio as _asyncio
+    loop = _asyncio.get_running_loop()
     with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = list(pool.map(_eval_one, symbols))
+        tasks = [loop.run_in_executor(pool, _eval_one, sym) for sym in symbols]
+        futures = await _asyncio.gather(*tasks)
 
     for symbol, phases, has_perp, error in futures:
         if error:

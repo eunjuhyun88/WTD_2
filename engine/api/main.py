@@ -102,7 +102,11 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     try:
         import asyncio as _asyncio
         from workers.feature_windows_prefetcher import prefetch_feature_windows
-        _asyncio.ensure_future(prefetch_feature_windows())
+        # A9: Keep a reference so the task is not GC'd mid-flight.
+        _fw_task = _asyncio.ensure_future(prefetch_feature_windows())
+        app.state._bg_tasks = getattr(app.state, "_bg_tasks", set())
+        app.state._bg_tasks.add(_fw_task)
+        _fw_task.add_done_callback(app.state._bg_tasks.discard)
         log.info("feature_windows warm-up scheduled (background)")
     except Exception as exc:
         log.warning("feature_windows warm-up failed (non-fatal): %s", exc)
@@ -314,12 +318,15 @@ def healthz() -> dict:
 
 
 @app.get("/readyz", tags=["meta"])
-def readyz() -> dict:
-    return readiness_payload(
+def readyz():
+    payload = readiness_payload(
         app.version,
         scheduler_enabled=scheduler_enabled(),
         runtime_role=get_runtime_role(),
     )
+    # A7: Only return 503 on hard failure; degraded (e.g. untrained model) returns 200.
+    status_code = 503 if payload.get("status") == "fail" else 200
+    return JSONResponse(content=payload, status_code=status_code)
 
 
 @app.get("/metrics", tags=["meta"])
