@@ -162,6 +162,46 @@ CLAUDE.md L1-L20에 도메인 분기 표 추가:
 
 ## Open Questions
 
-- [ ] [Q-0290-1] serena vs codebase-rag: 어느 MCP가 Python+TypeScript 혼합 레포에서 더 안정적?
+- [ ] [Q-0290-1] serena (oraios, 코드 인텔리전스) vs codebase-rag: Python+TypeScript 혼합 레포에서 어느 MCP가 더 안정적?
 - [ ] [Q-0290-2] LSP tool — ToolSearch 스키마 로드 후 실제 호출 테스트 필요
 - [ ] [Q-0290-3] agents/ 디렉토리가 다른 용도로 쓰이면 → `docs/claude-context/` 대안
+
+## Owner
+
+meta (agent productivity — engine/app 둘 다 영향)
+
+## Canonical Files
+
+- `CLAUDE.md` (도메인 분기 표)
+- `AGENTS.md` (context7 패턴 + LSP 가이드)
+- `agents/engine.md`, `agents/app.md`, `agents/coordination.md` (신규)
+- `.claude/settings.json` (LSP allow 추가)
+- `.mcp.json` (신규 — MCP 서버 등록)
+
+## Facts
+
+- `agents/engine.md`, `agents/app.md`, `agents/coordination.md` 3개 신규 파일 생성 완료 ✅
+- CLAUDE.md에 도메인 분기 표 추가 완료 ✅
+- LSP deferred tool: system-reminder에서 이미 노출됨 — ToolSearch로 schema 로드 가능
+- serena pypi package (0.9.1) = AMQP 클라이언트 (다른 것). oraios/serena = 코드 인텔리전스 MCP (별도 설치)
+- context7 MCP: plugin lazy-loaded, 이미 사용 가능
+
+## Assumptions
+
+- `.mcp.json` 설치 시 Claude Code 재시작 필요
+- LSP tool은 deferred — 매 세션 ToolSearch 없이도 사용 가능 (schema auto-loaded when called)
+
+## Next Steps
+
+1. oraios/serena MCP 설치 방법 확인 (uvx or npm)
+2. `.mcp.json` 신규 생성 + engine/ + app/src/ 인덱싱
+3. `.claude/settings.json` allow에 LSP 추가
+4. AC1~AC3 수동 검증
+
+## Handoff Checklist
+
+- [x] agents/ 도메인 sub-file 3개 생성
+- [x] CLAUDE.md 도메인 분기 표 추가
+- [ ] MCP 코드베이스 인덱서 설치 (.mcp.json)
+- [ ] LSP tool 실제 호출 테스트
+- [ ] AC1~AC3 수동 검증

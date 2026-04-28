@@ -130,6 +130,55 @@ echo "합계: ${total_chars}chars ≈ ${total_tokens}tokens"
 
 ---
 
+## Owner
+
+meta (agent productivity — 모든 에이전트 영향)
+
+## Canonical Files
+
+- `CLAUDE.md` (188L→90L)
+- `AGENTS.md` (364L→120L, W-0290 sub-file 완료 후)
+- `work/active/CURRENT.md` (107L→50L, 완료 ✅)
+- `~/.claude/projects/.../memory/MEMORY.md` (106L→50L, 완료 ✅)
+- `~/.claude/projects/.../memory/_archive/2026-04.md` (신규, 완료 ✅)
+- `tools/measure_context_tokens.sh` (신규, 완료 ✅)
+
+## Facts
+
+- before: 10,866 tok (CLAUDE.md 2,167 + AGENTS.md 3,633 + CURRENT.md 1,042 + MEMORY.md 4,023)
+- CURRENT.md 54L ≈ 379 tok ✅, MEMORY.md 33L ≈ 833 tok ✅
+- after Phase 1: 7,014 tok — CLAUDE.md + AGENTS.md 트리밍 필요
+- CLAUDE.md: 196L, AGENTS.md: 378L (여전히 목표 초과)
+
+## Assumptions
+
+- W-0290 agents/ sub-file 완료 후 AGENTS.md 트리밍 효과 극대화 (의존성)
+- CLAUDE.md/AGENTS.md 내용 삭제 아님 — sub-file로 이동
+
+## Open Questions
+
+- [ ] [Q-0291-1] AGENTS.md MemKraft 블록(MEMKRAFT-BLOCK-START) 트리밍 가능한가?
+
+## Decisions
+
+- **[D-0291-1]** Phase 1 (CURRENT.md + MEMORY.md) 먼저, Phase 2 (CLAUDE.md + AGENTS.md) 후행. 이유: Phase 2는 W-0290 sub-file 완료 의존.
+- **[D-0291-2]** MEMORY.md archive: 2026-04-27 이전 → `_archive/2026-04.md`. 이유: 최근 2주 entry만 실사용.
+
+## Next Steps
+
+1. CLAUDE.md 196L → 90L 트리밍 (W-0290 완료 후)
+2. AGENTS.md 378L → 120L 트리밍 (도메인 상세 sub-file 이동 후)
+3. after 측정: `bash tools/measure_context_tokens.sh`
+
+## Handoff Checklist
+
+- [x] CURRENT.md 107L → 54L ✅
+- [x] MEMORY.md 108L → 33L ✅
+- [x] _archive/2026-04.md 생성 ✅
+- [x] tools/measure_context_tokens.sh 생성 ✅
+- [ ] CLAUDE.md ≤90L (Phase 2)
+- [ ] AGENTS.md ≤120L (Phase 2, W-0290 후)
+
 ## 구현 순서
 
 1. `tools/measure_context_tokens.sh` 생성 + before 측정값 기록

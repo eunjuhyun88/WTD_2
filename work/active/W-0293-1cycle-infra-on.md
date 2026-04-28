@@ -100,6 +100,55 @@ gcloud run services update cogotchi-engine \
 
 ---
 
+## Owner
+
+engine (infra-only — 코드 변경 0줄)
+
+## Non-Goals
+
+- scheduler.py 코드 변경 없음
+- refinement job 자체 로직 변경 없음
+- BTC kline 장기 스토리지 별도 작업
+
+## Canonical Files
+
+- `engine/scanner/scheduler.py` (env var 읽는 위치, 변경 없음)
+- `docs/runbooks/cloud-run-env-vars.md` (신규)
+
+## Facts
+
+- `engine/scanner/scheduler.py:70` — `ENABLE_PATTERN_REFINEMENT_JOB` default "false" 실측
+- `engine/scanner/scheduler.py:78` — `ENABLE_SEARCH_CORPUS_JOB` default "false" 실측
+- PR #564/#565 코드 완전히 빌드됨, env var만 OFF
+
+## Assumptions
+
+- GCP Cloud Run 서비스명: `cogotchi-engine`
+- region: `asia-northeast3`
+- `--update-env-vars` 사용 (기존 env var 보존, `--set-env-vars` 아님)
+
+## Open Questions
+
+- [ ] 첫 24h refinement 실행 횟수 예상치 (현재 verb count 미확인)
+
+## Decisions
+
+- **[D-0293-1]** `--update-env-vars` vs `--set-env-vars`: 기존 env var 보존 위해 update 선택
+
+## Next Steps
+
+1. 사용자가 gcloud 명령 실행 (`! gcloud run services update ...`)
+2. verify 명령으로 env var 확인
+3. 24h 후 Cloud Run logs에서 invocation 확인
+
+## Handoff Checklist
+
+- [ ] gcloud 명령 사용자 직접 실행 완료
+- [ ] gcloud describe로 env var 확인
+- [ ] 24h 모니터링 메모
+
+---
+
 ## 실행 (사용자 직접)
 
 ```bash

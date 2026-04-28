@@ -71,6 +71,51 @@ cycle-smoke 실행: `cd engine && uv run python ../tools/cycle-smoke.py`
 
 ---
 
+## Owner
+
+meta (문서화 — 코드 변경 없음)
+
+## Non-Goals
+
+- hook 로직 변경 없음 (이미 동작 중)
+- cycle-smoke.py 변경 없음
+
+## Canonical Files
+
+- `docs/runbooks/cycle-smoke.md` (신규)
+- `docs/runbooks/post-edit-hook.md` (신규)
+- `AGENTS.md` (회귀 가드 섹션 추가)
+
+## Facts
+
+- `.claude/hooks/post-edit-pytest.sh` 존재, 실행권한 ✅
+- `tools/cycle-smoke.py` 5 AC, 17/17 PASS ✅
+- `.claude/settings.json` PostToolUse Write/Edit hook 설정됨 ✅
+
+## Assumptions
+
+- docs/runbooks/ 디렉토리 존재 (기존 20개 runbook 있음)
+- AGENTS.md 추가 후 CI 통과 필요
+
+## Open Questions
+
+- [ ] [Q-0292-1] cycle-smoke를 CI에 추가할지? (현재 수동 실행만)
+
+## Decisions
+
+- **[D-0292-1]** runbook 위치: docs/runbooks/ (기존 패턴 일치). 거절: `.claude/docs/` — repo-level가 더 공유 가능.
+- **[D-0292-2]** AGENTS.md 회귀 가드: ≤15L 간결 섹션. 거절: 별도 파일 — AGENTS.md가 primary entry point.
+
+## Next Steps
+
+완료됨 — 추가 구현 없음.
+
+## Handoff Checklist
+
+- [x] docs/runbooks/cycle-smoke.md ✅
+- [x] docs/runbooks/post-edit-hook.md ✅
+- [x] AGENTS.md 회귀 가드 섹션 ✅
+
 ## Exit Criteria
 
 - [ ] AC1: `docs/runbooks/cycle-smoke.md` 존재, ≤80L
