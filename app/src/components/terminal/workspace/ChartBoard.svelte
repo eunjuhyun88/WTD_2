@@ -33,6 +33,10 @@
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
   import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
+  // ── W-0289: Drawing Tools ────────────────────────────────────────────────────
+  import DrawingCanvas from './DrawingCanvas.svelte';
+  import DrawingToolbar from './DrawingToolbar.svelte';
+  import { DrawingManager, type DrawingToolType } from '$lib/chart/DrawingManager';
   import { PriceLineManager } from '$lib/chart/usePriceLines';
   // ── Multi-pane indicator layer (W-0211 follow-up) ──────────────────────────
   import {
@@ -147,6 +151,11 @@
    * IChartApi, so they share crosshair + time axis natively.
    */
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
+
+  // ── W-0289: Drawing tools ──────────────────────────────────────────────────
+  let drawingToolsVisible = $state(false);
+  let drawingActiveTool   = $state<DrawingToolType>('cursor');
+  let drawingMgr: DrawingManager | null = null;
 
   // ── Live WS reference (non-reactive) ──────────────────────────────────────
   let _ws: WebSocket | null = null;
@@ -1215,6 +1224,17 @@
     void tick().then(() => {
       handleResize();
       mainChart?.timeScale().scrollToRealTime();
+
+      // W-0289: init DrawingManager after chart is ready
+      if (mainChart && priceSeries) {
+        const key = `drawings:${symbol}:${tf}`;
+        if (!drawingMgr || drawingMgr.storageKey !== key) {
+          drawingMgr?.detach();
+          drawingMgr = new DrawingManager({ storageKey: key });
+        }
+        drawingMgr.onToolChange = (t) => { drawingActiveTool = t; };
+        drawingMgr.attach(mainChart, priceSeries as ISeriesApi<SeriesType>);
+      }
     });
   }
 
@@ -1725,6 +1745,8 @@
     onToggleStudy={(id) => toggleStudy(id)}
     onSaveSetup={handleSaveSetup}
     onEmaTfChange={(t) => { emaTf = t; }}
+    drawingToolsVisible={drawingToolsVisible}
+    onToggleDrawingTools={() => { drawingToolsVisible = !drawingToolsVisible; }}
   />
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
@@ -1744,6 +1766,19 @@
       <button onclick={() => void feed.loadData()}>Retry</button>
     </div>
   {:else}
+    <!-- W-0289: Drawing toolbar (left of chart) -->
+    {#if drawingToolsVisible}
+      <DrawingToolbar
+        activeTool={drawingActiveTool}
+        onSelectTool={(t) => {
+          drawingActiveTool = t;
+          drawingMgr?.setTool(t);
+        }}
+        onClearAll={() => drawingMgr?.clearAll()}
+        onDeleteSelected={() => drawingMgr?.deleteSelected()}
+      />
+    {/if}
+
     <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
@@ -1758,6 +1793,10 @@
       All panes share crosshair + time axis natively (v5.1 pane API).
     -->
     <div class="pane-main multi-pane-host" bind:this={mainEl}>
+      <!-- W-0289: Drawing overlay canvas -->
+      {#if drawingToolsVisible && drawingMgr}
+        <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
+      {/if}
       <!--
         Per-pane info bars — TradingView × Santiment style chips. Positioned
         as overlays so the chart owns the pane geometry; the bars float on top.
