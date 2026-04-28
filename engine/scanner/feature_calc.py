@@ -1786,4 +1786,20 @@ def compute_features_table(
     )
     # Drop the warmup region — features there are biased by short EMA windows.
     df = df.iloc[MIN_HISTORY_BARS:].copy()
+
+    # --- W-0292 D-G: Derived DEX efficiency ratio ---
+    # Computed post-alignment so NaN-safe; does not touch any existing column.
+    from features.dex_ratios import calc_volume_tvl_ratio  # noqa: PLC0415
+
+    dex_vol = df.get("dex_volume_h24")
+    dex_liq = df.get("dex_liquidity_usd")
+    if dex_vol is not None and dex_liq is not None:
+        df["volume_tvl_ratio"] = [
+            calc_volume_tvl_ratio(v, l)
+            for v, l in zip(dex_vol, dex_liq)
+        ]
+        df["volume_tvl_ratio"] = df["volume_tvl_ratio"].astype(float)
+    else:
+        df["volume_tvl_ratio"] = 0.0
+
     return df
