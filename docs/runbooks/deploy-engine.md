@@ -57,3 +57,20 @@ gcloud run services update-traffic cogotchi \
 | `_AR_REGION` | `asia-southeast1` | Artifact Registry region |
 | `_AR_REPOSITORY` | — | Artifact Registry repo name |
 | `_APP_ORIGIN` | — | Allowed CORS origin for the app |
+
+## Required Cloud Run Environment Variables
+
+For 1-cycle pattern validation to work end-to-end, the following env vars must be set on the Cloud Run engine service:
+
+| Variable | Default | Production Value | Purpose |
+|---|---|---|---|
+| `ENABLE_PATTERN_REFINEMENT_JOB` | `false` | `true` | Activates V-track re-validation after 10+ verdicts |
+| `ENABLE_SEARCH_CORPUS_JOB` | `false` | `true` | Refreshes search corpus with new feature windows |
+
+To apply:
+
+```bash
+gcloud run services update <ENGINE_SERVICE_NAME> \
+  --region <REGION> \
+  --set-env-vars "ENABLE_PATTERN_REFINEMENT_JOB=true,ENABLE_SEARCH_CORPUS_JOB=true"
+```
