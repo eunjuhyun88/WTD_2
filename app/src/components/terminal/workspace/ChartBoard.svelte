@@ -420,7 +420,7 @@
 
   // ── Chart instance (single, native multi-pane) ────────────────────────────
   let mainChart: IChartApi | null = null;
-  let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
+  let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | ISeriesApi<'Area'> | ISeriesApi<'Bar'> | null = null;
   /** Pane indices for indicator panes — assigned during renderCharts(). */
   let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
