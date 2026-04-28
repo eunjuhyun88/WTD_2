@@ -26,12 +26,16 @@ echo ""
 
 zombies=()
 total=0
+seen_w_ids=""
 
 for path in "${REPO_ROOT}"/work/completed/W-[0-9][0-9][0-9][0-9]-*.md; do
   [[ -f "$path" ]] || continue
   fname="$(basename "$path")"
   w_id="$(echo "$fname" | grep -oE '^W-[0-9]{4}')"
   [[ -z "$w_id" ]] && continue
+  # Dedupe: same W-#### may have multiple work files (re-used IDs across topics)
+  case " $seen_w_ids " in *" $w_id "*) continue ;; esac
+  seen_w_ids="$seen_w_ids $w_id"
   total=$((total + 1))
 
   # Find issue number — map file first, then gh search
@@ -43,9 +47,20 @@ for path in "${REPO_ROOT}"/work/completed/W-[0-9][0-9][0-9][0-9]-*.md; do
     fi
   fi
   if [[ -z "$issue_num" ]]; then
-    # Fallback: gh issue search
-    result="$(gh issue list --search "\"$w_id\"" --json number,state --limit 1 2>/dev/null || echo "[]")"
-    issue_num="$(echo "$result" | python3 -c 'import sys,json; d=json.loads(sys.stdin.read()); print(d[0]["number"]) if d else print("")' 2>/dev/null || true)"
+    # Fallback: gh issue search (title-scoped + first-W-#### filter to avoid false positives
+    # where meta issues mention many W-#### in title/body — same fix as _backfill_impl.py)
+    result="$(gh issue list --search "$w_id in:title" --state all --json number,state,title --limit 10 2>/dev/null || echo "[]")"
+    issue_num="$(echo "$result" | W_ID="$w_id" python3 -c '
+import sys, json, re, os
+data = json.loads(sys.stdin.read())
+w_id = os.environ["W_ID"]
+first_widx_re = re.compile(r"W-\d{4}")
+for item in data:
+    m = first_widx_re.search(item["title"])
+    if m and m.group(0) == w_id:
+        print(item["number"])
+        break
+' 2>/dev/null || true)"
   fi
   [[ -z "$issue_num" ]] && continue
 

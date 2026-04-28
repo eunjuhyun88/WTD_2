@@ -46,18 +46,31 @@ def collect_work_items(root):
     return items
 
 def gh_search_issue(w_id):
-    """Search GitHub issues for w_id; return (number, state) or (None, None)."""
+    """Search GitHub issues for w_id; return (number, state) or (None, None).
+
+    Title-scoped search + first-W-#### filter to avoid false positives where
+    a meta issue mentions many W-#### in body or title (e.g. W-0272 listing
+    "W-0001~W-0268" in body would otherwise match every W-#### query).
+    """
     try:
         r = subprocess.run(
-            ["gh","issue","list","--search", f'"{w_id}"',
-             "--json","number,state","--limit","1"],
+            ["gh","issue","list","--search", f'{w_id} in:title',
+             "--state","all",
+             "--json","number,state,title","--limit","10"],
             capture_output=True, text=True, timeout=10
         )
         if r.returncode != 0:
             return None, None
         data = json.loads(r.stdout)
-        if data:
-            return data[0]["number"], data[0]["state"].lower()
+        if not data:
+            return None, None
+        # Pick the result whose FIRST W-#### in title equals w_id (canonical owner).
+        first_widx_re = re.compile(r"W-\d{4}")
+        for item in data:
+            m = first_widx_re.search(item["title"])
+            if m and m.group(0) == w_id:
+                return item["number"], item["state"].lower()
+        return None, None
     except Exception:
         pass
     return None, None

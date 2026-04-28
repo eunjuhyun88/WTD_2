@@ -13,6 +13,7 @@ Modules:
     gates        -- V-11 (W-0224) GateV2 G1~G7 integration.
 """
 
+from .cv import PurgedKFold, PurgedKFoldConfig
 from .sequence import SequenceCompletionResult, measure_sequence_completion
 from .phase_eval import PhaseConditionalReturn, measure_phase_conditional_return, measure_random_baseline
 from .ablation import AblationResult, run_ablation, get_signal_list
@@ -39,6 +40,9 @@ from .gates import (
 from .runner import run_full_validation
 
 __all__ = [
+    # cv (V-01)
+    "PurgedKFold",
+    "PurgedKFoldConfig",
     # pipeline (V-08)
     "ValidationPipelineConfig",
     "ValidationReport",

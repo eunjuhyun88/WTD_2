@@ -21,7 +21,6 @@
 | Work Item | Owner | 상태 |
 |---|---|---|
 | ~~F-02-fix~~ (migration 023 + label 정합) | engine + app | ✅ **COMPLETE (PR #472, 2026-04-28)** — 운영 DB 검증 #481 |
-| `W-0237-f4-decision-hud` | app | ⏳ Week 2 (A-2) |
 | `W-0243-f5-ide-split-pane` | app | ⏳ Week 2 (A-3, F-4 후) |
 | H-07 + H-08 (stats endpoints) | engine | 🟢 **즉시 가능** (#460, F-02-fix 차단 해제) |
 
@@ -31,6 +30,14 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
+
+### Verification Track (PRD v3, 2026-04-28)
+
+| Work Item | Owner | 상태 |
+|---|---|---|
+| `W-0281-pattern-verification-lane` | design-only | 📐 **설계 lock-in 완료** (구현은 W-0254 H-07/H-08 후) — Paper Trading 검증 도구 lane |
+
+> 부모: PRD master § 0.3 / Canonical PRD § 5b / CHARTER §Frozen 예외절. Frozen W-0132 copy_trading과 격리 의무.
 
 ---
 

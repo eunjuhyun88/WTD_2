@@ -280,6 +280,100 @@ def test_split_rejects_non_datetime_index() -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# sklearn compatibility — W-0217 §4
+# ---------------------------------------------------------------------------
+
+
+def test_get_n_splits_returns_configured_value() -> None:
+    """get_n_splits() returns n_splits from config."""
+    cv = PurgedKFold(PurgedKFoldConfig(n_splits=7))
+    assert cv.get_n_splits() == 7
+    assert cv.get_n_splits(X=None) == 7
+    assert cv.get_n_splits(X=None, y=None, groups=None) == 7
+
+
+def test_split_accepts_dataframe_directly() -> None:
+    """split(X) works when X is a DataFrame with DatetimeIndex."""
+    df = pd.DataFrame(
+        {"a": np.arange(50, dtype=float)},
+        index=_hourly_index(50),
+    )
+    cv = PurgedKFold(PurgedKFoldConfig(n_splits=5, label_horizon_hours=0))
+    folds = list(cv.split(df))
+    assert len(folds) == 5
+    for train_idx, test_idx in folds:
+        assert np.intersect1d(train_idx, test_idx).size == 0
+
+
+def test_train_size_always_positive_for_small_dataset() -> None:
+    """n=50, n_splits=5, zero horizon -> train > 0 in every fold."""
+    cv = PurgedKFold(PurgedKFoldConfig(n_splits=5, label_horizon_hours=0, embargo_floor_pct=0.0))
+    for train_idx, _ in cv.split(_hourly_index(50)):
+        assert train_idx.size > 0
+
+
+def test_test_indices_cover_all_data() -> None:
+    """Union of all test folds equals the full index."""
+    cv = PurgedKFold(PurgedKFoldConfig(n_splits=5, label_horizon_hours=0))
+    folds = list(cv.split(_hourly_index(50)))
+    all_test = np.concatenate([t for _, t in folds])
+    assert np.array_equal(np.sort(all_test), np.arange(50))
+
+
+def test_zero_embargo_pct_no_extra_exclusion() -> None:
+    """embargo_floor_pct=0 with label_horizon_hours=0 -> pure KFold behaviour."""
+    cv = PurgedKFold(
+        PurgedKFoldConfig(n_splits=5, label_horizon_hours=0, embargo_floor_pct=0.0)
+    )
+    folds = list(cv.split(_hourly_index(50)))
+    assert len(folds) == 5
+    # Every index appears exactly once in test sets
+    all_test = np.concatenate([t for _, t in folds])
+    assert np.array_equal(np.sort(all_test), np.arange(50))
+
+
+def test_n_splits_2_works() -> None:
+    """n_splits=2 is the minimum valid value."""
+    cv = PurgedKFold(PurgedKFoldConfig(n_splits=2, label_horizon_hours=0, embargo_floor_pct=0.0))
+    folds = list(cv.split(_hourly_index(50)))
+    assert len(folds) == 2
+    for train_idx, test_idx in folds:
+        assert train_idx.size > 0
+        assert test_idx.size > 0
+        assert np.intersect1d(train_idx, test_idx).size == 0
+
+
+def test_sklearn_cross_val_score_compatible() -> None:
+    """PurgedKFold works with sklearn cross_val_score via a dummy estimator."""
+    from sklearn.base import BaseEstimator, ClassifierMixin
+    from sklearn.model_selection import cross_val_score
+
+    class AlwaysOneClassifier(BaseEstimator, ClassifierMixin):
+        """Trivial classifier that always predicts 1."""
+        def fit(self, X: pd.DataFrame, y: pd.Series) -> "AlwaysOneClassifier":
+            return self
+        def predict(self, X: pd.DataFrame) -> np.ndarray:
+            return np.ones(len(X), dtype=int)
+
+    n = 50
+    df = pd.DataFrame(
+        {"feature": np.arange(n, dtype=float)},
+        index=_hourly_index(n),
+    )
+    y = pd.Series(np.ones(n, dtype=int), index=df.index)
+
+    cv = PurgedKFold(PurgedKFoldConfig(n_splits=5, label_horizon_hours=0, embargo_floor_pct=0.0))
+    scores = cross_val_score(AlwaysOneClassifier(), df, y, cv=cv, scoring="accuracy")
+    assert len(scores) == 5
+    assert np.all(scores == 1.0)
+
+
+# ---------------------------------------------------------------------------
+# performance budget — W-0217 §8.3
+# ---------------------------------------------------------------------------
+
+
 def test_performance_under_100ms_for_split_logic() -> None:
     """W-0217 §8.3 — split logic alone is <100ms for 100K rows.
 

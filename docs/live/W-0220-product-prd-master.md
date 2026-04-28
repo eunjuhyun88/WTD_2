@@ -1,10 +1,112 @@
-# W-0220 — Product PRD Master (CTO + AI Researcher Edition, v2)
+# W-0220 — Product PRD Master (CTO + AI Researcher Edition, v3)
 
-> **개정**: v1 (2026-04-26 오전) → v2 (2026-04-26 저녁)
-> **사유**: v1은 "이미 만들어진 것"을 "갭"으로 잘못 잡았다. v2는 코드 실측 + 설계문서 9-Doc + telegram refs 4채널 분석 + flywheel-closure-design 통합으로 재작성.
+> **개정**: v1 (2026-04-26 오전) → v2 (2026-04-26 저녁) → v2.1/v2.2 (2026-04-26 후속) → **v3 (2026-04-28)**
+> **사유**: v1은 "이미 만들어진 것"을 "갭"으로 잘못 잡았다. v2는 코드 실측 + 설계문서 9-Doc + telegram refs 4채널 분석 + flywheel-closure-design 통합으로 재작성. **v3는 Pattern Verification Lane (Paper Trading) 통합** — 검증 루프를 사람 판단(JUDGE)에서 시장 판단(Paper P&L)까지 확장.
 > **저자**: A022 (CTO + AI Researcher hat)
 > **Source of truth**: `engine/`(~200 .py) + `app/`(180 routes) + `~/Downloads/2222/` 캐노니컬 + `docs/live/flywheel-closure-design.md` + `docs/design/11_CTO_DATA_ARCHITECTURE_REALITY.md` + `tmp/telegram_refs/` 4채널
 > **Base SHA**: 3ce9cf5d
+
+---
+
+## 0.3 v3 — Pattern Verification Lane (Paper Trading) 통합 (2026-04-28)
+
+> **트리거**: 사용자 인사이트 — "그래야 맞는지 알잖아"
+> **저자**: A066 (relaxed-chatelet worktree)
+> **Base SHA**: 6aeafff9
+> **상태**: 설계 lock-in only. 구현은 W-0254 H-07/H-08 완료 후.
+
+### 0.3.1 핵심 재정의
+
+WTD 검증 루프는 지금까지 **사람의 판단 (JUDGE/Verdict)** 만으로 패턴 품질을 측정해왔다. v3는 **시장의 판단 (Paper Execution P&L)** 을 ground truth 신호로 추가한다.
+
+```
+[기존 루프]   Capture → Refinement → JUDGE/Verdict (human signal)
+                                           ↓
+[v3 추가]                          Paper Execution → P&L (market signal)
+                                           ↓
+                              두 신호 비교 → 패턴 품질 진짜 검증
+```
+
+**JUDGE = "사람이 보기에 좋은 패턴" / Paper = "진짜로 먹히는 패턴"** — 두 신호의 일치/불일치 자체가 학습 라벨이 된다 (e.g. "JUDGE valid인데 paper P&L 음수" = false-positive 패턴 후보).
+
+### 0.3.2 Minara Strategy Studio와의 차이 (Frozen 보호)
+
+| 축 | Minara | WTD v3 Pattern Verification |
+|---|---|---|
+| 코어 가치 | 자동매매 실행 | **패턴 품질 검증** |
+| 자금 | 실자금 perp 선물 | **paper only** (실자금 X) |
+| 변환 흐름 | 전략 → 자동 swap | 패턴 → 시그널 카드 → 시뮬 체결 → P&L |
+| 사용자 | 자동매매 트레이더 | 패턴 리서처/MM 헌터 |
+| Frozen 관계 | — | W-0132 copy trading **별 surface 격리** (engine/copy_trading 미접근) |
+
+**격리 원칙**:
+- 신규 코드는 `engine/verification/` (신설), `app/routes/paper/` (신설)에만 위치
+- 기존 `engine/copy_trading/` (Frozen) 코드 import/수정 금지
+- spec/CHARTER.md §Non-Goals 항목은 그대로 — **paper trading은 검증 도구이지 실행 도구가 아니다**
+
+### 0.3.3 4-Phase Roadmap
+
+| Phase | 기능 | 산출물 | 실자금 위험 |
+|---|---|---|---|
+| **P1: Signal Card** | 패턴 → entry/exit/stop 제안 카드 (체결 X) | UI 카드 + 제안 JSON spec | 0 (제안만) |
+| **P2: Backtest Engine** | corpus seed-search × 과거 hit rate / Sharpe | `/verification/backtest` API | 0 (과거 데이터) |
+| **P3: Paper Execution** | live 시뮬 체결 + 슬리피지/수수료 모델 + P&L 곡선 + 포트폴리오 추적 | `engine/verification/paper_executor.py` + UI 대시보드 | 0 (시뮬) |
+| **P4: Mode 비교** | 수동 vs AI 자동 vs rule-based archetype 변환 hit rate 비교 | A/B/C mode 메트릭 + 라벨 대시보드 | 0 |
+
+각 phase는 독립 머지 가능. P1만 머지해도 가치 있음 (패턴 카드의 actionable 표현 추가).
+
+### 0.3.4 패턴 → 실행 변환 (3-mode 비교)
+
+사용자 결정: **3-mode 다 구현 후 비교**. mode 자체가 데이터.
+
+| Mode | 변환 주체 | 입력 | 학습 가치 |
+|---|---|---|---|
+| **A: Manual** | 사용자가 직접 entry/exit/stop 입력 | 패턴 카드 + 사용자 판단 | 사용자 mental model 캡처 |
+| **B: AI Auto** | LLM이 패턴 spec → 노드 자동 생성 | PatternObject + LLM (Sonnet 4.5) | AI 변환 품질 측정 |
+| **C: Rule-based** | archetype A-J별 디폴트 룰 적용 | PatternObject.archetype + 파라미터 | 기준선 (baseline) |
+
+3-mode P&L 비교 → "AI 변환이 사용자 변환보다 나은가" / "rule-based가 그냥 충분한가" 검증.
+
+### 0.3.5 신규 lane 등록
+
+| 이슈 ID | 기능 | Effort | 선행 | F-매핑 |
+|---|---|---|---|---|
+| **V-PV-01** | `engine/verification/` 모듈 scaffold + paper_executor 인터페이스 | M | W-0254 H-07/H-08 | 신규 F-VERIFY |
+| **V-PV-02** | Signal Card UI (패턴 → entry/exit/stop 카드) | M | V-PV-01 | F-VERIFY-P1 |
+| **V-PV-03** | Backtest engine `POST /verification/backtest` | L | V-PV-01 | F-VERIFY-P2 |
+| **V-PV-04** | Paper executor (시뮬 체결 + P&L 추적) | L | V-PV-03 | F-VERIFY-P3 |
+| **V-PV-05** | Mode A/B/C 변환기 + 비교 메트릭 | L | V-PV-04 | F-VERIFY-P4 |
+| **V-PV-06** | JUDGE × Paper 신호 비교 라벨 export (refinement 학습용) | M | V-PV-04, F-02 | F-VERIFY-LOOP |
+
+총 6 이슈. **W-0254 (H-07/H-08) 머지 후 V-PV-01 시작**. V-PV-06이 기존 refinement loop와 닫히는 지점 — paper P&L이 새 학습 라벨이 됨.
+
+### 0.3.6 Open Questions (구현 전 결정)
+
+| # | 질문 | 영향 이슈 | 권고 |
+|---|---|---|---|
+| **PV-Q1** | 슬리피지 모델 — 고정 bps vs orderbook depth 시뮬? | V-PV-04 | **고정 bps 시작** (10 bps), depth 시뮬은 P5 |
+| **PV-Q2** | 수수료 — perp 선물 maker/taker 분리 vs 단일 평균? | V-PV-04 | **maker 0.02% / taker 0.05%** Bybit 기준 |
+| **PV-Q3** | 포지션 사이즈 — fixed notional vs Kelly vs 사용자 설정? | V-PV-04 | **사용자 설정** + 기본값 1000 USDT notional |
+| **PV-Q4** | Mode A/B/C 비교 horizon — 7d / 30d / 패턴별? | V-PV-05 | **패턴별** (PatternObject.expected_horizon) |
+| **PV-Q5** | JUDGE × Paper 불일치 시 어느 신호 우선? | V-PV-06 | **둘 다 라벨로 보존** (라벨 차원 추가, 우선순위 X) |
+
+### 0.3.7 Success Metrics (v3 한정)
+
+- **Phase 1 KPI**: 시그널 카드 본 사용자 중 entry/exit 직접 정의해본 비율 ≥ 30% (engagement)
+- **Phase 2 KPI**: 백테스트 hit rate가 corpus seed-search hit rate와 ±5%p 일치 (validity)
+- **Phase 3 KPI**: paper P&L과 JUDGE valid 비율 상관계수 ≥ 0.5 (signal alignment)
+- **Phase 4 KPI**: Mode B (AI auto) P&L이 Mode A (manual) 대비 -5%p 이내 (AI 신뢰성)
+
+### 0.3.8 v3가 v2.2와 다른 점
+
+| v2.2 범위 | v3 추가 |
+|---|---|
+| F-60 monetize gate (verdict 200건 + accuracy 0.55) | + paper P&L Sharpe 가중 (검증 신호 다양화) |
+| Verdict 5-cat (사람 라벨) | + Paper outcome 라벨 (시장 라벨) → refinement 학습 입력 2배 |
+| N-05 Copy Signal Marketplace | paper-verified 시그널만 marketplace 진입 가능 (품질 게이트) |
+| Pattern → 카드 (시각화 끝) | Pattern → 카드 → 시그널 → 시뮬 체결 → P&L (actionable 끝까지) |
+
+→ v3 = "**검증 루프의 닫힘**". 기존 v2.2가 "사람이 패턴 보고 평가"였다면, v3는 "패턴이 진짜 시장에서 먹히는지 시뮬로 확인" 까지 확장.
 
 ---
 

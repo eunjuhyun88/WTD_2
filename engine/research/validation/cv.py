@@ -160,9 +160,20 @@ class PurgedKFold:
             )
         return index
 
+    def get_n_splits(
+        self,
+        X: pd.DataFrame | pd.DatetimeIndex | None = None,
+        y: object = None,
+        groups: object = None,
+    ) -> int:
+        """sklearn-compatible: return ``n_splits``."""
+        return self.config.n_splits
+
     def split(
         self,
-        index: pd.DatetimeIndex,
+        X: pd.DataFrame | pd.DatetimeIndex,
+        y: object = None,
+        groups: object = None,
     ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
         """Yield ``(train_idx, test_idx)`` arrays for each fold.
 
@@ -178,6 +189,20 @@ class PurgedKFold:
         Raises:
             ValueError: if ``len(index) < n_splits * 2``.
         """
+        if isinstance(X, pd.DataFrame):
+            if not isinstance(X.index, pd.DatetimeIndex):
+                raise TypeError(
+                    "PurgedKFold.split expects a DataFrame with a DatetimeIndex; "
+                    f"got {type(X.index).__name__}"
+                )
+            index = X.index
+        elif isinstance(X, pd.DatetimeIndex):
+            index = X
+        else:
+            raise TypeError(
+                "PurgedKFold.split expects a pandas.DatetimeIndex or DataFrame; "
+                f"got {type(X).__name__}"
+            )
         index = self._normalise_index(index)
         n = len(index)
         if n < self.config.n_splits * 2:
