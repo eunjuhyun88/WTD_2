@@ -30,7 +30,7 @@ WRITE PATH                                                      READ PATH
 [L1] feature_calc                → feature_windows (92 cols)   wiki         ← wiki_pages
                   ↓                                             stats        ← pattern_stats_cache
 [L2] state_machine               → pattern_runtime_states      copy trade   ← copy_trade_signals
-                                 → phase_transitions            notifications← notification_queue
+                                 → phase_transition_events     notifications← notification_queue
                   ↓
 [L3] _on_entry_signal            → ledger_entries (PatternOutcome)
                                  → capture_records          ★FIX 2026-04-26
@@ -59,7 +59,7 @@ WRITE PATH                                                      READ PATH
 |---|---|---|---|---|
 | **L0** Raw Market | 27 fetcher, 12 scheduler job (klines/OI/funding/liq/CVD/macro/onchain/social/DEX/smart-money) | `engine/data_cache/`, `engine/scanner/scheduler.py` | CSV + SQLite raw_store + Redis L1 | ✅ BUILT |
 | **L1** Features | 92-dim feature_windows (symbol × TF × bar) | `engine/scanner/feature_calc.py`, `engine/features/materialization_store.py` | `feature_materialization.sqlite` + Supabase mirror | ✅ BUILT (W-0145 138K rows) |
-| **L2** Pattern Engine | PatternObject phase 시퀀스, building blocks 평가, state machine | `engine/patterns/`, `engine/scoring/block_evaluator.py` | `pattern_runtime_states` SQLite+Supabase dual-write, `phase_transitions` ★실제 테이블명 | ✅ BUILT (52 patterns, 29 blocks) |
+| **L2** Pattern Engine | PatternObject phase 시퀀스, building blocks 평가, state machine | `engine/patterns/`, `engine/scoring/block_evaluator.py` | `pattern_runtime_states` SQLite+Supabase dual-write, `phase_transition_events` | ✅ BUILT (52 patterns, 29 blocks) |
 | **L3** Ledger | entry → score → outcome → verdict (4-table append-only) | `engine/ledger/`, `engine/capture/` | `ledger_data/*.json` (DEPRECATED → Supabase 이전 中) + `pattern_capture.sqlite` + Supabase | 🔄 PARTIAL (capture pipeline 방금 픽스) |
 | **L4** Stats | materialized view, decay detection, F-60 gate | `engine/stats/engine.py` | `pattern_stats_cache`, `user_pattern_stats` (Supabase matview) | ✅ BUILT (gate는 R-05 NOT BUILT) |
 | **L5a** Wiki | DB가 canonical, markdown은 export only | `engine/wiki/` (NOT BUILT) | `wiki_pages`, `wiki_links`, `wiki_change_log` (Supabase) | ❌ NOT BUILT (Phase 1) |
@@ -74,15 +74,13 @@ WRITE PATH                                                      READ PATH
 ```
 ┌─ Supabase (Postgres) — durable, multi-process truth ──────────────────────┐
 │  pattern_objects ★ definition_id (UUID PK)                                │
-│  pattern_ledger_records ★실제 단일 테이블 (018 migration)                   │
 │  ledger_entries / ledger_scores / ledger_outcomes / ledger_verdicts        │
-│  ★ F-30 Phase 2 dual-write 대상, migration 024 (부분 배포)                  │
 │  ledger_negatives                                                          │
 │  capture_records ★ Cloud Run 재시작 안전                                   │
 │  pattern_stats_cache (matview, 5min refresh)                               │
 │  user_pattern_stats (matview)                                              │
 │  pattern_runtime_states (dual-write hot copy은 SQLite)                     │
-│  phase_transitions ★실제 테이블명 (phase_transition_events 아님)            │
+│  phase_transition_events                                                   │
 │  user_indicator_preferences                                                │
 │  notification_queue / judge_advice                                         │
 │  wiki_pages / wiki_links / wiki_change_log    ← Phase 1 신규               │
@@ -234,7 +232,7 @@ class CaptureRecord:
 2. evaluate_symbol_for_patterns(symbol) per 300+ symbols (asyncio.gather)
 3. PatternStateMachine.feed(blocks_triggered)
 4. phase_transition 발생 시:
-   ┌─ INSERT phase_transitions (Supabase) ★실제 테이블명
+   ┌─ INSERT phase_transition_events (Supabase)
    ├─ UPDATE pattern_runtime_states (SQLite + Supabase)
    └─ if to_phase == entry_phase:
         _on_entry_signal(transition):

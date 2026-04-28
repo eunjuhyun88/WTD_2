@@ -4,12 +4,6 @@
 **Source:** 2026-04-27 세션 (CTO + 사용자 협업)
 **Replaces / extends:** `docs/design/03_SEARCH_ENGINE.md`, `docs/design/09_RERANKER_TRAINING_SPEC.md`
 
-> ⚠️ **현재 구현 상태 (2026-04-29 확인)**
-> 현재 엔진은 4-tier 아닌 **3-layer 병렬 blend (A/B/C)** 를 동시 실행.
-> - Layer A+B+C = `engine/search/similar.py` ✅ 동작 중
-> - Layer D (LLM judge) = W-0148 미구현
-> 참조: `docs/data/04_CTO_REALITY.md` §CTO Decision 1
-
 ---
 
 ## 0. 한 줄 결론
