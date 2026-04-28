@@ -329,6 +329,7 @@ def run_similar_search(
     request: dict[str, Any],
     *,
     db_path: Path | str = DEFAULT_DB_PATH,
+    corpus_db_path: Path | str | None = None,
 ) -> dict[str, Any]:
     """Score corpus windows against a PatternDraft using 3-layer similarity.
 
@@ -368,7 +369,8 @@ def run_similar_search(
         pass  # keep defaults
 
     from search.corpus import SearchCorpusStore
-    windows = SearchCorpusStore().list_windows(
+    _corpus_store = SearchCorpusStore(corpus_db_path) if corpus_db_path is not None else SearchCorpusStore()
+    windows = _corpus_store.list_windows(
         symbol=sym_filter,
         timeframe=timeframe,
         limit=min(top_k * 5, 200),

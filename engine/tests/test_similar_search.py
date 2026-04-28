@@ -131,6 +131,7 @@ def test_blend_a_only():
 def test_run_similar_search_empty_corpus():
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "similar_runs.sqlite"
+        corpus_db = Path(tmp) / "search_corpus.sqlite"
         result = run_similar_search(
             {
                 "pattern_draft": {
@@ -142,6 +143,7 @@ def test_run_similar_search_empty_corpus():
                 "top_k": 5,
             },
             db_path=db,
+            corpus_db_path=corpus_db,
         )
     assert result["status"] == "degraded"
     assert result["candidates"] == []

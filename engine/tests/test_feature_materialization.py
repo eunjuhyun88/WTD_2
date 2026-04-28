@@ -6,6 +6,7 @@ import pandas as pd
 from features.materialization import compute_feature_window, materialize_window_bundle
 from features.materialization_store import FeatureMaterializationStore
 from scanner.jobs.feature_materialization import materialize_symbol_window
+from search.corpus import SearchCorpusStore
 
 
 def _make_breakout_bars(n: int = 80) -> pd.DataFrame:
@@ -77,6 +78,7 @@ def test_materialize_symbol_window_persists_feature_event_and_signature(tmp_path
     perp = _make_breakout_perp(bars.index)
     store = FeatureMaterializationStore(tmp_path / "feature_materialization.sqlite")
 
+    corpus_store = SearchCorpusStore(tmp_path / "search_corpus.sqlite")
     result = materialize_symbol_window(
         symbol="PTBUSDT",
         timeframe="1h",
@@ -85,6 +87,7 @@ def test_materialize_symbol_window_persists_feature_event_and_signature(tmp_path
         store=store,
         bars=bars,
         perp=perp,
+        corpus_store=corpus_store,
     )
 
     feature_window = result["feature_window"]
