@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, BarSeries, AreaSeries, createSeriesMarkers } from 'lightweight-charts';
+  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, BarSeries, AreaSeries, createSeriesMarkers, PriceScaleMode } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
   import {
     chartIndicators,
@@ -297,6 +297,7 @@
   let isVeloSurface = $derived(surfaceStyle === 'velo');
 
   let chartMode = $state<'candle' | 'line' | 'bar' | 'area' | 'heikin'>('candle');
+  let priceScaleMode = $state<'normal' | 'log' | 'percent'>('normal');
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
   let contextStripOpen = $state(false);
 
@@ -999,6 +1000,11 @@
       rightPriceScale: {
         ...baseTheme.rightPriceScale,
         scaleMargins: { top: 0.08, bottom: 0.08 },
+        mode: priceScaleMode === 'log'
+          ? PriceScaleMode.Logarithmic
+          : priceScaleMode === 'percent'
+            ? PriceScaleMode.Percentage
+            : PriceScaleMode.Normal,
       },
       leftPriceScale: hasFundingOverlay
         ? { visible: true, borderColor: BORDER, scaleMargins: { top: 0.06, bottom: 0.06 } }
@@ -1831,6 +1837,7 @@
     void showCVD;
     void showMACD;
     void chartMode;
+    void priceScaleMode;
     void cvdDivergence;
     void derivativesOnMain;
     void showComparison;
@@ -1933,6 +1940,28 @@
               onclick={() => { chartMode = t.mode as typeof chartMode; }}
               title={t.label}
             >{t.label}</button>
+          {/each}
+        </div>
+        <div class="scale-btns" role="group" aria-label="가격 스케일 모드">
+          {#each [
+            { mode: 'normal', label: 'Auto' },
+            { mode: 'log', label: 'Log' },
+            { mode: 'percent', label: '%' },
+          ] as s (s.mode)}
+            <button
+              class="mode-btn scale-btn"
+              class:active={priceScaleMode === s.mode}
+              onclick={() => {
+                priceScaleMode = s.mode as typeof priceScaleMode;
+                if (mainChart) {
+                  mainChart.priceScale('right').applyOptions({
+                    mode: s.mode === 'log' ? PriceScaleMode.Logarithmic
+                        : s.mode === 'percent' ? PriceScaleMode.Percentage
+                        : PriceScaleMode.Normal,
+                  });
+                }
+              }}
+            >{s.label}</button>
           {/each}
         </div>
       </div>
