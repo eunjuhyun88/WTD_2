@@ -31,6 +31,7 @@ from research.capture_benchmark import (
 from research.pattern_search import BenchmarkPackStore, NegativeSearchMemoryStore, PatternSearchArtifactStore
 from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
+from verification import run_paper_verification
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
@@ -974,4 +975,26 @@ async def run_benchmark_search_from_capture(slug: str, body: _BenchmarkSearchBod
     return {
         "ok": True,
         **result.to_dict(),
+    }
+
+
+@router.post("/{slug}/verify-paper")
+async def verify_paper(slug: str) -> dict:
+    """Run paper-trading verification for a pattern using recorded outcome ledger."""
+    result = await asyncio.to_thread(run_paper_verification, slug, LEDGER_RECORD_STORE)
+    return {
+        "ok": True,
+        "pattern_slug": result.pattern_slug,
+        "n_trades": result.n_trades,
+        "n_hit": result.n_hit,
+        "n_miss": result.n_miss,
+        "n_expired": result.n_expired,
+        "win_rate": result.win_rate,
+        "avg_return_pct": result.avg_return_pct,
+        "sharpe": None if result.sharpe != result.sharpe else result.sharpe,
+        "max_drawdown_pct": result.max_drawdown_pct,
+        "expectancy_pct": result.expectancy_pct,
+        "avg_duration_hours": result.avg_duration_hours,
+        "pass_gate": result.pass_gate,
+        "gate_reasons": result.gate_reasons,
     }
