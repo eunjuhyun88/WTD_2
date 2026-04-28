@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`e0b2b2e1` — origin/main (2026-04-29) — PR #613 CURRENT.md W-0299 완료 반영
+`52fb9591` — origin/main (2026-04-29) — PR #609/#613 merged (harness reliability repair)
 
 ---
 
