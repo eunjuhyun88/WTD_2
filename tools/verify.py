@@ -77,13 +77,31 @@ def skip(label: str, reason: str) -> None:
 # ---------------------------------------------------------------------------
 
 def changed_files() -> list[str]:
-    result = run(["git", "diff", "--name-only", "origin/main..HEAD"])
-    if result.returncode != 0:
-        # Fallback: compare against local main
-        result = run(["git", "diff", "--name-only", "main..HEAD"])
-    if result.returncode != 0:
-        return []
-    return [f.strip() for f in result.stdout.splitlines() if f.strip()]
+    files: set[str] = set()
+
+    # Committed changes vs origin/main
+    r = run(["git", "diff", "--name-only", "origin/main..HEAD"])
+    if r.returncode != 0:
+        r = run(["git", "diff", "--name-only", "main..HEAD"])
+    if r.returncode == 0:
+        files.update(f.strip() for f in r.stdout.splitlines() if f.strip())
+
+    # Staged changes (index vs HEAD)
+    r = run(["git", "diff", "--cached", "--name-only"])
+    if r.returncode == 0:
+        files.update(f.strip() for f in r.stdout.splitlines() if f.strip())
+
+    # Unstaged working-tree changes
+    r = run(["git", "diff", "--name-only"])
+    if r.returncode == 0:
+        files.update(f.strip() for f in r.stdout.splitlines() if f.strip())
+
+    # Untracked files (not gitignored)
+    r = run(["git", "ls-files", "--others", "--exclude-standard"])
+    if r.returncode == 0:
+        files.update(f.strip() for f in r.stdout.splitlines() if f.strip())
+
+    return sorted(files)
 
 
 def classify(files: list[str]) -> dict[str, bool]:

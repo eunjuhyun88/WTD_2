@@ -5,18 +5,25 @@
 # E-2: W-#### 충돌 (같은 번호 다른 파일)
 # E-3: CURRENT.md 활성표 listed인데 파일 없음 (validator 위반)
 # E-4: HEAD vs origin/main 차이 (rebase/merge 권장)
+#
+# Usage: ./tools/check_drift.sh [--strict]
+#   --strict: WARN > 0이면 exit 1 (CI/hook용)
 
-set -uo pipefail
+set -eo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 WARN=0
+STRICT=0
+for arg in "$@"; do
+  if [ "$arg" = "--strict" ]; then STRICT=1; fi
+done
 
 echo "=== Drift Check ==="
 
 # E-1
-DECLARED=$(grep -oE '^\`[a-f0-9]{8}\`' work/active/CURRENT.md 2>/dev/null | head -1 | tr -d '`')
+DECLARED=$(grep -oE '^`[a-f0-9]{8}`' work/active/CURRENT.md 2>/dev/null | head -1 | tr -d '`' || true)
 ACTUAL=$(git rev-parse --short=8 origin/main 2>/dev/null || echo "")
 if [ -n "$DECLARED" ] && [ -n "$ACTUAL" ] && [ "$DECLARED" != "$ACTUAL" ]; then
   echo "⚠ E-1: CURRENT.md main SHA \`$DECLARED\` ≠ origin/main \`$ACTUAL\`"
@@ -25,14 +32,14 @@ fi
 
 # E-4
 git fetch origin main >/dev/null 2>&1 || true
-AHEAD=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+AHEAD=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo "0")
 if [ "$AHEAD" -gt 0 ]; then
   UPSTREAM=$(git rev-parse --abbrev-ref @{u} 2>/dev/null || echo "")
-  LOCAL_AHEAD=0
+  LOCAL_AHEAD="0"
   if [ -n "$UPSTREAM" ]; then
-    LOCAL_AHEAD=$(git rev-list --count "$UPSTREAM..HEAD" 2>/dev/null || echo 0)
+    LOCAL_AHEAD=$(git rev-list --count "${UPSTREAM}..HEAD" 2>/dev/null || echo "0")
   fi
-  echo "⚠ E-4: origin/main이 $AHEAD commit 앞섬 (본인 commit $LOCAL_AHEAD개)"
+  echo "⚠ E-4: origin/main이 ${AHEAD} commit 앞섬 (본인 commit ${LOCAL_AHEAD}개)"
   if [ "$LOCAL_AHEAD" = "0" ]; then
     echo "    추천: git merge --ff-only origin/main"
   else
@@ -73,3 +80,8 @@ fi
 if [ "$WARN" = "0" ]; then
   echo "✓ Drift 없음"
 fi
+
+if [ "$STRICT" = "1" ] && [ "$WARN" -gt 0 ]; then
+  exit 1
+fi
+exit 0
