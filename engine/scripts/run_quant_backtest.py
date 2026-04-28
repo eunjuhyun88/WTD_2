@@ -13,14 +13,17 @@ from __future__ import annotations
 
 import argparse
 import logging
-import math
 import os
-import random
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parents[1]))
+from research.validation.stats import bootstrap_ci as _stats_bootstrap_ci  # noqa: E402
+from research.validation.stats import hit_rate as _stats_hit_rate  # noqa: E402
+from research.validation.stats import one_sample_t_test  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -83,23 +86,6 @@ def _compute_forward_return(
         return None
 
 
-def _welch_t(x: list[float]) -> tuple[float, float]:
-    n = len(x)
-    if n < 4:
-        return 0.0, 1.0
-    mean = sum(x) / n
-    var = sum((v - mean) ** 2 for v in x) / (n - 1)
-    se = math.sqrt(var / n)
-    t = mean / se if se > 0 else 0.0
-    return t, mean
-
-
-def _bootstrap_ci(x: list[float], n_boot: int = 1000) -> tuple[float, float]:
-    n = len(x)
-    boot = sorted(sum(random.choices(x, k=n)) / n for _ in range(n_boot))
-    return boot[int(0.025 * n_boot)], boot[int(0.975 * n_boot)]
-
-
 def _layer_p_stats(
     signals: list,
     klines_by_symbol: dict[str, pd.DataFrame],
@@ -121,9 +107,9 @@ def _layer_p_stats(
     if len(returns) < 4:
         return {"n": 0, "skipped": skipped}
 
-    t, mean = _welch_t(returns)
-    ci_lo, ci_hi = _bootstrap_ci(returns)
-    hit_rate = sum(1 for r in returns if r > 0) / len(returns)
+    t, mean = one_sample_t_test(returns)
+    ci_lo, ci_hi, _ = _stats_bootstrap_ci(returns)
+    hr = _stats_hit_rate(returns)
     return {
         "n": len(returns),
         "skipped": skipped,
@@ -131,9 +117,9 @@ def _layer_p_stats(
         "t_stat": t,
         "ci_lo": ci_lo * 100,
         "ci_hi": ci_hi * 100,
-        "hit_rate": hit_rate,
+        "hit_rate": hr,
         "g1_pass": abs(t) >= 2.0,
-        "g2_pass": hit_rate >= 0.55,
+        "g2_pass": hr >= 0.55,
     }
 
 

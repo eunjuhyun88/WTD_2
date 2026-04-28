@@ -52,6 +52,7 @@ __all__ = [
     "annualized_sharpe",
     "hit_rate",
     "profit_factor",
+    "one_sample_t_test",
     "mann_whitney_u",
 ]
 
@@ -435,6 +436,28 @@ def hit_rate(samples: Sequence[float]) -> float:
     if len(arr) == 0:
         return 0.0
     return float((arr > 0).mean())
+
+
+def one_sample_t_test(
+    samples: "Sequence[float]",
+    *,
+    popmean: float = 0.0,
+) -> tuple[float, float]:
+    """One-sample t-test against a fixed population mean.
+
+    Used for: Layer P G1 gate — tests if mean forward return != 0.
+    Replaces inline _welch_t / welch_t in scripts.
+
+    Returns:
+        ``(t_statistic, mean)`` — (0.0, 0.0) if n < 4.
+    """
+    arr = np.asarray(samples, dtype=float)
+    arr = arr[~np.isnan(arr)]
+    n = len(arr)
+    if n < 4:
+        return 0.0, 0.0
+    result = scipy_stats.ttest_1samp(arr, popmean=popmean)
+    return float(result.statistic), float(arr.mean())
 
 
 def mann_whitney_u(

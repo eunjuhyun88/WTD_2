@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import math
 import os
 import sys
 import time
@@ -28,6 +27,10 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("layer_p_production")
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from research.validation.stats import bootstrap_ci as _stats_bootstrap_ci  # noqa: E402
+from research.validation.stats import one_sample_t_test  # noqa: E402
 
 _BINANCE_FUTURES = "https://fapi.binance.com"
 _UA = "cogochi-layer-p/1.0"
@@ -163,25 +166,11 @@ def compute_forward_return(symbol: str, ts_iso: str, horizon_h: int, close_cache
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 def welch_t(x: list[float]) -> tuple[float, float]:
-    """Welch t-test: mean vs 0 (B0 random baseline)."""
-    n = len(x)
-    if n < 4:
-        return 0.0, 1.0
-    mean = sum(x) / n
-    var = sum((v - mean) ** 2 for v in x) / (n - 1)
-    se = math.sqrt(var / n)
-    t = mean / se if se > 0 else 0.0
-    return t, mean
+    return one_sample_t_test(x)
 
 
 def bootstrap_ci(x: list[float], n_boot: int = 1000) -> tuple[float, float]:
-    import random
-    n = len(x)
-    boot_means = sorted(
-        sum(random.choices(x, k=n)) / n for _ in range(n_boot)
-    )
-    lo = boot_means[int(0.025 * n_boot)]
-    hi = boot_means[int(0.975 * n_boot)]
+    lo, hi, _ = _stats_bootstrap_ci(x, n_iter=n_boot)
     return lo, hi
 
 
