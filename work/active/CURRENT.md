@@ -35,7 +35,9 @@
 
 | Work Item | Owner | 상태 |
 |---|---|---|
-| `W-0281-pattern-verification-lane` | design-only | 📐 **설계 lock-in 완료** (구현은 W-0254 H-07/H-08 후) — Paper Trading 검증 도구 lane |
+| `W-0282-v-pv-01-engine-verification-scaffold` | engine | 📐 **설계 lock-in 완료** (구현 차단: W-0254 H-07/H-08 머지 대기) — Phase 1 첫 piece, `engine/backtest/` 재사용 |
+
+> 머지 완료: W-0281 (PR #543, design lock-in) — `work/completed/`
 
 > 부모: PRD master § 0.3 / Canonical PRD § 5b / CHARTER §Frozen 예외절. Frozen W-0132 copy_trading과 격리 의무.
 
