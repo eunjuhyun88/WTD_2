@@ -1,7 +1,11 @@
 """Worker-control one-shot triggers for refinement methodology jobs."""
 from __future__ import annotations
 
+import logging
+
 from research.objectives import derive_pattern_research_objective
+
+log = logging.getLogger(__name__)
 from research.pattern_refinement import (
     PatternBoundedEvalConfig,
     pattern_bounded_eval_payload,
@@ -108,11 +112,27 @@ def run_pattern_search_refinement_once(
         updated_at=refinement_run.updated_at,
     )
 
+    # V-track G1~G7 validation (W-0280) — log-only, Phase 1
+    gate_v2_result = None
+    try:
+        from research.validation.runner import run_full_validation
+        gate_v2_result = run_full_validation(search_run.research_run_id)
+        if gate_v2_result is not None:
+            log.info(
+                "GateV2Result: slug=%s overall_pass=%s all_new_pass=%s",
+                pattern_slug,
+                gate_v2_result.overall_pass,
+                gate_v2_result.all_new_pass,
+            )
+    except Exception as _exc:
+        log.warning("V-track gate_v2 skipped: %s", _exc)
+
     payload = {
         "search": search_payload,
         "objective": objective.to_dict(),
         "refinement": pattern_bounded_eval_payload(refinement_run, controller),
         "report_path": str(report_path),
         "training_handoff": training_result,
+        "gate_v2_result": gate_v2_result.to_dict() if gate_v2_result is not None else None,
     }
     return payload
