@@ -1,12 +1,12 @@
 """Async parallel OHLCV + derivatives backfiller for 1000+ symbols.
 
-Uses asyncio with a Semaphore-based rate limiter.
+Uses asyncio with a token-bucket global rate limiter.
 
 Binance rate limits (IP-level):
-  Futures: 2400 requests/min
-  Spot:    1200 requests/min
-  With workers=40 and 50ms sleep between requests per worker:
-    ~800 req/min burst → well within limits
+  Futures: 2400 req/min = 40 req/s
+  Spot:    1200 req/min = 20 req/s
+  Safe target: 20 req/s (50% headroom)
+  workers=8, global token bucket 20/s = ~1200 req/min
 
 Usage:
     from data_cache.backfill_async import BackfillPipeline
@@ -38,8 +38,9 @@ _PROGRESS_PATH = Path(__file__).parent / "market_data" / ".progress.json"
 
 # Binance klines max rows per request
 _KLINES_LIMIT = 1000
-# Sleep between batches per worker (ms) — controls burst rate
-_SLEEP_MS = 50
+# Global rate limit: max requests per second across all workers
+_RATE_LIMIT_RPS = 18  # safe margin below Binance 2400/min = 40/s
+_MIN_SLEEP_S = 0.05   # minimum sleep even when bucket has tokens
 
 
 def _ms(dt: datetime) -> int:
@@ -50,18 +51,46 @@ def _ts(ms: int) -> datetime:
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
 
 
+class _TokenBucket:
+    """Token bucket for global rate limiting across all coroutines."""
+
+    def __init__(self, rate_per_sec: float) -> None:
+        self._rate = rate_per_sec
+        self._tokens = rate_per_sec
+        self._last = time.monotonic()
+        self._lock = asyncio.Lock()
+
+    async def acquire(self) -> None:
+        async with self._lock:
+            now = time.monotonic()
+            elapsed = now - self._last
+            self._last = now
+            self._tokens = min(self._rate, self._tokens + elapsed * self._rate)
+            if self._tokens < 1:
+                wait = (1 - self._tokens) / self._rate
+                self._tokens = 0
+            else:
+                self._tokens -= 1
+                wait = 0.0
+        if wait > 0:
+            await asyncio.sleep(wait)
+        await asyncio.sleep(_MIN_SLEEP_S)
+
+
 class BackfillPipeline:
     """Manages parallel backfill of OHLCV + derivatives data."""
 
     def __init__(
         self,
         store: ParquetStore | None = None,
-        workers: int = 40,
-        timeout_s: int = 30,
+        workers: int = 8,
+        rate_per_sec: float = _RATE_LIMIT_RPS,
     ) -> None:
         self.store = store or ParquetStore()
         self.workers = workers
         self._sem = asyncio.Semaphore(workers)
+        self._bucket: _TokenBucket | None = None
+        self._rate = rate_per_sec
         self._client: httpx.AsyncClient | None = None
         self._progress: dict[str, str] = self._load_progress()
 
@@ -94,13 +123,27 @@ class BackfillPipeline:
 
     # ── HTTP helpers ──────────────────────────────────────────────────────────
 
-    async def _get_json(self, url: str, params: dict) -> list | dict:
-        assert self._client is not None
-        async with self._sem:
-            await asyncio.sleep(_SLEEP_MS / 1000)
-            r = await self._client.get(url, params=params, timeout=30)
-            r.raise_for_status()
-            return r.json()
+    async def _get_json(self, url: str, params: dict, retries: int = 3) -> list | dict:
+        assert self._client is not None and self._bucket is not None
+        for attempt in range(retries):
+            await self._bucket.acquire()
+            async with self._sem:
+                try:
+                    r = await self._client.get(url, params=params, timeout=30)
+                    if r.status_code in (418, 429):
+                        wait = 60 * (attempt + 1)
+                        log.warning("Binance rate limit (%d), sleeping %ds", r.status_code, wait)
+                        await asyncio.sleep(wait)
+                        continue
+                    r.raise_for_status()
+                    return r.json()
+                except httpx.HTTPStatusError:
+                    raise
+                except Exception as exc:
+                    if attempt == retries - 1:
+                        raise
+                    await asyncio.sleep(2 ** attempt)
+        raise RuntimeError(f"Failed after {retries} retries")
 
     # ── OHLCV fetch ───────────────────────────────────────────────────────────
 
@@ -298,6 +341,7 @@ class BackfillPipeline:
 
         async with httpx.AsyncClient(headers={"User-Agent": _UA}, http2=True) as client:
             self._client = client
+            self._bucket = _TokenBucket(self._rate)
             tasks = []
             for _, row in universe.iterrows():
                 sym = row["symbol"]
@@ -324,6 +368,7 @@ class BackfillPipeline:
 
         async with httpx.AsyncClient(headers={"User-Agent": _UA}, http2=True) as client:
             self._client = client
+            self._bucket = _TokenBucket(self._rate)
             tasks = [
                 self._backfill_one_derivatives(sym, start, end)
                 for sym in futures_symbols
