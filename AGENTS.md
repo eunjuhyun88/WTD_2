@@ -11,288 +11,110 @@ Execution rules for humans and coding agents.
 
 ## Bootstrap (Multi-Agent OS v2 + MemKraft)
 
-**처음 worktree 들어올 때 1회**: `bash app/scripts/dev/install-git-hooks.sh` — `core.hooksPath=.githooks` 활성화. F-7 hooks: pre-commit (unknown-agent gate, PR #354 silent loss 차단) + pre-push (branch naming + design invariant) + post-merge (state refresh).
+**처음 worktree 들어올 때 1회**: `bash app/scripts/dev/install-git-hooks.sh` — `core.hooksPath=.githooks` 활성화.
 
 세션 흐름:
 ```bash
 ./tools/start.sh                                      # 또는 /start
 ./tools/claim.sh "engine/X, app/Y"                    # 또는 /claim "..."
-./tools/save.sh "다음에 할 일"                          # 또는 /save "..."   (중간)
-./tools/end.sh "PR #N" "handoff" [lesson]             # 또는 /end ...     (종료)
+./tools/save.sh "다음에 할 일"                          # 또는 /save "..."
+./tools/end.sh "PR #N" "handoff" [lesson]             # 또는 /end ...
 ```
 
-`/start`가 자동:
-- Agent ID 발번 (`memory/sessions/agents/A###.jsonl` 기반, 가변)
-- `state/` 갱신 (main SHA, open PRs, worktrees)
-- memkraft 통합 (open-loops, dream)
-- 직전 에이전트 handoff 표시
+`/start`가 자동: Agent ID 발번, `state/` 갱신, memkraft 통합, 직전 handoff 표시.
 
 ### MemKraft 슬래시 커맨드
 
-| 슬래시 | 기능 | memkraft 명령 |
-|---|---|---|
-| `/start` | 세션 시작 | `dream --dry-run`, `open-loops --dry-run` |
-| `/save` | 중간 체크포인트 | `log --event "..."` ×2 (done/next) |
-| `/end` | 세션 종료 | `log --event "session ended"` + `retro --dry-run` |
-| `/claim` | 영역 lock + Issue mutex + registry 매핑 | `state/worktrees.json` (SSOT) + GitHub Issue assignee |
-| `/agent-status` | 현재 상태 | (read-only 합본) |
-| `/retro` | 일일 회고 | `retro` (Well/Bad/Next 자동 추출) |
-| `/decision` | 결정 기록 | `log --decision` |
-| `/incident` | 사고 기록 | `mk.incident_record()` |
-| `/open-loops` | 미해결 항목 | `open-loops` |
-| `/search` | 메모리 검색 | `search --fuzzy` |
+| 슬래시 | 기능 |
+|---|---|
+| `/start` | 세션 시작 |
+| `/save` | 중간 체크포인트 |
+| `/end` | 세션 종료 |
+| `/claim` | 영역 lock + Issue mutex |
+| `/decision` | 결정 기록 |
+| `/incident` | 사고 기록 |
+| `/open-loops` | 미해결 항목 |
+| `/search` | 메모리 검색 |
+| `/컨텍스트` | On-demand Context Pack |
 
-### MemKraft 작동 원칙 (중요)
+### ⚠️ 경로 혼동 주의
 
-- **모든 MemKraft CLI 명령은 `./tools/mk.sh`로 실행** — 전역 `memkraft`와 `cd memory && memkraft` 금지
-- wrapper가 `MEMKRAFT_DIR=./memory`와 engine uv 환경의 MemKraft 버전을 고정함
-- entity 시드: `./tools/track_repo.sh` (W-번호, Agent ID, 모듈 자동 등록)
-- `memory/RESOLVER.md` — 새 정보 저장 전 분류 결정 트리 참조
-- `memory/.memkraft/` — auto-cache, .gitignore
+| 경로 | 정체 |
+|---|---|
+| `memory/` (프로젝트 루트) | 프로젝트 메모리 (MemKraft) |
+| `~/.claude/projects/.../memory/` | Claude Code 자동 메모리 (별개) |
 
-### 핵심 파일
+- 모든 MemKraft CLI: `./tools/mk.sh`로 실행 (전역 `memkraft` 금지)
+- worktree 내에서 메인 파일 필요 시: `/Users/ej/Projects/wtd-v2/` 절대경로
 
-- 설계: `design/proposed/multi-agent-os-v2.md`, `design/proposed/memkraft-full-integration.md`
-- spec: `spec/PRIORITIES.md` (P0/P1/P2), `spec/CONTRACTS.md` (legacy locks — DEPRECATED)
-- state (자동, SSOT): `state/state.json`, `state/worktrees.json` (4축 worktree registry), `state/current_agent.txt`
-- ledger: `memory/sessions/{date}.jsonl` (timeline), `memory/sessions/agents/A###.jsonl` (per-agent)
+### Worktree Registry
 
-### ⚠️ 경로 혼동 주의 (모든 에이전트 필독)
+`state/worktrees.json` — 4축 SSOT: `(path, branch, agent_id, issue, work_item, status, last_active)`. 자세한 운영: `agents/coordination.md`.
 
-프로젝트에는 **서로 다른 두 개의 memory 경로**가 존재한다. 절대 혼동하지 말 것.
+### Branch 명명
 
-| 경로 | 정체 | 용도 |
-|---|---|---|
-| `memory/` (프로젝트 루트) | **프로젝트 메모리** (MemKraft) | 에이전트 세션 기록, 결정, 인시던트, live-notes |
-| `~/.claude/projects/.../memory/` | **Claude Code 자동 메모리** | Claude Code 개인 메모리 (별개 시스템) |
-
-- 에이전트 세션 기록 찾을 때: `memory/sessions/agents/A###.jsonl` (프로젝트 루트)
-- `work/active/W-xxxx-*.md` 파일은 **메인 프로젝트 트리** 기준 — worktree에서 찾으면 없을 수 있음
-- worktree 내에서 메인 프로젝트 파일이 필요하면: `/Users/ej/Projects/wtd-v2/` 절대경로 사용
-
-### Worktree Registry (SSOT, 2026-04-27 도입)
-
-`state/worktrees.json` = `(path, branch, agent_id, issue, work_item, status, last_active, ...)` 단일 진실. `tools/worktree-registry.sh`로 register/get/list/remove. `/start`/`/claim`/`/end`가 자동으로 갱신. sweep은 W-0263 Phase 4에서 도입. 자세한 운영 룰은 `CLAUDE.md` §Worktree Registry 참조.
-
-### Branch 명명 (auto-rename allowed)
-
-Claude Code SDK / codex CLI가 자동 생성한 `claude/*` `codex/*` `worktree-agent-*` 브랜치는 **차단 없음**. PR push 전 `git branch -m feat/{ID}-{slug}`로 rename만 하면 hook 통과. 새 worktree를 만들지 말고 rename으로 처리. 자세한 룰은 `CLAUDE.md` §Branch Naming.
-
-## Default Read Scope
-
-Read in this order:
-
-1. `AGENTS.md`
-2. `work/active/CURRENT.md`
-3. `./tools/start.sh` output (Agent ID + derived state + priorities)
-4. `spec/PRIORITIES.md` for compact P0/P1 detail
-5. Relevant `work/active/*.md` listed in `CURRENT.md`
-6. Relevant `docs/domains/*.md`
-7. Relevant `docs/product/*.md`
-8. Minimal required code files
+`feat/{Issue-ID}-{slug}` 또는 `chore/{slug}`. Auto-generated 브랜치는 rename으로 처리. 자세한 룰: `agents/coordination.md`.
 
 ## Context Routing
 
-- Load only the minimum pack required for the active work item.
-- Default pack = `AGENTS.md` + one active work item + one relevant domain doc + minimum code files.
-- Expand context only when the default pack cannot support the next action safely.
-- Use owner and primary change type to keep the default pack narrow.
+- Default pack = `AGENTS.md` + one active work item + one domain doc + minimum code files.
+- Expand only when default pack cannot support the next action safely.
 
-### /컨텍스트 — On-demand Context Pack (W-0299)
-
-작업 시작 전 관련 코드·문서·메모리를 8k token 이하로 압축해서 즉시 출력한다.
+### /컨텍스트 — On-demand Context Pack
 
 ```
 /컨텍스트 "V-PV-01 구현"      # engine 도메인, W-0298 work item
-/컨텍스트 "GateV2 확장"        # engine + gate 관련 코드
-/컨텍스트 W-0299               # W-0299 work item 직접 지정
+/컨텍스트 W-0299               # work item 직접 지정
 /컨텍스트 "차트 그리기 툴"     # app 도메인
 ```
 
-Pack 구성: Work Item (Goal+Scope+AC) + Domain sub-file + 관련 코드 + Domain Doc + Memory 스니펫.
-코드 레이어는 MCP serena 우선, fallback git grep.
-- Expand packs by need:
-  - `app` pack: active work item + relevant product/domain docs + touched app files
-  - `engine` pack: active work item + relevant domain docs + touched engine files/tests
-  - `contract` pack: active work item + contract/domain docs + route/type boundaries
-  - `research` pack: active work item + product/domain docs + experiment/eval references
-- Prefer previews, indexes, or briefs before full docs, catalogs, or memory outputs.
-- Keep heavy lanes such as memory tooling, broad runbooks, and unrelated domains late-bound.
-
-## Default Exclude Scope
-
-Do not read these unless explicitly required:
-
-- `app/node_modules/`
-- `app/build/`
-- `app/.svelte-kit/`
-- `engine/.venv/`
-- `**/__pycache__/`
-- `**/.pytest_cache/`
-- `docs/archive/`
-- `app/_archive/`
-- `docs/generated/`
+Pack: Work Item (Goal+Scope+AC) + Domain sub-file + 코드 (serena → git grep) + Domain Doc + Memory.
 
 ## Work Item Discipline
 
-Every non-trivial task must have one active work item:
+Every non-trivial task must have one active work item (`work/active/W-xxxx-<slug>.md`).
 
-- Path: `work/active/W-xxxx-<slug>.md`
-- `work/active/CURRENT.md` is the live index. Baseline validation applies to the work items listed under `## 활성 Work Items`.
-- Work items not listed in `CURRENT.md` may remain in `work/active/` as checkpoint or parking notes, but they are reference-only until promoted into `CURRENT.md`.
-- Required sections: Goal, Owner, Scope, Non-Goals, Canonical Files, Facts, Assumptions, Open Questions, Decisions, Next Steps, Exit Criteria, Handoff Checklist
-- Keep one owner per work item: `engine`, `app`, `contract`, or `research`
-- Budget:
-  - Facts `3-5`
-  - Assumptions `0-3`
-  - Open Questions `0-3`
-  - Next Steps `1-3`
+Required sections: Goal, Owner, Scope, Non-Goals, Canonical Files, Facts, Assumptions, Open Questions, Decisions, Next Steps, Exit Criteria, Handoff Checklist.
+
+Budget: Facts `3-5`, Assumptions `0-3`, Open Questions `0-3`, Next Steps `1-3`.
 
 ## Execution Loop
 
 1. Reconstruct context from canonical files before acting.
-2. Write or refresh the intended design in the active work item before non-trivial edits.
-3. Separate facts, assumptions, decisions, and open questions.
-4. Confirm owner, change type, canonical files, and verification plan before acting.
-5. Prefer small reversible changes and one primary change type per PR.
-6. If scope, blockers, hypotheses, or branch intent change, update the work item first.
+2. Write or refresh design in the active work item before non-trivial edits.
+3. Confirm owner, change type, canonical files, and verification plan before acting.
+4. Prefer small reversible changes and one primary change type per PR.
+5. If scope or blockers change, update the work item first.
 
 ## Branch and Merge Rules
 
 - Never commit directly on `main`; use task branches only.
-- Default execution unit = one thread, one active work item, one execution branch, one worktree.
-- New chat messages do not justify new branches.
-- Prefer commit splitting before branch splitting.
-- Create a new branch only for a new work item, a user-requested isolated PR scope, or when one clean PR is otherwise impossible.
-- Start each execution branch in a dedicated worktree.
-- Keep one execution branch per active agent/task unless the user explicitly approves parallel ownership.
-- Record branch-split reasons in the active work item before branching.
-- Merge via PR only after user approval; no direct push-to-main flow.
-- Before merge, pass the minimum gate: clean `git status`, scoped tests/checks, and conflict review.
-- If unexpected file changes appear, stop and confirm scope before committing.
+- One thread = one active work item = one branch = one worktree.
+- Merge via PR only after user approval.
+- Before merge: clean `git status`, scoped tests, conflict review.
 
 ## Vercel Deploy Rules
 
-- `main`, `master`, and agent branches such as `claude/*` or `codex/*` must not be used as Vercel auto-deploy branches.
-- If Git-based Vercel deploys are enabled for `app/`, use a dedicated `release` branch as the only production branch.
-- Reconnect Vercel Git auto-deploy only after repo-level branch guardrails are present in `app/vercel.json`.
-- Until that guardrail and branch split are in place, prefer manual app deploys from `app/` via Vercel CLI.
-
-## Multi-Agent Handoff
-
-- Split multiple agents by work item or merge unit, not arbitrary file subsets.
-- Every handoff must name active work item, active branch, verification status, and remaining blockers.
-- Do not create `work/active/AGENT-HANDOFF-*.md`; use `CURRENT.md` plus listed `W-*` work items. Archive historical snapshots under `docs/archive/agent-handoffs/`.
-- Tasks must be restartable from files, not from private reasoning or chat residue.
-- Update `Decisions` and `Next Steps` when plan, blocker, or boundary changes materially.
-- Record rejected paths or failed hypotheses when they affect future execution.
-
-## Context Hygiene
-
-- Do not use chat as plan storage; durable intent belongs in `work/active/*.md`.
-- Replace or delete stale bullets instead of appending history.
-- Keep only the latest valid state in active work items; historical detail belongs in commits, ADRs, or archive docs.
-- Saved context artifacts default to compact output unless full verbosity is explicitly requested.
-- Any future `file-back` automation must compact current state, not append history.
-
-## Agent Execution Protocol
-
-Every agent execution follows these checkpoints:
-
-### Before Starting Work
-
-```python
-mk.evidence_first("keyword")  # Search memory/docs for prior related work
-```
-
-Find and review:
-- Related work items (active or archived)
-- Prior decisions or rejected hypotheses
-- Domain context or product requirements
-- Blockers or escalations
-
-### After Merging PR
-
-```python
-mk.log_event(
-    title="W-xxxx feature landed",
-    details="commit abc1234, PR #nnn",
-    tags=["w-xxxx", "merged"]
-)
-# Update CURRENT.md: change main SHA, record completion
-```
-
-Update `work/active/CURRENT.md`:
-- New `main SHA` value
-- Move work item from active to completed
-- Record any new blockers or deferred work
-
-### When Making Architecture Decisions
-
-```python
-mk.decision_record(
-    what="use FeatureWindowStore for search corpus",
-    why="3→40+ dims, batch enrichment, OI/funding 2x weight",
-    how="Layer A upgrade: feature_snapshot first, then batch load",
-    tags=["domain", "work_id"],
-)
-# Create or update ADR in `docs/decisions/`
-```
-
-Record in `docs/decisions/NNNN-<slug>.md`:
-- What is the decision?
-- Why now? (constraints, alternatives, trade-offs)
-- How will we verify it worked?
-
-### During CI Failures or Production Incidents
-
-```python
-mk.incident_record(
-    title="main CI: 8 test failures (PR #256 collision)",
-    symptoms="multi-agent track collision, migration 021 state",
-    resolution="merge --ours, add worker concurrency guards"
-)
-# Create incident record in `docs/incidents/` + notify handoff
-```
-
-Record in `docs/incidents/YYYY-MM-DD-<slug>.md`:
-- When and what happened?
-- Root cause analysis
-- Remediation steps
-- Prevention for next time
-
----
-
-## Change Type Tags
-
-Each PR/change should be one primary type:
-
-- Product surface change
-- Engine logic change
-- Contract change
-- Research or eval change
-
-Avoid mixing types in one change set when possible.
+- `main`, `master`, `claude/*`, `codex/*` must not be Vercel auto-deploy branches.
+- Use dedicated `release` branch for production if Git auto-deploy is enabled.
+- Until branch guardrails are in place: manual `vercel deploy --prod` from `app/`.
 
 ## 회귀 가드
 
 | 도구 | 트리거 | 효과 |
 |---|---|---|
-| `.claude/hooks/post-edit-pytest.sh` | engine `test_*.py` Write/Edit | 자동 pytest, exit 2 = 실패 결과 모델 전달 |
-| `tools/cycle-smoke.py` | PR 머지 전 수동 실행 | 1사이클 5 AC (GAP-A/B/C/D/E) 17/17 검증 |
+| `.claude/hooks/post-edit-pytest.sh` | engine `test_*.py` Write/Edit | 자동 pytest |
+| `tools/cycle-smoke.py` | PR 머지 전 수동 | 1사이클 5 AC 검증 |
 
 ```bash
-# 1사이클 회귀 검증
 cd engine && uv run python ../tools/cycle-smoke.py
 ```
 
-상세: `docs/runbooks/cycle-smoke.md`, `docs/runbooks/post-edit-hook.md`
-
 ## Verification Minimum
 
-- Engine changes: run targeted engine tests first, then broader suite if needed.
-- App changes: run app check/lint relevant to touched area.
-- Contract changes: validate both route and engine caller/callee shapes.
+- Engine: targeted engine tests first.
+- App: `npm --prefix app run check`.
+- Contract: validate route + caller/callee shapes.
 
 ## Canonical Docs
 
@@ -306,87 +128,41 @@ cd engine && uv run python ../tools/cycle-smoke.py
 <!-- MEMKRAFT-BLOCK-START (v2.0.0) -->
 ## Memory Protocol (MemKraft)
 
-MemKraft v2.0.0 is installed. Base dir: `memory/` (project root).
+MemKraft v2.0.0, base dir: `memory/`, wrapper: `./tools/mk.sh`.
 
 ```python
 from memory.mk import mk
 ```
 
-`memory/mk.py` is the repo-local compatibility wrapper over the MemKraft package
-resolved by `engine/uv.lock`. Validate it with:
-
-```bash
-cd engine && uv run python ../scripts/validate_memkraft_protocol.py
-```
-
-### 작업 시작 전 — evidence_first (필수)
-
-비자명한 작업을 시작하기 전에 반드시 과거 결정·장애를 조회한다.
+### 필수 호출 패턴
 
 ```python
-evidence = mk.evidence_first("관련 키워드")
-# decisions + incidents + entities 통합 조회
+# 작업 시작 전 — 과거 결정·장애 조회 (필수)
+mk.evidence_first("관련 키워드")
+
+# 완료 후 — PR 머지, 배포, 주요 완료 시
+mk.log_event("PR #N merged: 한줄요약", tags="pr,merge,w-xxxx", importance="high")
+
+# 설계 결정
+mk.decision_record(what="결정", why="이유", how="방법", tags=["domain", "w-id"])
+
+# 장애 기록
+mk.incident_record(title="무엇이 깨졌나", symptoms=["증상1"], severity="medium")
 ```
 
-### 작업 완료 후 — log_event (필수)
+### Tier 및 검색
 
-PR 머지, 배포, 주요 완료 시 반드시 기록한다. CURRENT.md main SHA도 함께 업데이트.
-
-```python
-mk.log_event(
-    "PR #NNN merged: {한줄요약}",
-    tags="pr,merge,{work_id}",
-    importance="high",
-)
-```
-
-### 아키텍처 결정 — decision_record
-
-non-trivial 설계 선택(라이브러리 도입, 구조 변경, 정책 결정) 시 기록.
+Tier: `core` / `recall` / `archival`. `mk.tier_set("slug", tier="core")`.
 
 ```python
-mk.decision_record(
-    what="결정 내용",
-    why="이유",
-    how="구현 방법",
-    tags="domain,work_id",
-)
-```
-
-### 장애/실패 — incident_record
-
-CI 실패, 프로덕션 장애, 데이터 손실 시 기록.
-
-```python
-mk.incident_record(
-    title="무엇이 깨졌는가",
-    symptoms=["증상1", "증상2"],
-    severity="medium",  # low | medium | high | critical
-)
-```
-
-### Tier 규칙
-
-- `core` — 현재 활성 결정, 반복 참조하는 엔티티
-- `recall` — 최근 완료된 작업, 일시적 메모
-- `archival` — 히스토리 보존용
-
-```python
-mk.tier_set("entity-slug", tier="core")
-```
-
-### 검색
-
-```python
-mk.search("키워드")           # hybrid: exact + IDF + fuzzy
-mk.evidence_first("키워드")   # decisions + incidents + memory 통합
+mk.search("키워드")           # hybrid 검색
+mk.evidence_first("키워드")   # decisions + incidents 통합
 ```
 
 ### Gotchas
 
-- Tier: `core` / `recall` / `archival` only (`critical` ❌)
-- `decision_record(tags=...)`는 문자열이 아니라 리스트 사용 (`["ci", "w-0163"]`)
-- `log_event` 후 CURRENT.md main SHA 업데이트 함께
-- 과거 기억 조회 시 `grep` 전에 `mk.search()` 먼저
-- `work/active/AGENT-HANDOFF-*.md`는 금지; 과거 스냅샷은 `docs/archive/agent-handoffs/`로 이동
+- `decision_record(tags=[...])` 리스트 사용 (문자열 ❌)
+- `log_event` 후 CURRENT.md main SHA 업데이트
+- `work/active/AGENT-HANDOFF-*.md` 금지
+- Tier: `critical` ❌ (core/recall/archival only)
 <!-- MEMKRAFT-BLOCK-END -->
