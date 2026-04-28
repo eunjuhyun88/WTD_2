@@ -160,6 +160,12 @@ CLAUDE.md L1-L20에 도메인 분기 표 추가:
 
 ---
 
+## Decisions
+
+- **[D-0290-1]** sub-file 분리 (`agents/{domain}.md`): AGENTS.md 단일 파일 항상 364L 로드 대신 도메인별 분기. 거절: "AGENTS.md 한 파일 유지" — 현재 비용 가장 큼.
+- **[D-0290-2]** MCP codebase 인덱서: 직접 빌드 ❌ (§Frozen 250줄+), 기존 서버 install ✅ (serena oraios, 조사 중).
+- **[D-0290-3]** LSP tool: deferred 유지, ToolSearch로 on-demand. 전부 활성화 → 매 세션 schema 로드 비용 역행.
+
 ## Open Questions
 
 - [ ] [Q-0290-1] serena (oraios, 코드 인텔리전스) vs codebase-rag: Python+TypeScript 혼합 레포에서 어느 MCP가 더 안정적?
