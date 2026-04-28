@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`cc84df95` — origin/main (2026-04-29) — PR #573 (W-0289 1cycle verify) 머지
+`631a28c3` — origin/main (2026-04-29) — PR #587 (W-0294/0295/0296/0293 설계 + agents/ + context trim Phase 1) 머지
 
 ---
 
@@ -15,9 +15,9 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0293-1cycle-infra-on` | P0 | 🔴 **즉시** — gcloud env var 1줄 (GAP-B/D) |
-| `W-0290-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 |
-| `W-0291-context-boot-trim` | P2 | 🟡 토큰 ≥50% 절감 (W-0290 후) |
-| `W-0292-automation-harness-runbook` | P2 | 🟡 runbook 문서화 |
+| `W-0294-cursor-grade-code-accuracy` | P1 | 🟡 LSP + MCP + agents/ 도메인 분기 |
+| `W-0295-context-boot-trim` | P2 | 🟡 Phase 2 — CLAUDE.md ≤90L, AGENTS.md ≤120L |
+| `W-0296-automation-harness-runbook` | P2 | ✅ runbook 문서화 완료 |
 | `W-0282-v-pv-01-engine-verification-scaffold` | P1 | 📐 설계 lock-in — W-0254 머지 대기 |
 
 ---
