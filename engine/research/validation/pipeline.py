@@ -89,6 +89,9 @@ class ValidationPipelineConfig:
             silently skipped if included.
         bootstrap_n_iter: number of bootstrap resamples for G4 CI.
         bh_alpha: FDR target for BH correction across horizons.
+            NOTE (W-0286): BH scope is intra-pattern (len(horizons_hours) tests).
+            Cross-pattern correction (52 patterns × 3h = 156 tests) requires
+            caller-level aggregation — tracked as W-0287.
         n_trials: selection-bias universe size for DSR calculation.
             W-0220 §7.3: use the real search-universe size, not the
             number of horizons. Default 500 (realistic search-universe floor).
@@ -544,6 +547,7 @@ def run_validation_pipeline(
                 dsr_val = deflated_sharpe(
                     samples_a,
                     n_trials=config.n_trials,
+                    horizon_hours=h,
                 )
             except ValueError:
                 dsr_val = 0.0
