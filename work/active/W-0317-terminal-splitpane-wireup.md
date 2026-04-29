@@ -189,3 +189,76 @@ SplitPaneLayout 자체가 ratio persist 함. 추가 작업 없음. 키 이름은
 - Mobile responsive 재설계
 - 4-way nested split (workspace ↔ rightrail)
 - SplitPaneLayout 컴포넌트 자체 변경
+
+---
+
+## Goal
+
+Jin이 terminal analyze 모드에서 오른쪽 rail을 드래그로 넓힐 수 있다.
+
+## Owner
+
+app
+
+## Scope
+
+- `app/src/routes/terminal/+page.svelte` — SplitPaneLayout으로 center/right 감싸기
+- `app/src/lib/components/terminal/SplitPaneLayout.svelte` — import (기존 컴포넌트, 수정 없음)
+
+## Non-Goals
+
+- SplitPaneLayout 컴포넌트 자체 변경
+- mobile breakpoint 재설계
+- order ladder / execute bottom panel 구현
+- 4-way nested split
+
+## Canonical Files
+
+- `app/src/routes/terminal/+page.svelte`
+- `app/src/lib/components/terminal/SplitPaneLayout.svelte`
+
+## Facts
+
+1. `app/src/lib/components/terminal/SplitPaneLayout.svelte` ✅ 존재 (drag-resize, ratio 0.4~0.85, localStorage)
+2. `+page.svelte` — `applyModePreset()` 로 showWorkspace/showRightRail boolean 관리
+3. mode=observe: right rail 숨김 / mode=analyze: right rail 표시 / mode=execute: right rail + disclaimer
+4. `SplitPaneLayout` — children/rightPane snippet 기반 API
+
+## Assumptions
+
+- `applyModePreset` 보존 (걷어내면 DecisionHUD 회귀)
+- SplitPaneLayout은 right rail width drag-resize owner로만 사용
+- localStorage key: `wtd_split_ratio` (컴포넌트 default)
+
+## Decisions
+
+- [D-0317-1] wrapper-based 통합 — applyModePreset 제거 안 함
+- [D-0317-2] bottomPane 미도입 — execute mode disclaimer 기존 유지
+
+## Open Questions
+
+- [ ] [Q-1] mode 전환 시 ratio reset 여부? → NO (현행 single key 유지)
+
+## Next Steps
+
+1. `+page.svelte` 의 center-col + RightRailPanel을 SplitPaneLayout으로 wrap
+2. mode prop 연결 (observe/analyze/execute)
+3. E3~E5 manual 검증 (3 mode screenshot)
+4. CI green
+
+## Exit Criteria
+
+- [ ] E1: `+page.svelte` SplitPaneLayout import + 마운트
+- [ ] E2: applyModePreset 유지 + SplitPaneLayout mode 공존
+- [ ] E3: mode=observe: drag handle 없음
+- [ ] E4: mode=analyze: drag handle 0.4~0.85 동작
+- [ ] E5: mode=execute: disclaimer 유지
+- [ ] E6: reload 후 ratio 복원
+- [ ] E7: svelte-check 0 errors
+
+## Handoff Checklist
+
+- [ ] +page.svelte SplitPaneLayout wrap 완료
+- [ ] 3 mode 스크린샷 PR 첨부
+- [ ] svelte-check 0 errors
+- [ ] CI green
