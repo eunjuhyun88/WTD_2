@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`6a31ff4a` — origin/main (2026-04-30) — PR #688 chore/CURRENT SHA bump
+`df9fad3f` — origin/main (2026-04-30) — PR #696 W-0322 terminal 3-Rail Pro merged
 
 ---
 
@@ -14,8 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0249-f19-sentry-observability` | P2 | 🔴 구현 시작 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
-| `W-0317-terminal-splitpane-wireup` | P2 | 🟡 Design Done (Codex 진행 중) |
 
 ---
 
