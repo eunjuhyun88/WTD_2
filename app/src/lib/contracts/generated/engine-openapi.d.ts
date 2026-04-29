@@ -873,7 +873,7 @@ export interface paths {
         put?: never;
         /**
          * Parse Pattern Text
-         * @description Parse free-text trading memo → PatternDraftBody JSON via Claude Sonnet 4.5.
+         * @description Parse free-text trading memo → PatternDraftBody JSON via configured LLM.
          *
          *     AC: POST {"text": "OI가 급등하면서 가격이 하락했다"} → PatternDraftBody JSON
          */
