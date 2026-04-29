@@ -159,6 +159,54 @@ def _klines_for_context(df: pd.DataFrame) -> pd.DataFrame:
     return df[cols].astype(float)
 
 
+def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | None:
+    """Build a perp DataFrame for compute_features_table from ParquetStore.
+
+    Returns a DataFrame with DatetimeIndex and columns:
+    funding_rate, oi_raw, oi_change_1h, oi_change_24h, long_short_ratio.
+    Returns None if no derivatives data available for this symbol.
+    """
+    try:
+        funding = store.read_funding(symbol)
+        if funding.empty:
+            return None
+        funding = funding.set_index("ts").sort_index()
+        funding.index = pd.to_datetime(funding.index, utc=True)
+
+        oi = store.read_oi(symbol)
+        ls = store.read_longshort(symbol)
+
+        frames: list[pd.DataFrame] = [funding[["funding_rate"]]]
+
+        if not oi.empty:
+            oi = oi.set_index("ts").sort_index()
+            oi.index = pd.to_datetime(oi.index, utc=True)
+            oi = oi[["oi_usd"]].rename(columns={"oi_usd": "oi_raw"})
+            oi["oi_change_1h"] = oi["oi_raw"].pct_change(1).fillna(0.0)
+            oi["oi_change_24h"] = oi["oi_raw"].pct_change(24).fillna(0.0)
+            frames.append(oi)
+        else:
+            # No OI data — add NaN placeholder columns so compute_features_table
+            # doesn't raise KeyError when OI-dependent features are requested.
+            placeholder = funding[[]].copy()
+            placeholder["oi_raw"] = float("nan")
+            placeholder["oi_change_1h"] = float("nan")
+            placeholder["oi_change_24h"] = float("nan")
+            frames.append(placeholder)
+
+        if not ls.empty:
+            ls = ls.set_index("ts").sort_index()
+            ls.index = pd.to_datetime(ls.index, utc=True)
+            ls["long_short_ratio"] = ls["long_ratio"] / ls["short_ratio"].replace(0, float("nan"))
+            frames.append(ls[["long_short_ratio"]])
+
+        if len(frames) == 1:
+            return frames[0]
+        return frames[0].join(frames[1:], how="outer")
+    except Exception:
+        return None
+
+
 def _scan_one_symbol(
     symbol: str,
     store: ParquetStore,
@@ -176,7 +224,8 @@ def _scan_one_symbol(
             return []
 
         klines = _klines_for_context(raw)
-        features = compute_features_table(klines, symbol=symbol)
+        perp = _build_perp_from_store(store, symbol)
+        features = compute_features_table(klines, symbol=symbol, perp=perp)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
