@@ -4,6 +4,7 @@ import pandas as pd
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.middleware.tier_gate import TierInfo, tier_gate
 from api.routes import search
 from api.schemas_pattern_draft import PatternDraftBody
 from capture.store import CaptureStore
@@ -12,10 +13,13 @@ from patterns.library import PATTERN_LIBRARY
 from patterns.registry import PatternRegistryStore
 from search.corpus import SearchCorpusStore, build_corpus_windows
 
+_TEST_TIER = TierInfo(user_id="test", tier="pro", source="bypass")
+
 
 def _client() -> TestClient:
     app = FastAPI()
     app.include_router(search.router, prefix="/search")
+    app.dependency_overrides[tier_gate] = lambda: _TEST_TIER
     return TestClient(app)
 
 
