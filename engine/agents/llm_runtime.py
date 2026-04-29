@@ -121,7 +121,9 @@ def resolve_llm_settings() -> LLMRuntimeSettings:
 
 
 def _messages_to_prompt(system_prompt: str, user_text: str) -> str:
-    return f"[System]\n{system_prompt}\n\n[User]\n{user_text}"
+    # Qwen/DeepSeek-style thinking models may otherwise return only a
+    # provider-specific thinking field and leave the final response empty.
+    return f"/no_think\n[System]\n{system_prompt}\n\n[User]\n{user_text}"
 
 
 def _join_url(base_url: str, path: str) -> str:
@@ -195,6 +197,7 @@ async def _generate_ollama(
         "prompt": _messages_to_prompt(system_prompt, user_text),
         "format": "json",
         "stream": False,
+        "think": False,
         "options": {
             "temperature": temperature,
             "num_predict": max_tokens,

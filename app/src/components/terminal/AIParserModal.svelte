@@ -2,7 +2,7 @@
   /**
    * AIParserModal — A-03-app entry component.
    *
-   * 자유 텍스트 메모 → engine /patterns/parse (Sonnet 4.6) →
+   * 자유 텍스트 메모 → engine /patterns/parse (configured LLM runtime) →
    * PatternDraftBody preview → 저장 (POST /captures).
    *
    * Modal 패턴: SaveSetupModal 참조.

@@ -57,6 +57,72 @@ ENGINE_LLM_MODEL=local-model \
 uv run uvicorn api.main:app --reload
 ```
 
+## Hugging Face Model Refs
+
+Treat a Hugging Face URL as a model source reference, not as a runnable model
+inside Cogochi.
+
+Example:
+
+```text
+https://huggingface.co/google/gemma-4-31B-it
+repo id: google/gemma-4-31B-it
+```
+
+As of 2026-04-29, `google/gemma-4-31B-it` is an Apache-2.0
+Transformers/Safetensors repo. The repo is 62.6 GB and the main weights are
+split into `model-00001-of-00002.safetensors` (49.8 GB) and
+`model-00002-of-00002.safetensors` (12.8 GB). It is text+image input and text
+output, with a 256K context length on the 31B dense variant.
+
+Do not paste that URL into the Ollama model field. Pick the runtime first:
+
+| Runtime | Input model value | Cogochi config |
+|---|---|---|
+| Hugging Face Router | `HF_MODEL=google/gemma-4-31B-it` | hosted API path, not local |
+| vLLM / SGLang | `google/gemma-4-31B-it` | `ENGINE_LLM_PROVIDER=openai-compatible`, server `/v1` URL |
+| MLX on Mac | an MLX-converted repo/path | `ENGINE_LLM_PROVIDER=openai-compatible`, MLX server `/v1` URL |
+| llama.cpp | a GGUF repo/file path | `ENGINE_LLM_PROVIDER=openai-compatible`, llama-server `/v1` URL |
+| Ollama | an Ollama tag or imported Modelfile name | Settings -> AI -> `OLLAMA` model field |
+
+Recommended product lane:
+
+1. For normal local users, start with Ollama and a model that already exists in
+   `ollama list`.
+2. For Gemma-size HF repos, serve the model behind an OpenAI-compatible local
+   endpoint first, then point Cogochi to that endpoint.
+3. For GGUF/MLX quantized variants, keep the original HF source URL in notes,
+   but configure Cogochi with the local server endpoint and runnable model name.
+
+vLLM example:
+
+```bash
+vllm serve google/gemma-4-31B-it --port 8000
+
+cd engine
+ENGINE_LLM_PROVIDER=openai-compatible \
+ENGINE_LLM_BASE_URL=http://localhost:8000/v1 \
+ENGINE_LLM_MODEL=google/gemma-4-31B-it \
+uv run uvicorn api.main:app --reload
+```
+
+DOUNI local chat example:
+
+```bash
+ollama serve
+ollama list
+```
+
+Then open Settings -> AI -> `OLLAMA` and set:
+
+- endpoint: `http://localhost:11434`
+- model: one installed Ollama model name from `ollama list`
+
+Note: if the app is deployed remotely, server-side `localhost` points to the
+deployed server, not the user's laptop. Direct end-user local Ollama from a
+hosted web app needs a browser-side localhost bridge or desktop wrapper. The
+current `OLLAMA` mode is for local development/self-hosted app runs.
+
 ## Production Defaults
 
 If `ENGINE_LLM_PROVIDER` is unset:

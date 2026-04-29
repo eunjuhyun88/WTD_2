@@ -2,7 +2,7 @@
  * POST /api/patterns/parse
  *
  * Parse natural-language memo → PatternDraftBody.
- * Proxies to engine POST /patterns/parse (A-03-eng PR #371, Sonnet 4.6).
+ * Proxies to engine POST /patterns/parse (configured engine LLM runtime).
  *
  * Body: { text: string, context_hints?: { pattern_family?, symbol? } }
  * Response 200: PatternDraftBody
@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   }
 
   const controller = new AbortController();
-  // Sonnet 4.6 latency p95 ≤ 4s, retry up to 2x → 12s max
+  // Local LLM latency varies by model; engine retries parser output up to 2x.
   const timeout = setTimeout(() => controller.abort(), 25_000);
 
   try {

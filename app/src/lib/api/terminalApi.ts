@@ -471,8 +471,8 @@ export interface AIParserHints {
 /**
  * POST /api/patterns/parse — A-03-app entry point.
  *
- * 자유 텍스트 메모를 PatternDraftBody로 변환 (engine: Claude Sonnet 4.6).
- * Engine: ContextAssembler.for_parser() + Anthropic SDK + Tool Use.
+ * 자유 텍스트 메모를 PatternDraftBody로 변환.
+ * Engine: ContextAssembler.for_parse_text() + configured LLM runtime + validation.
  */
 export async function parsePatternFromText(
   text: string,
