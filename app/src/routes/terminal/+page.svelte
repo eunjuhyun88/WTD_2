@@ -118,6 +118,7 @@
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
   import { terminalMode as terminalModeStore } from '$lib/stores/terminalMode';
+  import { applyModePreset, type TerminalMode } from '../../components/terminal/terminalLayoutController';
 
   // ─── State ──────────────────────────────────────────────────
 
@@ -205,12 +206,23 @@
   // ── Terminal mode ──────────────────────────────────────────
   // OBSERVE: chart-focused (right rail + workspace hidden)
   // ANALYZE: full layout with verdict HUD + evidence workspace
-  // EXECUTE: future trade sizing (stub)
-  let terminalMode = $state<'observe' | 'analyze' | 'execute'>(get(terminalModeStore) ?? 'analyze');
+  // EXECUTE: quick-trade intent UI (manual only, no live orders)
+  let terminalMode = $state<TerminalMode>(get(terminalModeStore) ?? 'analyze');
 
   $effect(() => {
     terminalModeStore.set(terminalMode);
+    const preset = applyModePreset(terminalMode);
+    showLeftRail = preset.showLeftRail;
   });
+
+  function handleModeKeydown(e: KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    const el = e.target as HTMLElement;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+    if (e.key === '1') { e.preventDefault(); terminalMode = 'observe'; }
+    else if (e.key === '2') { e.preventDefault(); terminalMode = 'analyze'; }
+    else if (e.key === '3') { e.preventDefault(); terminalMode = 'execute'; }
+  }
 
   // ── Global market pulse (thermo) ──────────────────────────
   let thermoData = $state<ThermoData>(EMPTY_THERMO_DATA);
@@ -1554,6 +1566,8 @@
   }
 </script>
 
+<svelte:window onkeydown={handleModeKeydown} />
+
 <svelte:head>
   <title>Terminal — Cogochi</title>
   <meta
@@ -1724,7 +1738,7 @@
         />
       {/snippet}
     </CenterPanel>
-    {#if terminalMode === 'analyze'}
+    {#if applyModePreset(terminalMode).showWorkspace}
       <WorkspacePanel
         analysisData={activeAnalysisData as any}
         symbol={activeSymbol || pairToSymbol(gPair)}
@@ -1734,7 +1748,12 @@
     {/if}
     </div>
 
-    {#if terminalMode !== 'observe'}
+    {#if terminalMode === 'execute'}
+      <div class="execute-disclaimer" role="note" aria-label="Execute mode notice">
+        수기 입력 · 실주문 X
+      </div>
+    {/if}
+    {#if applyModePreset(terminalMode).showRightRail}
     <RightRailPanel
       {isStreaming}
       {isScanMode}
@@ -1923,7 +1942,19 @@
     display: flex;
     flex-direction: column;
     background: var(--sc-bg-0, #0b0e14);
+    transition: width 280ms ease, opacity 280ms ease;
   }
 
   @media (max-width: 1279px) { .peek-left-rail { display: none; } }
+
+  .execute-disclaimer {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 10px;
+    color: rgba(74,222,128,0.6);
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    z-index: 10;
+  }
 </style>
