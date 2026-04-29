@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`09a78c65` — origin/main (2026-04-29) — PR #653 W-0248 Stripe+x402 머지
+`2baa77c6` — origin/main (2026-04-29) — PR #655 W-0311 WVPL 통합 검증 머지
 
 ---
 
@@ -14,22 +14,18 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0305-f3-telegram-deeplink-last-mile` | P1 | 🟢 Merged — PR #639 |
-| `W-0248-f18-stripe-tier` | P0 | 🟡 Design Draft — Stripe $29/mo + x402 USDC (#445) |
-| `W-0306-f5-terminal-mode-toggle` | P1 | 🟡 Design Draft — Observe/Analyze/Execute 3-mode 토글 (#634) |
+| `W-0248-f18-stripe-tier` | P0 | 🟢 Foundation merged — PR #653; remaining billing polish/open Qs |
 | `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 (#635) |
 | `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft — Draft→Candidate→Object promote UI (#636) |
 | `W-0309-f4-decision-hud-wiring` | P1 | 🟡 Design Draft — HUD API mock→live |
-| `W-0310-local-llm-hf-model-runtime` | P1 | ✅ 머지 — PR #638 |
-| `W-0311-wvpl-integration-verification` | P1 | 🟡 Design Draft — WVPL 통합 검증 자동화 (#642, A078) |
 
 ---
 
 ## Wave 4 실행 계획 (갭 분석 반영, 2026-04-29)
 
 ```
-즉시:  W-0305 F-3 last mile (✅ #639) → W-0306 F-5 mode toggle (S)
-Week1: W-0248 Stripe+x402 결제 (L, 최우선 수익화) + W-0308 F-14 promote UI (S)
+완료:  W-0305 F-3 last mile (#639) → W-0306 F-5 mode toggle (#652) → W-0311 WVPL verification (#655)
+Week1: W-0308 F-14 promote UI (S) + W-0307 F-12 kimchi UI (S)
 Week2: W-0307 F-12 kimchi UI (S) + F-16 recall 개선
 Week3: F-19 Sentry + F-20 infra cleanup
 Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
@@ -61,10 +57,7 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ```bash
 ./tools/start.sh
-# 즉시: W-0306 F-5 mode toggle (S, 빠른 win)
-# P0:   W-0248 Stripe+x402 설계 검토 후 구현 착수
-# 후속: W-0311 WVPL 통합 검증 (W-0305 머지 후)
-cat work/active/W-0306-f5-terminal-mode-toggle.md
-cat work/active/W-0248-f18-stripe-tier.md
-cat work/active/W-0311-wvpl-integration-verification.md
+# 다음: W-0308 F-14 promote UI 또는 W-0307 F-12 kimchi UI
+cat work/active/W-0308-f14-pattern-lifecycle-promote-ui.md
+cat work/active/W-0307-f12-kimchi-premium-ui.md
 ```
