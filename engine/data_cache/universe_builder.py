@@ -276,4 +276,15 @@ def get_universe_sync(force_refresh: bool = False) -> pd.DataFrame:
         cached = load_universe()
         if cached is not None:
             return cached
+    # If already inside a running event loop (e.g. called from asyncio.run context),
+    # fall back to cached parquet to avoid RuntimeError from nested asyncio.run()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is not None:
+        cached = load_universe()
+        if cached is not None:
+            return cached
+        raise RuntimeError("Cannot rebuild universe from within a running event loop. Run pipeline_1000 universe first.")
     return asyncio.run(build_universe())

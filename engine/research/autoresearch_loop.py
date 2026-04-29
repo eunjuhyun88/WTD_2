@@ -43,12 +43,12 @@ _EXPERIMENT_DB = Path(__file__).parent / "experiments" / "autoresearch_db.parque
 _COMPRESS = "zstd"
 
 # Gate thresholds (configurable)
-GATE_MIN_SIGNALS = 5           # minimum trades to evaluate (relax for short history)
-GATE_MIN_HIT_RATE = 0.50       # >50% win rate
-GATE_MIN_T_STAT = 1.0          # t-stat ≥ 1.0
-GATE_MIN_SHARPE = 0.1          # Sharpe ≥ 0.1 (exploratory mode)
+GATE_MIN_SIGNALS = 10          # minimum trades to evaluate
+GATE_MIN_HIT_RATE = 0.52       # >52% win rate
+GATE_MIN_T_STAT = 1.5          # t-stat ≥ 1.5
+GATE_MIN_SHARPE = 0.5          # Sharpe ≥ 0.5
 GATE_MAX_DRAWDOWN = 0.30       # max drawdown ≤ 30%
-PROMOTE_SHARPE = 0.5           # promote threshold (relax until full backfill)
+PROMOTE_SHARPE = 1.5           # promote to "accepted" pool
 
 
 # ── Stats gate ────────────────────────────────────────────────────────────────
