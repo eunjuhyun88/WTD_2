@@ -230,7 +230,7 @@ class PatternStateMachine:
                     state.last_transition_id = t.transition_id
                     state.phase_transition_ids[next_phase.phase_id] = t.transition_id
 
-                    log.info(
+                    log.debug(
                         "TRANSITION: %s %s → %s (conf=%.0f%%) [%s]",
                         symbol, old_phase_id, next_phase.phase_id,
                         evaluation.confidence * 100, self.pattern.slug,

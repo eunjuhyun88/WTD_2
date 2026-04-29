@@ -202,7 +202,7 @@ class AutoResearchLoop:
             )
 
         # Step 2: Pattern scan
-        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(ALL_COMBOS))
+        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(self.scanner.combos))
         scan_df = self.scanner.scan_universe(symbols, workers=self.scan_workers)
 
         if scan_df.empty:

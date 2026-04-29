@@ -308,10 +308,10 @@ class BackfillPipeline:
         return df[["ts", "long_ratio", "short_ratio"]]
 
     async def _backfill_one_derivatives(
-        self, symbol: str, start: datetime, end: datetime
+        self, symbol: str, start: datetime, end: datetime, force: bool = False
     ) -> None:
         key = f"deriv:{symbol}"
-        if self._is_done(key):
+        if not force and self._is_done(key):
             return
 
         funding = await self._fetch_funding(symbol, start, end)
@@ -369,6 +369,7 @@ class BackfillPipeline:
         self,
         futures_symbols: list[str] | pd.Series,
         months: int = 6,
+        force: bool = False,
     ) -> dict[str, int]:
         """Backfill funding + OI + L/S for Futures symbols."""
         end = datetime.now(tz=timezone.utc)
@@ -378,7 +379,7 @@ class BackfillPipeline:
             self._client = client
             self._bucket = _TokenBucket(self._rate)
             tasks = [
-                self._backfill_one_derivatives(sym, start, end)
+                self._backfill_one_derivatives(sym, start, end, force=force)
                 for sym in futures_symbols
             ]
             await asyncio.gather(*tasks, return_exceptions=True)

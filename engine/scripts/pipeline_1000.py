@@ -76,13 +76,13 @@ async def step_ohlcv(
     log.info("OHLCV done in %.1fs: %d ok, %d failed", elapsed, result["ok"], result["failed"])
 
 
-async def step_derivatives(universe: pd.DataFrame, months: int = 6) -> None:
+async def step_derivatives(universe: pd.DataFrame, months: int = 6, force: bool = False) -> None:
     from data_cache.backfill_async import BackfillPipeline
     futures = universe[universe["has_perp"] == True]["symbol"].tolist()
     log.info("Derivatives backfill: %d futures symbols, %dm history", len(futures), months)
     t0 = time.monotonic()
     pipeline = BackfillPipeline(workers=20)
-    await pipeline.run_derivatives(futures, months=months)
+    await pipeline.run_derivatives(futures, months=months, force=force)
     log.info("Derivatives done in %.1fs", time.monotonic() - t0)
 
 
@@ -213,7 +213,7 @@ def main() -> None:
             await step_ohlcv(universe, months=args.months, tf=args.tf, force=args.force)
 
         if args.step in ("all", "derivatives"):
-            await step_derivatives(universe, months=min(args.months, 6))
+            await step_derivatives(universe, months=args.months, force=args.force)
 
         if args.step in ("all", "onchain"):
             await step_onchain()
