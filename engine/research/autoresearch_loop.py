@@ -46,9 +46,9 @@ _COMPRESS = "zstd"
 GATE_MIN_SIGNALS = 5           # minimum trades to evaluate (relax for short history)
 GATE_MIN_HIT_RATE = 0.50       # >50% win rate
 GATE_MIN_T_STAT = 1.0          # t-stat ≥ 1.0
-GATE_MIN_SHARPE = 0.1          # Sharpe ≥ 0.1 (exploratory mode)
+GATE_MIN_SHARPE = 0.3          # Sharpe ≥ 0.3 (W-0313 tightened)
 GATE_MAX_DRAWDOWN = 0.30       # max drawdown ≤ 30%
-PROMOTE_SHARPE = 0.5           # promote threshold (relax until full backfill)
+PROMOTE_SHARPE = 0.7           # promote threshold (W-0313 tightened)
 
 
 # ── Stats gate ────────────────────────────────────────────────────────────────

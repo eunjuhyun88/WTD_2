@@ -2155,6 +2155,10 @@ def test_run_pattern_benchmark_search_records_run_and_artifact(tmp_path, monkeyp
         )
 
     monkeypatch.setattr("research.pattern_search.evaluate_variant_against_pack", _fake_eval)
+    # build_search_variants defaults to module-level LEDGER_RECORD_STORE (may be Supabase).
+    # Patch the reference in research.pattern_search directly (from-import binding).
+    from ledger.store import LedgerRecordStore as _LocalStore
+    monkeypatch.setattr("research.pattern_search.LEDGER_RECORD_STORE", _LocalStore())
 
     variants = [
         PatternVariantSpec(
@@ -2321,6 +2325,8 @@ def test_run_pattern_benchmark_search_syncs_gate_cleared_winner_to_active_regist
         )
 
     monkeypatch.setattr("research.pattern_search.evaluate_variant_against_pack", _fake_eval)
+    from ledger.store import LedgerRecordStore as _LocalStore
+    monkeypatch.setattr("research.pattern_search.LEDGER_RECORD_STORE", _LocalStore())
 
     run = run_pattern_benchmark_search(
         PatternBenchmarkSearchConfig(
@@ -2415,6 +2421,8 @@ def test_run_pattern_benchmark_search_promotes_reset_family_when_tied_with_manua
         )
 
     monkeypatch.setattr("research.pattern_search.evaluate_variant_against_pack", _fake_eval)
+    from ledger.store import LedgerRecordStore as _LocalStore
+    monkeypatch.setattr("research.pattern_search.LEDGER_RECORD_STORE", _LocalStore())
 
     variants = [
         PatternVariantSpec(
@@ -2501,6 +2509,8 @@ def test_dead_end_search_persists_negative_memory(tmp_path, monkeypatch) -> None
         )
 
     monkeypatch.setattr("research.pattern_search.evaluate_variant_against_pack", _fake_eval)
+    from ledger.store import LedgerRecordStore as _LocalStore
+    monkeypatch.setattr("research.pattern_search.LEDGER_RECORD_STORE", _LocalStore())
 
     variants = [
         PatternVariantSpec(
