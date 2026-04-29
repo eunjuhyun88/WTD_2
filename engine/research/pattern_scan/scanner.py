@@ -249,6 +249,21 @@ def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | N
         return None
 
 
+def _inject_live_ob(features: pd.DataFrame, symbol: str) -> None:
+    """Inject live orderbook depth5 snapshot into the last row of features (in-place)."""
+    try:
+        from data_cache.fetch_orderbook_depth import fetch_orderbook_depth5
+        result = fetch_orderbook_depth5(symbol, perp=True)
+        if result is None:
+            result = fetch_orderbook_depth5(symbol, perp=False)
+        if result is not None:
+            bid_usd, ask_usd = result
+            features.loc[features.index[-1], "ob_bid_usd"] = bid_usd
+            features.loc[features.index[-1], "ob_ask_usd"] = ask_usd
+    except Exception as exc:
+        log.debug("[%s] OB depth injection failed: %s", symbol, exc)
+
+
 def _scan_one_symbol(
     symbol: str,
     store: ParquetStore,
@@ -269,6 +284,7 @@ def _scan_one_symbol(
         klines = _klines_for_context(raw)
         perp = _build_perp_from_store(store, symbol)
         features = compute_features_table(klines, symbol=symbol, perp=perp, macro=macro)
+        _inject_live_ob(features, symbol)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
