@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`a0206fb5` — origin/main (2026-04-30) — PR #683 W-0321 paper verification route contract
+`9e74fa1e` — origin/main (2026-04-30) — PR #687 W-0247 F-16 search recall@10 ≥ 0.7
 
 ---
 
