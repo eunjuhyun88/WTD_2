@@ -67,7 +67,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 | **L2** Feature Window | migration 021, 40+col, 138,915 rows | ✅ | DESIGN_V3.1 미반영 (F-12) |
 | **L3** Pattern Object | **52 PatternObjects × 85 Building Blocks** | ✅ | lifecycle UI (F-14) |
 | **L4** State Machine | SQLite WAL + Supabase dual-write, 15m scan | ✅ | — |
-| **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) |
+| **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) ✅ recall@10=100% PR #687 |
 | **L6** Ledger | 8-type Python, Supabase 1-table | ✅ | F-02 ✅ 해소 (W-0253, PR #437+#472) — 운영 DB 검증 #481 |
 | **L7** AutoResearch | Hill Climbing + LightGBM Phase A+B | ✅/❌ | Phase C/D GPU 필요 (P3) |
 
@@ -201,7 +201,7 @@ CSS Grid, resizable, min-width per pane
 | ↳ 6자리 코드 인증 + 알림 라우팅 설정 | | | | |
 | F-14 PatternObject lifecycle | W-0245 | M | A-03-eng | Draft→Candidate→Object promote |
 | F-15 PersonalVariant runtime UI | W-0246 | S-M | — | `active_variant_registry.py` BUILT |
-| F-16 Search recall@10 ≥ 0.7 | W-0247 | M | — | Layer C 미훈련 → A:0.6 / B:0.4 현재 |
+| ~~F-16 Search recall@10 ≥ 0.7~~ | W-0247 | — | — | ✅ **완료 (2026-04-30 PR #687)** eval_set 50쿼리 + weights (0.60/0.30/0.10) recall=100% |
 | ↳ 50 query eval set + LCS 가중 튜닝 (0.6/0.3/0.1) | | | | |
 | ~~H-07 F-60 Gate~~ | W-0238 | — | — | ✅ **완료 (PR #437)** `GET /users/{id}/f60-status` |
 | ~~H-08 per-user verdict accuracy~~ | W-0239 | — | — | ✅ **완료 (PR #437)** IN clause 배치 포함 |
