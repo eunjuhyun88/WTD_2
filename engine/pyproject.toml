@@ -24,6 +24,7 @@ dependencies = [
     "anthropic>=0.25",
     "duckdb>=1.0",
     "pyarrow>=14.0",
+    "sentry-sdk[fastapi]>=2.0",
 ]
 
 [project.optional-dependencies]

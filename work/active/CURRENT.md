@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`7c4763f4` — origin/main (2026-04-30) — PR #685 W-0321 personalization REST layer merged
+`df9fad3f` — origin/main (2026-04-30) — PR #696 W-0322 terminal 3-Rail Pro merged
 
 ---
 
@@ -14,8 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0249-f19-sentry-observability` | P2 | 🔴 구현 시작 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
-| `W-0317-terminal-splitpane-wireup` | P2 | 🟡 Design Done (Codex 진행 중) |
 
 ---
 

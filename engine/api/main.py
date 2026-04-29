@@ -46,6 +46,7 @@ from api.auth import extract_user_id_from_jwt, is_protected_route
 from universe.config import DEFAULT_SCAN_UNIVERSE
 from observability.health import health_payload, readiness_payload
 from observability.metrics import increment, observe_ms, snapshot as metrics_snapshot
+from observability.sentry import init_sentry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -161,6 +162,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 # ---------------------------------------------------------------------------
 
 assert_public_runtime_security()
+init_sentry()
 docs_url, openapi_url = build_docs_urls()
 
 app = FastAPI(
