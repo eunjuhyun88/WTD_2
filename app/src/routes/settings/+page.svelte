@@ -9,6 +9,7 @@
     normalizeTimeframe,
   } from '$lib/utils/timeframe';
   import { fetchPreferencesApi, updatePreferencesApi } from '$lib/api/preferencesApi';
+  import TelegramConnectWidget from '$lib/components/settings/TelegramConnectWidget.svelte';
   import { get } from 'svelte/store';
   import { douniRuntimeStore, type DouniMode } from '$lib/stores/douniRuntime';
 
@@ -413,6 +414,14 @@
           <div class="toggle-dot"></div>
         </button>
       </div>
+
+      <div class="setting-row tg-row">
+        <div class="sr-info">
+          <div class="sr-label">Telegram Bot</div>
+          <div class="sr-desc">패턴 알림을 Telegram으로 수신</div>
+        </div>
+        <TelegramConnectWidget />
+      </div>
     </section>
 
     <!-- Danger Zone -->
@@ -636,5 +645,11 @@
     white-space: pre-wrap;
     word-break: break-word;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .tg-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px;
   }
 </style>
