@@ -133,7 +133,7 @@ engine + app
 - **거절**: 본 PR에서 workflow까지 수정 — secret 주입은 운영 권한 작업
 - **이유**: 코드는 env-gated이므로 secret 없어도 CI green, 인프라 작업 분리로 PR 단순화
 
-## Open Questions (해소됨 — 로컬 실측 기반)
+## Open Questions
 
 - [x] [Q-0311-1] 스테이징 Supabase project? → **`.env.example`에 placeholder만**. 사용자가 GitHub Secrets에 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` 추가 필요 (별도 작업)
 - [x] [Q-0311-2] 테스트 row 격리? → **고정 UUID `00000000-0000-0000-0000-000000000311`** + try/finally DELETE
@@ -184,7 +184,46 @@ engine + app
 - [ ] **AC7**: 신규 코드 ≤ 250줄 (예산: vitest config 수정 ~10줄 + WVPLCard.test.ts ~80줄 + +server.test.ts ~70줄 + test_wvpl_supabase.py ~50줄 + init ~10줄 = ~220줄)
 - [ ] **AC8**: aggregator < 5s 회귀 없음 (W-0305 Exit Criteria 유지)
 
-## Facts (실측 grep)
+## Canonical Files
+
+### 신규
+- `engine/tests/integration/__init__.py`
+- `engine/tests/integration/test_wvpl_supabase.py`
+- `app/src/routes/api/dashboard/wvpl/+server.test.ts`
+- `app/src/lib/components/dashboard/WVPLCard.test.ts`
+
+### 수정
+- `app/vitest.config.ts` (environmentMatchGlobs 추가)
+- `app/package.json` (devDeps `@testing-library/svelte`, `jsdom` 추가)
+
+## Assumptions
+
+- Vitest 3.2.4 + Svelte 5.51.0 + @testing-library/svelte ^5.2.0 호환 (사전 grep 확인)
+- `_supabase_writer`의 silent skip 패턴이 env unset 시 그대로 적용됨
+- 스테이징 Supabase project는 외부 인프라 작업으로 별도 발급
+- jsdom 추가가 기존 19개 node 테스트에 영향 없음 (environmentMatchGlobs로 분리)
+- 고정 TEST_USER_ID UUID는 RLS 통과 가능한 auth.users 시드 row가 스테이징에 존재한다고 가정
+
+## Next Steps
+
+1. 사전조사: `app/package.json` svelte 버전 ↔ @testing-library/svelte 호환 버전 픽스
+2. `app/vitest.config.ts`에 `environmentMatchGlobs` 추가 (jsdom 분리)
+3. `pnpm add -D @testing-library/svelte@^5.2.0 jsdom`
+4. `WVPLCard.test.ts` 작성 (~80줄, 5+ 케이스)
+5. `+server.test.ts` 작성 (~70줄, 4+ 케이스)
+6. `test_wvpl_supabase.py` 작성 (~50줄, env-gated)
+7. `pnpm test` + `uv run pytest engine/tests/` + `pnpm check` 통과 확인
+8. PR 생성 → CI green → 리뷰 → 머지
+
+## Handoff Checklist
+
+- [ ] 다음 에이전트는 별도 브랜치 `feat/W-0311-wvpl-integration-verification` 생성 (W-0305 PR 비대화 회피)
+- [ ] svelte 버전 호환 사전 grep 후 본격 구현 착수
+- [ ] AC1~AC8 모두 충족 후 PR 생성
+- [ ] CI secret 주입은 별도 인프라 작업 — 본 PR 범위 외
+- [ ] 머지 후 `tools/sweep_work_items.sh --apply`로 work/completed/ 이동
+
+## Facts
 
 ### W-0305 산출물 (이미 머지)
 

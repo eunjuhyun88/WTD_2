@@ -16,16 +16,12 @@
 |---|---|---|
 | `W-0305-f3-telegram-deeplink-last-mile` | P1 | 🟢 Merged — PR #639 |
 | `W-0248-f18-stripe-tier` | P0 | 🟡 Design Draft — Stripe $29/mo + x402 USDC (#445) |
-| `W-0282-v-pv-01-engine-verification-scaffold` | P1 | 🟡 다음 — F-3 Telegram deeplink |
 | `W-0306-f5-terminal-mode-toggle` | P1 | 🟡 Design Draft — Observe/Analyze/Execute 3-mode 토글 (#634) |
 | `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 (#635) |
 | `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft — Draft→Candidate→Object promote UI (#636) |
 | `W-0309-f4-decision-hud-wiring` | P1 | 🟡 Design Draft — HUD API mock→live |
 | `W-0310-local-llm-hf-model-runtime` | P1 | ✅ 머지 — PR #638 |
 | `W-0311-wvpl-integration-verification` | P1 | 🟡 Design Draft — WVPL 통합 검증 자동화 (#642, A078) |
-| `W-0245-f14-pattern-lifecycle` | P2 | 🟡 Wave 4 Week3 |
-| `W-0247-f16-search-recall-verify` | P2 | 🟡 Wave 4 Week3 |
-| `W-0252-v00-pattern-search-audit` | P2 | 🟡 audit 진행 |
 
 ---
 
