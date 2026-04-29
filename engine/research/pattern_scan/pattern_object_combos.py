@@ -63,6 +63,9 @@ def _make_registry() -> dict[str, Callable]:
         ("building_blocks.confirmations.kimchi_premium_extreme",         "kimchi_premium_extreme"),
         # live orderbook confirmations (W-0326)
         ("building_blocks.confirmations.orderbook_imbalance_ratio",      "orderbook_imbalance_ratio"),
+        # live aggTrades confirmations (W-0327)
+        ("building_blocks.confirmations.cvd_surge_long",                 "cvd_surge_long"),
+        ("building_blocks.confirmations.whale_tick_buy",                 "whale_tick_buy"),
         ("building_blocks.confirmations.cvd_absorption",                 "cvd_absorption"),
         ("building_blocks.confirmations.bb_squeeze_adaptive",            "bb_squeeze_adaptive"),
         ("building_blocks.confirmations.oi_price_divergence_long",       "oi_price_divergence_long"),
