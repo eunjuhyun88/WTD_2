@@ -1,8 +1,9 @@
 # W-0310 — Local LLM + Hugging Face Model Runtime
 
 > Wave: user-requested | Priority: P1 | Effort: S
-> Status: In Progress
+> Status: 🟣 PR Open — #638
 > Created: 2026-04-29
+> Issue: #637
 
 ## Goal
 

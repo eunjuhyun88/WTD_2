@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`ca5e7269` — origin/main (2026-04-29) — PR #625 F-5 split-pane 머지
+`971fb83e` — origin/main (2026-04-29) — PR #638 W-0310 local LLM runtime 머지
 
 ---
 
@@ -14,12 +14,13 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0305-f3-telegram-deeplink-last-mile` | P1 | 🟢 Merged — PR #639 (alerts.py verdict URL) |
 | `W-0248-f18-stripe-tier` | P0 | 🟡 Design Draft — Stripe $29/mo + x402 USDC 이중 결제 (#445) |
-| `W-0305-f3-telegram-deeplink-last-mile` | P1 | 🟡 Design Draft — alerts.py에 verdict URL 포함 XS (#633) |
 | `W-0306-f5-terminal-mode-toggle` | P1 | 🟡 Design Draft — Observe/Analyze/Execute 3-mode 토글 S (#634) |
 | `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 S (#635) |
 | `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft — Draft→Candidate→Object promote UI S (#636) |
-| `W-0310-local-llm-hf-model-runtime` | P1 | 🔵 In Progress — Hugging Face model ref + local LLM runtime 연결 |
+| `W-0309-f4-decision-hud-wiring` | P1 | 🟡 Design Draft — HUD API mock→live (engine 엔드포인트 연결) |
+| `W-0310-local-llm-hf-model-runtime` | P1 | ✅ 머지 완료 — PR #638 |
 
 ---
 

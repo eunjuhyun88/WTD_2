@@ -20,6 +20,7 @@ from typing import Optional
 import httpx
 
 from cache.http_client import get_client
+from scanner._verdict_link import build_verdict_url
 
 log = logging.getLogger("engine.alerts")
 
@@ -124,6 +125,17 @@ async def send_telegram_alert(
         return False
 
     text = format_signal_message(signal)
+
+    # F-3: append verdict deep-link URL if pattern slug available (graceful degrade)
+    symbol = signal.get("symbol")
+    pattern_slug = signal.get("pattern_slug") or signal.get("slug")
+    verdict_url = build_verdict_url(
+        symbol=symbol,
+        pattern_slug=pattern_slug,
+    ) if symbol and pattern_slug else None
+    if verdict_url:
+        text = text + f"\n\n📊 Verdict: {verdict_url} (72h 만료)"
+
     url = f"{TELEGRAM_API.format(token=_token)}/sendMessage"
 
     # Inline keyboard for feedback
@@ -155,7 +167,7 @@ async def send_telegram_alert(
         else:
             # Retry with plain text if markdown fails
             payload["parse_mode"] = "HTML"
-            payload["text"] = text.replace("*", "<b>").replace("`", "<code>")
+            payload["text"] = text.replace("*", "<b>").replace("`", "<code>").replace("_", "<i>")
             resp2 = await client.post(url, json=payload, timeout=10.0)
             return resp2.status_code == 200
     except Exception as exc:
@@ -205,7 +217,7 @@ async def send_pattern_engine_alert(
     token: Optional[str] = None,
     chat_id: Optional[str] = None,
 ) -> bool:
-    """Send one Pattern Engine scheduler hit to Telegram."""
+    """Send one Pattern Engine scheduler hit to Telegram with verdict deep-link."""
     _token = token or _get_config()[0]
     _chat_id = chat_id or _get_config()[1]
 
@@ -213,10 +225,22 @@ async def send_pattern_engine_alert(
         log.debug("Telegram not configured — skipping pattern alert")
         return False
 
+    text = format_pattern_engine_message(alert)
+
+    # F-3: append verdict deep-link URL (graceful degrade if unavailable)
+    symbol = str(alert.get("symbol", ""))
+    pattern_slug = alert.get("pattern_slug") or alert.get("slug")
+    verdict_url = build_verdict_url(
+        symbol=symbol,
+        pattern_slug=pattern_slug,
+    ) if symbol and pattern_slug else None
+    if verdict_url:
+        text = text + f"\n\n📊 <a href=\"{verdict_url}\">Verdict 제출 (72h 만료)</a>"
+
     url = f"{TELEGRAM_API.format(token=_token)}/sendMessage"
     payload = {
         "chat_id": _chat_id,
-        "text": format_pattern_engine_message(alert),
+        "text": text,
         "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }

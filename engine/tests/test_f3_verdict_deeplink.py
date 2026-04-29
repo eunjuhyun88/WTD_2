@@ -104,15 +104,19 @@ class TestBuildVerdictUrl:
         cap = self._make_capture()
 
         with (
-            patch("scanner.alerts_pattern._CAPTURE_STORE") as mock_store,
+            patch("scanner._verdict_link._CAPTURE_STORE") as mock_store,
             patch.dict(os.environ, {
                 "VERDICT_LINK_SECRET": "sec",
                 "APP_ORIGIN": "https://cogochi.app",
             }),
         ):
             mock_store.list.return_value = [cap]
-            from scanner.alerts_pattern import _build_verdict_url
-            url = _build_verdict_url(record)
+            from scanner._verdict_link import build_verdict_url
+            url = build_verdict_url(
+                symbol=record.get("symbol"),
+                pattern_slug=record.get("slug"),
+                transition_id=record.get("transition_id"),
+            )
 
         assert url is not None
         assert "/verdict?token=" in url
@@ -120,31 +124,42 @@ class TestBuildVerdictUrl:
     def test_returns_none_when_no_capture(self):
         record = self._make_record()
         with (
-            patch("scanner.alerts_pattern._CAPTURE_STORE") as mock_store,
+            patch("scanner._verdict_link._CAPTURE_STORE") as mock_store,
             patch.dict(os.environ, {"VERDICT_LINK_SECRET": "sec"}),
         ):
             mock_store.list.return_value = []
-            from scanner.alerts_pattern import _build_verdict_url
-            url = _build_verdict_url(record)
+            from scanner._verdict_link import build_verdict_url
+            url = build_verdict_url(
+                symbol=record.get("symbol"),
+                pattern_slug=record.get("slug"),
+                transition_id=record.get("transition_id"),
+            )
         assert url is None
 
     def test_returns_none_without_secret(self):
         record = self._make_record()
         cap = self._make_capture()
         with (
-            patch("scanner.alerts_pattern._CAPTURE_STORE") as mock_store,
+            patch("scanner._verdict_link._CAPTURE_STORE") as mock_store,
             patch.dict(os.environ, {}, clear=False),
         ):
             os.environ.pop("VERDICT_LINK_SECRET", None)
             mock_store.list.return_value = [cap]
-            from scanner.alerts_pattern import _build_verdict_url
-            url = _build_verdict_url(record)
+            from scanner._verdict_link import build_verdict_url
+            url = build_verdict_url(
+                symbol=record.get("symbol"),
+                pattern_slug=record.get("slug"),
+                transition_id=record.get("transition_id"),
+            )
         assert url is None
 
     def test_returns_none_when_symbol_missing(self):
         record = self._make_record(symbol=None)
-        from scanner.alerts_pattern import _build_verdict_url
-        url = _build_verdict_url(record)
+        from scanner._verdict_link import build_verdict_url
+        url = build_verdict_url(
+            symbol=record.get("symbol"),
+            pattern_slug=record.get("slug"),
+        )
         assert url is None
 
     def test_prefers_matching_transition_id(self):
@@ -154,12 +169,16 @@ class TestBuildVerdictUrl:
         cap_right = self._make_capture(capture_id="cap-new", transition_id="tr-002")
 
         with (
-            patch("scanner.alerts_pattern._CAPTURE_STORE") as mock_store,
+            patch("scanner._verdict_link._CAPTURE_STORE") as mock_store,
             patch.dict(os.environ, {"VERDICT_LINK_SECRET": "sec"}),
         ):
             mock_store.list.return_value = [cap_right, cap_wrong]
-            from scanner.alerts_pattern import _build_verdict_url
-            url = _build_verdict_url(record)
+            from scanner._verdict_link import build_verdict_url
+            url = build_verdict_url(
+                symbol=record.get("symbol"),
+                pattern_slug=record.get("slug"),
+                transition_id=record.get("transition_id"),
+            )
 
         assert url is not None
         # decode token and verify capture_id
@@ -201,7 +220,7 @@ class TestSendPatternEntryAlertUrl:
         mock_resp.status_code = 200
 
         with (
-            patch("scanner.alerts_pattern._CAPTURE_STORE") as mock_store,
+            patch("scanner._verdict_link._CAPTURE_STORE") as mock_store,
             patch.dict(os.environ, {
                 "VERDICT_LINK_SECRET": "sec",
                 "APP_ORIGIN": "https://cogochi.app",
@@ -235,7 +254,7 @@ class TestSendPatternEntryAlertUrl:
         mock_resp.status_code = 200
 
         with (
-            patch("scanner.alerts_pattern._CAPTURE_STORE") as mock_store,
+            patch("scanner._verdict_link._CAPTURE_STORE") as mock_store,
             patch.dict(os.environ, {
                 "VERDICT_LINK_SECRET": "sec",
                 "TELEGRAM_BOT_TOKEN": "bot:token",
