@@ -47,7 +47,7 @@ engine + app
 - HTTP 402 Payment Required 반환 (x402 표준 준수, Free 한도 초과 시 동일)
 - `GET /api/billing/status` 응답: `{ tier, source: 'stripe'|'x402'|'free', credits_remaining, expires_at }`
 
-### Non-Goals
+## Non-Goals
 
 - **Annual plan**: M3까지는 monthly만. annual은 retention 데이터 후 결정 (Q-0248-3).
 - **Team plan**: 1인 SaaS만. team/seat-based는 frozen 검토 후 별도 work item.

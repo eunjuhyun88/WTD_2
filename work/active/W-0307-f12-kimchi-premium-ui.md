@@ -38,7 +38,7 @@ engine + app
 - tooltip: "Upbit BTC vs Binance BTC × USD/KRW"
 - 5분마다 자동 새로고침
 
-### Non-Goals
+## Non-Goals
 
 - **alert 발송**: 김치프리미엄 임계값 알림은 별도 W-item (Watching candidates와 연동 가능 → W-0283).
 - **historical chart**: 시계열 차트는 후속. 단일 % 표시만.

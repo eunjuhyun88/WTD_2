@@ -45,7 +45,7 @@ draft → candidate → object
 draft → archived
 ```
 
-### Non-Goals
+## Non-Goals
 
 - **자동 promotion**: F-14는 사용자 수동 검토 단계. 자동화는 F-16 Layer C 학습 후 별도 W-item.
 - **Object → Candidate 강등**: 일방향. 강등 필요 시 archive 후 새 candidate 등록.

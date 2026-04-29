@@ -43,7 +43,7 @@ app
 - 거래소 API 콜 X. `app/src/lib/components/intent/QuickTradePanel.svelte` (신규) — 사용자가 entry/stop/target을 수기 입력 후 클립보드 복사 또는 Telegram 알림 전송
 - 자동매매·실자금 주문은 Charter §Frozen — 명시적으로 차단 (UI에서 disable 처리)
 
-### Non-Goals
+## Non-Goals
 
 - **자동매매 / 실주문 실행**: Charter §Frozen 절대 준수.
 - **모드별 전혀 다른 컴포넌트 트리**: 패널 비율만 조정. center=ChartPanel, right=RightRailPanel 그대로 유지.
