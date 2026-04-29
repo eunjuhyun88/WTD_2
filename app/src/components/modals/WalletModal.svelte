@@ -101,7 +101,8 @@
     return value === 'metamask'
       || value === 'coinbase'
       || value === 'walletconnect'
-      || value === 'phantom';
+      || value === 'phantom'
+      || value === 'base';
   }
 
   function isEvmAddress(address: string): boolean {
@@ -382,9 +383,11 @@
           walletMessage: noncePayload.message,
           walletSignature: signature,
         });
-        if (authResult.action === 'login' && authResult.user) {
+        if (authResult.user) {
           applyAuthenticatedUser(authResult.user);
-          trackWalletFunnel('auth', 'success', { action: 'auto_login' });
+          trackWalletFunnel('auth', 'success', {
+            action: authResult.action === 'register' ? 'auto_register' : 'auto_login',
+          });
         }
         setWalletModalStep('profile');
       } catch (walletAuthError) {
@@ -504,6 +507,11 @@
             <span class="wo-icon">🔷</span>
             <span class="wo-name">Coinbase Wallet</span>
             <span class="wo-chain">EVM</span>
+          </button>
+          <button class="wopt" type="button" onclick={() => handleConnect('base')}>
+            <span class="wo-icon">🔵</span>
+            <span class="wo-name">Base Smart Wallet</span>
+            <span class="wo-chain">BASE</span>
           </button>
           <button class="wopt" type="button" onclick={() => handleConnect('phantom')}>
             <span class="wo-icon">👻</span>
