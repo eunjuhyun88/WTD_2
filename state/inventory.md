@@ -129,6 +129,7 @@
 | POST | /memory/feedback/batch | routes/memory.py:91 |
 | POST | /memory/debug-session | routes/memory.py:107 |
 | POST | /memory/rejected/search | routes/memory.py:118 |
+| GET | /metrics/user/{user_id}/wvpl | routes/metrics_user.py:30 |
 | GET | /observability/flywheel/health | routes/observability.py:152 |
 | GET | /observability/agent-status | routes/observability.py:157 |
 | POST | /opportunity/run | routes/opportunity.py:122 |
@@ -248,6 +249,7 @@
 /copy-trading/subscribe
 /copy-trading/subscribe/[id]
 /cycles/klines
+/dashboard/wvpl
 /doctrine
 /engine/[...path]
 /etherscan/onchain

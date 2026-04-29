@@ -25,7 +25,7 @@ echo ""
 
 # Items to keep active even if merged (impl still in progress).
 # Format: space-separated W-XXXX or exact filename fragment.
-KEEP_NUMS="W-0212 W-0231 W-0233 W-0238 W-0239 W-0243 W-0245 W-0247 W-0248 W-0252 W-0263 W-0282 W-0283 W-0284 W-0295 W-0297"
+KEEP_NUMS="W-0212 W-0231 W-0233 W-0245 W-0247 W-0248 W-0252 W-0263 W-0282 W-0284 W-0304"
 
 moved=0
 kept=0
