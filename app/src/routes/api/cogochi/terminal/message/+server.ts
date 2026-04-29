@@ -28,6 +28,7 @@ import { classifyIntent } from '$lib/server/douni/intentClassifier';
 import { buildContext, type CompressedHistoryEntry } from '$lib/server/douni/contextBuilder';
 import { loadAgentContextPack } from '$lib/server/agentContextPack';
 import type { ToolCall } from '$lib/server/douni/types';
+import { streamLoopbackOllamaChat } from '$lib/server/localLlm';
 
 const MAX_TOOL_ROUNDS = 3;
 
@@ -353,6 +354,26 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress,
           return;
         }
 
+        // OLLAMA mode: direct local stream from the user-configured loopback endpoint.
+        // Local models do not use the OpenAI tool-call loop in M0.
+        if (runtimeMode === 'OLLAMA') {
+          for await (const ev of streamLoopbackOllamaChat({
+            messages: messages as LLMMessage[],
+            endpoint: runtimeConfig?.ollamaEndpoint,
+            model: runtimeConfig?.ollamaModel,
+            maxTokens: budget.maxTokens,
+            temperature: 0.85,
+            timeoutMs: 30000,
+          })) {
+            if (ev.type === 'text_delta') textEmitted = true;
+            emit(ev);
+          }
+          if (!textEmitted) {
+            emit({ type: 'error', message: 'Ollama returned no text. Check the model name in Settings.' });
+          }
+          return;
+        }
+
         // Tool executor context
         const toolCtx = {
           symbol: snapshot?.symbol,
@@ -421,7 +442,11 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress,
           emit({ type: 'done', provider: resolvedProvider });
         }
       } catch (err: any) {
-        if (!textEmitted) {
+        if (runtimeMode === 'OLLAMA' && !textEmitted) {
+          const status = typeof err.status === 'number' ? err.status : 0;
+          console.error('[cogochi/message] ollama stream error:', err.message);
+          emit({ type: 'error', message: sanitizeProviderError(err.message || '', status) });
+        } else if (!textEmitted) {
           emitHeuristicFallback();
         } else {
           const status = typeof err.status === 'number' ? err.status : 0;

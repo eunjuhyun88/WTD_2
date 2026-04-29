@@ -1,14 +1,11 @@
-"""Unit tests for POST /patterns/parse (A-03-eng).
-
-Uses unittest.mock to patch the anthropic client — no real API call is made.
-"""
+"""Unit tests for POST /patterns/parse (A-03-eng)."""
 from __future__ import annotations
 
+import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -54,37 +51,54 @@ VALID_DRAFT = {
 }
 
 
-def _make_mock_message(text: str) -> MagicMock:
-    """Build a minimal mock that mimics anthropic.types.Message."""
-    content_block = MagicMock()
-    content_block.text = text
-    msg = MagicMock()
-    msg.content = [content_block]
-    return msg
-
-
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
-def test_parse_pattern_text_success(monkeypatch):
-    """Mock Claude response → PatternDraftBody validation succeeds."""
-    # Patch anthropic.AsyncAnthropic so no real HTTP call is made
-    mock_client = MagicMock()
-    mock_messages = MagicMock()
-    mock_messages.create = AsyncMock(
-        return_value=_make_mock_message(json.dumps(VALID_DRAFT))
-    )
-    mock_client.messages = mock_messages
+def test_parse_pattern_text_success():
+    """Mock configured LLM response → PatternDraftBody validation succeeds."""
+    from api.routes.patterns import _call_pattern_parser_llm, _validate_draft
 
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
-        with patch("anthropic.AsyncAnthropic", return_value=mock_client):
-            from api.schemas_pattern_draft import PatternDraftBody
-            from api.routes.patterns import _call_claude, _validate_draft
+    mock_generate = AsyncMock(return_value=json.dumps(VALID_DRAFT))
 
-            # Test _validate_draft directly
-            draft = _validate_draft(VALID_DRAFT)
-            assert draft.pattern_family == "oi-spike-price-decline"
-            assert len(draft.phases) == 1
-            assert draft.phases[0].phase_id == "PHASE_0"
+    with patch("api.routes.patterns.generate_llm_text", mock_generate):
+        draft = asyncio.run(_call_pattern_parser_llm("system", "user"))
+        assert draft.pattern_family == "oi-spike-price-decline"
+        assert len(draft.phases) == 1
+        assert draft.phases[0].phase_id == "PHASE_0"
+
+        # Test _validate_draft directly
+        draft = _validate_draft(VALID_DRAFT)
+        assert draft.pattern_family == "oi-spike-price-decline"
+        assert len(draft.phases) == 1
+        assert draft.phases[0].phase_id == "PHASE_0"
+
+    mock_generate.assert_awaited_once()
+
+
+def test_parse_pattern_text_strips_fenced_json():
+    """Local models often wrap JSON in markdown fences."""
+    from api.routes.patterns import _call_pattern_parser_llm
+
+    mock_generate = AsyncMock(return_value=f"```json\n{json.dumps(VALID_DRAFT)}\n```")
+    with patch("api.routes.patterns.generate_llm_text", mock_generate):
+        draft = asyncio.run(_call_pattern_parser_llm("system", "user"))
+
+    assert draft.pattern_family == "oi-spike-price-decline"
+
+
+def test_parse_pattern_text_maps_runtime_error_to_http_exception():
+    """Provider errors surface as HTTP status codes."""
+    from fastapi import HTTPException
+
+    from agents.llm_runtime import LLMRuntimeError
+    from api.routes.patterns import _call_pattern_parser_llm
+
+    mock_generate = AsyncMock(side_effect=LLMRuntimeError("Ollama missing", status_code=503))
+    with patch("api.routes.patterns.generate_llm_text", mock_generate):
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(_call_pattern_parser_llm("system", "user"))
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == "Ollama missing"
 
 
 def test_validate_draft_empty_phases_raises():

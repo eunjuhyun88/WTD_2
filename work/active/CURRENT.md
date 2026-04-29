@@ -19,6 +19,7 @@
 | `W-0306-f5-terminal-mode-toggle` | P1 | 🟡 Design Draft — Observe/Analyze/Execute 3-mode 토글 S (#634) |
 | `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 S (#635) |
 | `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft — Draft→Candidate→Object promote UI S (#636) |
+| `W-0310-local-llm-hf-model-runtime` | P1 | 🔵 In Progress — Hugging Face model ref + local LLM runtime 연결 |
 
 ---
 

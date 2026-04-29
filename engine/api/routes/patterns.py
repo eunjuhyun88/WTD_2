@@ -11,13 +11,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 from pydantic import BaseModel, ValidationError
 
+from agents.llm_runtime import LLMRuntimeError, generate_llm_text
 from api.routes import patterns_thread
 from api.schemas_pattern_draft import PatternDraftBody
 
@@ -141,38 +141,38 @@ def _validate_draft(data: dict) -> PatternDraftBody:
     return draft
 
 
-async def _call_claude(system_prompt: str, user_text: str) -> PatternDraftBody:
-    """Call Claude Sonnet 4.5 and parse the response into PatternDraftBody.
+def _strip_json_wrappers(raw: str) -> str:
+    """Strip common model wrappers around a JSON object."""
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.rsplit("```", 1)[0].strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        text = text[start : end + 1]
+    return text
+
+
+async def _call_pattern_parser_llm(system_prompt: str, user_text: str) -> PatternDraftBody:
+    """Call the configured LLM runtime and validate PatternDraftBody output.
 
     Retries up to 2 times on JSON parse or validation failure.
     """
-    import anthropic  # lazy import — not required for non-parser routes
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY not configured")
-
-    client = anthropic.AsyncAnthropic(api_key=api_key)
     last_error: Exception | None = None
 
     for attempt in range(3):  # 1 initial + 2 retries
         try:
-            message = await client.messages.create(
-                model="claude-sonnet-4-5",
+            raw = await generate_llm_text(
+                system_prompt,
+                user_text,
                 max_tokens=4096,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_text}],
+                temperature=0.1,
             )
-            raw = message.content[0].text.strip()
-
-            # Strip markdown fences if the model wraps output anyway
-            if raw.startswith("```"):
-                raw = raw.split("```", 2)[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-                raw = raw.rsplit("```", 1)[0].strip()
-
-            parsed = json.loads(raw)
+            parsed = json.loads(_strip_json_wrappers(raw))
             return _validate_draft(parsed)
 
         except (json.JSONDecodeError, ValueError) as exc:
@@ -180,8 +180,8 @@ async def _call_claude(system_prompt: str, user_text: str) -> PatternDraftBody:
             log.warning("parse attempt %d failed: %s", attempt + 1, exc)
             if attempt < 2:
                 continue
-        except anthropic.APIError as exc:
-            raise HTTPException(status_code=502, detail=f"Claude API error: {exc}") from exc
+        except LLMRuntimeError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     raise HTTPException(
         status_code=422,
@@ -191,14 +191,14 @@ async def _call_claude(system_prompt: str, user_text: str) -> PatternDraftBody:
 
 @router.post("/parse", response_model=PatternDraftBody)
 async def parse_pattern_text(body: ParseRequest) -> PatternDraftBody:
-    """Parse free-text trading memo → PatternDraftBody JSON via Claude Sonnet 4.5.
+    """Parse free-text trading memo → PatternDraftBody JSON via configured LLM.
 
     AC: POST {"text": "OI가 급등하면서 가격이 하락했다"} → PatternDraftBody JSON
     """
     from agents.context import get_assembler
 
     ctx = await asyncio.to_thread(get_assembler().for_parse_text, body.symbol)
-    return await _call_claude(ctx.system_prompt, body.text)
+    return await _call_pattern_parser_llm(ctx.system_prompt, body.text)
 
 
 # ── 12-feature extraction from feature_window dict ───────────────────────────
