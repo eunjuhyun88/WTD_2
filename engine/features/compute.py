@@ -389,3 +389,47 @@ def compute_features_table(
     """
     from scanner.feature_calc import compute_features_table as _original_cft
     return _original_cft(klines, symbol, perp=perp, macro=macro, onchain=onchain, tf_minutes=tf_minutes)
+
+
+# ── Korea Features ────────────────────────────────────────────────────────────
+
+_SESSION_HOURS: dict[str, range] = {
+    "apac": range(0, 8),    # UTC 00–08 (KST 09–17)
+    "eu":   range(7, 15),   # UTC 07–15
+    "us":   range(13, 21),  # UTC 13–21
+}
+
+
+def calc_session_return(ohlcv: pd.DataFrame, session: str) -> float:
+    """Return % price change within the most recent session window."""
+    hours = _SESSION_HOURS.get(session, range(0, 8))
+    mask = pd.Series(ohlcv.index.hour, index=ohlcv.index).isin(list(hours))
+    session_data = ohlcv[mask].tail(48)
+    if len(session_data) < 2:
+        return 0.0
+    return float(
+        (session_data["close"].iloc[-1] / session_data["open"].iloc[0] - 1) * 100
+    )
+
+
+def calc_kimchi_premium(binance_btc_usdt: float) -> dict[str, float]:
+    """Return kimchi_premium_pct given Binance BTC/USDT price.
+
+    Fetches Upbit BTC/KRW and USD/KRW rate; returns zeros on fetch failure.
+    """
+    from data_cache.fetch_upbit import fetch_upbit_btc_krw, fetch_usd_krw_rate
+
+    upbit_krw = fetch_upbit_btc_krw()
+    usd_krw = fetch_usd_krw_rate()
+    if upbit_krw is None or usd_krw is None or binance_btc_usdt <= 0 or usd_krw <= 0:
+        return {"kimchi_premium_pct": 0.0}
+    pct = (upbit_krw / (binance_btc_usdt * usd_krw) - 1) * 100
+    return {"kimchi_premium_pct": round(pct, 4)}
+
+
+def calc_oi_normalized_cvd(cvd: float, oi: float) -> dict[str, float]:
+    """Return OI-normalised CVD clamped to [-5, 5]."""
+    if oi <= 0:
+        return {"oi_normalized_cvd": 0.0}
+    ratio = max(-5.0, min(5.0, cvd / oi))
+    return {"oi_normalized_cvd": round(ratio, 6)}
