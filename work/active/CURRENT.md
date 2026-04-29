@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`9e74fa1e` — origin/main (2026-04-30) — PR #687 W-0247 F-16 search recall@10 ≥ 0.7
+`6a31ff4a` — origin/main (2026-04-30) — PR #688 chore/CURRENT SHA bump
 
 ---
 
@@ -15,16 +15,16 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
-| `W-0312-personalization-engine` | P1 | 🟡 코드 존재, 추가 기능 후속 필요 |
+| `W-0317-terminal-splitpane-wireup` | P2 | 🟡 Design Done (Codex 진행 중) |
 
 ---
 
 ## Wave 4 실행 계획 (갭 분석 반영, 2026-04-30)
 
 ```
-완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅ | W-0319 Wallet ✅ | W-0321 Paper route ✅
+완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅ | W-0247 F-16 recall ✅
 즉시:  W-0317 SplitPane wire-up (Codex) + W-0304 per-pane indicator (Codex)
-Week2: F-16 recall 개선
+Week3: F-19 Sentry + F-20 infra cleanup
 Week3: F-19 Sentry + F-20 infra cleanup
 Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 ```

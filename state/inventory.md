@@ -134,37 +134,38 @@
 | GET | /observability/flywheel/health | routes/observability.py:152 |
 | GET | /observability/agent-status | routes/observability.py:157 |
 | POST | /opportunity/run | routes/opportunity.py:122 |
-| POST | /patterns/parse | routes/patterns.py:198 |
-| GET | /patterns/library | routes/patterns.py:387 |
-| GET | /patterns/registry | routes/patterns.py:393 |
-| GET | /patterns/active-variants | routes/patterns.py:406 |
-| GET | /patterns/states | routes/patterns.py:421 |
-| GET | /patterns/transitions | routes/patterns.py:427 |
-| GET | /patterns/candidates | routes/patterns.py:466 |
-| POST | /patterns/draft-from-range | routes/patterns.py:474 |
-| POST | /patterns/scan | routes/patterns.py:573 |
-| GET | /patterns/stats/all | routes/patterns.py:582 |
-| GET | /patterns/{slug}/candidates | routes/patterns.py:596 |
-| GET | /patterns/{slug}/similar-live | routes/patterns.py:602 |
-| GET | /patterns/{slug}/f60-status | routes/patterns.py:657 |
-| GET | /patterns/{slug}/stats | routes/patterns.py:678 |
-| GET | /patterns/{slug}/training-records | routes/patterns.py:694 |
-| GET | /patterns/{slug}/alert-policy | routes/patterns.py:710 |
-| PUT | /patterns/{slug}/alert-policy | routes/patterns.py:716 |
-| GET | /patterns/{slug}/lifecycle-status | routes/patterns.py:734 |
-| PATCH | /patterns/{slug}/status | routes/patterns.py:742 |
-| GET | /patterns/{slug}/model-registry | routes/patterns.py:774 |
-| GET | /patterns/{slug}/model-history | routes/patterns.py:784 |
-| GET | /patterns/{slug}/library | routes/patterns.py:801 |
-| POST | /patterns/{slug}/verdict | routes/patterns.py:809 |
-| POST | /patterns/{slug}/capture | routes/patterns.py:848 |
-| POST | /patterns/{slug}/evaluate | routes/patterns.py:892 |
-| POST | /patterns/{slug}/train-model | routes/patterns.py:898 |
-| POST | /patterns/{slug}/promote-model | routes/patterns.py:918 |
-| POST | /patterns/register | routes/patterns.py:933 |
-| POST | /patterns/{slug}/benchmark-pack-draft | routes/patterns.py:992 |
-| POST | /patterns/{slug}/benchmark-search-from-capture | routes/patterns.py:1010 |
-| POST | /patterns/{slug}/verify-paper | routes/patterns.py:1027 |
+| POST | /patterns/parse | routes/patterns.py:232 |
+| GET | /patterns/library | routes/patterns.py:421 |
+| GET | /patterns/registry | routes/patterns.py:427 |
+| GET | /patterns/active-variants | routes/patterns.py:440 |
+| GET | /patterns/states | routes/patterns.py:455 |
+| GET | /patterns/transitions | routes/patterns.py:461 |
+| GET | /patterns/candidates | routes/patterns.py:500 |
+| POST | /patterns/draft-from-range | routes/patterns.py:508 |
+| POST | /patterns/scan | routes/patterns.py:607 |
+| GET | /patterns/stats/all | routes/patterns.py:616 |
+| GET | /patterns/lifecycle | routes/patterns.py:628 |
+| GET | /patterns/{slug}/candidates | routes/patterns.py:659 |
+| GET | /patterns/{slug}/similar-live | routes/patterns.py:665 |
+| GET | /patterns/{slug}/f60-status | routes/patterns.py:720 |
+| GET | /patterns/{slug}/stats | routes/patterns.py:741 |
+| GET | /patterns/{slug}/training-records | routes/patterns.py:757 |
+| GET | /patterns/{slug}/alert-policy | routes/patterns.py:773 |
+| PUT | /patterns/{slug}/alert-policy | routes/patterns.py:779 |
+| GET | /patterns/{slug}/lifecycle-status | routes/patterns.py:797 |
+| PATCH | /patterns/{slug}/status | routes/patterns.py:809 |
+| GET | /patterns/{slug}/model-registry | routes/patterns.py:844 |
+| GET | /patterns/{slug}/model-history | routes/patterns.py:854 |
+| GET | /patterns/{slug}/library | routes/patterns.py:871 |
+| POST | /patterns/{slug}/verdict | routes/patterns.py:879 |
+| POST | /patterns/{slug}/capture | routes/patterns.py:918 |
+| POST | /patterns/{slug}/evaluate | routes/patterns.py:962 |
+| POST | /patterns/{slug}/train-model | routes/patterns.py:968 |
+| POST | /patterns/{slug}/promote-model | routes/patterns.py:988 |
+| POST | /patterns/register | routes/patterns.py:1003 |
+| POST | /patterns/{slug}/benchmark-pack-draft | routes/patterns.py:1062 |
+| POST | /patterns/{slug}/benchmark-search-from-capture | routes/patterns.py:1080 |
+| POST | /patterns/{slug}/verify-paper | routes/patterns.py:1097 |
 | POST | /rag/terminal-scan | routes/rag.py:24 |
 | POST | /rag/quick-trade | routes/rag.py:35 |
 | POST | /rag/signal-action | routes/rag.py:40 |
@@ -333,6 +334,7 @@
 /patterns/[slug]/status
 /patterns/[slug]/verdict
 /patterns/draft-from-range
+/patterns/lifecycle
 /patterns/parse
 /patterns/scan
 /patterns/states
