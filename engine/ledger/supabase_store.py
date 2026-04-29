@@ -40,12 +40,13 @@ def _sb():
     if _client is None:
         with _client_lock:
             if _client is None:
-                from supabase import create_client  # type: ignore
+                from supabase import create_client, ClientOptions  # type: ignore
                 url = os.environ.get("SUPABASE_URL", "")
                 key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
                 if not url or not key:
                     raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
-                _client = create_client(url, key)
+                timeout = float(os.environ.get("SUPABASE_HTTP_TIMEOUT", "10"))
+                _client = create_client(url, key, options=ClientOptions(postgrest_client_timeout=timeout))
     return _client
 
 

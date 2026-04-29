@@ -31,12 +31,14 @@ from research.capture_benchmark import (
 from research.pattern_search import BenchmarkPackStore, NegativeSearchMemoryStore, PatternSearchArtifactStore
 from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
+from verification import run_paper_verification
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
+from patterns.state_store import PatternStateStore
 from patterns.types import PatternObject, PhaseCondition
 from research.live_monitor import search_pattern_state_similarity
 from scoring.block_evaluator import _BLOCKS
@@ -414,6 +416,45 @@ async def get_active_variants() -> dict:
 async def get_all_states() -> dict:
     """Current phase (rich) for all tracked symbols across all patterns."""
     return await asyncio.to_thread(patterns_thread.get_all_states_sync)
+
+
+@router.get("/transitions")
+async def get_recent_transitions(
+    limit: int = Query(default=20, ge=1, le=500),
+    symbol: str | None = Query(default=None),
+    slug: str | None = Query(default=None),
+) -> dict:
+    """Recent phase transitions, optionally filtered by symbol or pattern slug.
+
+    B4: Feeds the transitions panel on /patterns and /patterns/[slug] detail pages.
+    """
+    def _sync() -> dict:
+        store = PatternStateStore()
+        records = store.list_transitions(slug)
+        if symbol:
+            sym_lower = symbol.upper()
+            records = [r for r in records if r.symbol == sym_lower]
+        records.sort(key=lambda r: r.transitioned_at, reverse=True)
+        records = records[:limit]
+        return {
+            "transitions": [
+                {
+                    "transition_id": r.transition_id,
+                    "symbol": r.symbol,
+                    "pattern_slug": r.pattern_slug,
+                    "from_phase": r.from_phase,
+                    "to_phase": r.to_phase,
+                    "transition_kind": r.transition_kind,
+                    "reason": r.reason,
+                    "transitioned_at": r.transitioned_at.isoformat() if r.transitioned_at else None,
+                    "trigger_bar_ts": r.trigger_bar_ts.isoformat() if r.trigger_bar_ts else None,
+                    "confidence": r.confidence,
+                    "scan_id": r.scan_id,
+                }
+                for r in records
+            ]
+        }
+    return await asyncio.to_thread(_sync)
 
 
 @router.get("/candidates")
@@ -934,4 +975,26 @@ async def run_benchmark_search_from_capture(slug: str, body: _BenchmarkSearchBod
     return {
         "ok": True,
         **result.to_dict(),
+    }
+
+
+@router.post("/{slug}/verify-paper")
+async def verify_paper(slug: str) -> dict:
+    """Run paper-trading verification for a pattern using recorded outcome ledger."""
+    result = await asyncio.to_thread(run_paper_verification, slug, LEDGER_RECORD_STORE)
+    return {
+        "ok": True,
+        "pattern_slug": result.pattern_slug,
+        "n_trades": result.n_trades,
+        "n_hit": result.n_hit,
+        "n_miss": result.n_miss,
+        "n_expired": result.n_expired,
+        "win_rate": result.win_rate,
+        "avg_return_pct": result.avg_return_pct,
+        "sharpe": None if result.sharpe != result.sharpe else result.sharpe,
+        "max_drawdown_pct": result.max_drawdown_pct,
+        "expectancy_pct": result.expectancy_pct,
+        "avg_duration_hours": result.avg_duration_hours,
+        "pass_gate": result.pass_gate,
+        "gate_reasons": result.gate_reasons,
     }

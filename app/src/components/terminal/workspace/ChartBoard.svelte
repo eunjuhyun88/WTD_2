@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, createSeriesMarkers } from 'lightweight-charts';
+  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, BarSeries, AreaSeries, createSeriesMarkers, PriceScaleMode } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
   import {
     chartIndicators,
@@ -17,6 +17,7 @@
   import SaveStrip from './SaveStrip.svelte';
   import ResearchPanel from './ResearchPanel.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
+  import ChartBoardHeader from './ChartBoardHeader.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
@@ -31,6 +32,12 @@
   import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
+  import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
+  // ── W-0289: Drawing Tools ────────────────────────────────────────────────────
+  import DrawingCanvas from './DrawingCanvas.svelte';
+  import DrawingToolbar from './DrawingToolbar.svelte';
+  import { DrawingManager, type DrawingToolType } from '$lib/chart/DrawingManager';
+  import { PriceLineManager } from '$lib/chart/usePriceLines';
   // ── Multi-pane indicator layer (W-0211 follow-up) ──────────────────────────
   import {
     PANE_INDICATORS as PANE_SPECS,
@@ -145,14 +152,10 @@
    */
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
 
-  // ── UI state ───────────────────────────────────────────────────────────────
-  let loading  = $state(true);
-  let error    = $state<string | null>(null);
-  let rateLimitRetryIn = $state<number | null>(null);
-
-  // ── History lazy-load state ────────────────────────────────────────────────
-  let historyLoadingMore = $state(false);
-  let earliestBarTimeMs  = $state<number | null>(null);
+  // ── W-0289: Drawing tools ──────────────────────────────────────────────────
+  let drawingToolsVisible = $state(false);
+  let drawingActiveTool   = $state<DrawingToolType>('cursor');
+  let drawingMgr: DrawingManager | null = null;
 
   // ── Live WS reference (non-reactive) ──────────────────────────────────────
   let _ws: WebSocket | null = null;
@@ -296,13 +299,11 @@
   let showComparison = $derived($chartIndicators.comparison);
   let isVeloSurface = $derived(surfaceStyle === 'velo');
 
-  let chartMode = $state<'candle' | 'line'>('candle');
+  let chartMode = $state<'candle' | 'line' | 'bar' | 'area' | 'heikin'>('candle');
+  let priceScaleMode = $state<'normal' | 'log' | 'percent'>('normal');
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
   let contextStripOpen = $state(false);
 
-  /** TradingView-style “Indicators” popover (add studies to chart). */
-  let studiesPanelOpen = $state(false);
-  let studiesWrapEl = $state<HTMLDivElement | undefined>(undefined);
   let studyQuery = $state('');
 
   let activeIndicatorCount = $derived.by(() => {
@@ -428,7 +429,7 @@
 
   // ── Chart instance (single, native multi-pane) ────────────────────────────
   let mainChart: IChartApi | null = null;
-  let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
+  let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | ISeriesApi<'Area'> | ISeriesApi<'Bar'> | null = null;
   /** Pane indices for indicator panes — assigned during renderCharts(). */
   let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
@@ -610,14 +611,8 @@
     }
   }
 
-  // Level price lines
-  let entryLine:  ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
-  let targetLine: ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
-  let stopLine:   ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
-  /** Liquidation / cluster levels on main chart (CryptoQuant-style price rails). */
-  let liqPriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
-  /** W-0210 Layer 2: Whale liq price lines — separate set for easy clear/rebuild. */
-  let whalePriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
+  // ── Price line manager (verdict / liq / whale) ─────────────────────────────
+  let priceLineMgr = new PriceLineManager();
 
   // ── Timeframes ────────────────────────────────────────────────────────────
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
@@ -640,6 +635,8 @@
   const BORDER = 'rgba(42,46,57,1)';
 
   const baseTheme = {
+    handleScroll: true,
+    handleScale: true,
     layout: { background: { color: BG }, textColor: TEXT, fontSize: 10, fontFamily: 'var(--sc-font-mono, monospace)' },
     grid:   { vertLines: { color: GRID }, horzLines: { color: GRID } },
     crosshair: {
@@ -737,12 +734,25 @@
     return 520; // sensible default — fills price + 4 panes comfortably
   }
 
-  // ── Data load ─────────────────────────────────────────────────────────────
-  let chartData = $state<ChartSeriesPayload | null>(null);
+  // ── Data load — delegated to useChartDataFeed composable ─────────────────
+  const feed = useChartDataFeed({
+    getSymbol: () => symbol,
+    getTf: () => tf,
+    getEmaTf: () => emaTf,
+    getInitialData: () => initialData ?? null,
+    getChart: () => mainChart,
+    getPriceSeries: () => priceSeries,
+  });
+
+  // Accessor aliases so existing code reads naturally
+  let loading = $derived(feed.loading);
+  let error = $derived(feed.error);
+  let rateLimitRetryIn = $derived(feed.rateLimitRetryIn);
+  let chartData = $derived(feed.chartData);
 
   // Keep chartSaveMode payload in sync so SaveStrip can slice indicators (W-0117 Slice B)
   $effect(() => {
-    chartSaveMode.setPayload(chartData);
+    chartSaveMode.setPayload(feed.chartData);
   });
 
   // ── Pane info chips (current value + Δ for each line in each pane) ───────
@@ -781,124 +791,8 @@
     liq: liqData,
     feedStatus: _dataFeed ? 'ws' : 'poll',
   });
-  const chartDataCache = new Map<string, ChartSeriesPayload>();
-  let loadToken = 0;
-  let lastDataKey = '';
-
-  async function loadData() {
-    if (!symbol) return;
-    const dataKey = `${symbol}:${tf}:${emaTf || 'chart'}`;
-    if (dataKey === lastDataKey && chartData) return;
-
-    if (chartDataCache.has(dataKey)) {
-      chartData = chartDataCache.get(dataKey) ?? null;
-      depthData = depthSnapshot;
-      liqData = liqSnapshot;
-      error = null;
-      loading = false;
-      lastDataKey = dataKey;
-      return;
-    }
-
-    if (initialData && !emaTf) {
-      chartDataCache.set(dataKey, initialData);
-      chartData = initialData;
-      depthData = depthSnapshot;
-      liqData = liqSnapshot;
-      error = null;
-      loading = false;
-      lastDataKey = dataKey;
-      return;
-    }
-
-    const token = ++loadToken;
-    loading = true;
-    error = null;
-    rateLimitRetryIn = null;
-    try {
-      const emaQ = emaTf ? `&emaTf=${encodeURIComponent(emaTf)}` : '';
-      const chartRes = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500${emaQ}`);
-      if (chartRes.status === 429) {
-        if (token !== loadToken) return;
-        loading = false;
-        rateLimitRetryIn = 10;
-        const countdown = setInterval(() => {
-          rateLimitRetryIn = (rateLimitRetryIn ?? 0) - 1;
-          if ((rateLimitRetryIn ?? 0) <= 0) {
-            clearInterval(countdown);
-            rateLimitRetryIn = null;
-            loadData();
-          }
-        }, 1_000);
-        return;
-      }
-      if (!chartRes.ok) throw new Error(`HTTP ${chartRes.status}`);
-      const data = await chartRes.json() as ChartSeriesPayload & { error?: unknown };
-      if (data.error) {
-        throw new Error(typeof data.error === 'string' ? data.error : 'Chart payload error');
-      }
-      if (token !== loadToken) return;
-      chartDataCache.set(dataKey, data);
-      chartData = data;
-      depthData = depthSnapshot;
-      liqData = liqSnapshot;
-      loading = false;
-      lastDataKey = dataKey;
-      const firstBar = (data.klines as Array<{time: number}>)[0];
-      if (firstBar) earliestBarTimeMs = firstBar.time * 1000;
-    } catch (e) {
-      if (token !== loadToken) return;
-      error = String(e);
-      loading = false;
-    }
-  }
-
   // ── History lazy-load ────────────────────────────────────────────────────
   const LAZY_TRIGGER_BARS = 30; // fetch more when within this many bars of the left edge
-
-  async function loadMoreHistory() {
-    if (historyLoadingMore || earliestBarTimeMs == null || !symbol) return;
-    const tfMs = tfMinutes(tf) * 60_000;
-    const startTime = earliestBarTimeMs - 500 * tfMs;
-    if (startTime < 0) return;
-
-    historyLoadingMore = true;
-    try {
-      const emaQ = emaTf ? `&emaTf=${encodeURIComponent(emaTf)}` : '';
-      const res = await fetch(
-        `/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500&startTime=${startTime}${emaQ}`,
-      );
-      if (!res.ok) return;
-      const older = await res.json() as { klines?: Array<{time: number; open: number; high: number; low: number; close: number; volume: number}> };
-      if (!older.klines?.length) return;
-
-      earliestBarTimeMs = older.klines[0].time * 1000;
-
-      // Prepend bars to existing series — restore visible range after setData
-      const savedRange = mainChart?.timeScale().getVisibleLogicalRange();
-      const current = (chartData?.klines ?? []) as Array<{time: number; open: number; high: number; low: number; close: number; volume: number}>;
-      const cutoff = older.klines[older.klines.length - 1].time;
-      const merged = [...older.klines, ...current.filter((k) => k.time > cutoff)];
-
-      if (priceSeries) {
-        priceSeries.setData(
-          merged.map((k) => ({
-            time: k.time as UTCTimestamp,
-            open: k.open, high: k.high, low: k.low, close: k.close,
-          })),
-        );
-      }
-      if (savedRange) {
-        // Shift range by the number of newly prepended bars so the view stays stable
-        const prepended = older.klines.length;
-        mainChart?.timeScale().setVisibleLogicalRange({
-          from: savedRange.from + prepended,
-          to:   savedRange.to  + prepended,
-        });
-      }
-    } catch { /* lazy load is best-effort */ }
-    finally { historyLoadingMore = false; }
-  }
 
   // ── DataFeed: resilient WS + polling (replaces bare connectKlineWS) ────────
 
@@ -986,7 +880,7 @@
     // price pane (user feedback 2026-04-19: "보조지표만 같이 나오고 나머지는
     // 하단으로 붙어야지").
     const hasFundingOverlay =
-      derivativesOnMain && chartMode === 'candle' && Boolean(fundingBars?.length);
+      derivativesOnMain && (chartMode === 'candle' || chartMode === 'bar' || chartMode === 'heikin') && Boolean(fundingBars?.length);
     const mainChartHeight = measureChartHostHeight();
 
     // ── Main (candles + overlays) ────────────────────────────────────────────
@@ -997,6 +891,11 @@
       rightPriceScale: {
         ...baseTheme.rightPriceScale,
         scaleMargins: { top: 0.08, bottom: 0.08 },
+        mode: priceScaleMode === 'log'
+          ? PriceScaleMode.Logarithmic
+          : priceScaleMode === 'percent'
+            ? PriceScaleMode.Percentage
+            : PriceScaleMode.Normal,
       },
       leftPriceScale: hasFundingOverlay
         ? { visible: true, borderColor: BORDER, scaleMargins: { top: 0.06, bottom: 0.06 } }
@@ -1021,7 +920,60 @@
       priceSeries = lineSeries;
       candleSeriesForAnnotations = null;
       candleMarkerApi = null;
+    } else if (chartMode === 'area') {
+      const areaSeries = mainChart.addSeries(AreaSeries, {
+        lineColor: '#63b3ed',
+        topColor: 'rgba(99,179,237,0.3)',
+        bottomColor: 'rgba(99,179,237,0)',
+        lineWidth: 2,
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+      areaSeries.setData(klines.map((k) => ({ time: k.time as UTCTimestamp, value: k.close })));
+      priceSeries = areaSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
+    } else if (chartMode === 'bar') {
+      const barSeries = mainChart.addSeries(BarSeries, {
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        openVisible: true,
+        thinBars: false,
+      });
+      barSeries.setData(klines.map((bar) => ({
+        time: bar.time as UTCTimestamp,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+      })));
+      priceSeries = barSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
+    } else if (chartMode === 'heikin') {
+      // Heikin Ashi calculation
+      const haBars = klines.map((bar, i) => {
+        const prev = i > 0 ? klines[i - 1] : bar;
+        const haClose = (bar.open + bar.high + bar.low + bar.close) / 4;
+        const haOpen = i === 0 ? (bar.open + bar.close) / 2 : (prev.open + prev.close) / 2;
+        const haHigh = Math.max(bar.high, haOpen, haClose);
+        const haLow = Math.min(bar.low, haOpen, haClose);
+        return { time: bar.time as UTCTimestamp, open: haOpen, high: haHigh, low: haLow, close: haClose };
+      });
+      const haSeries = mainChart.addSeries(CandlestickSeries, {
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderUpColor: '#26a69a',
+        borderDownColor: '#ef5350',
+        wickUpColor: 'rgba(38,166,154,0.7)',
+        wickDownColor: 'rgba(239,83,80,0.7)',
+      });
+      haSeries.setData(haBars);
+      priceSeries = haSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
     } else {
+      // Default: candlestick
       const candleSeries = mainChart.addSeries(CandlestickSeries, {
         upColor:        '#26a69a',
         downColor:      '#ef5350',
@@ -1271,6 +1223,18 @@
 
     void tick().then(() => {
       handleResize();
+      mainChart?.timeScale().scrollToRealTime();
+
+      // W-0289: init DrawingManager after chart is ready
+      if (mainChart && priceSeries) {
+        const key = `drawings:${symbol}:${tf}`;
+        if (!drawingMgr || drawingMgr.storageKey !== key) {
+          drawingMgr?.detach();
+          drawingMgr = new DrawingManager({ storageKey: key });
+        }
+        drawingMgr.onToolChange = (t) => { drawingActiveTool = t; };
+        drawingMgr.attach(mainChart, priceSeries as ISeriesApi<SeriesType>);
+      }
     });
   }
 
@@ -1438,125 +1402,53 @@
     return positions;
   }
 
-  // ── Verdict level lines ───────────────────────────────────────────────────
+  // ── Verdict / whale level lines — delegated to PriceLineManager ─────────
   function updateLevels() {
-    if (!priceSeries) return;
-
-    // Clear existing lines
-    try { if (entryLine)  priceSeries.removePriceLine(entryLine);  } catch {}
-    try { if (targetLine) priceSeries.removePriceLine(targetLine); } catch {}
-    try { if (stopLine)   priceSeries.removePriceLine(stopLine);   } catch {}
-    entryLine = targetLine = stopLine = null;
-
-    if (!verdictLevels) return;
-
-    if (verdictLevels.entry != null) {
-      entryLine = priceSeries.createPriceLine({
-        price: verdictLevels.entry,
-        color: 'rgba(251,191,36,0.9)',
-        lineWidth: 1, lineStyle: 0,
-        axisLabelVisible: true, title: 'ENTRY',
-      });
-    }
-    if (verdictLevels.target != null) {
-      targetLine = priceSeries.createPriceLine({
-        price: verdictLevels.target,
-        color: 'rgba(38,166,154,0.9)',
-        lineWidth: 1, lineStyle: 1,
-        axisLabelVisible: true, title: 'TARGET',
-      });
-    }
-    if (verdictLevels.stop != null) {
-      stopLine = priceSeries.createPriceLine({
-        price: verdictLevels.stop,
-        color: 'rgba(239,83,80,0.9)',
-        lineWidth: 1, lineStyle: 1,
-        axisLabelVisible: true, title: 'STOP',
-      });
-    }
-  }
-
-  function clearLiqPriceLines() {
-    if (!priceSeries) return;
-    for (const pl of liqPriceLines) {
-      try {
-        priceSeries.removePriceLine(pl);
-      } catch {
-        /* removed with chart */
-      }
-    }
-    liqPriceLines = [];
+    priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+    priceLineMgr.updateVerdictLevels(verdictLevels);
   }
 
   // W-0210 Layer 2: Whale liquidation price lines
-  function clearWhalePriceLines() {
-    if (!priceSeries) return;
-    for (const pl of whalePriceLines) {
-      try { priceSeries.removePriceLine(pl); } catch { /* removed with chart */ }
-    }
-    whalePriceLines = [];
-  }
-
   function applyWhalePriceLines() {
-    clearWhalePriceLines();
-    if (!priceSeries) return;
-    const positions = $whaleStore.positions;
-    // Only show whales with known liquidation prices
-    const withLiq = positions.filter(p => p.liquidationPrice != null && Number.isFinite(p.liquidationPrice!));
-    // Show top 3 by sizeUsd
-    const top3 = [...withLiq].sort((a, b) => b.sizeUsd - a.sizeUsd).slice(0, 3);
-    for (const pos of top3) {
-      const liqPrice = pos.liquidationPrice!;
-      const col = pos.netPosition === 'long' ? 'rgba(248,113,113,0.5)' : 'rgba(52,211,153,0.5)';
-      const pl = priceSeries.createPriceLine({
-        price: liqPrice,
-        color: col,
-        lineWidth: 1,
-        lineStyle: 3, // dotted
-        axisLabelVisible: false,
-        title: `🐋 ${pos.address}`,
-      });
-      whalePriceLines.push(pl);
-    }
+    priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+    // Filter out 'unknown' netPosition — PriceLineManager only accepts 'long' | 'short'
+    const knownPositions = $whaleStore.positions.filter(
+      (p): p is typeof p & { netPosition: 'long' | 'short' } => p.netPosition !== 'unknown',
+    );
+    priceLineMgr.applyWhaleLines(knownPositions);
   }
 
-  /** Nearest long/short liq + strongest cluster prices — same time axis as candles. */
+  /** Nearest long/short liq + strongest cluster prices — adapted from ChartBoard liqData shape. */
   function applyLiqPriceLines() {
-    clearLiqPriceLines();
-    if (!priceSeries || !liqData) return;
-
-    const addLine = (price: number, color: string, title: string, lw: 1 | 2) => {
-      const pl = priceSeries!.createPriceLine({
-        price,
-        color,
-        lineWidth: lw,
-        lineStyle: 2,
-        axisLabelVisible: title.length > 0,
-        title,
-      });
-      liqPriceLines.push(pl);
-    };
-
-    if (liqData.nearestLong?.price != null && Number.isFinite(liqData.nearestLong.price)) {
-      addLine(liqData.nearestLong.price, 'rgba(248,113,113,0.92)', 'L-LIQ', 2);
+    priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+    if (!liqData) {
+      priceLineMgr.clearLiqLines();
+      return;
     }
-    if (liqData.nearestShort?.price != null && Number.isFinite(liqData.nearestShort.price)) {
-      addLine(liqData.nearestShort.price, 'rgba(52,211,153,0.92)', 'S-LIQ', 2);
-    }
-
-    const clusters = [...(liqData.clusters ?? [])].sort((a, b) => b.usd - a.usd).slice(0, 3);
+    // Adapt ChartBoard's liqData (clusters[] with usd/liquidatedSide) to LiqData shape
+    const clusters = [...(liqData.clusters ?? [])].sort((a, b) => b.usd - a.usd);
     const used = new Set<number>();
     for (const nl of [liqData.nearestLong, liqData.nearestShort]) {
       if (nl?.price != null) used.add(Math.round(nl.price * 100));
     }
-    for (const c of clusters) {
-      const key = Math.round(c.price * 100);
-      if (used.has(key)) continue;
-      used.add(key);
-      const a = 0.35 + Math.min(0.45, (c.usd / 500000) * 0.45);
-      const col = c.liquidatedSide === 'long' ? `rgba(248,113,113,${a})` : `rgba(52,211,153,${a})`;
-      addLine(c.price, col, '', 1);
-    }
+    const strongestClusters = clusters
+      .filter((c) => {
+        const key = Math.round(c.price * 100);
+        if (used.has(key)) return false;
+        used.add(key);
+        return true;
+      })
+      .slice(0, 4)
+      .map((c) => ({
+        price: c.price,
+        side: c.liquidatedSide as 'long' | 'short',
+        totalUsd: c.usd,
+      }));
+    priceLineMgr.applyLiqLines({
+      nearestLong: liqData.nearestLong ?? undefined,
+      nearestShort: liqData.nearestShort ?? undefined,
+      strongestClusters,
+    });
   }
 
   // ── Time scale sync ────────────────────────────────────────────────────────
@@ -1568,7 +1460,7 @@
     mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (!range) return;
       refreshCaptureWindowSummary();
-      if (range.from < LAZY_TRIGGER_BARS) void loadMoreHistory();
+      if (range.from < LAZY_TRIGGER_BARS) void feed.loadMoreHistory();
     });
   }
 
@@ -1592,8 +1484,8 @@
   }
 
   function destroyCharts() {
-    clearLiqPriceLines();
-    clearWhalePriceLines();
+    priceLineMgr.clearAll();
+    priceLineMgr = new PriceLineManager(); // reset for next chart instance
     // W-0210: destroy alpha overlay before removing series
     _alphaOverlay?.destroy();
     _alphaOverlay = null;
@@ -1605,7 +1497,6 @@
     priceSeries = null;
     candleMarkerApi = null;
     candleSeriesForAnnotations = null;
-    entryLine = targetLine = stopLine = null;
     liqLongSeries = null;
     liqShortSeries = null;
     panePositions = { rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1 };
@@ -1740,7 +1631,7 @@
     void tf;
     void emaTf;
     void initialData;
-    void loadData();
+    void feed.loadData();
   });
 
   // WebSocket real-time candle feed — reconnects when symbol or tf changes.
@@ -1775,6 +1666,7 @@
     void showCVD;
     void showMACD;
     void chartMode;
+    void priceScaleMode;
     void cvdDivergence;
     void derivativesOnMain;
     void showComparison;
@@ -1819,23 +1711,7 @@
     }
   });
 
-  // Close indicators panel on outside click (deferred so the opening click does not close it).
-  $effect(() => {
-    if (!studiesPanelOpen || typeof document === 'undefined') return;
-    const onDocClick = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node) || !studiesWrapEl?.contains(t)) {
-        studiesPanelOpen = false;
-      }
-    };
-    const id = window.setTimeout(() => {
-      document.addEventListener('click', onDocClick, true);
-    }, 0);
-    return () => {
-      window.clearTimeout(id);
-      document.removeEventListener('click', onDocClick, true);
-    };
-  });
+
 </script>
 
 <div
@@ -1850,127 +1726,28 @@
   <ChartToolbar {tf} onTfChange={selectTf} />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
-  <div class="chart-header chart-header--tv">
-    <div class="tv-row tv-row--top">
-      <!-- Single compact toolbar: venue tag + regime (unique to this pane) +
-           chart mode + studies popover + capture controls. Price/%/TF are
-           handled by the global CommandBar directly above. -->
-      <div class="chart-symbol tv-symbol-cluster chart-symbol--compact">
-        <span class="sym-quote">PERP</span>
-        {#if quantRegime?.label}
-          <span class="sym-regime-pill" data-tone={quantRegime.tone}>{quantRegime.label}</span>
-        {/if}
-      </div>
-
-      <div class="tv-actions">
-        <div class="mode-switch">
-          <button class="mode-btn" class:active={chartMode === 'candle'} onclick={() => { chartMode = 'candle'; }}>Candles</button>
-          <button class="mode-btn" class:active={chartMode === 'line'} onclick={() => { chartMode = 'line'; }}>Line</button>
-        </div>
-      </div>
-      <!-- Studies / capture / save actions inline on the same row -->
-      <!-- (tv-studies-wrap and following siblings continue below inside tv-row--top) -->
-      <div class="tv-studies-wrap" bind:this={studiesWrapEl}>
-        <button
-          type="button"
-          class="tv-indicators-trigger"
-          class:is-open={studiesPanelOpen}
-          onclick={(e) => {
-            e.stopPropagation();
-            studiesPanelOpen = !studiesPanelOpen;
-          }}
-          aria-expanded={studiesPanelOpen}
-          aria-controls="tv-indicators-panel"
-          id="tv-indicators-trigger"
-        >
-          <span class="tv-indicators-glyph" aria-hidden="true">fx</span>
-          Indicators
-          {#if activeIndicatorCount > 0}
-            <span class="tv-ind-count">{activeIndicatorCount}</span>
-          {/if}
-        </button>
-        {#if studiesPanelOpen}
-          <div
-            class="tv-studies-panel"
-            id="tv-indicators-panel"
-            role="dialog"
-            aria-labelledby="tv-indicators-trigger"
-          >
-            <p class="tv-panel-baseline">Moving averages <strong>5 / 20 / 60</strong> are always drawn.</p>
-
-            <label class="tv-search-wrap" for="tv-study-search">
-              <span class="tv-study-sublabel">Search studies</span>
-              <input
-                id="tv-study-search"
-                class="tv-study-search"
-                type="search"
-                bind:value={studyQuery}
-                placeholder="EMA, VWAP, CVD, MACD..."
-              />
-            </label>
-
-            {#if studySections.length > 0}
-              {#each studySections as section (section.category)}
-                <section class="tv-panel-section" aria-label={section.category}>
-                  <h3 class="tv-panel-section-title">{section.category}</h3>
-                  {#each section.items as study (study.id)}
-                    <button
-                      type="button"
-                      class="tv-study-button"
-                      class:is-active={study.active}
-                      onclick={() => toggleStudy(study.id)}
-                    >
-                      <span class="tv-study-main">
-                        <strong>{study.label}</strong>
-                        <small>{study.description}</small>
-                      </span>
-                      <span class="tv-study-meta">
-                        {#if study.meta}
-                          <em>{study.meta}</em>
-                        {/if}
-                        <span class="tv-study-state">{study.active ? 'On' : 'Off'}</span>
-                      </span>
-                    </button>
-                    {#if study.id === 'ema' && showEMA && emaTfOptions.length > 0}
-                      <div class="tv-study-nested">
-                        <label class="tv-study-sublabel" for="tv-ema-tf">EMA resolution</label>
-                        <select id="tv-ema-tf" class="tv-panel-select" bind:value={emaTf}>
-                          <option value="">Same as chart</option>
-                          {#each emaTfOptions as et (et)}
-                            <option value={et}>{et}</option>
-                          {/each}
-                        </select>
-                        <p class="tv-study-help">Higher TF EMA is stepped onto chart bars to preserve the TradingView-style MTF read.</p>
-                      </div>
-                    {/if}
-                  {/each}
-                </section>
-              {/each}
-            {:else}
-              <div class="tv-study-empty">No matching studies. Try EMA, VWAP, RSI, MACD, CVD, or funding.</div>
-            {/if}
-          </div>
-        {/if}
-      </div>
-      <div class="capture-inline" aria-label="Visible capture window">
-        <span class="capture-kicker">CAPTURE</span>
-        <strong class="capture-label">{captureWindowLabel}</strong>
-        {#if captureBarCount !== null}
-          <span class="capture-meta">· {captureBarCount} bars</span>
-        {/if}
-      </div>
-      <div class="capture-actions">
-        <button class="capture-save-btn" onclick={handleSaveSetup} aria-label="Save current visible range">
-          Save Setup
-        </button>
-        {#if savedCaptureId}
-          <a class="capture-open-btn" href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}&autorun=1`}>
-            이거 찾아줘 →
-          </a>
-        {/if}
-      </div>
-    </div>
-  </div>
+  <ChartBoardHeader
+    {chartMode}
+    {priceScaleMode}
+    mainChart={mainChart}
+    quantRegime={quantRegime}
+    {studySections}
+    {activeIndicatorCount}
+    {studyQuery}
+    {showEMA}
+    {emaTfOptions}
+    {emaTf}
+    {captureWindowLabel}
+    {captureBarCount}
+    {savedCaptureId}
+    onChartModeChange={(mode) => { chartMode = mode; }}
+    onPriceScaleModeChange={(mode) => { priceScaleMode = mode; }}
+    onToggleStudy={(id) => toggleStudy(id)}
+    onSaveSetup={handleSaveSetup}
+    onEmaTfChange={(t) => { emaTf = t; }}
+    drawingToolsVisible={drawingToolsVisible}
+    onToggleDrawingTools={() => { drawingToolsVisible = !drawingToolsVisible; }}
+  />
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
   {#if loading}
@@ -1986,9 +1763,22 @@
   {:else if error}
     <div class="chart-state error">
       <span>! {error}</span>
-      <button onclick={loadData}>Retry</button>
+      <button onclick={() => void feed.loadData()}>Retry</button>
     </div>
   {:else}
+    <!-- W-0289: Drawing toolbar (left of chart) -->
+    {#if drawingToolsVisible}
+      <DrawingToolbar
+        activeTool={drawingActiveTool}
+        onSelectTool={(t) => {
+          drawingActiveTool = t;
+          drawingMgr?.setTool(t);
+        }}
+        onClearAll={() => drawingMgr?.clearAll()}
+        onDeleteSelected={() => drawingMgr?.deleteSelected()}
+      />
+    {/if}
+
     <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
@@ -2003,6 +1793,10 @@
       All panes share crosshair + time axis natively (v5.1 pane API).
     -->
     <div class="pane-main multi-pane-host" bind:this={mainEl}>
+      <!-- W-0289: Drawing overlay canvas -->
+      {#if drawingToolsVisible && drawingMgr}
+        <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
+      {/if}
       <!--
         Per-pane info bars — TradingView × Santiment style chips. Positioned
         as overlays so the chart owns the pane geometry; the bars float on top.
@@ -2214,49 +2008,7 @@
     z-index: 1;
   }
 
-  /* ── Toolbar (TV-style tiers) ── */
-  .chart-header {
-    flex-shrink: 0;
-  }
-  .chart-header--tv {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: 6px 10px 8px;
-    border-bottom: 1px solid rgba(42, 46, 57, 0.95);
-    background: #131722;
-    position: relative;
-    z-index: 20;
-  }
-  .tv-row {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-  }
-  .tv-row--top {
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .tv-symbol-cluster {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .tv-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-  .tv-row--compact {
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(42, 46, 57, 0.85);
-    gap: 10px;
-    flex-wrap: nowrap;
-  }
+  /* ── TF scroll (ChartToolbar) ── */
   .tf-scroll {
     display: flex;
     flex-wrap: nowrap;
@@ -2269,327 +2021,12 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
   }
-  .capture-inline {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    min-width: 0;
-    flex: 1 1 auto;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-  .capture-inline .capture-kicker {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    color: rgba(177, 181, 189, 0.5);
-  }
-  .capture-inline .capture-label {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(247, 242, 234, 0.82);
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .capture-inline .capture-meta {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    color: rgba(99, 179, 237, 0.68);
-  }
-  .capture-actions {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 0;
-  }
   .tf-scroll::-webkit-scrollbar {
     height: 4px;
   }
   .tf-scroll::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.12);
     border-radius: 2px;
-  }
-  /* legacy selectors removed — compact row now owns these styles */
-  .capture-save-btn {
-    padding: 6px 12px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    font-weight: 700;
-    background: rgba(38, 166, 154, 0.16);
-    border: 1px solid rgba(38, 166, 154, 0.36);
-    color: #7ad5c2;
-    border-radius: 4px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.12s ease;
-  }
-  .capture-save-btn:hover {
-    background: rgba(38, 166, 154, 0.24);
-    border-color: rgba(38, 166, 154, 0.52);
-    color: #a7efe0;
-  }
-  .capture-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .capture-open-btn {
-    padding: 6px 12px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    font-weight: 700;
-    color: #9ac3ff;
-    background: rgba(99, 179, 237, 0.12);
-    border: 1px solid rgba(99, 179, 237, 0.28);
-    border-radius: 4px;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  .capture-open-btn:hover {
-    background: rgba(99, 179, 237, 0.18);
-    border-color: rgba(99, 179, 237, 0.4);
-  }
-  .tv-studies-wrap {
-    position: relative;
-    flex-shrink: 0;
-  }
-  .tv-indicators-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    font-weight: 600;
-    color: #d1d4dc;
-    background: #1e222d;
-    border: 1px solid #363a45;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.12s ease, border-color 0.12s ease;
-  }
-  .tv-indicators-trigger:hover {
-    background: #2a2e39;
-    border-color: #434651;
-  }
-  .tv-indicators-trigger.is-open {
-    background: #2962ff;
-    border-color: #2962ff;
-    color: #fff;
-  }
-  .tv-indicators-glyph {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    opacity: 0.9;
-  }
-  .tv-ind-count {
-    min-width: 18px;
-    padding: 0 5px;
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 16px;
-    text-align: center;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.12);
-    color: inherit;
-  }
-  .tv-indicators-trigger.is-open .tv-ind-count {
-    background: rgba(255, 255, 255, 0.22);
-  }
-  .tv-studies-panel {
-    position: absolute;
-    left: 0;
-    top: calc(100% + 6px);
-    z-index: 50;
-    width: min(340px, calc(100vw - 32px));
-    max-height: min(70vh, 520px);
-    overflow-y: auto;
-    padding: 10px 12px 12px;
-    background: #1e222d;
-    border: 1px solid #363a45;
-    border-radius: 4px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
-  }
-  .tv-search-wrap {
-    display: grid;
-    gap: 4px;
-    margin-bottom: 10px;
-  }
-  .tv-study-search {
-    width: 100%;
-    padding: 7px 9px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    color: #d1d4dc;
-    background: #131722;
-    border: 1px solid #363a45;
-    border-radius: 3px;
-  }
-  .tv-study-search:focus {
-    outline: none;
-    border-color: #2962ff;
-  }
-  .tv-panel-baseline {
-    margin: 0 0 10px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    line-height: 1.35;
-    color: rgba(177, 181, 189, 0.72);
-  }
-  .tv-panel-baseline strong {
-    color: #b2b5be;
-    font-weight: 600;
-  }
-  .tv-panel-section {
-    padding-top: 8px;
-    margin-top: 8px;
-    border-top: 1px solid rgba(54, 58, 69, 0.95);
-  }
-  .tv-panel-section:first-of-type {
-    padding-top: 0;
-    margin-top: 0;
-    border-top: none;
-  }
-  .tv-panel-section-title {
-    margin: 0 0 8px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(177, 181, 189, 0.55);
-  }
-  .tv-study-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    color: #d1d4dc;
-    cursor: pointer;
-    user-select: none;
-  }
-  .tv-study-nested {
-    margin: -4px 0 10px 24px;
-    padding: 8px 10px;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(54, 58, 69, 0.9);
-    border-radius: 3px;
-  }
-  .tv-study-sublabel {
-    display: block;
-    margin-bottom: 4px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: rgba(177, 181, 189, 0.5);
-  }
-  .tv-panel-select {
-    width: 100%;
-    padding: 5px 8px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    color: #d1d4dc;
-    background: #131722;
-    border: 1px solid #363a45;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-  .tv-panel-select:focus {
-    outline: none;
-    border-color: #2962ff;
-  }
-  .tv-study-help {
-    margin: 6px 0 0;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    line-height: 1.35;
-    color: rgba(177, 181, 189, 0.45);
-  }
-  .tv-study-button {
-    width: 100%;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 8px;
-    padding: 8px 9px;
-    text-align: left;
-    background: rgba(19, 23, 34, 0.75);
-    border: 1px solid rgba(54, 58, 69, 0.95);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.12s ease, border-color 0.12s ease;
-  }
-  .tv-study-button:hover {
-    background: rgba(30, 34, 45, 0.95);
-    border-color: rgba(99, 179, 237, 0.24);
-  }
-  .tv-study-button.is-active {
-    background: rgba(41, 98, 255, 0.12);
-    border-color: rgba(41, 98, 255, 0.45);
-  }
-  .tv-study-main {
-    display: grid;
-    gap: 3px;
-    min-width: 0;
-  }
-  .tv-study-main strong,
-  .tv-study-main small,
-  .tv-study-meta em,
-  .tv-study-state,
-  .tv-study-empty {
-    font-family: var(--sc-font-mono, monospace);
-  }
-  .tv-study-main strong {
-    font-size: 11px;
-    color: #f1f3f6;
-    font-weight: 600;
-  }
-  .tv-study-main small {
-    font-size: 9px;
-    line-height: 1.35;
-    color: rgba(177, 181, 189, 0.58);
-  }
-  .tv-study-meta {
-    display: grid;
-    justify-items: end;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-  .tv-study-meta em {
-    font-style: normal;
-    font-size: 8px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: rgba(177, 181, 189, 0.48);
-  }
-  .tv-study-state {
-    min-width: 30px;
-    padding: 2px 6px;
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(239, 242, 247, 0.78);
-    border: 1px solid rgba(54, 58, 69, 0.95);
-    border-radius: 999px;
-    text-align: center;
-  }
-  .tv-study-button.is-active .tv-study-state {
-    background: rgba(41, 98, 255, 0.2);
-    border-color: rgba(99, 179, 237, 0.35);
-    color: #dce8ff;
-  }
-  .tv-study-empty {
-    padding: 10px 0 2px;
-    font-size: 10px;
-    line-height: 1.4;
-    color: rgba(177, 181, 189, 0.56);
   }
   .tv-context-strip {
     border-top: 1px solid rgba(42, 46, 57, 0.85);
@@ -2667,164 +2104,6 @@
     flex-direction: column;
     gap: 4px;
   }
-
-  .chart-symbol {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 8px 14px;
-    min-width: 0;
-  }
-  .sym-block {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .price-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-  .sym-kicker {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 7px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.32);
-  }
-  .sym-metrics {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 5px 8px;
-    min-width: 0;
-  }
-  .metric-label {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 7px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.35);
-    margin-right: 3px;
-  }
-  .sym-change-muted {
-    opacity: 0.88;
-  }
-  .sym-name {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: 0.04em;
-  }
-  .sym-quote {
-    font-weight: 400;
-    color: rgba(255,255,255,0.35);
-    font-size: 10px;
-  }
-  .sym-price {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    color: rgba(255,255,255,0.65);
-  }
-  .sym-change,
-  .sym-chip {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-  }
-  .sym-change { font-weight: 700; }
-  .price-up { color: #34c470; }
-  .price-down { color: #e85555; }
-  .sym-regime-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 6px;
-    border-radius: 999px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.03);
-    color: rgba(239, 242, 247, 0.78);
-  }
-  .sym-regime-pill[data-tone='bull'] {
-    color: #8fdd9d;
-    border-color: rgba(74, 222, 128, 0.18);
-    background: rgba(74, 222, 128, 0.08);
-  }
-  .sym-regime-pill[data-tone='bear'] {
-    color: #f19999;
-    border-color: rgba(248, 113, 113, 0.18);
-    background: rgba(248, 113, 113, 0.08);
-  }
-  .sym-regime-pill[data-tone='warn'] {
-    color: #e9c167;
-    border-color: rgba(251, 191, 36, 0.18);
-    background: rgba(251, 191, 36, 0.08);
-  }
-  .sym-chip {
-    color: rgba(255,255,255,0.48);
-    padding: 2px 6px;
-    border-radius: 3px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.06);
-  }
-
-  .chart-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .mode-switch {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 3px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-  }
-  .mode-btn {
-    padding: 2px 6px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    background: transparent;
-    border: 1px solid transparent;
-    color: rgba(255,255,255,0.35);
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-  .mode-btn.active {
-    color: #63b3ed;
-    background: rgba(99,179,237,0.1);
-    border-color: rgba(99,179,237,0.25);
-  }
-
-  /* TF buttons */
-  .tf-group {
-    display: flex;
-    gap: 1px;
-  }
-  .tf-btn {
-    padding: 2px 5px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.06);
-    color: rgba(255,255,255,0.35);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.1s;
-    letter-spacing: 0.02em;
-  }
-  .tf-btn:hover  { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.15); }
-  .tf-btn.active { background: rgba(255,255,255,0.09); color: #fff; border-color: rgba(255,255,255,0.22); }
 
   /* ── States ── */
   .chart-state {

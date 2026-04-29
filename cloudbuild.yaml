@@ -41,4 +41,4 @@ substitutions:
   _SERVICE_NAME: cogotchi
   _SERVICE_REGION: asia-southeast1
   _APP_ORIGIN: https://app.cogotchi.dev
-  _ALLOWED_HOSTS: cogotchi-103912432221.asia-southeast1.run.app
+  _ALLOWED_HOSTS: cogotchi-3u7pi6ndna-as.a.run.app

@@ -112,7 +112,7 @@ def run_pattern_search_refinement_once(
         updated_at=refinement_run.updated_at,
     )
 
-    # V-track G1~G7 validation (W-0280) — log-only, Phase 1
+    # V-track G1~G7 validation (W-0280) — log + persist, Phase 2
     gate_v2_result = None
     try:
         from research.validation.runner import run_full_validation
@@ -124,6 +124,11 @@ def run_pattern_search_refinement_once(
                 gate_v2_result.overall_pass,
                 gate_v2_result.all_new_pass,
             )
+            try:
+                from research.validation.actuator import apply_gate_v2_decision
+                apply_gate_v2_decision(search_run.research_run_id, gate_v2_result.overall_pass)
+            except Exception as _act_exc:
+                log.warning("gate_v2_decision persist failed: %s", _act_exc)
     except Exception as _exc:
         log.warning("V-track gate_v2 skipped: %s", _exc)
 

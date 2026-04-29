@@ -116,7 +116,7 @@ class TestValidationPipelineConfig:
         assert "B0" in cfg.baselines
         assert cfg.bootstrap_n_iter == 1000
         assert cfg.bh_alpha == 0.05
-        assert cfg.n_trials == 15
+        assert cfg.n_trials == 500
 
     def test_cv_config_default(self):
         cfg = ValidationPipelineConfig()

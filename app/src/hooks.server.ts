@@ -15,7 +15,7 @@ import { readRequestHost, isHostAllowed } from '$lib/server/hostSecurity';
 import { runMutatingApiOriginGuard } from '$lib/server/originGuard';
 import { assertAppServerRuntimeSecurity } from '$lib/server/runtimeSecurity';
 import { shouldApplyNoIndexHeader } from '$lib/seo/policy';
-import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { getAuthUserFromCookies, checkBetaAllowlist } from '$lib/server/authGuard';
 
 // Immutable asset path pattern (Vite hashed filenames)
 const IMMUTABLE_ASSET = /\/_app\/immutable\//;
@@ -80,14 +80,25 @@ const PUBLIC_API_PREFIXES = [
   '/api/patterns/terminal',
   '/api/senti/',
   '/api/doctrine',
+  '/api/beta/waitlist',   // unauthenticated waitlist signup (beta-pending users)
+  '/api/patterns/transitions', // B4: read-only transitions feed
 ];
+
+const PUBLIC_STATUS_PATHS = ['/status'];
 
 function isPublicApiPath(pathname: string): boolean {
   return PUBLIC_API_PREFIXES.some(prefix => pathname.startsWith(prefix));
 }
 
 function isPublicPagePath(pathname: string): boolean {
-  return pathname === '/' || pathname === '/cogochi' || pathname === '/healthz' || pathname === '/readyz';
+  return (
+    pathname === '/' ||
+    pathname === '/cogochi' ||
+    pathname === '/healthz' ||
+    pathname === '/readyz' ||
+    pathname === '/status' ||
+    PUBLIC_STATUS_PATHS.some(p => pathname.startsWith(p))
+  );
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -118,6 +129,17 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   event.locals.user = user;
+  event.locals.betaPending = false;
+
+  // B1: Beta allowlist gate — authenticated users must be in beta_allowlist.
+  // Applies to page routes only (not APIs, to preserve JSON error handling).
+  if (user && !isPublicPage && !isApiRoute) {
+    const allowed = await checkBetaAllowlist(user.wallet_address);
+    if (!allowed) {
+      event.locals.betaPending = true;
+      throw redirect(303, '/?auth=beta-pending');
+    }
+  }
 
   // ── Auth enforcement (server-side only — cannot be bypassed by client) ──
   if (!isPublicPage && !isApiRoute) {

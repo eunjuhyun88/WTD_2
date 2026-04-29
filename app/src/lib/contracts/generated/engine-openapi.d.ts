@@ -964,6 +964,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Recent Transitions
+         * @description Recent phase transitions, optionally filtered by symbol or pattern slug.
+         *
+         *     B4: Feeds the transitions panel on /patterns and /patterns/[slug] detail pages.
+         */
+        get: operations["get_recent_transitions_patterns_transitions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/candidates": {
         parameters: {
             query?: never;
@@ -1400,6 +1422,26 @@ export interface paths {
          * @description Build benchmark pack and run a full benchmark search from a capture.
          */
         post: operations["run_benchmark_search_from_capture_patterns__slug__benchmark_search_from_capture_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/verify-paper": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Paper
+         * @description Run paper-trading verification for a pattern using recorded outcome ledger.
+         */
+        post: operations["verify_paper_patterns__slug__verify_paper_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1906,6 +1948,29 @@ export interface paths {
         };
         /** Flywheel Health */
         get: operations["flywheel_health_observability_flywheel_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/observability/agent-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Agent Status
+         * @description Real-time harness observability — scheduler jobs + pattern scan state.
+         *
+         *     Feeds the /status page and CI canary checks.
+         *     Returns scheduler job list + flywheel health without full KPI compute.
+         */
+        get: operations["agent_status_observability_agent_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6607,6 +6672,41 @@ export interface operations {
             };
         };
     };
+    get_recent_transitions_patterns_transitions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                symbol?: string | null;
+                slug?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_all_candidates_patterns_candidates_get: {
         parameters: {
             query?: never;
@@ -7338,6 +7438,39 @@ export interface operations {
                 "application/json": components["schemas"]["_BenchmarkSearchBody"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_paper_patterns__slug__verify_paper_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8233,6 +8366,28 @@ export interface operations {
         };
     };
     flywheel_health_observability_flywheel_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    agent_status_observability_agent_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9171,9 +9326,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": unknown;
                 };
             };
         };

@@ -414,6 +414,7 @@ class TestProductionFailFast:
         monkeypatch.setenv("K_SERVICE", "cogotchi")
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        monkeypatch.delenv("FORCE_FILE_LEDGER", raising=False)
 
         with pytest.raises(RuntimeError, match="Judgment ledger data would be lost"):
             get_ledger_store()
@@ -435,6 +436,7 @@ class TestProductionFailFast:
         monkeypatch.delenv("K_SERVICE", raising=False)
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        monkeypatch.delenv("FORCE_FILE_LEDGER", raising=False)
 
         with pytest.raises(RuntimeError):
             get_ledger_store()

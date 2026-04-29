@@ -19,34 +19,44 @@ Usage::
 from __future__ import annotations
 
 import logging
+import time as _time
 
 log = logging.getLogger(__name__)
+
+_BTC_RETURNS_CACHE: "tuple[float, pd.Series] | None" = None
+_BTC_RETURNS_TTL = 3600  # 1 hour — 1d candles refresh once daily is sufficient
 
 
 def _fetch_btc_returns() -> "pd.Series | None":
     """Load BTCUSDT 1d klines and compute 30-day rolling return (%).
 
-    Used to activate V-05 regime-conditional wiring in production.
-    Returns ``None`` on CacheMiss or any failure (V-05 silently skipped).
+    Uses a module-level 1-hour TTL cache to avoid hitting Binance API
+    on every validation call. offline=False allows Binance fetch on Cloud Run
+    (which has no persistent disk and would always raise CacheMiss otherwise).
 
     Returns:
-        UTC-indexed ``pd.Series`` where each value is the 30-day percentage
-        return of BTC at that timestamp, or ``None`` if data unavailable.
+        UTC-indexed pd.Series of 30-day BTC percentage returns, or None on failure.
     """
+    global _BTC_RETURNS_CACHE
+    if _BTC_RETURNS_CACHE is not None:
+        cached_ts, cached_series = _BTC_RETURNS_CACHE
+        if _time.time() - cached_ts < _BTC_RETURNS_TTL:
+            return cached_series
+
     try:
         import pandas as pd
-        from data_cache.loader import CacheMiss, load_klines
+        from data_cache.loader import load_klines
 
-        klines = load_klines("BTCUSDT", "1d", offline=True)
+        klines = load_klines("BTCUSDT", "1d", offline=False)   # ← FIXED: fetch from Binance if not cached
         if klines.empty or "close" not in klines.columns:
             return None
         close = klines["close"].sort_index()
-        # 30-day rolling return: (close_t / close_{t-30} - 1) * 100
         returns = (close / close.shift(30) - 1) * 100.0
-        # Ensure UTC-aware index for asof() in pipeline.py
         if returns.index.tzinfo is None:
             returns.index = returns.index.tz_localize("UTC")
-        return returns.dropna()
+        series = returns.dropna()
+        _BTC_RETURNS_CACHE = (_time.time(), series)
+        return series
     except Exception as exc:
         log.debug("_fetch_btc_returns: unavailable — %s", exc)
         return None

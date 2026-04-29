@@ -87,6 +87,22 @@ FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION
 }
 FEATURE_MATERIALIZATION_INTERVAL = int(os.environ.get("FEATURE_MATERIALIZATION_INTERVAL_SECONDS", "900"))
 
+# A8: Beta job gates — non-core jobs disabled by default for beta deployments.
+# Set ENABLE_<JOB>=true to re-enable after beta.
+_BETA_JOB_FLAGS = {
+    "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "false"),
+    "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "false"),
+    "fetch_okx_signals": os.environ.get("ENABLE_FETCH_OKX_SIGNALS_JOB", "false"),
+    "corpus_bridge_sync": os.environ.get("ENABLE_CORPUS_BRIDGE_SYNC_JOB", "false"),
+    "feature_windows_prefetch": os.environ.get("ENABLE_FEATURE_WINDOWS_PREFETCH_JOB", "false"),
+    "alpha_observer_cold": os.environ.get("ENABLE_ALPHA_OBSERVER_COLD_JOB", "false"),
+    "alpha_observer_warm": os.environ.get("ENABLE_ALPHA_OBSERVER_WARM_JOB", "false"),
+}
+
+
+def _job_enabled(job_id: str) -> bool:
+    return _BETA_JOB_FLAGS.get(job_id, "true").strip().lower() in {"1", "true", "yes", "on"}
+
 SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
@@ -315,41 +331,43 @@ def start_scheduler() -> None:
     )
 
     # Job 3b: Outcome resolver for user captures (flywheel axis 1→2) — hourly
-    _scheduler.add_job(
-        _outcome_resolver_job,
-        trigger="interval",
-        seconds=3600,
-        id="outcome_resolver",
-        name="Capture outcome resolver",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=300,
-    )
+    if _job_enabled("outcome_resolver"):
+        _scheduler.add_job(
+            _outcome_resolver_job,
+            trigger="interval",
+            seconds=3600,
+            id="outcome_resolver",
+            name="Capture outcome resolver",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
 
     # Job 3c: Refinement trigger (flywheel axis 3→4) — daily, data-driven
-    # Fires pattern_refinement only when verdict_count >= 10 AND days_since >= 7.
-    _scheduler.add_job(
-        _refinement_trigger_job,
-        trigger="interval",
-        seconds=86400,
-        id="refinement_trigger",
-        name="Data-driven refinement trigger",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=3600,
-    )
+    if _job_enabled("refinement_trigger"):
+        _scheduler.add_job(
+            _refinement_trigger_job,
+            trigger="interval",
+            seconds=86400,
+            id="refinement_trigger",
+            name="Data-driven refinement trigger",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
 
     # Job 4: OKX Smart Money signals cache refresh (W-0109) — every 6 hours
-    _scheduler.add_job(
-        _fetch_okx_signals_job,
-        trigger="interval",
-        seconds=21600,  # 6 hours
-        id="fetch_okx_signals",
-        name="OKX smart money signal fetcher",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=300,
-    )
+    if _job_enabled("fetch_okx_signals"):
+        _scheduler.add_job(
+            _fetch_okx_signals_job,
+            trigger="interval",
+            seconds=21600,  # 6 hours
+            id="fetch_okx_signals",
+            name="OKX smart money signal fetcher",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
 
     if PATTERN_REFINEMENT_ENABLED:
         _scheduler.add_job(
@@ -388,56 +406,56 @@ def start_scheduler() -> None:
         )
 
     # Job: Corpus bridge — FeatureMaterializationStore → SearchCorpusStore (every 30 min)
-    # Runs after feature_materialization (15 min) so corpus stays enriched.
-    # Always on — core search quality path.
-    _scheduler.add_job(
-        _corpus_bridge_sync_job,
-        trigger="interval",
-        seconds=1800,
-        id="corpus_bridge_sync",
-        name="Corpus bridge enrichment (40+ dims)",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=300,
-    )
+    if _job_enabled("corpus_bridge_sync"):
+        _scheduler.add_job(
+            _corpus_bridge_sync_job,
+            trigger="interval",
+            seconds=1800,
+            id="corpus_bridge_sync",
+            name="Corpus bridge enrichment (40+ dims)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
 
     # Job: Feature windows prefetcher — builds feature_windows.sqlite (every 6 hours)
-    # Powers similar.py Layer A/C enrichment (3D → 40+D).
-    # Always on — core search quality path.
-    _scheduler.add_job(
-        _feature_windows_prefetch_job,
-        trigger="interval",
-        seconds=21600,
-        id="feature_windows_prefetch",
-        name="Feature windows store prefetcher",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=600,
-    )
+    if _job_enabled("feature_windows_prefetch"):
+        _scheduler.add_job(
+            _feature_windows_prefetch_job,
+            trigger="interval",
+            seconds=21600,
+            id="feature_windows_prefetch",
+            name="Feature windows store prefetcher",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
+        )
 
     # Job: Alpha Universe COLD scanner — every 4 hours
-    _scheduler.add_job(
-        scan_alpha_observer_job,
-        trigger="interval",
-        seconds=14400,
-        id="alpha_observer_cold",
-        name="Alpha Universe COLD observer (4h)",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=600,
-    )
+    if _job_enabled("alpha_observer_cold"):
+        _scheduler.add_job(
+            scan_alpha_observer_job,
+            trigger="interval",
+            seconds=14400,
+            id="alpha_observer_cold",
+            name="Alpha Universe COLD observer (4h)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
+        )
 
     # Job: Alpha Universe WARM scanner — every 30 minutes (active phases only)
-    _scheduler.add_job(
-        scan_alpha_warm_job,
-        trigger="interval",
-        seconds=1800,
-        id="alpha_observer_warm",
-        name="Alpha Universe WARM observer (30min)",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=120,
-    )
+    if _job_enabled("alpha_observer_warm"):
+        _scheduler.add_job(
+            scan_alpha_warm_job,
+            trigger="interval",
+            seconds=1800,
+            id="alpha_observer_warm",
+            name="Alpha Universe WARM observer (30min)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=120,
+        )
 
     _scheduler.start()
     log.info(
@@ -474,3 +492,24 @@ def next_run_time() -> str | None:
     if job is None or job.next_run_time is None:
         return None
     return job.next_run_time.isoformat()
+
+
+def get_jobs_status() -> list[dict]:
+    """Return status snapshot of all registered APScheduler jobs.
+
+    Used by GET /api/agent-status for real-time harness observability.
+    Each entry: {id, name, next_run, pending, misfire_grace_time}.
+    """
+    if _scheduler is None:
+        return []
+    result = []
+    for job in _scheduler.get_jobs():
+        next_run = job.next_run_time.isoformat() if job.next_run_time else None
+        result.append({
+            "id": job.id,
+            "name": job.name,
+            "next_run": next_run,
+            "pending": job.pending,
+            "misfire_grace_time": job.misfire_grace_time,
+        })
+    return result

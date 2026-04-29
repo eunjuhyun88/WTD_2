@@ -6,13 +6,12 @@
    * historical windows in the feature_windows store using the 3-layer
    * hybrid ranker (feature + LCS sequence + context).
    */
+  import { onMount } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
-  import SearchResultList from '$lib/components/search/SearchResultList.svelte';
-  import type { SearchResultCardProps } from '$lib/components/search/SearchResultCard.svelte';
+  import SearchResultMiniChart from '$lib/components/search/SearchResultMiniChart.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface SimilarCandidate {
-    capture_id?: string;
     symbol: string;
     timeframe: string;
     bar_ts_ms: number;
@@ -24,7 +23,6 @@
     observed_phase_path: string[];
     matched_phase_path: string[];
     missing_phases: string[];
-    outcome?: string | null;
   }
 
   interface SearchResult {
@@ -74,6 +72,37 @@
     2
   );
 
+  // ── Catalog picker ─────────────────────────────────────────────────────────
+  // Fetched from /search/catalog on mount — unique pattern families for quick-pick
+  let catalogPatterns = $state<string[]>([]);
+  let selectedPattern = $state('');
+
+  async function loadCatalog() {
+    try {
+      const res = await fetch('/api/search/catalog?limit=500');
+      if (!res.ok) return;
+      const body: { windows: Array<{ pattern_slug?: string; source?: string }> } = await res.json();
+      const seen = new Set<string>();
+      for (const w of body.windows ?? []) {
+        const slug = w.pattern_slug ?? w.source ?? '';
+        if (slug && !seen.has(slug)) { seen.add(slug); catalogPatterns.push(slug); }
+      }
+    } catch { /* silent — picker is optional */ }
+  }
+
+  function onPatternPick() {
+    if (!selectedPattern) return;
+    try {
+      const draft = JSON.parse(draftJson);
+      draft.pattern_family = selectedPattern;
+      draft.pattern_label = selectedPattern.replace(/_/g, ' ');
+      draftJson = JSON.stringify(draft, null, 2);
+    } catch {
+      // if JSON is broken, just set a minimal draft
+      draftJson = JSON.stringify({ schema_version: 1, pattern_family: selectedPattern, phases: [] }, null, 2);
+    }
+  }
+
   // ── State ──────────────────────────────────────────────────────────────────
   let draftJson = $state(DEFAULT_DRAFT);
   let topK = $state(10);
@@ -82,22 +111,6 @@
   let result = $state<SearchResult | null>(null);
   let error = $state<string | null>(null);
   let parseError = $state<string | null>(null);
-
-  // ── Derived card items for SearchResultList ────────────────────────────────
-  const cardItems: SearchResultCardProps[] = $derived(
-    result == null
-      ? []
-      : result.candidates.map((c) => ({
-          capture_id: c.capture_id,
-          pattern_name: result!.spec_pattern_family.replace(/_/g, ' '),
-          similarity: c.final_score,
-          phase: c.observed_phase_path.length ? c.observed_phase_path.join(' → ') : '—',
-          outcome: c.outcome ?? null,
-          timestamp: c.bar_iso,
-          symbol: c.symbol,
-          timeframe: c.timeframe,
-        }))
-  );
 
   // ── Search ─────────────────────────────────────────────────────────────────
   async function runSearch() {
@@ -132,6 +145,9 @@
       loading = false;
     }
   }
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
+  onMount(() => { loadCatalog(); });
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   function scoreBar(value: number): string {
@@ -207,6 +223,23 @@
       </div>
 
       <div class="surface-card query-card">
+        {#if catalogPatterns.length > 0}
+          <div class="catalog-picker">
+            <label class="field-label" for="catalog-select">패턴 빠른 선택</label>
+            <select
+              id="catalog-select"
+              class="catalog-select"
+              bind:value={selectedPattern}
+              onchange={onPatternPick}
+            >
+              <option value="">— 패턴 선택 —</option>
+              {#each catalogPatterns as slug}
+                <option value={slug}>{slug.replace(/_/g, ' ')}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
+
         <label class="field-label" for="draft-input">pattern_draft JSON</label>
         <textarea
           id="draft-input"
@@ -273,28 +306,31 @@
             </p>
           </div>
         {:else}
-          <!-- Card view: similarity score + Watch button (Top 20, 10 per page) -->
-          <div class="surface-card results-cards">
-            <div class="view-label">Card View — Top 20 · 10 per page</div>
-            <SearchResultList items={cardItems} maxResults={20} pageSize={10} />
-          </div>
-
-          <!-- Table view: detailed score breakdown -->
           <div class="surface-card results-shell">
-            <div class="view-label">Score Breakdown</div>
             <div class="results-table">
               <div class="table-header">
+                <span class="col-chart">차트</span>
                 <span>Symbol</span>
                 <span>TF</span>
                 <span>Date</span>
                 <span class="col-score">Feature</span>
-                <span class="col-score">Sequence</span>
-                <span class="col-score">Context</span>
+                <span class="col-score">Seq</span>
                 <span class="col-score">Final</span>
                 <span>Phases</span>
               </div>
               {#each result.candidates as c, i}
                 <div class="table-row" class:top-result={i === 0}>
+                  <span class="col-chart">
+                    {#if c.bar_ts_ms}
+                      <SearchResultMiniChart
+                        symbol={c.symbol}
+                        timeframe={c.timeframe}
+                        bar_ts_ms={c.bar_ts_ms}
+                      />
+                    {:else}
+                      <div class="no-chart">▤</div>
+                    {/if}
+                  </span>
                   <span class="row-sym">
                     <a href="/cogochi?symbol={c.symbol}">{symbolTicker(c.symbol)}</a>
                   </span>
@@ -302,7 +338,6 @@
                   <span class="row-date">{fmtDate(c.bar_iso)}</span>
                   <span class="row-score {scoreBar(c.feature_score)}">{fmtScore(c.feature_score)}</span>
                   <span class="row-score {scoreBar(c.sequence_score)}">{fmtScore(c.sequence_score)}</span>
-                  <span class="row-score {scoreBar(c.context_score)}">{fmtScore(c.context_score)}</span>
                   <span class="row-score final {scoreBar(c.final_score)}">{fmtScore(c.final_score)}</span>
                   <span class="row-phases">
                     {#if c.observed_phase_path.length}
@@ -461,21 +496,6 @@
     letter-spacing: 0.04em;
   }
 
-  .results-cards {
-    padding: 0;
-    overflow: hidden;
-  }
-
-  .view-label {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.2);
-    padding: 8px 14px 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  }
-
   .results-shell {
     padding: 0;
     overflow: hidden;
@@ -490,10 +510,27 @@
   .table-header,
   .table-row {
     display: grid;
-    grid-template-columns: 70px 44px 90px 60px 70px 60px 60px 1fr;
+    grid-template-columns: 190px 70px 44px 90px 60px 60px 60px 1fr;
     gap: 4px;
     padding: 8px 14px;
     align-items: center;
+  }
+
+  /* Mini chart column */
+  .col-chart {
+    display: flex;
+    align-items: center;
+  }
+  .no-chart {
+    width: 180px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0d1117;
+    border-radius: 6px;
+    font-size: 1.4rem;
+    opacity: 0.2;
   }
 
   .table-header {
@@ -556,11 +593,43 @@
 
   .col-score { text-align: right; }
 
+  /* Catalog picker */
+  .catalog-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .catalog-select {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.75);
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+    max-width: 400px;
+  }
+  .catalog-select:focus {
+    border-color: rgba(99, 179, 237, 0.4);
+  }
+  .catalog-select option {
+    background: #1a1f2e;
+  }
+
   @media (max-width: 768px) {
     .table-header,
     .table-row {
       grid-template-columns: 60px 36px 80px 50px 1fr;
     }
+    /* Hide chart column + score columns on mobile */
+    .table-header span:nth-child(1),
+    .table-row span:nth-child(1),
     .table-header span:nth-child(n + 6),
     .table-row span:nth-child(n + 6) {
       display: none;

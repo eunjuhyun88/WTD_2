@@ -22,6 +22,8 @@ dependencies = [
     "PyJWT[cryptography]>=2.8",
     "memkraft>=1.0.1",
     "anthropic>=0.25",
+    "duckdb>=1.0",
+    "pyarrow>=14.0",
 ]
 
 [project.optional-dependencies]

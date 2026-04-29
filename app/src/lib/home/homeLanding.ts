@@ -66,7 +66,15 @@ export const HOME_LEARNING_STEPS: LearningStep[] = [
 
 export const HOME_SURFACES: SurfaceCard[] = [
   {
-    label: '01 · TERMINAL',
+    label: '01 · PATTERNS',
+    title: 'Find the pattern',
+    copy: 'Live accumulation candidates, phase transitions, and hit rates across the full universe.',
+    path: '/patterns',
+    cta: 'surface_patterns',
+    actionLabel: 'View Pattern Engine'
+  },
+  {
+    label: '02 · TERMINAL',
     title: 'Capture it first',
     copy: 'Search the live scene and save the setup you want to keep.',
     path: '/cogochi',
@@ -74,20 +82,12 @@ export const HOME_SURFACES: SurfaceCard[] = [
     actionLabel: 'Open Terminal'
   },
   {
-    label: '02 · LAB',
+    label: '03 · LAB',
     title: 'Review the proof',
     copy: 'Inspect the run results and see whether the version actually improved.',
     path: '/lab',
     cta: 'surface_lab',
     actionLabel: 'Open Lab'
-  },
-  {
-    label: '03 · DASHBOARD',
-    title: 'Return to state',
-    copy: 'Saved setups and recent changes come back together in one place.',
-    path: '/dashboard',
-    cta: 'surface_dashboard',
-    actionLabel: 'Return to Dashboard'
   }
 ];
 

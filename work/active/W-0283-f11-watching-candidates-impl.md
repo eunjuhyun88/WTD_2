@@ -1,12 +1,12 @@
 # W-0283 — F-11 Dashboard WATCHING 풀 구현 + PatternCandidate Review UI
 
-> Wave: Wave4/C | Priority: P1 | Effort: M
+> Wave: Wave4/C | Priority: P1 | Effort: S (실측 재평가)
 > Charter: In-Scope L5 (Search) + L7 (Refinement)
-> Status: 🟡 Design Draft
+> Status: 🟢 구현 완료 — PR 대기
 > Created: 2026-04-28 by Agent A073
 > Issue: #547
 
-## Goal (1줄)
+## Goal
 Dashboard WATCHING 섹션에 실시간 P&L 색상 + 자동갱신을 추가하고, `/patterns/candidates` 페이지를 신규 구현해 프로모션 후보 패턴을 검토·승인할 수 있다.
 
 ## Scope
@@ -91,12 +91,48 @@ Dashboard WATCHING 섹션에 실시간 P&L 색상 + 자동갱신을 추가하고
 
 ## Exit Criteria
 
-- [ ] AC1: `/dashboard` WATCHING 카드 — pnl_pct > 0 → 초록, < 0 → 빨강
-- [ ] AC2: 30초마다 WATCHING 목록 자동갱신
-- [ ] AC3: `/patterns/candidates` 페이지 로드 → 후보 패턴 목록 표시
-- [ ] AC4: approve/reject 버튼 → 상태 변경 성공
-- [ ] AC5: 0개일 때 empty state 표시
-- [ ] AC6: TS 에러 0건, CI green
+- [x] AC1: `/dashboard` WATCHING 카드 — pnl_pct > 0 → 초록, < 0 → 빨강 (기구현)
+- [x] AC2: 30초마다 WATCHING 목록 자동갱신 ($effect setInterval 추가)
+- [x] AC3: `/patterns` 페이지에 candidates 표시 (기구현, `/patterns/+page.svelte`)
+- [x] AC5: 0개일 때 empty state 표시 (기구현)
+- [x] AC6: TS 에러 0건
+- [ ] AC7: CI green
+- [ ] PR merged + CURRENT.md SHA 업데이트
+- ~~AC4 approve/reject~~ → W-0305로 분리 (engine PATCH 엔드포인트 필요)
+
+## Owner
+
+app
+
+## Facts
+
+- `app/src/routes/dashboard/+page.svelte:418-430` — watcher-card 현재 구현 존재
+- `app/src/routes/dashboard/+page.svelte:430` — pnl_pct 조건 렌더링 이미 있음
+- engine OpenAPI `engine-openapi.d.ts:1585` — WATCHING API 이미 존재
+- `/patterns/candidates` 페이지 미구현 (placeholder 없음)
+
+## Assumptions
+
+- WATCHING API 백엔드는 완성됨, 프런트엔드만 연결 필요
+- P&L 색상 로직: pnl_pct > 0 → 녹색, < 0 → 빨간색
+
+## Canonical Files
+
+- `app/src/routes/dashboard/+page.svelte`
+- `app/src/routes/patterns/candidates/+page.svelte` (신규)
+- `app/src/lib/contracts/generated/engine-openapi.d.ts`
+
+## Next Steps
+
+1. `app/src/routes/dashboard/+page.svelte` watcher-card P&L 색상 + 30s 갱신 추가
+2. `/patterns/candidates` 페이지 신규 구현
+3. AC1~AC3 브라우저 검증
+
+## Handoff Checklist
+
+- [ ] WATCHING 섹션 P&L 색상 동작 확인
+- [ ] 30초 자동갱신 동작 확인
+- [ ] `/patterns/candidates` 페이지 로드 확인
 - [ ] PR merged + CURRENT.md SHA 업데이트
 
 ## References

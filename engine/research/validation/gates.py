@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 
 class Gate(str, Enum):
-    """New acceptance gates introduced in V-11 (G1~G7)."""
+    """New acceptance gates introduced in V-11 (G1~G7) + W-0290 G8."""
 
     G1 = "G1"  # Welch t-stat ≥ t_min
     G2 = "G2"  # Deflated Sharpe > dsr_min
@@ -46,6 +46,7 @@ class Gate(str, Enum):
     G5 = "G5"  # Profit factor ≥ profit_factor_min
     G6 = "G6"  # CV fold pass count ≥ fold_pass_min
     G7 = "G7"  # Regime-conditional (optional, from V-05)
+    G8 = "G8"  # Data hygiene PASS (W-0290 Phase 1)
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +61,7 @@ class GateV2Config:
     Attributes:
         t_min: minimum Welch t-stat for G1 (default 2.0).
         dsr_min: minimum deflated Sharpe for G2 (default 0.0).
-        hit_rate_min: minimum hit rate for G3 (default 0.52).
+        hit_rate_min: minimum hit rate for G3 (default 0.55).
         ci_lo_min: minimum bootstrap CI lower bound for G4 (default 0.0).
         profit_factor_min: minimum profit factor for G5 (default 1.2).
         fold_pass_min: minimum CV fold pass count for G6 (default 3).
@@ -70,11 +71,12 @@ class GateV2Config:
 
     t_min: float = 2.0
     dsr_min: float = 0.0
-    hit_rate_min: float = 0.52
+    hit_rate_min: float = 0.55
     ci_lo_min: float = 0.0
     profit_factor_min: float = 1.2
     fold_pass_min: int = 3
     g7_enabled: bool = False
+    g8_hygiene_enabled: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -124,8 +126,9 @@ def evaluate_gate_v2(
     *,
     config: GateV2Config | None = None,
     g7_pass: bool | None = None,
+    g8_pass: bool | None = None,
 ) -> GateV2Result:
-    """Evaluate G1~G7 gates against a ValidationReport and existing gate.
+    """Evaluate G1~G8 gates against a ValidationReport and existing gate.
 
     Args:
         validation_report: Output of
@@ -138,6 +141,9 @@ def evaluate_gate_v2(
         config: :class:`GateV2Config` overrides; uses defaults when ``None``.
         g7_pass: Pre-computed V-05 regime gate result.  Ignored unless
             ``config.g7_enabled=True``.
+        g8_pass: Pre-computed data hygiene result (W-0290 Phase 1).
+            Ignored unless ``config.g8_hygiene_enabled=True``.
+            ``None`` → G8 skipped regardless of config.
 
     Returns:
         :class:`GateV2Result` where ``overall_pass = existing_pass AND
@@ -168,6 +174,9 @@ def evaluate_gate_v2(
 
     if cfg.g7_enabled:
         new_passes[Gate.G7] = bool(g7_pass)
+
+    if cfg.g8_hygiene_enabled and g8_pass is not None:
+        new_passes[Gate.G8] = bool(g8_pass)
 
     failed_new = [g.value for g, v in new_passes.items() if not v]
     all_new = not failed_new

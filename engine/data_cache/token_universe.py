@@ -5,6 +5,7 @@ Data sources:
     2. Binance /fapi/v1/ticker/24hr   → price, pct_24h, quoteVolume, OI
     3. Binance /fapi/v1/openInterest  → OI per symbol (parallel)
     4. CoinGecko /api/v3/coins/markets → market_cap, name, rank (free tier)
+    5. Binance Spot /api/v3/ticker/24hr → spot-only USDT pairs (opt-in)
 
 Sector classification is rule-based:
     - Deterministic symbol→sector mapping via SECTOR_MAP
@@ -19,18 +20,66 @@ Cache:
 Usage:
     from data_cache.token_universe import get_universe
     tokens = await get_universe()   # list[TokenInfo]
+
+    # Extended universe including spot-only tokens:
+    from data_cache.token_universe import get_universe_tokens
+    tokens = get_universe_tokens(include_spot=True)  # list[UniverseToken]
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+import requests
 
 log = logging.getLogger("engine.token_universe")
+
+# ---------------------------------------------------------------------------
+# UniverseToken — typed token descriptor for expanded universe
+# ---------------------------------------------------------------------------
+
+@dataclass
+class UniverseToken:
+    """Typed descriptor for a token in the expanded universe."""
+
+    symbol: str            # e.g. "BTCUSDT"
+    base: str              # e.g. "BTC"
+    quote: str             # e.g. "USDT"
+    exchange: str          # "binance_futures" | "binance_spot"
+    has_perp: bool         # True if OI/funding data available
+    volume_usd_24h: float
+    market_cap_usd: float | None = None
+    cap_group: str = field(default="unknown")  # computed from market_cap_usd
+
+
+def _calc_cap_group(market_cap_usd: float | None) -> str:
+    """Return cap group label from USD market cap.
+
+    Thresholds:
+        mega   >= $50B
+        large  >= $5B
+        mid    >= $500M
+        small  >= $50M
+        micro  < $50M
+        unknown when market_cap_usd is None
+    """
+    if market_cap_usd is None:
+        return "unknown"
+    if market_cap_usd >= 50_000_000_000:
+        return "mega"
+    if market_cap_usd >= 5_000_000_000:
+        return "large"
+    if market_cap_usd >= 500_000_000:
+        return "mid"
+    if market_cap_usd >= 50_000_000:
+        return "small"
+    return "micro"
+
 
 # ---------------------------------------------------------------------------
 # Sector map (symbol → sector)
@@ -438,3 +487,129 @@ def get_cached_universe() -> list[dict]:
 
 def get_universe_updated_at() -> str:
     return _cache.get("updated_at") or datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Extended universe — spot + futures with UniverseToken typing
+# ---------------------------------------------------------------------------
+
+BINANCE_SPOT_API = "https://api.binance.com"
+
+
+def _fetch_spot_tickers(
+    min_volume_usd_24h: float = 500_000,
+    exclude_futures_symbols: set[str] | None = None,
+) -> list[UniverseToken]:
+    """Fetch Binance Spot 24h tickers and build spot-only UniverseToken list.
+
+    Args:
+        min_volume_usd_24h: Minimum 24h quote volume in USD to include.
+            Lower-liquidity tokens are excluded to keep the scan universe clean.
+        exclude_futures_symbols: Set of symbols already covered by futures.
+            Symbols in this set are skipped to avoid duplicates.
+
+    Returns:
+        List of UniverseToken with exchange="binance_spot" and has_perp=False.
+    """
+    url = f"{BINANCE_SPOT_API}/api/v3/ticker/24hr"
+    try:
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as exc:
+        log.warning("Failed to fetch Binance spot tickers: %s", exc)
+        return []
+
+    exclude: set[str] = exclude_futures_symbols or set()
+    tokens: list[UniverseToken] = []
+
+    for item in data:
+        symbol: str = item.get("symbol", "")
+
+        # Only USDT-quoted spot pairs
+        if not symbol.endswith("USDT"):
+            continue
+
+        # Skip symbols already present in futures universe
+        if symbol in exclude:
+            continue
+
+        quote_volume = float(item.get("quoteVolume", 0))
+        if quote_volume < min_volume_usd_24h:
+            continue
+
+        base = symbol[: -len("USDT")]
+        tokens.append(
+            UniverseToken(
+                symbol=symbol,
+                base=base,
+                quote="USDT",
+                exchange="binance_spot",
+                has_perp=False,
+                volume_usd_24h=quote_volume,
+                market_cap_usd=None,
+                cap_group="unknown",
+            )
+        )
+
+    log.info(
+        "Fetched %d Binance spot tokens (volume >= $%.0f)",
+        len(tokens),
+        min_volume_usd_24h,
+    )
+    return tokens
+
+
+def get_universe_tokens(
+    include_spot: bool = False,
+    include_futures: bool = True,
+    min_volume_usd_24h: float = 500_000,
+) -> list[UniverseToken]:
+    """Return typed UniverseToken list from cached universe data.
+
+    This function is synchronous and builds on the cached futures universe
+    (populated by get_universe / get_cached_universe). Spot tokens are fetched
+    on demand via a synchronous requests call when include_spot=True.
+
+    Args:
+        include_spot: When True, append spot-only tokens from Binance Spot API.
+            Defaults to False so existing callers are unaffected.
+        include_futures: When True (default), include futures tokens from the
+            existing cached universe.
+        min_volume_usd_24h: Minimum 24h volume filter applied to spot tokens.
+            Futures tokens retain whatever was cached (no re-filter here).
+
+    Returns:
+        List of UniverseToken ordered: futures first (if included), spot second.
+    """
+    result: list[UniverseToken] = []
+    futures_symbols: set[str] = set()
+
+    if include_futures:
+        for row in get_cached_universe():
+            sym = row.get("symbol", "")
+            futures_symbols.add(sym)
+            mc: float | None = row.get("market_cap") or None
+            if mc == 0.0:
+                mc = None
+            result.append(
+                UniverseToken(
+                    symbol=sym,
+                    base=row.get("base", sym.replace("USDT", "")),
+                    quote="USDT",
+                    exchange="binance_futures",
+                    has_perp=True,
+                    volume_usd_24h=float(row.get("vol_24h_usd", 0)),
+                    market_cap_usd=mc,
+                    cap_group=_calc_cap_group(mc),
+                )
+            )
+
+    if include_spot:
+        spot_tokens = _fetch_spot_tickers(
+            min_volume_usd_24h=min_volume_usd_24h,
+            exclude_futures_symbols=futures_symbols,
+        )
+        result.extend(spot_tokens)
+
+    return result

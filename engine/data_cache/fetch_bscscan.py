@@ -231,3 +231,72 @@ def fetch_holder_concentration(symbol: str, days: int = 30) -> pd.DataFrame | No
         data[col][-1] = val
 
     return pd.DataFrame(data, index=idx)
+
+
+# ─── W-0292 D-E: Network Growth Rate ─────────────────────────────────────────
+
+def fetch_eth_new_address_count(
+    days_back: int = 7,
+    api_key: str | None = None,
+) -> list[dict]:
+    """ETH daily new address creation count (Etherscan stats API).
+
+    Returns list of {"date": str, "new_address_count": int}.
+    Returns empty list if no API key configured or request fails.
+
+    Note: Etherscan stats/dailynewaddress requires a Pro API key.
+    Without one, this gracefully returns [] so callers see no data.
+    """
+    import os
+    import urllib.parse
+    from datetime import date, timedelta
+
+    key = api_key or os.environ.get("ETHERSCAN_API_KEY", "").strip()
+    if not key:
+        log.warning("ETHERSCAN_API_KEY not set — network growth rate unavailable")
+        return []
+
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days_back)
+
+    params = urllib.parse.urlencode({
+        "module": "stats",
+        "action": "dailynewaddress",
+        "startdate": start_date.strftime("%Y-%m-%d"),
+        "enddate": end_date.strftime("%Y-%m-%d"),
+        "sort": "asc",
+        "apikey": key,
+    })
+    url = f"{_ETHERSCAN_BASE}?{params}"
+
+    try:
+        data = _get_json(url)
+        if not data or not isinstance(data, dict):
+            return []
+        if data.get("status") != "1":
+            log.warning("Etherscan API error: %s", data.get("message", "unknown"))
+            return []
+        return [
+            {
+                "date": item.get("UTCDate", ""),
+                "new_address_count": int(item.get("newAddressCount", 0)),
+            }
+            for item in (data.get("result") or [])
+        ]
+    except Exception as exc:
+        log.warning("Failed to fetch ETH new address count: %s", exc)
+        return []
+
+
+def get_eth_network_growth_7d(api_key: str | None = None) -> float | None:
+    """Average daily new ETH addresses over the last 7 days.
+
+    Returns None when no data is available — callers should treat as missing.
+    """
+    records = fetch_eth_new_address_count(days_back=7, api_key=api_key)
+    if not records:
+        return None
+    counts = [r["new_address_count"] for r in records if r.get("new_address_count")]
+    if not counts:
+        return None
+    return sum(counts) / len(counts)
