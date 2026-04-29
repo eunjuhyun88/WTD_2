@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`971fb83e` — origin/main (2026-04-29) — PR #638 W-0310 local LLM runtime 머지
+`755b116e` — origin/main (2026-04-29) — PR #639 W-0305 F-3 Telegram verdict deeplink 머지
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0305-f3-telegram-deeplink-last-mile` | P1 | 🟢 Merged — PR #639 (alerts.py verdict URL) |
+| `W-0305-f3-telegram-deeplink-last-mile` | P1 | ✅ 머지 완료 — PR #639 |
 | `W-0248-f18-stripe-tier` | P0 | 🟡 Design Draft — Stripe $29/mo + x402 USDC 이중 결제 (#445) |
 | `W-0306-f5-terminal-mode-toggle` | P1 | 🟡 Design Draft — Observe/Analyze/Execute 3-mode 토글 S (#634) |
 | `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 S (#635) |
