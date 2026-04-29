@@ -80,13 +80,19 @@ terminal/+page.svelte (activeAnalysisData?.capture_id)
 
 ## Facts
 
-```bash
-grep -n "p_win\|phase\|state_label" engine/api/routes/captures.py | head -5
-grep -n "TODO\|mock\|MOCK" app/src/routes/api/terminal/hud/+server.ts | head -10
-grep -n "capture_id\|activeAnalysisData" app/src/routes/terminal/+page.svelte | head -10
-echo "CLOUD_RUN_URL env var 확인:"
-grep -rn "CLOUD_RUN_URL" app/src/ --include="*.ts" | head -3
-```
+(grep 실측 결과 — 2026-04-29)
+1. **`app/src/lib/server/engineTransport.ts:16`** — `engineFetch(path, init)` 유틸 존재 ✅ (CLOUD_RUN_URL wrapper)
+2. **`engine/api/routes/captures.py:738`** — `GET /{capture_id}` 존재, `p_win` at line 678 ✅
+3. **`engine/api/routes/search.py:128`** — `POST /similar` 존재 ✅ (`SimilarSearchResponse`)
+4. **`/captures/{capture_id}/risk-assessment` → 미존재** ❌ (mock 주석이 잘못된 경로 참조)
+5. **`/captures/{capture_id}/transitions` → 미존재** ❌
+6. **`/runtime/captures/{id}` → 미존재** ❌ (mock 주석의 `/runtime/` prefix는 없는 경로)
+7. `app/src/routes/terminal/+page.svelte` — `activeAnalysisTab` 있으나 `capture_id` 직접 변수 미확인 (추가 grep 필요)
+8. HUD server에 `engineFetch` 미import (현재 mock 전용)
+9. **사용 가능한 실제 엔드포인트**:
+   - `GET /captures/{id}` → `phase`, `p_win`, `state_label` (있는 필드 한정 — 실측 필요)
+   - `POST /search/similar` → top-3 similar captures (evidence 카드용)
+   - 나머지 카드(risk detail, transitions)는 captures 응답에서 추출 또는 mock 유지
 
 ## Canonical Files
 
@@ -101,20 +107,27 @@ grep -rn "CLOUD_RUN_URL" app/src/ --include="*.ts" | head -3
 
 ## Open Questions
 
-- [ ] [Q-0309-1] `GET /patterns/transitions?capture_id=` 파라미터가 실제로 존재하는가?
+- [x] [Q-0309-1] `/patterns/transitions?capture_id=` → **미존재** ❌. 해결: captures 응답에서 추출.
+- [ ] [Q-0309-2] `GET /captures/{id}` 응답에 `state_label`, `p_win` 이 항상 포함되는가? (NULL 가능성?)
 
 ## Decisions
 
-- **engine 호출**: `CLOUD_RUN_URL` env var (기존 패턴)
+- **engine 호출**: `engineFetch` (기존 `engineTransport.ts` 유틸)
+- **사용 endpoint 축소**: `/captures/{id}` + `POST /search/similar` 2개만. 존재하지 않는 endpoint 참조 제거.
+- **cards 전략**:
+  - pattern_status 카드: `GET /captures/{id}` → phase, state_label, p_win
+  - evidence 카드: `POST /search/similar` → top 3
+  - risk/transition/actions 카드: captures 데이터 기반 파생 or mock 유지 (Phase 2)
 - **HUD 위치**: rightPane 내부 상단 — `{#snippet rightPane()}` 안에 DecisionHUD 추가
 - **polling**: 3초, capture_id change로 trigger
-- **fallback**: engine 실패 시 mock 반환 (UX 깨짐 방지)
+- **fallback**: engine 실패(5s timeout) 시 mock 반환 (UX 깨짐 방지)
 
 ## Next Steps
 
-1. `app/src/routes/api/terminal/hud/+server.ts` mock → engine 실제 호출로 교체
-2. `app/src/routes/terminal/+page.svelte` Analyze 모드 rightPane에 DecisionHUD 연결
-3. `svelte-check` + 브라우저 smoke test
+1. `GET /captures/{id}` 응답 필드 실측 (`state_label`, `p_win` NULL 여부 — Q-0309-2)
+2. `hud/+server.ts` — `engineFetch('/captures/{id}')` + `engineFetch('/search/similar')` 호출
+3. 나머지 카드는 captures 데이터 파생 or mock 유지
+4. `terminal/+page.svelte` — capture_id 변수 확인 + rightPane에 DecisionHUD 연결
 
 ## Handoff Checklist
 

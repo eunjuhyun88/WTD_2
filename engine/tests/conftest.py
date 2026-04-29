@@ -87,3 +87,15 @@ def attach_fake_auth(app, user_id: str = "founder") -> None:
     async def _inject_test_user_id(request, call_next):
         request.state.user_id = user_id
         return await call_next(request)
+
+
+@pytest.fixture(autouse=True)
+def _disable_tier_gate(monkeypatch):
+    """Disable tier_gate quota enforcement in all engine tests.
+
+    Tests never want real Redis quota counters — they'd pollute production
+    Redis and cause flaky 402s when counters accumulate across runs.
+    """
+    import importlib
+    tg = importlib.import_module("api.middleware.tier_gate")
+    monkeypatch.setattr(tg, "TIER_GATE_ENABLED", False)

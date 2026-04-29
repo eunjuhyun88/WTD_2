@@ -129,11 +129,17 @@ engine + app
 
 ## Facts
 
-(grep 실측 결과 — 2026-04-29)
-1. `engine/api/routes/ctx.py:7` — `L8 kimchi : Korean exchange premium (USD/KRW + Upbit/Bithumb prices)` 주석
-2. migration 027에 kimchi_premium_pct 컬럼 (사용자 컨텍스트, 미실측 → Q-0307-1)
-3. UI에서 kimchi_premium_pct 표시 0건 (gap 확인)
-4. `app/src/lib/components/` 아래 market/ 디렉토리 미존재 (신규 생성 필요)
+(grep 실측 결과 — 2026-04-29 갱신)
+1. **`engine/features/compute.py:416`** — `calc_kimchi_premium(binance_btc_usdt: float) -> dict` 존재
+   - `fetch_upbit_btc_krw()` + `fetch_usd_krw_rate()` 실제 호출
+   - 공식: `(upbit_krw / (binance_btc_usdt * usd_krw) - 1) * 100`
+   - 실패 시 `{"kimchi_premium_pct": 0.0}` graceful fallback
+2. `engine/market_engine/l0_context.py:63` — `asyncio.gather(Upbit + Bithumb)` 이미 실행 중
+3. `engine/features/columns.py:47` — `"kimchi_premium_pct"` feature 컬럼 목록 등록됨
+4. **GET `/api/market/kimchi-premium` 미존재** — engine API 노출 안 됨 (갭)
+5. `app/supabase/migrations/027_feature_v31.sql:5` — `kimchi_premium_pct FLOAT` 컬럼 ✅ (Q-0307-1 해소)
+6. UI에서 kimchi_premium_pct 표시 0건 ✅ gap 확인
+7. `app/src/lib/components/market/` 디렉토리 미존재 (신규 생성)
 
 ## Assumptions
 
@@ -150,9 +156,12 @@ engine + app
 
 ## Next Steps
 
-1. Q-0307-1 DB 검증 SQL 실행 (사용자 또는 운영자)
-2. engine endpoint 구현 (단순)
-3. UI 마운트 (W-0306과 병합 가능)
+1. ~~Q-0307-1 DB 검증~~ → migration 027 실측으로 해소 ✅
+2. engine `GET /api/market/kimchi-premium` 신규 추가 (`ctx.py` 또는 신규 `market.py`)
+   - `calc_kimchi_premium(binance_btc_usdt)` 호출 → `{premium_pct, source, usd_krw, ts}` 반환
+   - Binance BTC price는 `l0_context` 또는 별도 fetch
+   - 30s server cache
+3. `KimchiPremiumBadge.svelte` + Dashboard 마운트
 
 ## Handoff Checklist
 

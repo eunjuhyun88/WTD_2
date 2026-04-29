@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.schemas_pattern_draft import (
     PatternDraftTransformRequest,
@@ -28,6 +28,7 @@ from patterns.definitions import PatternDefinitionService
 from research.query_transformer import transform_pattern_draft
 from search.corpus import SearchCorpusStore
 from search.runtime import get_scan, get_seed_search, run_scan, run_seed_search
+from api.middleware.tier_gate import TierInfo, tier_gate, check_and_increment_quota
 from search.quality_ledger import append_judgement, compute_weights, layer_stats
 from search.similar import get_similar_search, run_similar_search
 
@@ -71,7 +72,12 @@ async def search_catalog(
 
 
 @router.post("/seed", response_model=SeedSearchResponse)
-async def search_seed(body: SeedSearchRequest) -> SeedSearchResponse:
+async def search_seed(
+    body: SeedSearchRequest,
+    http_request: Request,
+    tier: TierInfo = Depends(tier_gate),
+) -> SeedSearchResponse:
+    check_and_increment_quota(tier, "search_per_day")
     request = body.model_dump(mode="json")
     if body.definition_id:
         request["definition_ref"] = _resolve_definition_ref(body.definition_id)
