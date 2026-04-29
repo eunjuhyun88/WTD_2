@@ -62,7 +62,8 @@
       "command": "uvx",
       "args": [
         "--from", "git+https://github.com/oraios/serena",
-        "serena-mcp-server",
+        "serena",
+        "start-mcp-server",
         "--context", "ide-assistant",
         "--project", "."
       ]
@@ -100,6 +101,37 @@ W-0299가 이 도구들을 on-demand context pack 생성에 활용. `.claude/com
 | `agents/engine.md` | ✅ 신규 |
 | `agents/app.md` | ✅ 신규 |
 | `agents/coordination.md` | ✅ 신규 |
+
+---
+
+## Revalidation — 2026-04-30 (W-0316)
+
+실제 `.mcp.json`은 아래 형태로 확인됐다.
+
+```json
+{
+  "mcpServers": {
+    "serena": {
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context", "ide-assistant",
+        "--project", "."
+      ]
+    }
+  }
+}
+```
+
+문서의 이전 snippet은 `serena-mcp-server`를 사용했는데, 실제 파일은 `serena start-mcp-server`다. W-0316에서 문서를 실제 파일 기준으로 정정했다.
+
+남은 gap:
+
+- LSP permission 3종은 `.claude/settings.json`에 존재한다.
+- serena MCP 실제 tool 노출은 Claude/Codex 재시작 후 확인해야 한다.
+- AC1~AC3은 아직 “설정 존재”가 아니라 “tool 호출 결과” 기준으로 닫아야 한다.
 
 ---
 
