@@ -117,6 +117,7 @@
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
+  import { terminalMode as terminalModeStore } from '$lib/stores/terminalMode';
 
   // ─── State ──────────────────────────────────────────────────
 
@@ -205,7 +206,11 @@
   // OBSERVE: chart-focused (right rail + workspace hidden)
   // ANALYZE: full layout with verdict HUD + evidence workspace
   // EXECUTE: future trade sizing (stub)
-  let terminalMode = $state<'observe' | 'analyze' | 'execute'>('analyze');
+  let terminalMode = $state<'observe' | 'analyze' | 'execute'>(get(terminalModeStore) ?? 'analyze');
+
+  $effect(() => {
+    terminalModeStore.set(terminalMode);
+  });
 
   // ── Global market pulse (thermo) ──────────────────────────
   let thermoData = $state<ThermoData>(EMPTY_THERMO_DATA);
