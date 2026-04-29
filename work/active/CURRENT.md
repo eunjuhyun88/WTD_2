@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`755b116e` — origin/main (2026-04-29) — PR #639 W-0305-f3 Telegram deeplink 머지
+`09a78c65` — origin/main (2026-04-29) — PR #653 W-0248 Stripe+x402 머지
 
 ---
 
