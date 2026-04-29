@@ -280,6 +280,17 @@ def _inject_live_aggtrades(features: pd.DataFrame, symbol: str) -> None:
         log.debug("[%s] AggTrades injection failed: %s", symbol, exc)
 
 
+def _inject_mtf_features(features: pd.DataFrame, klines: pd.DataFrame) -> None:
+    """Compute MTF EMA confluence and merge into features (in-place)."""
+    try:
+        from scanner.mtf_features import compute_mtf_confluence
+        mtf = compute_mtf_confluence(klines)
+        for col in ["mtf_confluence_score", "mtf_ema_bull_count", "mtf_ema_bear_count"]:
+            features[col] = mtf[col].reindex(features.index, method="ffill")
+    except Exception as exc:
+        log.debug("MTF feature injection failed: %s", exc)
+
+
 def _inject_sector_scores(
     features: pd.DataFrame,
     symbol: str,
@@ -323,6 +334,7 @@ def _scan_one_symbol(
         _inject_live_ob(features, symbol)
         _inject_live_aggtrades(features, symbol)
         _inject_sector_scores(features, symbol, sector_scores)
+        _inject_mtf_features(features, klines)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
