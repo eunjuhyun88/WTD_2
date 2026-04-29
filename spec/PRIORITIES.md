@@ -17,9 +17,9 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 → **6개** (P0=0 / P1=5 / P2=8 / P3=10) — W-0287 ✅ (#589) + W-0288 ✅ (#600) + W-0289 ✅ (#603) + W-0290 Ph2 ✅ (#591) + W-0298 ✅ (#601/#604) + W-0299 ✅ (#609)
-즉시 P0:   ~~W-0290 Phase2 walkforward.py~~ ✅ + W-0292 Phase2 Glassnode (미착수) + ~~W-0287 BH cross-pattern FDR~~ ✅
-다음 P1:   W-0282 F-3 Telegram deeplink (#546) 🟡 + W-0283 F-11 WATCHING (#547) 🟡 (design ready, 미구현)
+열린 갭:    17개 → **3개** (P0=0 / P1=2 / P2=7 / P3=10) — +W-0283 ✅ (#620) + W-0238 ✅ (#624) + W-0239 ✅ (#626) + W-0243 ✅ (#625) + W-0301 ✅ (#612)
+즉시 P0:   없음 (P0 클리어)
+다음 P1:   W-0282 F-3 Telegram deeplink last-mile (W-0305) 🟡 + F-14 PatternObject lifecycle (W-0308) 🟡
 퀀트 경화:  **W-0286 ✅ PR #560** + **W-0290~W-0293 ✅ PR #587** + **W-0290 Ph2 ✅ PR #591** + **W-0294 ✅ PR #592**
 하네스:     **PR #574 ✅** (verify.py + inventory) + **PR #575 ✅** (Supabase timeout) + **PR #588 ✅** (PID stale lock) + **PR #609 ✅** (reliability repair + cycle-smoke)
 ```
