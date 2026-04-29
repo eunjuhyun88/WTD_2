@@ -1228,6 +1228,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/lifecycle-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lifecycle Status
+         * @description Return current lifecycle status for a pattern (draft/candidate/object/archived).
+         */
+        get: operations["get_lifecycle_status_patterns__slug__lifecycle_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Pattern Status
+         * @description Transition pattern lifecycle status.
+         *
+         *     Allowed: draft→candidate|archived, candidate→object|archived, object→archived.
+         *     Returns { ok, slug, from_status, to_status, updated_at }.
+         *     Raises 422 on invalid transition, 404 if pattern not in library.
+         */
+        patch: operations["patch_pattern_status_patterns__slug__status_patch"];
+        trace?: never;
+    };
     "/patterns/{slug}/model-registry": {
         parameters: {
             query?: never;
@@ -4887,6 +4931,16 @@ export interface components {
             /** Mode */
             mode: string;
         };
+        /** _PatternStatusBody */
+        _PatternStatusBody: {
+            /** Status */
+            status: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
         /** _PatternTrainBody */
         _PatternTrainBody: {
             /** Definition Id */
@@ -7115,6 +7169,76 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_PatternAlertPolicyBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lifecycle_status_patterns__slug__lifecycle_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_pattern_status_patterns__slug__status_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PatternStatusBody"];
             };
         };
         responses: {

@@ -1,4 +1,4 @@
-# CURRENT — 2026-04-29
+# CURRENT — 2026-04-30
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`28110150` — origin/main (2026-04-29) — PR #656 W-0309 DecisionHUD wiring 머지
+`9104f3ed` — origin/main (2026-04-30) — PR #668 W-0315 lossless pattern contracts
 
 ---
 
