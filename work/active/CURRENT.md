@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`8ea2f365` — origin/main (2026-04-30) — PR #675 W-0318 lifecycle reconciliation + /patterns/lifecycle page
+`a0206fb5` — origin/main (2026-04-30) — PR #683 W-0321 paper verification route contract
 
 ---
 
@@ -22,7 +22,7 @@
 ## Wave 4 실행 계획 (갭 분석 반영, 2026-04-30)
 
 ```
-완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅
+완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅ | W-0319 Wallet ✅ | W-0321 Paper route ✅
 즉시:  W-0317 SplitPane wire-up (Codex) + W-0304 per-pane indicator (Codex)
 Week2: F-16 recall 개선
 Week3: F-19 Sentry + F-20 infra cleanup
