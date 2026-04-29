@@ -21,6 +21,8 @@ class EvalItem:
     expected_signature: dict  # the "relevant" window signature
     # Noise windows differ in close_return_pct sign and magnitude
     noise_profile: str = "generic"  # "long", "short", "neutral"
+    # Real corpus distractors — when set, used instead of synthetic _NOISE_POOL
+    real_noise: tuple[dict, ...] = field(default_factory=tuple)
 
 
 def _long_draft(slug: str, ret: float, vol: float, vol_ratio: float = 1.5) -> dict:

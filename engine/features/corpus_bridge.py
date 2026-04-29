@@ -217,6 +217,85 @@ def sync_all_corpus(
     return results
 
 
+def ingest_capture_snapshot(
+    *,
+    capture_id: str,
+    symbol: str,
+    timeframe: str,
+    captured_at_ms: int,
+    feature_snapshot: dict[str, Any],
+    corpus_db_path: Path | str | None = None,
+    window_bars: int = 48,
+) -> str | None:
+    """Write a scanner capture's feature_snapshot into the SearchCorpusStore.
+
+    The scanner captures patterns at a specific bar. This writes that bar's
+    feature state as a CorpusWindow so future similarity searches can find it.
+
+    Window bounds: [captured_at_ms - window_bars*bar_secs, captured_at_ms]
+    Bar seconds: 3600 for 1h, 14400 for 4h.
+
+    Returns the generated window_id, or None if the snapshot has no usable data.
+    """
+    if not feature_snapshot or not any(
+        isinstance(v, (int, float)) for v in feature_snapshot.values()
+    ):
+        return None
+
+    from datetime import datetime, timezone
+    from search.corpus import SearchCorpusStore, _stable_window_id  # type: ignore
+
+    bar_secs = {"1h": 3600, "4h": 14400, "15m": 900, "1d": 86400}.get(timeframe, 3600)
+    end_epoch = captured_at_ms // 1000
+    start_epoch = end_epoch - window_bars * bar_secs
+
+    def _epoch_to_iso(ts: int) -> str:
+        return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+
+    start_ts = _epoch_to_iso(start_epoch)
+    end_ts = _epoch_to_iso(end_epoch)
+    symbol_upper = symbol.upper()
+
+    window_id = _stable_window_id(symbol_upper, timeframe, start_ts, end_ts)
+    now = _utcnow_iso()
+
+    # Build enriched signature from the raw feature_snapshot
+    sig: dict[str, Any] = {}
+    for k, v in feature_snapshot.items():
+        if v is None:
+            continue
+        if isinstance(v, (int, float)):
+            try:
+                sig[k] = round(float(v), 6)
+            except (TypeError, ValueError):
+                pass
+        elif isinstance(v, str):
+            sig[k] = v
+
+    if not sig:
+        return None
+
+    from search.corpus import CorpusWindow, SearchCorpusStore  # type: ignore
+    corpus_kwargs = {"db_path": corpus_db_path} if corpus_db_path else {}
+    corpus = SearchCorpusStore(**corpus_kwargs)
+
+    window = CorpusWindow(
+        window_id=window_id,
+        symbol=symbol_upper,
+        timeframe=timeframe,
+        start_ts=start_ts,
+        end_ts=end_ts,
+        bars=window_bars,
+        source=f"capture:{capture_id}",
+        signature=sig,
+        created_at=now,
+        updated_at=now,
+    )
+    corpus.upsert_windows([window])
+    log.debug("corpus_bridge: ingested capture %s → window %s", capture_id, window_id)
+    return window_id
+
+
 if __name__ == "__main__":
     import argparse
     import sys
