@@ -2,7 +2,7 @@
 
 > Wave: 4 | Priority: P1 | Effort: M
 > Charter: In-Scope L7 (AutoResearch — personalized layer over global L4 PromotionGate)
-> Status: 🟡 부분 구현 (Core 5모듈 + 19 tests ✅ | wvpl/api/scheduler ❌ 미구현)
+> Status: 🟢 Design v2 (V-track)
 > Created: 2026-04-29 | Upgraded: 2026-04-29
 > Issue: #644
 >
