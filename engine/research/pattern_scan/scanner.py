@@ -185,6 +185,14 @@ def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | N
             oi["oi_change_1h"] = oi["oi_raw"].pct_change(1).fillna(0.0)
             oi["oi_change_24h"] = oi["oi_raw"].pct_change(24).fillna(0.0)
             frames.append(oi)
+        else:
+            # No OI data — add NaN placeholder columns so compute_features_table
+            # doesn't raise KeyError when OI-dependent features are requested.
+            placeholder = funding[[]].copy()
+            placeholder["oi_raw"] = float("nan")
+            placeholder["oi_change_1h"] = float("nan")
+            placeholder["oi_change_24h"] = float("nan")
+            frames.append(placeholder)
 
         if not ls.empty:
             ls = ls.set_index("ts").sort_index()
