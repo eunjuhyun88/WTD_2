@@ -162,6 +162,24 @@ export type {
 	ResearchBlockEnvelope
 } from './researchView';
 
+export {
+	adaptPatternCandidates,
+	flattenPatternStates,
+	isBreakoutPhase,
+	patternCapturePayload,
+	phaseMetaFor
+} from './patterns';
+export type {
+	EnginePatternCandidateRecord,
+	EnginePatternCandidatesResponse,
+	EnginePatternState,
+	EnginePatternStatesResponse,
+	PatternCandidateView,
+	PatternStateView,
+	PatternCapturePayload,
+	PhaseMeta
+} from './patterns';
+
 // Challenge — PR1 Zoom #1 (/terminal block search parser + /api/wizard)
 export {
 	ChallengeAnswersSchemaVersion,
