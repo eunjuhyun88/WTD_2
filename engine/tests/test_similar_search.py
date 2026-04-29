@@ -108,7 +108,7 @@ def test_layer_c_empty_snapshot():
 
 def test_blend_all_three():
     score = _blend(0.8, 0.6, 0.4)
-    expected = 0.45 * 0.8 + 0.30 * 0.6 + 0.25 * 0.4
+    expected = 0.60 * 0.8 + 0.30 * 0.6 + 0.10 * 0.4  # W-0247: updated to (0.60, 0.30, 0.10)
     assert score == pytest.approx(expected)
 
 
