@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`df9fad3f` — origin/main (2026-04-30) — PR #696 W-0322 terminal 3-Rail Pro merged
+`e8f25075` — origin/main (2026-04-30) — PR #697 W-0249 F-19 Sentry observability merged
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0249-f19-sentry-observability` | P2 | 🔴 구현 시작 |
+| `W-0249-f19-sentry-observability` | P2 | ✅ 완료 (PR #697) |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
 
 ---
