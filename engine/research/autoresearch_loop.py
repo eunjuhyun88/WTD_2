@@ -252,7 +252,28 @@ class AutoResearchLoop:
         if save:
             self._save_cycle(result)
 
-        print(result.summary())
+        # Print quant report
+        try:
+            from research.report import generate_report
+            n_combos = len(self.scanner.combos)
+            gate_desc = (
+                f"n≥{GATE_MIN_SIGNALS} | WinR≥{GATE_MIN_HIT_RATE*100:.0f}% "
+                f"| Sharpe≥{GATE_MIN_SHARPE:.1f}"
+            )
+            print(generate_report(
+                passed,
+                df_all=scan_df,
+                cycle_id=cycle_id,
+                cycle_ts=ts,
+                n_symbols=len(symbols),
+                n_combos=n_combos,
+                gate_desc=gate_desc,
+                promote_threshold=PROMOTE_SHARPE,
+            ))
+        except Exception as exc:
+            log.debug("Report generation failed: %s", exc)
+            print(result.summary())
+
         return result
 
     def _save_cycle(self, result: CycleResult) -> None:
