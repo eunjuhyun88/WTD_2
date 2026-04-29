@@ -184,6 +184,28 @@ export async function findAuthUserForLogin(
   nickname: string,
   walletAddress: string
 ): Promise<AuthUserRow | null> {
+  const normalizedNickname = nickname.trim();
+  if (!normalizedNickname) {
+    const result = await query<AuthUserRow>(
+      `
+        SELECT
+          id,
+          email,
+          nickname,
+          tier,
+          phase,
+          wallet_address
+        FROM users
+        WHERE lower(email) = lower($1)
+          AND lower(wallet_address) = lower($2)
+        LIMIT 1
+      `,
+      [email, walletAddress]
+    );
+
+    return result.rows[0] || null;
+  }
+
   const result = await query<AuthUserRow>(
     `
       SELECT
@@ -199,7 +221,7 @@ export async function findAuthUserForLogin(
         AND lower(wallet_address) = lower($3)
       LIMIT 1
     `,
-    [email, nickname, walletAddress]
+    [email, normalizedNickname, walletAddress]
   );
 
   return result.rows[0] || null;

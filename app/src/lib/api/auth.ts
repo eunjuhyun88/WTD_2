@@ -8,7 +8,7 @@ export interface RegisterAuthPayload {
 
 export interface LoginAuthPayload {
   email: string;
-  nickname: string;
+  nickname?: string;
   walletAddress: string;
   walletMessage: string;
   walletSignature: string;
@@ -132,7 +132,7 @@ export interface WalletAuthPayload {
 
 export interface WalletAuthResponse {
   success: boolean;
-  action: 'login';
+  action: 'login' | 'register';
   user: AuthUserPayload;
 }
 
