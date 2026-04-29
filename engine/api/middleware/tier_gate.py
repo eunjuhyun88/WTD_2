@@ -153,6 +153,45 @@ def tier_gate(request: Request) -> TierInfo:
     return _resolve_tier(user_id)
 
 
+def check_and_increment_quota(tier_info: TierInfo, quota_key: str) -> None:
+    """Increment a per-user per-day counter and raise 402 if free limit exceeded.
+
+    quota_key: 'captures_per_day' | 'search_per_day'
+    Safe to call with Pro users — returns immediately.
+    """
+    if tier_info.is_pro:
+        return
+
+    limit = FREE_LIMITS.get(quota_key, 0)
+    if limit <= 0:
+        return
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    counter_key = f"quota:{quota_key}:{tier_info.user_id}:{today}"
+
+    try:
+        r = _get_redis()
+        if r is not None:
+            count = r.incr(counter_key)  # type: ignore[union-attr]
+            # Set TTL on first increment (expire at end of UTC day)
+            if count == 1:
+                r.expire(counter_key, 86400)  # type: ignore[union-attr]
+            if count > limit:
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "error": "quota_exceeded",
+                        "quota_key": quota_key,
+                        "limit": limit,
+                        "upgrade_url": "/settings/billing",
+                    },
+                )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.warning("quota check failed (permitting): %s", exc)
+
+
 def free_tier_gate(request: Request) -> TierInfo:
     """Variant: raises HTTP 402 only — does NOT check daily quota counters.
     Use on endpoints where the calling code enforces its own per-day counting.
