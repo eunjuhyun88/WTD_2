@@ -1,4 +1,4 @@
-# W-0306 — WVPL Integration Verification Automation
+# W-0311 — WVPL Integration Verification Automation
 
 > Wave: Wave4/D | Priority: P1 | Effort: M (2-3일)
 > Charter: In-Scope L7 (Refinement) — verification 인프라
@@ -37,7 +37,7 @@ engine + app
 - 멀티 브라우저 E2E (Playwright cross-browser) — 단일 페르소나 Jin이라 불필요
 - 부하 테스트 (k6/locust) — Exit Criteria의 p95는 단위 측정으로 충분
 - 신규 coordination 도구/스크립트 — Charter 250줄 룰 회피
-- GitHub Actions secret 주입 자동화 — 별도 인프라 작업으로 분리 (Q-0306-3 결정)
+- GitHub Actions secret 주입 자동화 — 별도 인프라 작업으로 분리 (Q-0311-3 결정)
 
 ## CTO 관점
 
@@ -47,8 +47,8 @@ engine + app
 |---|---|---|---|
 | jsdom 추가가 기존 19개 node 테스트에 부작용 | 중 | 중 | `environmentMatchGlobs`로 글롭 분리, CI에서 기존 테스트 회귀 게이트 |
 | Supabase 스테이징 미존재/secret 미주입 | 높음 | 저 | env-gated skip — 미설정 시 자동 skip, CI red 안 됨 |
-| 테스트 row 누적으로 staging 오염 | 중 | 저 | 고정 `TEST_USER_ID = 00000000-0000-0000-0000-000000000305` + try/finally DELETE |
-| @testing-library/svelte와 Svelte 5.51 호환성 | 저 | 중 | 사전조사 완료 — `^5.2.0` 호환 (Q-0306-4 해소) |
+| 테스트 row 누적으로 staging 오염 | 중 | 저 | 고정 `TEST_USER_ID = 00000000-0000-0000-0000-000000000311` + try/finally DELETE |
+| @testing-library/svelte와 Svelte 5.51 호환성 | 저 | 중 | 사전조사 완료 — `^5.2.0` 호환 (Q-0311-4 해소) |
 | network flake로 CI red | 중 | 저 | retry 1회 + skip |
 | 250줄 룰 초과 | 저 | 저 | AC7로 라인 budget 명시 (~220줄 예산) |
 
@@ -96,38 +96,38 @@ engine + app
 
 ## Decisions
 
-### [D-0306-A] DOM 테스트 도구 — Vitest+jsdom+@testing-library/svelte
+### [D-0311-A] DOM 테스트 도구 — Vitest+jsdom+@testing-library/svelte
 
 - **선택**: Vitest + jsdom + @testing-library/svelte ^5.2.0
 - **거절**: Playwright — 신규 인프라, 헤드리스 브라우저 다운로드, CI 비용 ↑, 단일 페르소나엔 과잉
 - **거절**: happy-dom — jsdom 대비 Svelte 5 SSR/transition 호환 사례 부족
 - **이유**: 기존 vitest 3.2.4 재활용, 신규 도구 0개, devDep만 2개
 
-### [D-0306-B] 스테이징 통합 테스트 게이팅 — env-gated skip
+### [D-0311-B] 스테이징 통합 테스트 게이팅 — env-gated skip
 
 - **선택**: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` 둘 다 set일 때만 실행, else `pytest.skip`
 - **거절**: CI 항상 실행 — 스테이징 비용 + flake 위험
 - **이유**: 로컬 개발자가 무환경에서도 `uv run pytest` 깨짐 없이 실행, 기존 `_supabase_writer` silent skip 패턴과 일치
 
-### [D-0306-C] 프록시 테스트 mock 전략 — vi.fn() 직접 mock
+### [D-0311-C] 프록시 테스트 mock 전략 — vi.fn() 직접 mock
 
 - **선택**: `engineFetch` 모듈 vi.mock + cookies API mock으로 SvelteKit RequestEvent 흉내
 - **거절**: MSW (Mock Service Worker) — overkill, 신규 의존성, 1개 endpoint뿐
 - **이유**: 기존 `*.test.ts` 19개가 모두 vi.mock 패턴 — 일관성
 
-### [D-0306-D] 통합 테스트 디렉토리 — `engine/tests/integration/` 신설
+### [D-0311-D] 통합 테스트 디렉토리 — `engine/tests/integration/` 신설
 
 - **선택**: 신규 디렉토리, `verification/`은 1회성 스모크 용도로 분리 유지
 - **거절**: `verification/` 재활용 — 의미가 다름
 - **이유**: 의도 분리, 향후 다른 integration 테스트 확장 base
 
-### [D-0306-E] 테스트 row 격리 — 고정 UUID
+### [D-0311-E] 테스트 row 격리 — 고정 UUID
 
-- **선택**: `TEST_USER_ID = "00000000-0000-0000-0000-000000000305"` (W-0305 매핑)
+- **선택**: `TEST_USER_ID = "00000000-0000-0000-0000-000000000311"` (W-0305 매핑)
 - **거절**: 매 테스트 random UUID — cleanup 누락 시 누적 위험 ↑
 - **이유**: 고정 UUID는 다음 실행 시 upsert로 자연 정리, cleanup race 영향 0
 
-### [D-0306-F] CI secret 주입 — 본 PR 분리
+### [D-0311-F] CI secret 주입 — 본 PR 분리
 
 - **선택**: 본 PR은 코드만, GitHub Actions secret 주입은 별도 작업
 - **거절**: 본 PR에서 workflow까지 수정 — secret 주입은 운영 권한 작업
@@ -135,11 +135,11 @@ engine + app
 
 ## Open Questions (해소됨 — 로컬 실측 기반)
 
-- [x] [Q-0306-1] 스테이징 Supabase project? → **`.env.example`에 placeholder만**. 사용자가 GitHub Secrets에 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` 추가 필요 (별도 작업)
-- [x] [Q-0306-2] 테스트 row 격리? → **고정 UUID `00000000-0000-0000-0000-000000000305`** + try/finally DELETE
-- [x] [Q-0306-3] CI secret 주입? → **본 PR 코드만, secret 주입 별도 인프라 작업** (D-0306-F)
-- [x] [Q-0306-4] @testing-library/svelte 호환? → **Svelte 5.51.0 + @testing-library/svelte ^5.2.0 호환 OK**
-- [x] [Q-0306-5] Svelte 5 runes 마운트 추가 설정? → **`@sveltejs/vite-plugin-svelte` 이미 설치 — 추가 설정 불필요**
+- [x] [Q-0311-1] 스테이징 Supabase project? → **`.env.example`에 placeholder만**. 사용자가 GitHub Secrets에 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` 추가 필요 (별도 작업)
+- [x] [Q-0311-2] 테스트 row 격리? → **고정 UUID `00000000-0000-0000-0000-000000000311`** + try/finally DELETE
+- [x] [Q-0311-3] CI secret 주입? → **본 PR 코드만, secret 주입 별도 인프라 작업** (D-0311-F)
+- [x] [Q-0311-4] @testing-library/svelte 호환? → **Svelte 5.51.0 + @testing-library/svelte ^5.2.0 호환 OK**
+- [x] [Q-0311-5] Svelte 5 runes 마운트 추가 설정? → **`@sveltejs/vite-plugin-svelte` 이미 설치 — 추가 설정 불필요**
 
 ## Implementation Plan
 
