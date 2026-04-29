@@ -2576,6 +2576,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/personalization/verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Verdict
+         * @description Record a verdict and return updated affinity score + threshold delta.
+         *
+         *     Cold-start users (n < 10) get mode="cold_start" with delta=null.
+         *     Warm users (n ≥ 10) get mode="personalized" with computed delta.
+         */
+        post: operations["post_verdict_personalization_verdict_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/personalization/user/{user_id}/variant/{pattern_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Variant
+         * @description Resolve personalized (or global fallback) variant for user × pattern.
+         */
+        get: operations["get_variant_personalization_user__user_id__variant__pattern_slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/personalization/user/{user_id}/affinity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Affinity
+         * @description Return top-k affinity scores for a user across all patterns.
+         */
+        get: operations["get_affinity_personalization_user__user_id__affinity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/personalization/user/{user_id}/rescue/{pattern_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Rescue
+         * @description Manually trigger rescue for always-invalid patterns.
+         *
+         *     Returns rescued=False if needs_rescue check fails (valid_rate > 5% or n < 30).
+         */
+        post: operations["post_rescue_personalization_user__user_id__rescue__pattern_slug__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -2844,6 +2929,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AffinityEntry */
+        AffinityEntry: {
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** Alpha Valid */
+            alpha_valid: number;
+            /** Beta Valid */
+            beta_valid: number;
+            /** N Total */
+            n_total: number;
+            /** Score */
+            score: number;
+            /** Is Cold */
+            is_cold: boolean;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** AffinityListResponse */
+        AffinityListResponse: {
+            /** User Id */
+            user_id: string;
+            /** Patterns */
+            patterns: components["schemas"]["AffinityEntry"][];
+        };
         /** BacktestConfig */
         BacktestConfig: {
             /**
@@ -3974,6 +4083,13 @@ export interface components {
              */
             timeframe: string;
         };
+        /** RescueResponse */
+        RescueResponse: {
+            /** Rescued */
+            rescued: boolean;
+            /** New Score */
+            new_score: number;
+        };
         /** ResearchContextBody */
         ResearchContextBody: {
             source?: components["schemas"]["ResearchSourceBody"] | null;
@@ -4726,6 +4842,21 @@ export interface components {
             /** Expectancy */
             expectancy: number;
         };
+        /** ThresholdDeltaOut */
+        ThresholdDeltaOut: {
+            /** Stop Mul Delta */
+            stop_mul_delta: number;
+            /** Entry Strict Delta */
+            entry_strict_delta: number;
+            /** Target Mul Delta */
+            target_mul_delta: number;
+            /** N Used */
+            n_used: number;
+            /** Shrinkage Factor */
+            shrinkage_factor: number;
+            /** Clamped */
+            clamped: boolean;
+        };
         /** TokenInfo */
         TokenInfo: {
             /** Rank */
@@ -4798,6 +4929,22 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** VariantOut */
+        VariantOut: {
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** Variant Slug */
+            variant_slug: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Mode */
+            mode: string;
+            delta: components["schemas"]["ThresholdDeltaOut"] | null;
+            /** Base Variant Slug */
+            base_variant_slug: string;
+            /** Resolved At */
+            resolved_at: string;
+        };
         /**
          * VerdictBar
          * @description One bar after the signal bar.
@@ -4809,50 +4956,6 @@ export interface components {
             l: number;
             /** C */
             c: number;
-        };
-        /** VerdictRequest */
-        VerdictRequest: {
-            /** Entry Price */
-            entry_price: number;
-            /**
-             * Direction
-             * @default long
-             */
-            direction: string;
-            /** Bars After */
-            bars_after: components["schemas"]["VerdictBar"][];
-            /**
-             * Target Pct
-             * @default 0.01
-             */
-            target_pct: number;
-            /**
-             * Stop Pct
-             * @default 0.01
-             */
-            stop_pct: number;
-            /**
-             * Max Bars
-             * @default 24
-             */
-            max_bars: number;
-        };
-        /** VerdictResponse */
-        VerdictResponse: {
-            /** Outcome */
-            outcome: string;
-            /** Pnl Pct */
-            pnl_pct: number;
-            /** Bars Held */
-            bars_held: number;
-            /** Exit Price */
-            exit_price: number;
-            /** Max Favorable */
-            max_favorable: number;
-            /** Max Adverse */
-            max_adverse: number;
-            /** Direction */
-            direction: string;
         };
         /** _BenchmarkPackDraftBody */
         _BenchmarkPackDraftBody: {
@@ -5120,6 +5223,50 @@ export interface components {
             /** Duration Sec */
             duration_sec: number;
         };
+        /** VerdictRequest */
+        api__routes__verdict__VerdictRequest: {
+            /** Entry Price */
+            entry_price: number;
+            /**
+             * Direction
+             * @default long
+             */
+            direction: string;
+            /** Bars After */
+            bars_after: components["schemas"]["VerdictBar"][];
+            /**
+             * Target Pct
+             * @default 0.01
+             */
+            target_pct: number;
+            /**
+             * Stop Pct
+             * @default 0.01
+             */
+            stop_pct: number;
+            /**
+             * Max Bars
+             * @default 24
+             */
+            max_bars: number;
+        };
+        /** VerdictResponse */
+        api__routes__verdict__VerdictResponse: {
+            /** Outcome */
+            outcome: string;
+            /** Pnl Pct */
+            pnl_pct: number;
+            /** Bars Held */
+            bars_held: number;
+            /** Exit Price */
+            exit_price: number;
+            /** Max Favorable */
+            max_favorable: number;
+            /** Max Adverse */
+            max_adverse: number;
+            /** Direction */
+            direction: string;
+        };
         /** ScanRequest */
         api__schemas_search__ScanRequest: {
             /** Definition Id */
@@ -5165,6 +5312,28 @@ export interface components {
             };
             /** Candidates */
             candidates?: components["schemas"]["SearchCandidate"][];
+        };
+        /** VerdictRequest */
+        personalization__api__VerdictRequest: {
+            /** User Id */
+            user_id: string;
+            /** Pattern Slug */
+            pattern_slug: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "valid" | "invalid" | "near_miss" | "too_early" | "too_late";
+            /** Captured At */
+            captured_at: string;
+        };
+        /** VerdictResponse */
+        personalization__api__VerdictResponse: {
+            /** Mode */
+            mode: string;
+            delta: components["schemas"]["ThresholdDeltaOut"] | null;
+            /** Affinity Score */
+            affinity_score: number;
         };
     };
     responses: never;
@@ -6646,7 +6815,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerdictRequest"];
+                "application/json": components["schemas"]["api__routes__verdict__VerdictRequest"];
             };
         };
         responses: {
@@ -6656,7 +6825,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["VerdictResponse"];
+                    "application/json": components["schemas"]["api__routes__verdict__VerdictResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9375,6 +9544,136 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_verdict_personalization_verdict_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["personalization__api__VerdictRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["personalization__api__VerdictResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_variant_personalization_user__user_id__variant__pattern_slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+                pattern_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_affinity_personalization_user__user_id__affinity_get: {
+        parameters: {
+            query?: {
+                top_k?: number;
+            };
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffinityListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_rescue_personalization_user__user_id__rescue__pattern_slug__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+                pattern_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RescueResponse"];
                 };
             };
             /** @description Validation Error */
