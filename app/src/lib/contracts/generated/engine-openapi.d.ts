@@ -102,6 +102,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ctx/kimchi-premium": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ctx Kimchi Premium
+         * @description Return current Kimchi Premium % (Upbit BTC/KRW vs Binance BTC/USDT × USD/KRW).
+         *
+         *     30s server-side cache (function-level). Returns zeros on fetch failure.
+         *     Response: { premium_pct, source, usd_krw, ts }
+         */
+        get: operations["ctx_kimchi_premium_ctx_kimchi_premium_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ctx/fact": {
         parameters: {
             query?: never;
@@ -5201,6 +5224,28 @@ export interface operations {
         };
     };
     ctx_refresh_ctx_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    ctx_kimchi_premium_ctx_kimchi_premium_get: {
         parameters: {
             query?: never;
             header?: never;
