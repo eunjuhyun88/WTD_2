@@ -17,9 +17,9 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 → **1개** (P0=0 / P1=1 / P2=7 / P3=10) — +F-3 ✅ (#639) + F-18 ✅ (#653) + F-5 ✅ (#652)
+열린 갭:    17개 → **0개** (P0=0 / P1=0 / P2=6 / P3=10) — +F-12 ✅ (#671) kimchi badge + F-14 ✅ (#672) lifecycle promote UI
 즉시 P0:   없음 (P0 클리어)
-다음 P1:   W-0282 F-3 Telegram deeplink last-mile (W-0305) 🟡 + F-14 PatternObject lifecycle (W-0308) 🟡
+다음 P1:   없음 (P1 클리어) — W-0304 per-pane indicator (Codex 🟡) + W-0317 SplitPane wire-up (Codex 🟡)
 퀀트 경화:  **W-0286 ✅ PR #560** + **W-0290~W-0293 ✅ PR #587** + **W-0290 Ph2 ✅ PR #591** + **W-0294 ✅ PR #592**
 하네스:     **PR #574 ✅** (verify.py + inventory) + **PR #575 ✅** (Supabase timeout) + **PR #588 ✅** (PID stale lock) + **PR #609 ✅** (reliability repair + cycle-smoke)
 ```
@@ -65,7 +65,7 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 |---|---|---|---|
 | **L1** Market Data | 27 modules (Binance/Bybit/Coinbase/OKX) | ✅ | — |
 | **L2** Feature Window | migration 021, 40+col, 138,915 rows | ✅ | DESIGN_V3.1 미반영 (F-12) |
-| **L3** Pattern Object | **52 PatternObjects × 85 Building Blocks** | ✅ | lifecycle UI (F-14) |
+| **L3** Pattern Object | **52 PatternObjects × 85 Building Blocks** | ✅ | lifecycle UI (F-14) ✅ PR #672 |
 | **L4** State Machine | SQLite WAL + Supabase dual-write, 15m scan | ✅ | — |
 | **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) ✅ recall@10=100% PR #687 |
 | **L6** Ledger | 8-type Python, Supabase 1-table | ✅ | F-02 ✅ 해소 (W-0253, PR #437+#472) — 운영 DB 검증 #481 |
@@ -199,7 +199,7 @@ CSS Grid, resizable, min-width per pane
 | ↳ kimchi_premium / session_apac/us/eu / oi_normalized_cvd | | | | Korea persona 직결 |
 | ~~F-13 Telegram Bot 연결 UI~~ | W-0239 | — | — | ✅ **완료 (2026-04-29 PR #626)** 6-char code auth + webhook |
 | ↳ 6자리 코드 인증 + 알림 라우팅 설정 | | | | |
-| F-14 PatternObject lifecycle | W-0245 | M | A-03-eng | Draft→Candidate→Object promote |
+| ~~F-14 PatternObject lifecycle~~ | W-0308 | — | — | ✅ **완료 (2026-04-30 PR #672)** lifecycle promote UI + PATCH /status endpoint |
 | F-15 PersonalVariant runtime UI | W-0246 | S-M | — | `active_variant_registry.py` BUILT |
 | ~~F-16 Search recall@10 ≥ 0.7~~ | W-0247 | — | — | ✅ **완료 (2026-04-30 PR #687)** eval_set 50쿼리 + weights (0.60/0.30/0.10) recall=100% |
 | ↳ 50 query eval set + LCS 가중 튜닝 (0.6/0.3/0.1) | | | | |
