@@ -21,6 +21,23 @@ export interface LifecycleTransitionResponse {
   updated_at: number;
 }
 
+export interface LifecycleEntry {
+  slug: string;
+  name: string;
+  status: LifecycleStatus;
+  updated_at: number | null;
+  updated_by: string | null;
+  reason: string;
+  timeframe: string;
+  tags: string[];
+}
+
+export interface LifecycleListResponse {
+  ok: boolean;
+  count: number;
+  entries: LifecycleEntry[];
+}
+
 /** Allowed forward transitions per status (mirrors engine ALLOWED_TRANSITIONS). */
 export const ALLOWED_NEXT: Record<LifecycleStatus, LifecycleStatus[]> = {
   draft:     ['candidate', 'archived'],
@@ -42,6 +59,13 @@ export async function fetchLifecycleStatus(slug: string): Promise<LifecycleStatu
   const res = await fetch(`/api/patterns/${encodeURIComponent(slug)}/lifecycle-status`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<LifecycleStatusResponse>;
+}
+
+/** Fetch lifecycle status for all known PatternObjects. */
+export async function fetchLifecycleList(): Promise<LifecycleListResponse> {
+  const res = await fetch('/api/patterns/lifecycle');
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<LifecycleListResponse>;
 }
 
 /** Transition pattern to a new lifecycle status. */

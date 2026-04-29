@@ -201,6 +201,7 @@
       <button class="surface-button" onclick={triggerScan} disabled={scanning}>
         {scanning ? 'Scanning…' : 'Run Scan'}
       </button>
+      <button class="surface-button-secondary" onclick={() => goto('/patterns/lifecycle')}>Lifecycle</button>
       <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
     </div>
   </header>

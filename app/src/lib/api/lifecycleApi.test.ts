@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ALLOWED_NEXT,
+  fetchLifecycleList,
   fetchLifecycleStatus,
   patchPatternStatus,
 } from './lifecycleApi';
@@ -34,6 +35,31 @@ describe('lifecycleApi', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/patterns/tradoor%2Foi%20reversal/lifecycle-status');
     expect(result.status).toBe('candidate');
+  });
+
+  it('fetches lifecycle list through the app proxy', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        ok: true,
+        count: 1,
+        entries: [{
+          slug: 'tradoor-oi-reversal-v1',
+          name: 'Tradoor OI Reversal',
+          status: 'object',
+          updated_at: null,
+          updated_by: null,
+          reason: '',
+          timeframe: '1h',
+          tags: ['oi'],
+        }],
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchLifecycleList();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/patterns/lifecycle');
+    expect(result.entries[0]?.status).toBe('object');
   });
 
   it('patches lifecycle status with reason', async () => {
