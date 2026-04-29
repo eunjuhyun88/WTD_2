@@ -14,7 +14,7 @@ v2: Added feature_snapshot and confidence to PhaseTransition for reproducibility
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 import uuid
 
 @dataclass
@@ -54,6 +54,8 @@ class PatternObject:
     version: int = 1
     created_by: str = "system"
     direction: Literal["long", "short"] = "long"  # trade direction
+    candidate_status: Literal["draft", "candidate", "object", "archived"] = "object"
+    promoted_at: Optional[datetime] = None
 
 @dataclass
 class SymbolPhaseState:

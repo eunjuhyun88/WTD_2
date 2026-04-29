@@ -34,7 +34,13 @@ from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from verification import run_paper_verification
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
-from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
+from patterns.active_variant_registry import (
+    ACTIVE_PATTERN_VARIANT_STORE,
+    ActivePatternVariantEntry,
+    ACTIVE_VARIANT_REGISTRY_DIR,
+    derive_watch_phases_from_pattern,
+)
+from patterns.lifecycle_store import PATTERN_LIFECYCLE_STORE, VALID_TRANSITIONS
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
@@ -394,6 +400,37 @@ async def get_pattern_registry() -> dict:
             "count": len(entries),
             "entries": [e.to_dict() for e in entries],
         }
+    return await asyncio.to_thread(_sync)
+
+
+@router.get("/lifecycle")
+async def get_lifecycle_statuses() -> dict:
+    """Return lifecycle status for all known patterns.
+
+    Combines PATTERN_LIBRARY slugs with lifecycle store entries.
+    Patterns not in the lifecycle store default to 'object' (legacy production patterns).
+    """
+    from patterns.library import PATTERN_LIBRARY
+
+    def _sync():
+        known_slugs = set(PATTERN_LIBRARY.keys()) | {
+            e.slug for e in PATTERN_REGISTRY_STORE.list_all()
+        }
+        entries = []
+        for slug in sorted(known_slugs):
+            entry = PATTERN_LIFECYCLE_STORE.get_or_default(slug)
+            pattern = PATTERN_LIBRARY.get(slug)
+            entries.append({
+                "slug": slug,
+                "name": pattern.name if pattern else None,
+                "status": entry.status,
+                "promoted_at": entry.promoted_at,
+                "updated_at": entry.updated_at,
+                "timeframe": pattern.timeframe if pattern else "1h",
+                "tags": list(pattern.tags) if pattern else [],
+            })
+        return {"ok": True, "count": len(entries), "entries": entries}
+
     return await asyncio.to_thread(_sync)
 
 
@@ -997,4 +1034,84 @@ async def verify_paper(slug: str) -> dict:
         "avg_duration_hours": result.avg_duration_hours,
         "pass_gate": result.pass_gate,
         "gate_reasons": result.gate_reasons,
+    }
+
+
+# ── Lifecycle status PATCH ────────────────────────────────────────────────────
+
+class _PatchStatusBody(BaseModel):
+    status: str  # "draft" | "candidate" | "object" | "archived"
+    reason: str = ""
+
+
+@router.patch("/{slug}/status")
+async def patch_pattern_status(
+    request: Request,
+    slug: str,
+    body: _PatchStatusBody,
+) -> dict:
+    """Promote or demote a pattern's lifecycle status.
+
+    Valid transitions:
+      draft      → candidate | archived
+      candidate  → object    | archived
+      object     → archived
+      archived   → (terminal, no transitions)
+    """
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="authentication required")
+
+    valid_statuses = {"draft", "candidate", "object", "archived"}
+    if body.status not in valid_statuses:
+        raise HTTPException(status_code=422, detail=f"invalid status: {body.status!r}")
+
+    # Resolve slug — must exist in library or registry
+    from patterns.library import PATTERN_LIBRARY
+    known_slugs = set(PATTERN_LIBRARY.keys()) | {
+        e.slug for e in PATTERN_REGISTRY_STORE.list_all()
+    }
+    if slug not in known_slugs:
+        raise HTTPException(status_code=404, detail=f"pattern not found: {slug}")
+
+    try:
+        entry = await asyncio.to_thread(
+            PATTERN_LIFECYCLE_STORE.transition,
+            slug,
+            body.status,  # type: ignore[arg-type]
+            body.reason,
+            str(user_id),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # Bridge: variant registry sync
+    if body.status == "candidate":
+        # draft → candidate: register in scanner if not already present
+        existing = ACTIVE_PATTERN_VARIANT_STORE.get(slug)
+        if not existing:
+            pattern = PATTERN_LIBRARY.get(slug)
+            watch_phases = (
+                derive_watch_phases_from_pattern(pattern) if pattern else []
+            )
+            ACTIVE_PATTERN_VARIANT_STORE.upsert(
+                ActivePatternVariantEntry(
+                    pattern_slug=slug,
+                    variant_slug=f"{slug}__canonical",
+                    timeframe="1h",
+                    watch_phases=watch_phases,
+                    source_kind="operator",
+                )
+            )
+    elif body.status == "archived":
+        # archived: remove from scanner
+        variant_file = ACTIVE_VARIANT_REGISTRY_DIR / f"{slug}.json"
+        if variant_file.exists():
+            variant_file.unlink()
+
+    return {
+        "slug": slug,
+        "status": entry.status,
+        "promoted_at": entry.promoted_at,
+        "updated_at": entry.updated_at,
     }
