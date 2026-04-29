@@ -13,8 +13,8 @@ Layer C — ML p_win
     If LightGBM model is trained, scores using stored feature_snapshot from
     the most recent phase transition for the candidate symbol.
 
-Blending weights:
-    - A + B + C:  0.45 / 0.30 / 0.25
+Blending weights (W-0247: Layer C untrained → reduced from 0.25 → 0.10):
+    - A + B + C:  0.60 / 0.30 / 0.10
     - A + B only: 0.60 / 0.40
     - A + C only: 0.70 / 0.30
     - A only:     1.00
@@ -38,7 +38,7 @@ from search._signals import (
 STATE_DIR = Path(__file__).resolve().parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "similar_runs.sqlite"
 
-_W_ABC_DEFAULT = (0.45, 0.30, 0.25)
+_W_ABC_DEFAULT = (0.60, 0.30, 0.10)  # Layer C is untrained — keep its influence minimal
 _W_AB_DEFAULT  = (0.60, 0.40)
 _W_AC_DEFAULT  = (0.70, 0.30)
 
@@ -358,7 +358,7 @@ def run_similar_search(
     try:
         from search.quality_ledger import compute_weights
         w = compute_weights()
-        wa, wb, wc = w.get("layer_a", 0.45), w.get("layer_b", 0.30), w.get("layer_c", 0.25)
+        wa, wb, wc = w.get("layer_a", _W_ABC_DEFAULT[0]), w.get("layer_b", _W_ABC_DEFAULT[1]), w.get("layer_c", _W_ABC_DEFAULT[2])
         # Re-derive derived tuples from ledger weights
         ab_sum = wa + wb
         ac_sum = wa + wc
