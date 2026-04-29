@@ -30,6 +30,7 @@
 | /인계 | - | - | 다음 에이전트용 인계 기록 (보통 /닫기가 �... |
 | /잠금 | - | - | 도메인 lock — 멀티 에이전트 충돌 차단 |
 | /측정 | - | - | 시간 추이 있는 수치 기록 (지표 추적) |
+| /컨텍스트 | - | - | - |
 
 ## Tools
 
@@ -43,6 +44,7 @@
 | claim.sh | file-domain ownership lock + GitHub Issue assignee mutex |
 | classify_work_items.sh | work/active/W-*.md를 자동 분류 |
 | complete_work_item.sh | work item 1개를 active → completed로 이동 |
+| context-pack.sh | work item + domain file slicer for /컨텍스트 skill |
 | end.sh | 세션 종료 (memkraft 통합) |
 | integration-test.sh | W-0278 7-Pillar Integration Test — mock sub-agent scenario |
 | list_parking_notes.sh | CURRENT.md 미등재 + 머지 PR 없음 work item 표시 |
@@ -60,6 +62,7 @@
 | verify_design.sh | Verify design/current specs against implementation. |
 | work_issue_map.sh | work item ↔ GitHub Issue mapping CRUD |
 | worktree-registry.sh | Worktree SSOT registry CLI (state/worktrees.json) |
+| cycle-smoke.py | 1-Cycle Pattern Finding Smoke Test — 5 AC, 17 checks. |
 | verify.py | CI guard for wtd-v2. |
 | verify/architecture.py | Verify design architecture invariants. |
 | verify/contracts.py | Verify design contract invariants. |
@@ -129,34 +132,35 @@
 | GET | /observability/flywheel/health | routes/observability.py:152 |
 | GET | /observability/agent-status | routes/observability.py:157 |
 | POST | /opportunity/run | routes/opportunity.py:122 |
-| POST | /patterns/parse | routes/patterns.py:191 |
-| GET | /patterns/library | routes/patterns.py:380 |
-| GET | /patterns/registry | routes/patterns.py:386 |
-| GET | /patterns/active-variants | routes/patterns.py:399 |
-| GET | /patterns/states | routes/patterns.py:414 |
-| GET | /patterns/transitions | routes/patterns.py:420 |
-| GET | /patterns/candidates | routes/patterns.py:459 |
-| POST | /patterns/draft-from-range | routes/patterns.py:467 |
-| POST | /patterns/scan | routes/patterns.py:566 |
-| GET | /patterns/stats/all | routes/patterns.py:575 |
-| GET | /patterns/{slug}/candidates | routes/patterns.py:589 |
-| GET | /patterns/{slug}/similar-live | routes/patterns.py:595 |
-| GET | /patterns/{slug}/f60-status | routes/patterns.py:650 |
-| GET | /patterns/{slug}/stats | routes/patterns.py:671 |
-| GET | /patterns/{slug}/training-records | routes/patterns.py:687 |
-| GET | /patterns/{slug}/alert-policy | routes/patterns.py:703 |
-| PUT | /patterns/{slug}/alert-policy | routes/patterns.py:709 |
-| GET | /patterns/{slug}/model-registry | routes/patterns.py:727 |
-| GET | /patterns/{slug}/model-history | routes/patterns.py:737 |
-| GET | /patterns/{slug}/library | routes/patterns.py:754 |
-| POST | /patterns/{slug}/verdict | routes/patterns.py:762 |
-| POST | /patterns/{slug}/capture | routes/patterns.py:801 |
-| POST | /patterns/{slug}/evaluate | routes/patterns.py:845 |
-| POST | /patterns/{slug}/train-model | routes/patterns.py:851 |
-| POST | /patterns/{slug}/promote-model | routes/patterns.py:871 |
-| POST | /patterns/register | routes/patterns.py:886 |
-| POST | /patterns/{slug}/benchmark-pack-draft | routes/patterns.py:945 |
-| POST | /patterns/{slug}/benchmark-search-from-capture | routes/patterns.py:963 |
+| POST | /patterns/parse | routes/patterns.py:192 |
+| GET | /patterns/library | routes/patterns.py:381 |
+| GET | /patterns/registry | routes/patterns.py:387 |
+| GET | /patterns/active-variants | routes/patterns.py:400 |
+| GET | /patterns/states | routes/patterns.py:415 |
+| GET | /patterns/transitions | routes/patterns.py:421 |
+| GET | /patterns/candidates | routes/patterns.py:460 |
+| POST | /patterns/draft-from-range | routes/patterns.py:468 |
+| POST | /patterns/scan | routes/patterns.py:567 |
+| GET | /patterns/stats/all | routes/patterns.py:576 |
+| GET | /patterns/{slug}/candidates | routes/patterns.py:590 |
+| GET | /patterns/{slug}/similar-live | routes/patterns.py:596 |
+| GET | /patterns/{slug}/f60-status | routes/patterns.py:651 |
+| GET | /patterns/{slug}/stats | routes/patterns.py:672 |
+| GET | /patterns/{slug}/training-records | routes/patterns.py:688 |
+| GET | /patterns/{slug}/alert-policy | routes/patterns.py:704 |
+| PUT | /patterns/{slug}/alert-policy | routes/patterns.py:710 |
+| GET | /patterns/{slug}/model-registry | routes/patterns.py:728 |
+| GET | /patterns/{slug}/model-history | routes/patterns.py:738 |
+| GET | /patterns/{slug}/library | routes/patterns.py:755 |
+| POST | /patterns/{slug}/verdict | routes/patterns.py:763 |
+| POST | /patterns/{slug}/capture | routes/patterns.py:802 |
+| POST | /patterns/{slug}/evaluate | routes/patterns.py:846 |
+| POST | /patterns/{slug}/train-model | routes/patterns.py:852 |
+| POST | /patterns/{slug}/promote-model | routes/patterns.py:872 |
+| POST | /patterns/register | routes/patterns.py:887 |
+| POST | /patterns/{slug}/benchmark-pack-draft | routes/patterns.py:946 |
+| POST | /patterns/{slug}/benchmark-search-from-capture | routes/patterns.py:964 |
+| POST | /patterns/{slug}/verify-paper | routes/patterns.py:981 |
 | POST | /rag/terminal-scan | routes/rag.py:24 |
 | POST | /rag/quick-trade | routes/rag.py:35 |
 | POST | /rag/signal-action | routes/rag.py:40 |

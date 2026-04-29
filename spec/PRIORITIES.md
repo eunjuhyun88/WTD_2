@@ -168,7 +168,7 @@ POST /alerts/{alert_id}/verdict-link → signed JWT (72h TTL, HMAC-SHA256)
 카드 5: Actions (Watch / Capture / Verdict / Benchmark)
 ```
 
-### F-5: IDE-style resizable split-pane (M-L, 5일)
+### F-5: IDE-style resizable split-pane (M-L, 5일) ✅ **완료 (2026-04-29 PR #625 / W-0243)**
 
 ```
 Observe mode:  Chart 70% | HUD 30%
@@ -195,9 +195,9 @@ CSS Grid, resizable, min-width per pane
 |---|---|---|---|---|
 | F-11 Dashboard WATCHING 풀 구현 | W-0240 | M | — | placeholder BTC/ETH 2-item 정적 코드 |
 | F-11 Pattern Candidate Review UI | W-0240 | M | — | `/patterns/candidates` API BUILT |
-| F-12 DESIGN_V3.1 features | W-0236 | M | — | migration 021 40+col에 3개 미반영 |
+| ~~F-12 DESIGN_V3.1 features~~ | W-0238 | — | — | ✅ **완료 (2026-04-29 PR #624)** kimchi/session/oi-cvd 9 columns + Upbit fetcher |
 | ↳ kimchi_premium / session_apac/us/eu / oi_normalized_cvd | | | | Korea persona 직결 |
-| F-13 Telegram Bot 연결 UI | W-0237 | M | — | alert 발송 인프라 BUILT, UI 없음 |
+| ~~F-13 Telegram Bot 연결 UI~~ | W-0239 | — | — | ✅ **완료 (2026-04-29 PR #626)** 6-char code auth + webhook |
 | ↳ 6자리 코드 인증 + 알림 라우팅 설정 | | | | |
 | F-14 PatternObject lifecycle | W-0245 | M | A-03-eng | Draft→Candidate→Object promote |
 | F-15 PersonalVariant runtime UI | W-0246 | S-M | — | `active_variant_registry.py` BUILT |
@@ -284,7 +284,7 @@ CSS Grid, resizable, min-width per pane
 | **D2** | NSM = **WVPL** | 플라이휠 전 구간(input→search→verdict→refine) 포함. 단일 지표로 목표 분산 방지 |
 | **D3** | Persona = **Jin 단일** | Anti-persona 확정: casual investor/algo bot/institutional 제외. 단일 페르소나 = 날카로운 제품 결정 |
 | **D4** | Decision HUD **5-card** | Pattern/Evidence/Risk/Next/Actions — 정보 아키텍처 완결. F-4 설계 그대로 실행 |
-| **D5** | **IDE split-pane** (free-form canvas 폐기) | 리사이저블 고정 레이아웃 > 자유 캔버스. 집중력 > 자유도. F-5 설계 그대로 |
+| **D5** | ~~**IDE split-pane**~~ ✅ **완료 (2026-04-29 PR #625)** | 리사이저블 고정 레이아웃 > 자유 캔버스. 집중력 > 자유도. F-5 설계 그대로 |
 | **D6** | L6 **1-table 유지** (4-table P2) | M3 전 스키마 변경 금지. F-30은 Week 4 최후순위로 유지 |
 | **D7** | L3 **file-first** 유지 | 52패턴 버전 관리 trivial. DB sync = read path. lifecycle UI(F-14)만 추가 |
 | **D9** | Wiki = **L7 ledger-driven job** | engine/wiki/ BUILT. 별도 AI agent 시스템 불필요. 야크쉐이빙 방지 |

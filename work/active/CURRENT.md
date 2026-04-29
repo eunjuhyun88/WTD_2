@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`8cf11e4d` — origin/main (2026-04-29) — PR #614 W-0287/0288/0289 검증 테스트 머지
+`ca5e7269` — origin/main (2026-04-29) — A077 8-PR sweep (P0 D5 + Wave 4 Week1 + cost tiering)
 
 ---
 
@@ -14,23 +14,36 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0297-cursor-grade-code-accuracy` | P1 | ✅ 완료 — AC1(LSP IDE전용)/AC2(serena 다음세션) 구조 검증됨 |
-| `W-0283-f11-watching-candidates-impl` | P1 | ✅ 완료 — 30s 자동갱신 PR #620 머지 |
-| `W-0295-context-boot-trim` | P2 | ✅ 완료 — 7939→3718 tok (-53%), PR #620 머지 |
+| `W-0282-v-pv-01-engine-verification-scaffold` | P1 | 🟡 다음 — F-3 Telegram deeplink (1-click verdict) |
+| `W-0245-f14-pattern-lifecycle` | P2 | 🟡 Wave 4 Week3 |
+| `W-0247-f16-search-recall-verify` | P2 | 🟡 Wave 4 Week3 |
+| `W-0248-f18-stripe-tier` | P1 | 🟡 Wave 4 Week3 — D1 Pricing $29 Pro |
+| `W-0252-v00-pattern-search-audit` | P2 | 🟡 audit 진행 |
 
 ---
 
-## Wave 4 실행 계획 요약
+## Wave 4 실행 계획 (갱신)
 
 ```
-즉시:  W-0302 git stash 92개 정리 (15분) → W-0297 LSP+MCP+agents/ (1.5일)
-Week1: F-11 WATCHING (W-0283) / F-3 Telegram deeplink
-Week2: F-4 Decision HUD / F-5 IDE split-pane / F-12 Korea features
-Week3: F-18 Stripe / F-14 Pattern lifecycle / F-16 recall
+✅ A077 (2026-04-29):
+   #623 migration fix · #624 F-12 Korea · #626 F-13 Telegram · #628 perf fix
+   #629 Haiku tiering · #625 P0 D5 IDE split-pane · #567 mini chart · #627 logs
+
+즉시:   F-3 Telegram deeplink (W-0282) — 다음 P1
+Week2: D4 Decision HUD 5-card (P0)
+Week3: F-18 Stripe (D1 Pricing) / F-14 Pattern lifecycle / F-16 recall
 Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 ```
 
-상세: `work/active/W-0252-wave4-final-verified-design.md §5`
+상세: `work/active/W-0252-v00-pattern-search-audit.md`
+
+---
+
+## A077 세션 핵심 lesson
+
+- **CI flaky 근본 fix**: 임계값에 4× 여유 (CI variance ≠ 회귀)
+- **Stale PR rebase**: design docs 동봉된 PR은 close + minimal 새 PR이 빠름
+- **블로커 우선**: 1개 fix가 도미노 4개 unblock (#628 → #623/#625)
 
 ---
 
@@ -47,6 +60,5 @@ Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 ```bash
 ./tools/start.sh
 # Week1: F-3 Telegram deeplink (W-0282) — 다음 P1
-# W-0297/W-0300 완료, W-0283/W-0295 완료
-cat work/active/W-0282-f3-telegram-deeplink.md
+cat work/active/W-0282-v-pv-01-engine-verification-scaffold.md
 ```
