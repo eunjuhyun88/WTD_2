@@ -149,6 +149,14 @@ class TestListPending:
         assert [outcome.symbol for outcome in store.list_all(SLUG, definition_id=f"{SLUG}:v2")] == ["B"]
 
 
+@pytest.fixture(autouse=True)
+def _no_supabase_record_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch module-level LEDGER_RECORD_STORE to local-file so close_outcome never
+    hits real Supabase during unit tests (522 timeout flakiness)."""
+    import ledger.store as _ls
+    monkeypatch.setattr(_ls, "LEDGER_RECORD_STORE", _ls.LedgerRecordStore())
+
+
 class TestCloseOutcome:
     def test_close_outcome_updates_result(self, store: LedgerStore) -> None:
         o = _make_outcome(entry_price=100.0)

@@ -34,7 +34,7 @@ engine + app
 - `engine/api/routes/captures.py`, `search.py`, `patterns.py` — `Depends(tier_gate)` 적용
 
 **DB (Supabase)**
-- `app/supabase/migrations/029_stripe_x402_tier.sql`
+- `app/supabase/migrations/030_stripe_x402_tier.sql`
   - `ALTER TABLE user_preferences ADD COLUMN tier TEXT NOT NULL DEFAULT 'free' CHECK (tier IN ('free','pro'))`
   - `ALTER TABLE user_preferences ADD COLUMN stripe_customer_id TEXT`
   - `ALTER TABLE user_preferences ADD COLUMN subscription_active BOOLEAN NOT NULL DEFAULT FALSE`
@@ -67,7 +67,7 @@ engine + app
 | tier check가 every request에서 DB hit → latency | M | M | Redis cache 60s TTL (`tier:{user_id}`) |
 | Free user가 x402 bypass 시도 | M | M | middleware는 tier='pro' OR credits>0만 통과, 양쪽 모두 검증 |
 | `subscription_active=true`인데 expired | L | H | webhook `customer.subscription.deleted` + nightly cron `subscription_expires_at < now()` 검사 |
-| 029 migration 실수로 기존 user tier 변경 | L | H | DEFAULT 'free' + 기존 row UPDATE 금지, migration dry-run on staging |
+| 030 migration 실수로 기존 user tier 변경 | L | H | DEFAULT 'free' + 기존 row UPDATE 금지, migration dry-run on staging |
 
 ### Dependencies
 - 선행: JWT Auth (W-0162 완료) ✅
@@ -77,7 +77,7 @@ engine + app
 ### Rollback Plan
 1. Stripe webhook endpoint 비활성화 (`STRIPE_WEBHOOK_SECRET` env 제거)
 2. tier_gate middleware feature flag (`TIER_GATE_ENABLED=false`) → 모든 request bypass
-3. migration 029 rollback: `ALTER TABLE user_preferences DROP COLUMN tier, stripe_customer_id, subscription_active, subscription_expires_at` + `DROP TABLE user_credits` (사전 백업 필수)
+3. migration 030 rollback: `ALTER TABLE user_preferences DROP COLUMN tier, stripe_customer_id, subscription_active, subscription_expires_at` + `DROP TABLE user_credits` (사전 백업 필수)
 4. 결제 환불은 Stripe Dashboard 수동 처리 (M3 단계 정책)
 
 ### Files Touched
@@ -88,7 +88,7 @@ engine + app
 - `app/src/routes/api/billing/x402/verify/+server.ts` (신규)
 - `app/src/lib/server/stripe.ts` (신규)
 - `app/src/lib/server/x402.ts` (신규)
-- `app/supabase/migrations/029_stripe_x402_tier.sql` (신규)
+- `app/supabase/migrations/030_stripe_x402_tier.sql` (신규)
 - `engine/api/middleware/tier_gate.py` (신규)
 - `engine/api/middleware/x402_gate.py` (신규)
 - `engine/api/routes/captures.py` (Depends(tier_gate) 추가)
@@ -136,7 +136,7 @@ engine + app
 
 ## Implementation Plan
 
-1. **migration 029** 작성 + staging dry-run + RLS policy (user only own row)
+1. **migration 030** 작성 + staging dry-run + RLS policy (user only own row)
 2. **Stripe path** 구현 (`app/src/lib/server/stripe.ts`, 3 endpoints)
 3. **Stripe webhook** signature 검증 + DB 업데이트 (idempotent on event_id)
 4. **engine middleware `tier_gate.py`** + Redis cache 통합
@@ -156,7 +156,7 @@ engine + app
 - [ ] **AC1**: Stripe Checkout 결제 완료 → DB `tier='pro'` 반영 시간 ≤ 5초 (P95) — webhook 측정
 - [ ] **AC2**: Free tier 사용자가 6번째 capture 시도 → HTTP 402 + `{ "error": "quota_exceeded", "upgrade_url": "..." }` 반환
 - [ ] **AC3**: x402 50-credit bundle 구매 → 번들 부여 후 즉시 quota-gated endpoint 호출 통과 (`remaining` 1 차감)
-- [ ] **AC4**: migration 029 적용 후 기존 user 100% `tier='free'` (DEFAULT 유지) — staging 검증 SQL 결과 첨부
+- [ ] **AC4**: migration 030 적용 후 기존 user 100% `tier='free'` (DEFAULT 유지) — staging 검증 SQL 결과 첨부
 - [ ] **AC5**: Stripe webhook replay 공격 방어 (timestamp tolerance 300s 초과 시 401 반환) — vitest
 - [ ] **AC6**: `subscription_active=true` 사용자가 카드 만료 → `invoice.payment_failed` 이벤트 → 1분 내 tier='free' 전환
 - [ ] **AC7**: tier_gate middleware Redis cache hit ratio ≥ 90% — 1주 운영 후 측정
@@ -169,7 +169,8 @@ engine + app
 (grep 실측 결과 — 2026-04-29)
 1. `engine/api/routes/captures.py:55` — `from capture.token import sign_verdict_token, verdict_deeplink_url` ✅
 2. `engine/api/routes/captures.py:708-729` — `POST /{capture_id}/verdict-link` HMAC 구현 존재
-3. `app/supabase/migrations/028_telegram_connect.sql` — 마지막 migration. 다음은 029.
+3. `app/supabase/migrations/028_telegram_connect.sql` — telegram connect
+4. `app/supabase/migrations/029_user_wvpl_weekly.sql` — WVPL weekly (W-0305 D2) ← 마지막 migration. 다음은 030.
 4. `engine/api/routes/patterns.py:872` — `POST /{slug}/promote-model` 존재 (W-0308 사용)
 5. 결제 코드 0개 (`grep -r "stripe\|x402" engine/ app/src/lib/server/` → empty)
 6. tier 컬럼 user_preferences 미존재 (실측: 028까지 schema)
@@ -199,7 +200,7 @@ engine + app
 
 - [ ] 사용자가 D-0248-1~5 결정 검토 완료
 - [ ] Q-0248-1~5 답변 또는 Open Loop로 ack
-- [ ] migration 029 staging 적용 계획 (downtime 없음)
+- [ ] migration 030 staging 적용 계획 (downtime 없음)
 - [ ] Stripe production account + Tax 설정 (운영자 작업)
 - [ ] Coinbase x402 facilitator 등록 (treasury wallet 주소 결정)
-- [ ] PR 분리: (a) migration 029 (b) Stripe path (c) x402 path (d) tier_gate middleware (e) routes wiring — 5개 PR로 분리 권장
+- [ ] PR 분리: (a) migration 030 (b) Stripe path (c) x402 path (d) tier_gate middleware (e) routes wiring — 5개 PR로 분리 권장

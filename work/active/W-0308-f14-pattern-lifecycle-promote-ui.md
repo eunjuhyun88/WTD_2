@@ -147,12 +147,17 @@ draft → archived
 
 ## Facts
 
-(grep 실측 결과 — 2026-04-29)
-1. `engine/api/routes/patterns.py:872` — `POST /{slug}/promote-model` (model promote, status promote 아님)
-2. `engine/patterns/active_variant_registry.py` 존재 (사용자 컨텍스트)
-3. `work/active/W-0245-f14-pattern-lifecycle.md` 존재 — 정합성 확인 필요
-4. UI에 promote 버튼 0건 (gap)
-5. `app/src/routes/patterns/` 디렉토리 존재 여부 미확인 (실측 필요)
+(grep 실측 결과 — 2026-04-29 갱신)
+1. `engine/api/routes/patterns.py:872` — `POST /{slug}/promote-model` (model version promote, status promote 아님)
+2. `engine/patterns/types.py:171` — `PatternObject.candidate_status: str = "none"` 필드 존재
+   - `"none"` | `"candidate"` | `"object"` | `"archived"` — 값 정의 실측 필요
+   - **status 컬럼이 PatternObject에 존재** → DB migration 불필요할 수도 (engine registry 기반)
+3. `engine/patterns/active_variant_registry.py` 존재, invalidate 메서드 실측 필요
+4. `app/src/routes/patterns/` 디렉토리 존재 (`+page.svelte`, `[slug]/`, `search/`)
+5. `app/src/routes/patterns/candidates/` — 미존재 (신규 생성 필요)
+6. migration 다음 번호: **031** (030 = stripe_x402_tier 이미 사용)
+7. UI에 promote 버튼 0건 ✅ gap 확인
+8. `pattern_lifecycle_events` 테이블 미존재 → migration 031 필요 (audit log용)
 
 ## Assumptions
 
@@ -170,9 +175,12 @@ draft → archived
 
 ## Next Steps
 
-1. W-0245와의 관계 정리 (Q-0308-1) — 통합 또는 분리
-2. DB schema 확인 (status 컬럼 존재?)
-3. UI mockup → 사용자 검토 → implementation
+1. ~~W-0245 정합성 확인~~ → `candidate_status` 필드 실측으로 확인 ✅. `PatternObject`에 이미 존재.
+2. ~~DB schema 확인~~ → `candidate_status: str = "none"` 존재 ✅
+3. `active_variant_registry.py` invalidate 메서드 grep (구현 전 확인 필수)
+4. migration 031 — `pattern_lifecycle_events` audit log 테이블
+5. engine `PATCH /api/patterns/{slug}/status` 구현
+6. UI 컴포넌트 구현
 
 ## Handoff Checklist
 

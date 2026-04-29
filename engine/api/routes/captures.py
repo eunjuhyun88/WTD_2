@@ -32,7 +32,7 @@ import logging
 import time
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, model_validator
 
 from api.schemas_pattern_draft import ParserMetaBody, PatternDraftBody
@@ -53,6 +53,7 @@ from research.pattern_search import (
 from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
 from research.query_transformer import transform_pattern_draft
 from capture.token import sign_verdict_token, verdict_deeplink_url
+from api.middleware.tier_gate import TierInfo, tier_gate, check_and_increment_quota
 
 log = logging.getLogger("engine.captures")
 
@@ -273,8 +274,13 @@ def _normalize_research_context(
 
 
 @router.post("")
-async def create_capture(request: Request, body: CaptureCreateBody) -> dict:
+async def create_capture(
+    request: Request,
+    body: CaptureCreateBody,
+    tier: TierInfo = Depends(tier_gate),
+) -> dict:
     """Create a canonical capture record from Save Setup."""
+    check_and_increment_quota(tier, "captures_per_day")
     # Extract user_id from JWT (injected by middleware)
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
