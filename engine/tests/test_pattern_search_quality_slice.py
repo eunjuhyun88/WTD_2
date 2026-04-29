@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from building_blocks.triggers.post_accumulation_range_breakout import (
     post_accumulation_range_breakout,
@@ -14,6 +15,13 @@ from research.pattern_search import (
     build_search_variants,
     evaluate_variant_on_case,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_supabase_record_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent build_search_variants from hitting Supabase via LEDGER_RECORD_STORE."""
+    from ledger.store import LedgerRecordStore
+    monkeypatch.setattr("research.pattern_search.LEDGER_RECORD_STORE", LedgerRecordStore())
 
 
 def test_post_accumulation_range_breakout_uses_local_prior_range(make_ctx) -> None:
