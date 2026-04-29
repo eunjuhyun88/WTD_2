@@ -39,7 +39,7 @@ ML P(win): 68%
 - 기존 alerts_pattern.py 메시지에 "(72h 만료)" hint 추가 (사용자 행동 유도)
 - 만료 임박 (≤ 12h) 메시지에는 ⚠️ 표기
 
-### Non-Goals
+## Non-Goals
 
 - **다른 채널 (Discord, FCM)**: F-3 last mile은 Telegram만. Discord adapter는 F-?? 별 work item.
 - **메시지 retract on verdict 제출**: callback button이 이미 hit/miss/void 처리 — deeplink는 백업 채널. retract는 UX 복잡도 증가.
