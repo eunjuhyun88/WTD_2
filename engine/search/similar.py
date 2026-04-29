@@ -358,7 +358,7 @@ def run_similar_search(
     try:
         from search.quality_ledger import compute_weights
         w = compute_weights()
-        wa, wb, wc = w.get("layer_a", 0.45), w.get("layer_b", 0.30), w.get("layer_c", 0.25)
+        wa, wb, wc = w.get("layer_a", _W_ABC_DEFAULT[0]), w.get("layer_b", _W_ABC_DEFAULT[1]), w.get("layer_c", _W_ABC_DEFAULT[2])
         # Re-derive derived tuples from ledger weights
         ab_sum = wa + wb
         ac_sum = wa + wc
