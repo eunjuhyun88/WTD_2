@@ -2,6 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { engineFetch } from '$lib/server/engineTransport';
+import { adaptEngineStats } from '$lib/types/patternStats';
 
 export const GET: RequestHandler = async ({ params, url }) => {
   try {
@@ -17,7 +18,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
     const suffix = query.toString();
     const res = await engineFetch(`/patterns/${params.slug}/stats${suffix ? `?${suffix}` : ''}`);
     if (!res.ok) return json({ error: `Engine ${res.status}` }, { status: res.status });
-    return json(await res.json());
+    return json(adaptEngineStats(await res.json(), params.slug));
   } catch (err) {
     console.error('[api/patterns/[slug]/stats] engine error:', err);
     return json({ error: 'engine unavailable' }, { status: 503 });
