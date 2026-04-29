@@ -57,47 +57,58 @@ def validate_and_gate(
 6. stage별 결과 조정: shadow → overall_pass 항상 True (관찰만)
 7. 예외 catch-all → `GatedValidationResult(overall_pass=False, ...)`
 
-### engine/research/validation/hypothesis_registry_store.py (신규, ~180 LOC)
+### Supabase 마이그레이션 (신규 테이블 1개)
 
-**D-0317-2 결정: jsonl + fcntl.flock** (SQLite 불사용)
+**D-0317-2 결정: Supabase Postgres** (이미 운영 중인 인프라, 추가 비용 0)
+
+```sql
+-- app/supabase/migrations/YYYYMMDD_hypothesis_registry.sql
+CREATE TABLE hypothesis_registry (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug         TEXT NOT NULL,
+  family       TEXT NOT NULL,        -- "{symbol}_{timeframe}" e.g. "btcusdt_4h"
+  overall_pass BOOL NOT NULL,
+  stage        TEXT NOT NULL,        -- shadow / soft / strict
+  computed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at   TIMESTAMPTZ NOT NULL, -- computed_at + interval '365 days'
+  result_json  JSONB
+);
+-- 유일하게 필요한 인덱스: family 필터 + 만료 필터
+CREATE INDEX ON hypothesis_registry (family, expires_at);
+```
+
+**핵심 쿼리 (전부 1줄)**:
+```sql
+-- DSR n_trials (per-family)
+SELECT COUNT(*) FROM hypothesis_registry
+WHERE family = $1 AND expires_at > now();
+
+-- BH-FDR 분모 (활성 전체)
+SELECT slug FROM hypothesis_registry WHERE expires_at > now();
+
+-- 아카이브 (nightly)
+DELETE FROM hypothesis_registry WHERE expires_at < now();
+```
+
+### engine/research/validation/hypothesis_registry_store.py (신규, ~80 LOC)
+
+jsonl 제거 → Supabase 클라이언트 래퍼만:
 
 ```python
 class HypothesisRegistryStore:
-    """append-only JSONL + flock. 동시 쓰기 안전."""
+    def __init__(self, supabase_client): ...
     
     def register(self, slug: str, result: GatedValidationResult) -> str:
-        """hypothesis_id(UUID) 반환. 중복 slug = 재검증 기록."""
+        """INSERT → hypothesis_id(UUID) 반환."""
     
     def get_n_trials(self, family: str) -> int:
-        """family 내 unique slug 수 반환 (DSR 분모)."""
+        """COUNT WHERE family=? AND expires_at > now()"""
     
-    def list_active(self, exclude_older_than_days: int = 365) -> list[dict]:
-        """BH-FDR 분모에 포함할 활성 가설 목록."""
-    
-    def archive_expired(self, older_than_days: int = 365) -> int:
-        """365일 초과 항목 → _hypotheses_archive.jsonl 이동. BH 분모 제외."""
+    def list_active(self) -> list[dict]:
+        """SELECT WHERE expires_at > now() — BH-FDR 분모."""
 ```
 
-저장 위치: `state/hypothesis_registry.jsonl`
-아카이브: `state/_hypotheses_archive.jsonl`
-
-### engine/research/validation/trial_counter.py (신규, ~120 LOC)
-
-**D-0317-Q2 결정: per-family n_trials** (DSR 정확도 최대화)
-
-```python
-class TrialCounter:
-    """family별 독립 trial count. jsonl 기반."""
-    
-    def increment(self, family: str) -> int:
-        """family 내 trial 수 +1 후 반환."""
-    
-    def get(self, family: str) -> int:
-        """현재 family trial count."""
-    
-    def reset(self, family: str) -> None:
-        """테스트 전용."""
-```
+`trial_counter.py` 삭제 — n_trials는 `get_n_trials(family)` 1 SQL 쿼리로 해결됨.
 
 family 예시: `"btcusdt_4h"`, `"ethusdt_1d"`, `"default"`
 
@@ -118,15 +129,16 @@ POST /research/validate
 **신규**:
 - `engine/research/validation/facade.py`
 - `engine/research/validation/hypothesis_registry_store.py`
-- `engine/research/validation/trial_counter.py`
+- `app/supabase/migrations/YYYYMMDD_hypothesis_registry.sql`
 - `engine/tests/validation/test_facade.py`
 - `engine/tests/validation/test_hypothesis_registry_store.py`
-- `engine/tests/validation/test_trial_counter.py`
 
 **수정**:
 - `engine/api/routes/research.py` — POST /research/validate 추가
 - `engine/research/validation/__init__.py` — facade export 추가
-- `state/hypothesis_registry.jsonl` — (런타임 생성, gitignore)
+
+**삭제**:
+- `trial_counter.py` 불필요 (SQL COUNT로 대체)
 
 **W-0316 연결 (수정)**:
 - `engine/research/discovery_tools.py` — `validate_pattern` tool이 `facade.validate_and_gate()` 호출하도록
@@ -229,7 +241,7 @@ BH-FDR 분모 = 5 horizons × n_active_hypotheses. 5 horizons 이상은 correcti
 ## Decisions
 
 - **[D-0317-1]** 진입점: **단일 `validate_and_gate()`** facade — 모든 모듈 조합 이 함수 1개로 진입
-- **[D-0317-2]** 저장: **jsonl + fcntl.flock** (SQLite 불사용 — Charter, 비용 0, 마이그레이션 없음)
+- **[D-0317-2]** 저장: **Supabase Postgres** (이미 운영 중, 추가 비용 0, flock 코드 ~300 LOC 제거, Cloud Run 다중 인스턴스 안전)
 - **[D-0317-3]** fail-closed: **facade exception → overall_pass=False** (절대 raises 안 함)
 - **[D-0317-4]** W-0316 연결: **`validate_pattern` tool이 facade 직접 호출** (중간 레이어 없음)
 - **[D-0317-5]** Lookahead: **`as_of` strict pass-through** (W-0313 방어 재사용)
