@@ -15,7 +15,6 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0297-cursor-grade-code-accuracy` | P1 | ✅ 완료 — AC1(LSP IDE전용)/AC2(serena 다음세션) 구조 검증됨 |
-| `W-0300-cursor-context-manager` | P1 | ✅ 완료 — /컨텍스트 skill 동작 확인, PR #616 머지 |
 | `W-0283-f11-watching-candidates-impl` | P1 | ✅ 완료 — 30s 자동갱신 PR #620 머지 |
 | `W-0295-context-boot-trim` | P2 | ✅ 완료 — 7939→3718 tok (-53%), PR #620 머지 |
 
