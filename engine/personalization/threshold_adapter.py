@@ -93,7 +93,14 @@ class ThresholdAdapter:
         verdict: VerdictLabel,
         at_iso: str,
     ) -> UserPatternState:
-        """Increment Beta posterior for matching verdict label."""
+        """Update Beta posteriors using OvR (One-vs-Rest) Beta-Binomial model.
+
+        For the observed verdict label: α += 1 (success).
+        For all other labels: β += 1 (non-occurrence counter).
+        This β accumulation is intentional — apply_decay uses both α and β to
+        preserve per-label effective counts through concept-drift decay.
+        compute_delta reads only α; β serves as decay state bookkeeping.
+        """
         new_states = dict(state.states)
         existing = new_states.get(verdict, BetaState(alpha=_ALPHA_PRIOR, beta=_BETA_PRIOR))
         # Increment alpha (successes for this label)
@@ -120,11 +127,21 @@ class ThresholdAdapter:
     def initial_state(
         user_id: str,
         pattern_slug: str,
-        global_priors: dict[str, float],
+        global_priors: dict[str, float] | None = None,
+        pseudo_count: float = 0.0,
     ) -> UserPatternState:
-        """Create initial state with uniform Beta(1,1) priors."""
+        """Create initial state.
+
+        When pseudo_count > 0 and global_priors is provided, initializes with
+        informed Beta priors (α = 1 + pseudo_count·p_global, β = 1 + pseudo_count·(1−p_global)).
+        Default pseudo_count=0.0 → uniform Beta(1,1), backwards-compatible.
+        """
+        priors = global_priors or {}
         states = {
-            label: BetaState(alpha=_ALPHA_PRIOR, beta=_BETA_PRIOR)
+            label: BetaState(
+                alpha=_ALPHA_PRIOR + pseudo_count * priors.get(label, 0.2),
+                beta=_BETA_PRIOR + pseudo_count * (1.0 - priors.get(label, 0.2)),
+            )
             for label in ALL_VERDICT_LABELS
         }
         return UserPatternState(

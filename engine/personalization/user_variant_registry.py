@@ -38,7 +38,6 @@ class UserVariantRegistry:
         self._adapter = threshold_adapter
         self._affinity = affinity
         self._store = ActivePatternVariantStore(base_dir)
-        self._cache: dict[tuple[str, str], VariantResolution] = {}
 
     def resolve_for_user(
         self,
@@ -98,4 +97,4 @@ class UserVariantRegistry:
         )
 
     def invalidate(self, user_id: str, pattern_slug: str) -> None:
-        self._cache.pop((user_id, pattern_slug), None)
+        """Hook for future cache invalidation. Currently a no-op."""

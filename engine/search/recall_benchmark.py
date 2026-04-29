@@ -109,14 +109,16 @@ class RecallReport:
 def run_recall_benchmark(
     *,
     weights_abc: tuple[float, float, float] = (0.60, 0.30, 0.10),
+    eval_set: list[EvalItem] | None = None,
     top_k: int = 10,
     noise_count: int = 19,
     seed: int = 42,
 ) -> RecallReport:
-    """Run recall@10 benchmark over the 50-item eval set.
+    """Run recall@10 benchmark over the eval set.
 
     Args:
         weights_abc: Layer A/B/C blend weights to test.
+        eval_set: custom eval items (default: synthetic EVAL_SET).
         top_k: number of results to check (default 10).
         noise_count: noise windows per query (default 19 → 20 total windows).
         seed: random seed for noise window order.
@@ -129,9 +131,10 @@ def run_recall_benchmark(
 
     rng = random.Random(seed)
     query_results: list[QueryResult] = []
+    items = eval_set if eval_set is not None else EVAL_SET
 
     try:
-        for item in EVAL_SET:
+        for item in items:
             expected_wid = f"eval-expected-{item.query_id}"
             symbol = "BTCUSDT"
 
@@ -141,7 +144,8 @@ def run_recall_benchmark(
                 store = SearchCorpusStore(corpus_db)
 
                 # Build corpus: 1 expected + noise_count noise windows
-                noise_sigs = rng.choices(_NOISE_POOL, k=noise_count)
+                pool = list(item.real_noise) if item.real_noise else _NOISE_POOL
+                noise_sigs = rng.choices(pool, k=noise_count)
                 windows = [_make_window(expected_wid, symbol, item.expected_signature)]
                 for i, nsig in enumerate(noise_sigs):
                     windows.append(_make_window(f"eval-noise-{item.query_id}-{i}", symbol, nsig))
@@ -165,10 +169,10 @@ def run_recall_benchmark(
             for idx, c in enumerate(candidates):
                 if c.get("window_id") == expected_wid:
                     rank = idx + 1
-                    expected_score = c.get("score")
+                    expected_score = c.get("final_score") or c.get("score")
                     break
 
-            top_score = candidates[0].get("score") if candidates else None
+            top_score = (candidates[0].get("final_score") or candidates[0].get("score")) if candidates else None
             hit = rank is not None and rank <= top_k
 
             query_results.append(QueryResult(
