@@ -113,6 +113,7 @@
   import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
   import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
   import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
+  import DecisionHUD from '$lib/components/terminal/hud/DecisionHUD.svelte';
   import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
@@ -1642,6 +1643,9 @@
       onDismissLabCta={() => showLabCta = false}
     >
       {#snippet analyze()}
+        {#if lastSavedCaptureId}
+          <DecisionHUD capture_id={lastSavedCaptureId} class_names="terminal-hud" />
+        {/if}
         <TerminalContextPanel
           analysisData={activeAnalysisData}
           {newsData}
