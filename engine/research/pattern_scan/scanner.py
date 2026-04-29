@@ -162,9 +162,15 @@ def _klines_for_context(df: pd.DataFrame) -> pd.DataFrame:
 def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | None:
     """Build a perp DataFrame for compute_features_table from ParquetStore.
 
-    Returns a DataFrame with DatetimeIndex and columns:
-    funding_rate, oi_raw, oi_change_1h, oi_change_24h, long_short_ratio.
-    Returns None if no derivatives data available for this symbol.
+    Core columns (feature_calc reads these directly):
+      funding_rate, oi_raw, oi_change_1h, oi_change_24h, long_short_ratio
+
+    Phase 1 extension columns (W-0316, passed through via _PERP_PASSTHROUGH_COLS):
+      oi_exchange_conc, total_oi_change_1h, total_oi_change_24h  (from exchange_oi store)
+      coinbase_premium, coinbase_premium_norm                     (from global coinbase store)
+      dex_buy_pct                                                  (from dex store)
+
+    Returns None if no funding data available (building blocks default to neutral).
     """
     try:
         funding = store.read_funding(symbol)
@@ -186,8 +192,7 @@ def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | N
             oi["oi_change_24h"] = oi["oi_raw"].pct_change(24).fillna(0.0)
             frames.append(oi)
         else:
-            # No OI data — add NaN placeholder columns so compute_features_table
-            # doesn't raise KeyError when OI-dependent features are requested.
+            # No OI data — NaN placeholders so compute_features_table doesn't KeyError.
             placeholder = funding[[]].copy()
             placeholder["oi_raw"] = float("nan")
             placeholder["oi_change_1h"] = float("nan")
@@ -199,6 +204,43 @@ def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | N
             ls.index = pd.to_datetime(ls.index, utc=True)
             ls["long_short_ratio"] = ls["long_ratio"] / ls["short_ratio"].replace(0, float("nan"))
             frames.append(ls[["long_short_ratio"]])
+
+        # Phase 1 (W-0316): multi-exchange OI → enables oi_exchange_divergence building block
+        try:
+            exc_oi = store.read_exchange_oi(symbol)
+            if not exc_oi.empty:
+                exc_oi = exc_oi.set_index("ts").sort_index()
+                exc_oi.index = pd.to_datetime(exc_oi.index, utc=True)
+                want = ["oi_exchange_conc", "total_oi_change_1h", "total_oi_change_24h", "total_perp_oi"]
+                cols = [c for c in want if c in exc_oi.columns]
+                if cols:
+                    frames.append(exc_oi[cols])
+        except Exception:
+            pass
+
+        # Phase 1 (W-0316): coinbase premium → enables coinbase_premium_positive building block
+        try:
+            cb = store.read_coinbase_premium()
+            if not cb.empty:
+                cb = cb.set_index("ts").sort_index()
+                cb.index = pd.to_datetime(cb.index, utc=True)
+                want = ["coinbase_premium", "coinbase_premium_norm"]
+                cols = [c for c in want if c in cb.columns]
+                if cols:
+                    frames.append(cb[cols])
+        except Exception:
+            pass
+
+        # Phase 1 (W-0316): DEX buy pressure → enables dex_buy_pressure building block
+        try:
+            dex = store.read_dex(symbol)
+            if not dex.empty:
+                dex = dex.set_index("ts").sort_index()
+                dex.index = pd.to_datetime(dex.index, utc=True)
+                if "dex_buy_pct" in dex.columns:
+                    frames.append(dex[["dex_buy_pct"]])
+        except Exception:
+            pass
 
         if len(frames) == 1:
             return frames[0]
