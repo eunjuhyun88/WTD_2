@@ -264,6 +264,22 @@ def _inject_live_ob(features: pd.DataFrame, symbol: str) -> None:
         log.debug("[%s] OB depth injection failed: %s", symbol, exc)
 
 
+def _inject_live_aggtrades(features: pd.DataFrame, symbol: str) -> None:
+    """Inject live aggTrades metrics into the last row of features (in-place)."""
+    try:
+        from data_cache.fetch_aggtrades import fetch_aggtrades_snapshot
+        snap = fetch_aggtrades_snapshot(symbol, perp=True)
+        if snap is None:
+            snap = fetch_aggtrades_snapshot(symbol, perp=False)
+        if snap is not None:
+            idx = features.index[-1]
+            features.loc[idx, "cvd_1m_usd"] = snap.cvd_usd
+            features.loc[idx, "vol_velocity_1m"] = snap.vol_velocity
+            features.loc[idx, "whale_tick_count"] = float(snap.whale_tick_count)
+    except Exception as exc:
+        log.debug("[%s] AggTrades injection failed: %s", symbol, exc)
+
+
 def _scan_one_symbol(
     symbol: str,
     store: ParquetStore,
@@ -285,6 +301,7 @@ def _scan_one_symbol(
         perp = _build_perp_from_store(store, symbol)
         features = compute_features_table(klines, symbol=symbol, perp=perp, macro=macro)
         _inject_live_ob(features, symbol)
+        _inject_live_aggtrades(features, symbol)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
