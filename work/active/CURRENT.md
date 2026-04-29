@@ -14,8 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0317-terminal-splitpane-wireup` | P1 | 🟡 Design Draft (Codex 진행 중) |
-| `W-0304-multichart-per-pane-indicator-scoping` | P2 | 🟡 Design Draft (Codex 진행 중) |
+| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
 | `W-0312-personalization-engine` | P1 | 🟡 코드 존재, 추가 기능 후속 필요 |
 
 ---
