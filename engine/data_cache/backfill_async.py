@@ -316,6 +316,7 @@ class BackfillPipeline:
         all_rows: list[dict] = []
         cursor: str | None = None
 
+        bybit_retries = 0
         while True:
             params: dict = {
                 "category": "linear",
@@ -335,6 +336,18 @@ class BackfillPipeline:
 
             if not isinstance(data, dict):
                 break
+
+            # Bybit rate limit returns {"error": "Access too frequent."}
+            if "error" in data and "frequent" in str(data.get("error", "")).lower():
+                bybit_retries += 1
+                if bybit_retries > 5:
+                    log.warning("[%s] Bybit rate limit exceeded after 5 retries", symbol)
+                    break
+                wait = 10 * bybit_retries
+                log.debug("[%s] Bybit rate limit, sleeping %ds (attempt %d)", symbol, wait, bybit_retries)
+                await asyncio.sleep(wait)
+                continue
+
             ret_code = data.get("retCode", -1)
             if ret_code != 0:
                 log.debug("[%s] Bybit OI retCode=%s msg=%s", symbol,
@@ -346,6 +359,7 @@ class BackfillPipeline:
             if not rows:
                 break
             all_rows.extend(rows)
+            bybit_retries = 0  # reset on success
             cursor = result.get("nextPageCursor") or None
             if not cursor:
                 break
