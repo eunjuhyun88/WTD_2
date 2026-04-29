@@ -160,9 +160,10 @@ class AutoResearchLoop:
         self,
         store: ParquetStore | None = None,
         scan_workers: int = 8,
+        combos=None,
     ) -> None:
         self.store = store or ParquetStore()
-        self.scanner = PatternScanner(store=self.store, combos=ALL_COMBOS)
+        self.scanner = PatternScanner(store=self.store, combos=combos or ALL_COMBOS)
         self.scan_workers = scan_workers
         self._cycle_count = 0
         self._experiment_log: list[dict] = []
