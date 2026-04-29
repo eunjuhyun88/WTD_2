@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`6a31ff4a` — origin/main (2026-04-30) — PR #688 chore/CURRENT SHA bump
+`7c4763f4` — origin/main (2026-04-30) — PR #685 W-0321 personalization REST layer merged
 
 ---
 
