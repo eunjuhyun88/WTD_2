@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import search.similar as _similar_mod
 from search.similar import (
     _candidate_id,
     _layer_a,
@@ -17,6 +18,18 @@ from search.similar import (
     run_similar_search,
     get_similar_search,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_blend_weights():
+    """Prevent run_similar_search calls from polluting module-level weight globals."""
+    _similar_mod._W_ABC = _similar_mod._W_ABC_DEFAULT
+    _similar_mod._W_AB = _similar_mod._W_AB_DEFAULT
+    _similar_mod._W_AC = _similar_mod._W_AC_DEFAULT
+    yield
+    _similar_mod._W_ABC = _similar_mod._W_ABC_DEFAULT
+    _similar_mod._W_AB = _similar_mod._W_AB_DEFAULT
+    _similar_mod._W_AC = _similar_mod._W_AC_DEFAULT
 
 
 # ── Layer A ───────────────────────────────────────────────────────────────────
