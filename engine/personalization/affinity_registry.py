@@ -38,9 +38,11 @@ def _utcnow() -> str:
 
 
 class AffinityRegistry:
-    def __init__(self, store_path: Path) -> None:
+    def __init__(self, store_path: Path, audit_log_path: Path | None = None) -> None:
         self._path = store_path
         self._path.mkdir(parents=True, exist_ok=True)
+        # None = audit logging disabled (tests pass tmp_path explicitly)
+        self._audit_log_path = audit_log_path
 
     def _user_file(self, user_id: str) -> Path:
         return self._path / f"{user_id}.json"
@@ -183,16 +185,13 @@ class AffinityRegistry:
         }
         self._save(user_id, data)
 
-        # Audit log
-        import json as _json
-        audit_dir = Path("memory/incidents")
-        audit_dir.mkdir(parents=True, exist_ok=True)
-        audit_path = audit_dir / "personalization_rescue.jsonl"
-        with open(audit_path, "a") as f:
-            f.write(_json.dumps({
-                "user_id": user_id,
-                "pattern_slug": pattern_slug,
-                "reason": reason,
-                "reset_at": now,
-            }) + "\n")
+        if self._audit_log_path is not None:
+            self._audit_log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._audit_log_path, "a") as f:
+                f.write(json.dumps({
+                    "user_id": user_id,
+                    "pattern_slug": pattern_slug,
+                    "reason": reason,
+                    "reset_at": now,
+                }) + "\n")
         return state
