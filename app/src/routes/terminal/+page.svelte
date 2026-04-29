@@ -117,6 +117,7 @@
   import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
   import SplitPaneLayout from '$lib/components/terminal/SplitPaneLayout.svelte';
   import ModeToggle from '$lib/components/terminal/ModeToggle.svelte';
+  import { terminalLayout } from '$lib/stores/terminalLayout';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
@@ -1586,7 +1587,11 @@
   <link rel="canonical" href={buildCanonicalHref('/terminal')} />
 </svelte:head>
 
-<div class="surface-page terminal-page-peek">
+<div
+  class="surface-page terminal-page-peek"
+  data-theme={$terminalLayout.theme}
+  data-density={$terminalLayout.density}
+>
   <section class="terminal-shell-head">
     <TerminalCommandBar
       assetsCount={boardAssets.length}
@@ -1802,6 +1807,8 @@
           onSelectAsset={selectAsset}
           onClearBoard={clearBoard}
           onWorkspaceToggle={undefined}
+          similarCaptures={peekSimilar}
+          {patternPhases}
         />
         {/if}
       {/snippet}
@@ -1902,6 +1909,16 @@
     cursor: pointer;
   }
 
+  /* ── W-0322: Theme × Density CSS variable system ──────────────── */
+  [data-theme="dark"]        { --t-bg: #0b0e14; --t-accent: #63b3ed; --t-text: #f7f2ea; --t-rail-border: rgba(255,255,255,0.06); }
+  [data-theme="deep"]        { --t-bg: #060810; --t-accent: #a78bfa; --t-text: #e2e8f0; --t-rail-border: rgba(255,255,255,0.05); }
+  [data-theme="neon"]        { --t-bg: #030508; --t-accent: #39ff14; --t-text: #ffffff;  --t-rail-border: rgba(57,255,20,0.12);   }
+  [data-theme="muted"]       { --t-bg: #111318; --t-accent: #94a3b8; --t-text: #cbd5e1; --t-rail-border: rgba(255,255,255,0.05); }
+
+  [data-density="compact"]     { --t-rail-w: 200px; --t-row-h: 28px; --t-font: 11px; }
+  [data-density="cozy"]        { --t-rail-w: 260px; --t-row-h: 36px; --t-font: 12px; }
+  [data-density="comfortable"] { --t-rail-w: 320px; --t-row-h: 44px; --t-font: 13px; }
+
   .terminal-page-peek {
     width: min(100%, calc(100% - 8px));
     height: calc(100dvh - 8px);
@@ -1953,7 +1970,7 @@
   }
 
   .peek-left-rail {
-    width: 260px;
+    width: var(--t-rail-w, 260px);
     flex-shrink: 0;
     border-right: 1px solid rgba(255,255,255,0.06);
     overflow-y: auto;
