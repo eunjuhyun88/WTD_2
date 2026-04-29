@@ -33,6 +33,7 @@ log = logging.getLogger("engine.backfill_async")
 
 _BINANCE_FAPI = "https://fapi.binance.com"
 _BINANCE_SPOT = "https://api.binance.com"
+_BYBIT_BASE = "https://api.bybit.com"
 _UA = "cogochi-pipeline/backfill"
 _PROGRESS_PATH = Path(__file__).parent / "market_data" / ".progress.json"
 
@@ -290,6 +291,72 @@ class BackfillPipeline:
         df["oi_usd"] = df["sumOpenInterestValue"].astype(float)
         return df[["ts", "oi_usd"]]
 
+    @staticmethod
+    def _bybit_symbol(binance_symbol: str) -> str:
+        """Map Binance perp symbol → Bybit linear symbol.
+
+        Binance uses multiplier prefixes for micro-cap tokens (1000PEPEUSDT).
+        Bybit uses the full token name without the 1000x multiplier.
+        """
+        import re
+        return re.sub(r"^1000+", "", binance_symbol)
+
+    async def _fetch_oi_bybit(
+        self, symbol: str, start: datetime, end: datetime, tf: str = "1h"
+    ) -> pd.DataFrame:
+        """Fetch historical OI from Bybit (supports startTime, up to 2yr+).
+
+        Returns DataFrame with ts (UTC), oi_usd columns.
+        oi_usd is in base-currency units (same relative scale for pct changes).
+        """
+        url = f"{_BYBIT_BASE}/v5/market/open-interest"
+        bybit_sym = self._bybit_symbol(symbol)
+        start_ms = _ms(start)
+        end_ms = _ms(end)
+        all_rows: list[dict] = []
+        cursor: str | None = None
+
+        while True:
+            params: dict = {
+                "category": "linear",
+                "symbol": bybit_sym,
+                "intervalTime": tf,
+                "startTime": start_ms,
+                "endTime": end_ms,
+                "limit": 200,
+            }
+            if cursor:
+                params["cursor"] = cursor
+            try:
+                data = await self._get_json(url, params)
+            except Exception as exc:
+                log.debug("[%s] Bybit OI error: %s", symbol, exc)
+                break
+
+            if not isinstance(data, dict):
+                break
+            ret_code = data.get("retCode", -1)
+            if ret_code != 0:
+                log.debug("[%s] Bybit OI retCode=%s msg=%s", symbol,
+                          ret_code, data.get("retMsg", ""))
+                break
+
+            result = data.get("result", {})
+            rows = result.get("list", [])
+            if not rows:
+                break
+            all_rows.extend(rows)
+            cursor = result.get("nextPageCursor") or None
+            if not cursor:
+                break
+
+        if not all_rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(all_rows)
+        df["ts"] = pd.to_datetime(df["timestamp"].astype(int), unit="ms", utc=True)
+        df["oi_usd"] = df["openInterest"].astype(float)
+        return df[["ts", "oi_usd"]].sort_values("ts").drop_duplicates("ts")
+
     async def _fetch_longshort(self, symbol: str, tf: str = "1h") -> pd.DataFrame:
         url = f"{_BINANCE_FAPI}/futures/data/globalLongShortAccountRatio"
         try:
@@ -315,7 +382,21 @@ class BackfillPipeline:
             return
 
         funding = await self._fetch_funding(symbol, start, end)
-        oi = await self._fetch_oi(symbol)
+
+        # OI: Bybit has startTime support (2yr+); Binance is hard-limited to 500 rows (~21d).
+        # Fetch Bybit first, then append the last 21d from Binance for any gap.
+        oi_bybit = await self._fetch_oi_bybit(symbol, start, end)
+        oi_binance = await self._fetch_oi(symbol)
+        if not oi_bybit.empty and not oi_binance.empty:
+            oi = (
+                pd.concat([oi_bybit, oi_binance])
+                .drop_duplicates("ts")
+                .sort_values("ts")
+                .reset_index(drop=True)
+            )
+        else:
+            oi = oi_bybit if not oi_bybit.empty else oi_binance
+
         ls = await self._fetch_longshort(symbol)
 
         if not funding.empty:
@@ -326,8 +407,8 @@ class BackfillPipeline:
             self.store.write_longshort(symbol, ls)
 
         self._mark_done(key)
-        log.info("[%s] derivatives done (funding=%d oi=%d ls=%d)",
-                 symbol, len(funding), len(oi), len(ls))
+        log.info("[%s] derivatives done (funding=%d oi=%d[bybit=%d] ls=%d)",
+                 symbol, len(funding), len(oi), len(oi_bybit), len(ls))
 
     # ── Public runners ────────────────────────────────────────────────────────
 
