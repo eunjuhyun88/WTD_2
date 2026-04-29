@@ -11,4 +11,9 @@
 {"ts":"2026-04-28T17:55:39Z","w_id":"W-0292","issue":570,"pr":[],"status":"design","agent":"unknown"}
 {"work_id":"W-0294","issue":590,"status":"design","title":"Multi-Year Historical Data Pipeline + Quant-Grade Layer P Backtest"}
 {"issue": 611, "branch": "feat/W-0301-cmc1000-data-pipeline", "title": "CMC 1000+ \ud000\ud2b8 \ub370\uc774\ud130 \ud30c\uc774\ud504\ub77c\uc778", "w_id": "W-0301"}
+{"ts":"2026-04-29T10:28:17Z","w_id":"W-0248","issue":445,"pr":[],"status":"design","agent":"unknown"}
+{"ts":"2026-04-29T10:28:17Z","w_id":"W-0305","issue":633,"pr":[],"status":"design","agent":"unknown"}
+{"ts":"2026-04-29T10:28:17Z","w_id":"W-0306","issue":634,"pr":[],"status":"design","agent":"unknown"}
+{"ts":"2026-04-29T10:28:17Z","w_id":"W-0307","issue":635,"pr":[],"status":"design","agent":"unknown"}
+{"ts":"2026-04-29T10:28:17Z","w_id":"W-0308","issue":636,"pr":[],"status":"design","agent":"unknown"}
 {"ts":"2026-04-29T13:28:47Z","w_id":"W-0311","issue":642,"pr":[],"status":"design","agent":"unknown"}

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { parsePatternFromText } from '$lib/api/terminalApi';
 
-/**
- * A-03-app: AIParserModal tests.
- * Engine route: POST /patterns/parse (Sonnet 4.6 via ContextAssembler)
+ /**
+  * A-03-app: AIParserModal tests.
+ * Engine route: POST /patterns/parse (configured LLM runtime via ContextAssembler)
  */
 
 describe('AIParserModal — A-03-app', () => {
@@ -58,7 +58,7 @@ describe('AIParserModal — A-03-app', () => {
     });
   });
 
-  it('throws on engine 422 (Claude validator failed after retries)', async () => {
+  it('throws on engine 422 (parser validator failed after retries)', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ detail: 'parser validation failed' }), { status: 422 }),
     );
