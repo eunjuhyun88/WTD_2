@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`09a78c65` — origin/main (2026-04-29) — PR #653 W-0248 Stripe+x402 머지
+`2baa77c6` — origin/main (2026-04-29) — PR #655 W-0311 WVPL 통합 검증 머지
 
 ---
 
@@ -14,23 +14,24 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0305-f3-telegram-deeplink-last-mile` | P1 | 🟢 Merged — PR #639 |
-| `W-0248-f18-stripe-tier` | P0 | 🟡 Design Draft — Stripe $29/mo + x402 USDC (#445) |
-| `W-0306-f5-terminal-mode-toggle` | P1 | 🟡 Design Draft — Observe/Analyze/Execute 3-mode 토글 (#634) |
-| `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 (#635) |
-| `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft — Draft→Candidate→Object promote UI (#636) |
-| `W-0309-f4-decision-hud-wiring` | P1 | 🟡 Design Draft — HUD API mock→live |
-| `W-0310-local-llm-hf-model-runtime` | P1 | ✅ 머지 — PR #638 |
-| `W-0311-wvpl-integration-verification` | P1 | 🟡 Design Draft — WVPL 통합 검증 자동화 (#642, A078) |
+| `W-0248-f18-stripe-tier` | P0 | 🟢 Merged — PR #653 |
+| `W-0306-f5-terminal-mode-toggle` | P1 | 🟢 Merged — PR #652 |
+| `W-0309-f4-decision-hud-wiring` | P1 | 🟡 PR #656 — CI 대기 중 |
+| `W-0311-quant-risk-engine-v2` | P1 | 🟢 Merged — PR #651 |
+| `W-0312-personalization-engine` | P1 | 🟢 코드 머지 — 추가 기능 후속 필요 |
+| `W-0313-algorithm-hardening` | P1 | 🟢 Merged — PR #651 |
+| `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft (#635) |
+| `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft (#636) |
 
 ---
 
 ## Wave 4 실행 계획 (갭 분석 반영, 2026-04-29)
 
 ```
-즉시:  W-0305 F-3 last mile (✅ #639) → W-0306 F-5 mode toggle (S)
-Week1: W-0248 Stripe+x402 결제 (L, 최우선 수익화) + W-0308 F-14 promote UI (S)
-Week2: W-0307 F-12 kimchi UI (S) + F-16 recall 개선
+완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0311/312/313 퀀트 ✅
+즉시:  W-0309 HUD wiring PR #656 머지 대기
+Week1: W-0308 F-14 promote UI (S) + W-0307 F-12 kimchi UI (S)
+Week2: F-16 recall 개선
 Week3: F-19 Sentry + F-20 infra cleanup
 Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 ```
@@ -39,13 +40,13 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ---
 
-## A077 + A078 세션 핵심 lesson
+## A081~A083 세션 핵심 lesson
 
 - **CI flaky 근본 fix**: 임계값에 4× 여유 (CI variance ≠ 회귀) [A077]
-- **Stale PR rebase**: design docs 동봉된 PR은 close + minimal 새 PR이 빠름 [A077]
-- **블로커 우선**: 1개 fix가 도미노 4개 unblock (#628 → #623/#625) [A077]
-- **W-number 충돌**: claim 전 origin/main의 work-issue-map 확인 필수 (W-0306 충돌로 W-0311 재번호) [A078]
-- **draft + dirty PR은 자동 머지 불가**: 사용자가 직접 ready + 컨플릭트 해결 [A078]
+- **W-number 충돌**: claim 전 origin/main의 work-issue-map 확인 필수 [A078]
+- **tier_gate 테스트 격리**: search/captures route 테스트는 dependency_overrides 또는 autouse fixture 필수 [A083]
+- **lock file 누락**: 신규 npm 패키지 추가 시 package-lock.json 반드시 같이 커밋 [A083]
+- **local main 오염 방지**: 모든 feature 작업은 feat/ 브랜치에서만, main에 직접 커밋 금지 [A083]
 
 ---
 
@@ -61,10 +62,10 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ```bash
 ./tools/start.sh
-# 즉시: W-0306 F-5 mode toggle (S, 빠른 win)
-# P0:   W-0248 Stripe+x402 설계 검토 후 구현 착수
-# 후속: W-0311 WVPL 통합 검증 (W-0305 머지 후)
-cat work/active/W-0306-f5-terminal-mode-toggle.md
-cat work/active/W-0248-f18-stripe-tier.md
-cat work/active/W-0311-wvpl-integration-verification.md
+# 즉시: PR #656 W-0309 HUD wiring CI 확인 후 머지
+# P1:   W-0308 F-14 promote UI 구현
+# P2:   W-0307 F-12 kimchi UI 구현
+gh pr checks 656
+cat work/active/W-0308-f14-pattern-lifecycle-promote-ui.md
+cat work/active/W-0307-f12-kimchi-premium-ui.md
 ```
