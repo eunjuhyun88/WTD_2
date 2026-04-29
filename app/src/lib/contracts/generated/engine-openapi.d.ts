@@ -947,6 +947,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lifecycle Statuses
+         * @description Return lifecycle status for all known patterns.
+         *
+         *     Combines PATTERN_LIBRARY slugs with lifecycle store entries.
+         *     Patterns not in the lifecycle store default to 'object' (legacy production patterns).
+         */
+        get: operations["get_lifecycle_statuses_patterns_lifecycle_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/active-variants": {
         parameters: {
             query?: never;
@@ -1469,6 +1492,32 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Pattern Status
+         * @description Promote or demote a pattern's lifecycle status.
+         *
+         *     Valid transitions:
+         *       draft      → candidate | archived
+         *       candidate  → object    | archived
+         *       object     → archived
+         *       archived   → (terminal, no transitions)
+         */
+        patch: operations["patch_pattern_status_patterns__slug__status_patch"];
         trace?: never;
     };
     "/captures": {
@@ -4882,6 +4931,16 @@ export interface components {
             /** Persist Bars */
             persist_bars?: number | null;
         };
+        /** _PatchStatusBody */
+        _PatchStatusBody: {
+            /** Status */
+            status: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
         /** _PatternAlertPolicyBody */
         _PatternAlertPolicyBody: {
             /** Mode */
@@ -6702,6 +6761,28 @@ export interface operations {
             };
         };
     };
+    get_lifecycle_statuses_patterns_lifecycle_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_active_variants_patterns_active_variants_get: {
         parameters: {
             query?: never;
@@ -7545,6 +7626,43 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_pattern_status_patterns__slug__status_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PatchStatusBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
