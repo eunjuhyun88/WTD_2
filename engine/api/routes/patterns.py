@@ -36,6 +36,7 @@ from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
 from patterns.library import PATTERN_LIBRARY, get_pattern
+from patterns.lifecycle_store import get_lifecycle_store
 from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
 from patterns.state_store import PatternStateStore
@@ -89,6 +90,11 @@ class _PromotePatternModelBody(BaseModel):
 
 class _PatternAlertPolicyBody(BaseModel):
     mode: str
+
+
+class _PatternStatusBody(BaseModel):
+    status: str
+    reason: str = ""
 
 
 class _CaptureBody(BaseModel):
@@ -723,6 +729,46 @@ async def set_alert_policy(slug: str, body: _PatternAlertPolicyBody) -> dict:
         "pattern_slug": slug,
         "policy": policy.to_dict(),
     }
+
+
+@router.get("/{slug}/lifecycle-status")
+async def get_lifecycle_status(slug: str) -> dict:
+    """Return current lifecycle status for a pattern (draft/candidate/object/archived)."""
+    store = get_lifecycle_store()
+    status = store.get_status(slug)
+    return {"ok": True, "slug": slug, "status": status}
+
+
+@router.patch("/{slug}/status")
+async def patch_pattern_status(slug: str, body: _PatternStatusBody, request: Request) -> dict:
+    """Transition pattern lifecycle status.
+
+    Allowed: draft→candidate|archived, candidate→object|archived, object→archived.
+    Returns { ok, slug, from_status, to_status, updated_at }.
+    Raises 422 on invalid transition, 404 if pattern not in library.
+    """
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
+
+    user_id = request.headers.get("x-user-id", "system")
+    store = get_lifecycle_store()
+    try:
+        result = store.transition(
+            slug=slug,
+            to_status=body.status,
+            user_id=user_id,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    log.info(
+        "lifecycle transition: slug=%s %s→%s by=%s reason=%r",
+        slug, result["from_status"], result["to_status"], user_id, body.reason,
+    )
+    return {"ok": True, **result}
 
 
 @router.get("/{slug}/model-registry")

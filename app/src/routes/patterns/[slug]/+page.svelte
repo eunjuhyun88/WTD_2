@@ -4,6 +4,7 @@
   import { flattenPatternStates } from '$lib/contracts';
   import type { PatternStateView } from '$lib/contracts';
   import type { PatternStats } from '$lib/types/patternStats';
+  import PatternLifecycleCard from '$lib/components/patterns/PatternLifecycleCard.svelte';
 
   const slug = $derived($page.params.slug ?? '');
 
@@ -94,6 +95,9 @@
   {:else if error}
     <p class="error">{error}</p>
   {:else}
+    <section class="section">
+      <PatternLifecycleCard slug={slug} ontransition={loadAll} />
+    </section>
 
     <!-- Stats strip -->
     {#if stats}
