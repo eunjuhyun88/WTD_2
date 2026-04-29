@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`8cf11e4d` — origin/main (2026-04-29) — PR #614 W-0287/0288/0289 검증 테스트 머지
+`ca5e7269` — origin/main (2026-04-29) — PR #625 F-5 split-pane 머지
 
 ---
 
@@ -14,23 +14,23 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0297-cursor-grade-code-accuracy` | P1 | ✅ 완료 — AC1(LSP IDE전용)/AC2(serena 다음세션) 구조 검증됨 |
-| `W-0283-f11-watching-candidates-impl` | P1 | ✅ 완료 — 30s 자동갱신 PR #620 머지 |
-| `W-0295-context-boot-trim` | P2 | ✅ 완료 — 7939→3718 tok (-53%), PR #620 머지 |
+| `W-0248-f18-stripe-tier` | P0 | 🟡 Design Draft — Stripe $29/mo + x402 USDC 이중 결제 (#445) |
+| `W-0305-f3-telegram-deeplink-last-mile` | P1 | 🟡 Design Draft — alerts.py에 verdict URL 포함 XS (#633) |
+| `W-0306-f5-terminal-mode-toggle` | P1 | 🟡 Design Draft — Observe/Analyze/Execute 3-mode 토글 S (#634) |
+| `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 S (#635) |
+| `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft — Draft→Candidate→Object promote UI S (#636) |
 
 ---
 
-## Wave 4 실행 계획 요약
+## Wave 4 실행 계획 (갭 분석 반영, 2026-04-29)
 
 ```
-즉시:  W-0302 git stash 92개 정리 (15분) → W-0297 LSP+MCP+agents/ (1.5일)
-Week1: F-11 WATCHING (W-0283) / F-3 Telegram deeplink
-Week2: F-4 Decision HUD / F-5 IDE split-pane / F-12 Korea features
-Week3: F-18 Stripe / F-14 Pattern lifecycle / F-16 recall
-Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
+즉시:  W-0305 F-3 last mile (XS, 1일 미만) → W-0306 F-5 mode toggle (S)
+Week1: W-0248 Stripe+x402 결제 (L, 최우선 수익화) + W-0308 F-14 promote UI (S)
+Week2: W-0307 F-12 kimchi UI (S) + F-16 recall 개선
+Week3: F-19 Sentry + F-20 infra cleanup
+Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지 — 마지막)
 ```
-
-상세: `work/active/W-0252-wave4-final-verified-design.md §5`
 
 ---
 
@@ -46,7 +46,8 @@ Week4: F-2 Search UX / F-15 PersonalVariant / F-30 Ledger 4-table
 
 ```bash
 ./tools/start.sh
-# Week1: F-3 Telegram deeplink (W-0282) — 다음 P1
-# W-0297/W-0300 완료, W-0283/W-0295 완료
-cat work/active/W-0282-f3-telegram-deeplink.md
+# 즉시: W-0305 (XS, alerts.py 2줄 수정) → 가장 빠른 win
+# P0:   W-0248 Stripe+x402 설계 검토 후 구현 착수
+cat work/active/W-0305-f3-telegram-deeplink-last-mile.md
+cat work/active/W-0248-f18-stripe-tier.md
 ```
