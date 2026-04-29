@@ -232,3 +232,67 @@ export function applyChartAction(action: 'add_indicator' | 'remove_indicator', n
 - `app/src/lib/stores/chartIndicators.ts` (W-0102 결정 store)
 - W-0102 (SSE chart_action 결정)
 - W-0287/0288/0289 (멀티차트 base)
+
+---
+
+## Goal
+
+멀티차트 2x2/3+1 모드에서 pane A 인디케이터 토글이 pane B에 영향을 주지 않도록 per-pane 격리하고, SSE chart_action은 activePane에만 적용한다.
+
+## Owner
+
+app
+
+## Scope
+
+- `app/src/lib/stores/paneIndicators.ts` (신규)
+- `app/src/components/terminal/workspace/ChartPane.svelte` (수정)
+- `app/src/routes/terminal/+page.svelte` (SSE handler 수정)
+- `app/src/lib/stores/chartIndicators.ts` (deprecated alias 추가)
+
+## Non-Goals
+
+- SSE payload에 pane_id 추가 (server 변경 없음, W-0102 호환)
+- chartIndicators.ts 즉시 삭제 (W-0306 cleanup PR에서 처리)
+- 단일 모드 동작 변경
+
+## Canonical Files
+
+- `app/src/lib/stores/paneIndicators.ts`
+- `app/src/components/terminal/workspace/ChartPane.svelte`
+- `app/src/routes/terminal/+page.svelte`
+
+## Facts
+
+1. `ChartPane.svelte` — global `chartIndicators` 직접 import + `$derived($chartIndicators.vwap)` 사용 (setContext 없음)
+2. `chartIndicators.ts` — W-0102 결정: 5-pane budget, SSE chart_action 공유 store
+3. terminal page `+page.svelte:988` — SSE `chart_action` → `chartIndicators.update()` 호출
+4. `activePaneId` state 미존재 → 신규 도입 필요
+
+## Assumptions
+
+- 멀티차트 pane 수 최대 4개
+- SSE chart_action은 현재 server에 pane_id 개념 없음
+- localStorage 사용 가능 (browser 환경)
+
+## Decisions
+
+- [D-0304-1] SSE chart_action → activePaneId의 store에만 dispatch (모든 pane 거절)
+- [D-0304-2] localStorage per-pane 키 (`chart_indicators::pane_${id}`)
+- [D-0304-3] chartIndicators.ts back-compat alias 유지 (즉시 삭제 거절)
+
+## Next Steps
+
+1. `paneIndicators.ts` factory + Map registry 구현
+2. `chartIndicators.ts` deprecation alias 추가
+3. `ChartPane.svelte` paneId prop + getIndicatorStore wire-up
+4. SSE handler `applyChartAction()` 교체
+5. vitest + PR
+
+## Handoff Checklist
+
+- [ ] `paneIndicators.ts` 구현 + vitest E1/E4/E5/E6
+- [ ] `ChartPane.svelte` global import 제거 확인
+- [ ] SSE handler 교체 확인
+- [ ] svelte-check 0 errors
+- [ ] screenshot (멀티차트 pane 독립 확인)
