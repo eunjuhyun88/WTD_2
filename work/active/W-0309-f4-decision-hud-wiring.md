@@ -93,9 +93,31 @@ grep -rn "CLOUD_RUN_URL" app/src/ --include="*.ts" | head -3
 - `app/src/routes/api/terminal/hud/+server.ts`
 - `app/src/routes/terminal/+page.svelte`
 
+## Assumptions
+
+- `CLOUD_RUN_URL` env var이 설정되어 있다.
+- Engine `GET /captures/{id}` 응답에 `p_win`, `phase`, `state_label` 필드가 존재한다.
+- 3초 polling은 Analyze 모드 UX에 충분하다.
+
+## Open Questions
+
+- [ ] [Q-0309-1] `GET /patterns/transitions?capture_id=` 파라미터가 실제로 존재하는가?
+
 ## Decisions
 
 - **engine 호출**: `CLOUD_RUN_URL` env var (기존 패턴)
 - **HUD 위치**: rightPane 내부 상단 — `{#snippet rightPane()}` 안에 DecisionHUD 추가
 - **polling**: 3초, capture_id change로 trigger
 - **fallback**: engine 실패 시 mock 반환 (UX 깨짐 방지)
+
+## Next Steps
+
+1. `app/src/routes/api/terminal/hud/+server.ts` mock → engine 실제 호출로 교체
+2. `app/src/routes/terminal/+page.svelte` Analyze 모드 rightPane에 DecisionHUD 연결
+3. `svelte-check` + 브라우저 smoke test
+
+## Handoff Checklist
+
+- [ ] HUD server route engine 호출 확인
+- [ ] Terminal Analyze 모드 DecisionHUD 노출 확인
+- [ ] PR merged + CURRENT.md SHA 업데이트
