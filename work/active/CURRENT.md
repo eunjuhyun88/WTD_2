@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`9104f3ed` — origin/main (2026-04-30) — PR #668 W-0315 lossless pattern contracts
+`8ea2f365` — origin/main (2026-04-30) — PR #675 W-0318 lifecycle reconciliation + /patterns/lifecycle page
 
 ---
 
@@ -14,17 +14,17 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft (#636) |
-| `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft (#635) |
+| `W-0317-terminal-splitpane-wireup` | P1 | 🟡 Design Draft (Codex 진행 중) |
+| `W-0304-multichart-per-pane-indicator-scoping` | P2 | 🟡 Design Draft (Codex 진행 중) |
 | `W-0312-personalization-engine` | P1 | 🟡 코드 존재, 추가 기능 후속 필요 |
 
 ---
 
-## Wave 4 실행 계획 (갭 분석 반영, 2026-04-29)
+## Wave 4 실행 계획 (갭 분석 반영, 2026-04-30)
 
 ```
-완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0311/312/313 퀀트 ✅
-즉시:  W-0308 F-14 promote UI (S) + W-0307 F-12 kimchi UI (S)
+완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅
+즉시:  W-0317 SplitPane wire-up (Codex) + W-0304 per-pane indicator (Codex)
 Week2: F-16 recall 개선
 Week3: F-19 Sentry + F-20 infra cleanup
 Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
@@ -52,12 +52,17 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ---
 
+## A086 세션 핵심 lesson
+
+- **PR close 전 내용 비교 필수**: `gh pr diff` 읽고 아키텍처/성능/UX 3축 비교 후 close. 내용 확인 없이 "이미 됐다"로 close 금지 [A086]
+- **병렬 작업 도메인 분리**: `+page.svelte` 공유 파일은 같은 에이전트에서 순차 처리. Claude(engine+새 UI) / Codex(terminal layout+chart) 분리 [A086]
+
+---
+
 ## 다음 실행
 
 ```bash
 ./tools/start.sh
-# P1:   W-0308 F-14 promote UI 구현
-# P2:   W-0307 F-12 kimchi UI 구현
-cat work/active/W-0308-f14-pattern-lifecycle-promote-ui.md
-cat work/active/W-0307-f12-kimchi-premium-ui.md
+# Codex: W-0317 SplitPane wire-up + W-0304 per-pane indicator
+# 중복 이슈 정리: gh issue close 631 617 441
 ```
