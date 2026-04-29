@@ -13,6 +13,7 @@
   import { PHASE_META } from '$lib/terminal/phaseInfo';
   import { createPatternCapture } from '$lib/api/terminalPersistence';
   import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
+  import SearchResultMiniChart from '$lib/components/search/SearchResultMiniChart.svelte';
 
   // ---------------------------------------------------------------------------
   // Props
@@ -442,30 +443,42 @@
           <div class="candidate-list">
             {#each candidates as c}
               <div class="candidate-card">
-                <div class="cand-top">
-                  <strong class="cand-sym">{c.symbol.replace('USDT', '')}</strong>
-                  {#if c.startTs}
-                    <span class="cand-ts">{new Date(c.startTs).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
-                  {/if}
-                  <span class="cand-score" class:high={c.score >= 70} class:mid={c.score >= 40 && c.score < 70}>
-                    {c.score}점
-                  </span>
-                  {#if c.closeReturnPct != null}
-                    <span class="cand-outcome" class:outcome-up={c.closeReturnPct > 0.5} class:outcome-down={c.closeReturnPct < -0.5}>
-                      {c.closeReturnPct > 0 ? '+' : ''}{c.closeReturnPct.toFixed(1)}%
-                    </span>
-                  {/if}
-                </div>
-                {#if c.summary}
-                  <p class="cand-summary">{c.summary}</p>
-                {/if}
-                {#if c.matchedSignals.length > 0}
-                  <div class="cand-signals">
-                    {#each c.matchedSignals.slice(0, 4) as sig}
-                      <span class="sig-tag">{sig.replace(/_/g, ' ')}</span>
-                    {/each}
+                <!-- Mini chart (right side) — only when startTs is available -->
+                {#if c.startTs}
+                  <div class="cand-chart">
+                    <SearchResultMiniChart
+                      symbol={c.symbol}
+                      timeframe={tf}
+                      bar_ts_ms={new Date(c.startTs).getTime()}
+                    />
                   </div>
                 {/if}
+                <div class="cand-info">
+                  <div class="cand-top">
+                    <strong class="cand-sym">{c.symbol.replace('USDT', '')}</strong>
+                    {#if c.startTs}
+                      <span class="cand-ts">{new Date(c.startTs).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
+                    {/if}
+                    <span class="cand-score" class:high={c.score >= 70} class:mid={c.score >= 40 && c.score < 70}>
+                      {c.score}점
+                    </span>
+                    {#if c.closeReturnPct != null}
+                      <span class="cand-outcome" class:outcome-up={c.closeReturnPct > 0.5} class:outcome-down={c.closeReturnPct < -0.5}>
+                        {c.closeReturnPct > 0 ? '+' : ''}{c.closeReturnPct.toFixed(1)}%
+                      </span>
+                    {/if}
+                  </div>
+                  {#if c.summary}
+                    <p class="cand-summary">{c.summary}</p>
+                  {/if}
+                  {#if c.matchedSignals.length > 0}
+                    <div class="cand-signals">
+                      {#each c.matchedSignals.slice(0, 4) as sig}
+                        <span class="sig-tag">{sig.replace(/_/g, ' ')}</span>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               </div>
             {/each}
           </div>
@@ -810,12 +823,25 @@
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 6px;
     display: flex;
-    flex-direction: column;
-    gap: 5px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
     transition: border-color 0.1s;
   }
   .candidate-card:hover {
     border-color: rgba(255, 255, 255, 0.15);
+  }
+  .cand-chart {
+    flex-shrink: 0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .cand-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
   }
   .cand-top {
     display: flex;

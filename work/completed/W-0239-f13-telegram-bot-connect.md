@@ -65,7 +65,7 @@ def generate_connect_code() -> str:
 ### DB 스키마 (신규)
 
 ```sql
--- Supabase migration 027
+-- Supabase migration 028
 CREATE TABLE telegram_connect_codes (
     code        TEXT PRIMARY KEY,
     user_id     UUID NOT NULL REFERENCES auth.users(id),
@@ -106,7 +106,7 @@ POST /api/telegram/webhook  (공개, Telegram 전용)
 | `app/src/routes/api/telegram/webhook/+server.ts` | 신규 — Bot webhook 수신 |
 | `app/src/lib/components/settings/TelegramConnectWidget.svelte` | 신규 — 6자리 코드 UI |
 | `app/src/routes/settings/+page.svelte` | 변경 — TelegramConnectWidget 삽입 |
-| `app/supabase/migrations/027_telegram_connect.sql` | 신규 — connect_codes 테이블 |
+| `app/supabase/migrations/028_telegram_connect.sql` | 신규 — connect_codes 테이블 |
 
 ## Non-Goals
 
@@ -120,7 +120,7 @@ POST /api/telegram/webhook  (공개, Telegram 전용)
 - [ ] 연결 완료 후 `/api/notifications/telegram/status` → `{connected: true}`
 - [ ] 코드 만료(10분) 시 재생성 가능
 - [ ] `TELEGRAM_BOT_TOKEN` 미설정 시 graceful degradation (UI "Bot 미설정" 표시)
-- [ ] migration 027 적용
+- [ ] migration 028 적용
 - [ ] App CI ✅
 
 ## Facts
@@ -142,7 +142,7 @@ POST /api/telegram/webhook  (공개, Telegram 전용)
 - `app/src/routes/api/notifications/telegram/status/+server.ts`
 - `app/src/routes/api/telegram/webhook/+server.ts`
 - `app/src/lib/components/settings/TelegramConnectWidget.svelte`
-- `app/supabase/migrations/027_telegram_connect.sql`
+- `app/supabase/migrations/028_telegram_connect.sql`
 
 ## Decisions
 

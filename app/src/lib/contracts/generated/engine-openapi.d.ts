@@ -873,7 +873,7 @@ export interface paths {
         put?: never;
         /**
          * Parse Pattern Text
-         * @description Parse free-text trading memo → PatternDraftBody JSON via Claude Sonnet 4.5.
+         * @description Parse free-text trading memo → PatternDraftBody JSON via configured LLM.
          *
          *     AC: POST {"text": "OI가 급등하면서 가격이 하락했다"} → PatternDraftBody JSON
          */
@@ -2424,6 +2424,35 @@ export interface paths {
          * @description H-08: per-user verdict accuracy detail. Alias of f60-status for compatibility.
          */
         get: operations["get_verdict_accuracy_users__user_id__verdict_accuracy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics/user/{user_id}/wvpl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get User Wvpl
+         * @description Return rolling WVPL breakdowns for the last ``weeks`` KST weeks.
+         *
+         *     Response shape:
+         *         {
+         *           "user_id": "...",
+         *           "weeks": [
+         *             {"week_start": "...", "loop_count": N, "capture_n": ..., "search_n": ..., "verdict_n": ...},
+         *             ...  # most-recent first
+         *           ]
+         *         }
+         */
+        get: operations["get_user_wvpl_metrics_user__user_id__wvpl_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9044,6 +9073,41 @@ export interface operations {
     get_verdict_accuracy_users__user_id__verdict_accuracy_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_user_wvpl_metrics_user__user_id__wvpl_get: {
+        parameters: {
+            query?: {
+                weeks?: number;
+            };
             header?: never;
             path: {
                 user_id: string;

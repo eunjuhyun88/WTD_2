@@ -34,7 +34,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 from cache.http_client import get_client
 from capture.store import CaptureStore
-from capture.token import sign_verdict_token, verdict_deeplink_url
+from scanner._verdict_link import build_verdict_url
 
 log = logging.getLogger("engine.scanner.alerts_pattern")
 
@@ -199,54 +199,6 @@ def format_entry_alert(record: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-_CAPTURE_STORE = CaptureStore()
-
-
-def _build_verdict_url(record: dict[str, Any]) -> Optional[str]:
-    """Look up the capture for this record and return a signed verdict deep-link URL.
-
-    Returns None if:
-    - capture_id cannot be resolved (transition_id not found, or no pending capture)
-    - VERDICT_LINK_SECRET is not configured
-    Any failure degrades gracefully — caller sends alert without URL.
-    """
-    symbol = record.get("symbol")
-    slug = record.get("slug") or record.get("pattern_slug")
-    transition_id = record.get("transition_id") or record.get("candidate_transition_id")
-
-    if not symbol or not slug:
-        return None
-
-    try:
-        # Find the most recent pending_outcome capture matching this symbol + pattern
-        captures = _CAPTURE_STORE.list(
-            symbol=symbol,
-            pattern_slug=slug,
-            status="pending_outcome",
-            limit=5,
-        )
-        # Prefer the one whose candidate_transition_id matches
-        capture = None
-        if transition_id:
-            for c in captures:
-                if c.candidate_transition_id == transition_id:
-                    capture = c
-                    break
-        if capture is None and captures:
-            capture = captures[0]  # fall back to most recent
-
-        if capture is None:
-            log.debug("No pending capture found for %s %s — verdict URL skipped", symbol, slug)
-            return None
-
-        token = sign_verdict_token(capture.capture_id, symbol, slug)
-        if not token:
-            return None
-        return verdict_deeplink_url(token)
-
-    except Exception as exc:
-        log.debug("verdict URL generation failed for %s %s: %s", symbol, slug, exc)
-        return None
 
 
 def _make_feedback_keyboard(transition_id: str | None) -> dict | None:
@@ -314,9 +266,14 @@ async def send_pattern_entry_alert(
     text     = format_entry_alert(record)
 
     # F-3: append verdict deep-link URL (graceful degrade if unavailable)
-    verdict_url = _build_verdict_url(record)
+    verdict_url = build_verdict_url(
+        symbol=record.get("symbol"),
+        pattern_slug=record.get("slug") or record.get("pattern_slug"),
+        transition_id=record.get("transition_id"),
+        candidate_transition_id=record.get("candidate_transition_id"),
+    )
     if verdict_url:
-        text = text + f"\n\n📊 <a href=\"{verdict_url}\">Verdict 제출</a>"
+        text = text + f"\n\n📊 <a href=\"{verdict_url}\">Verdict 제출 (72h 만료)</a>"
 
     keyboard = _make_feedback_keyboard(record.get("transition_id"))
     url      = f"{TELEGRAM_API.format(token=_token)}/sendMessage"

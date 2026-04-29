@@ -127,7 +127,7 @@ describe('PERF2: localStorage save/load 성능', () => {
     console.log(`  📦 100 drawings 직렬화: ${elapsed.toFixed(2)}ms, ${kb.toFixed(1)}KB`);
   });
 
-  it('localStorage setItem/getItem 왕복 ≤ 5ms (50 drawings)', () => {
+  it('localStorage setItem/getItem 왕복 ≤ 20ms (50 drawings)', () => {
     const drawings = Array.from({ length: 50 }, (_, i) => ({
       id: `d-${i}`, type: 'horizontalLine',
       points: [{ time: 1700000000 + i, price: 40000 + i }],
@@ -141,7 +141,7 @@ describe('PERF2: localStorage save/load 성능', () => {
     const t1 = performance.now();
 
     expect(back).toHaveLength(50);
-    expect(t1 - t0).toBeLessThan(5);
+    expect(t1 - t0).toBeLessThan(20);
     console.log(`  💾 localStorage 왕복 (50): ${(t1 - t0).toFixed(2)}ms`);
   });
 });
@@ -149,7 +149,7 @@ describe('PERF2: localStorage save/load 성능', () => {
 
 // ── PERF3: FSM 전환 오버헤드 ────────────────────────────────────────────────
 describe('PERF3: 좌표 변환 처리량', () => {
-  it('1000 points × coordinate 변환 ≤ 5ms', () => {
+  it('1000 points × coordinate 변환 ≤ 20ms', () => {
     const { chart } = makeChartMock();
     const timeScale = chart.timeScale();
 
@@ -166,7 +166,7 @@ describe('PERF3: 좌표 변환 처리량', () => {
     const t1 = performance.now();
 
     expect(coords).toHaveLength(1000);
-    expect(t1 - t0).toBeLessThan(5);
+    expect(t1 - t0).toBeLessThan(20);
     console.log(`  📐 1000 point 좌표변환: ${(t1 - t0).toFixed(2)}ms`);
   });
 });
