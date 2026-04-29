@@ -17,7 +17,7 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 → **3개** (P0=0 / P1=2 / P2=7 / P3=10) — +W-0283 ✅ (#620) + W-0238 ✅ (#624) + W-0239 ✅ (#626) + W-0243 ✅ (#625) + W-0301 ✅ (#612)
+열린 갭:    17개 → **1개** (P0=0 / P1=1 / P2=7 / P3=10) — +F-3 ✅ (#639) + F-18 ✅ (#653) + F-5 ✅ (#652)
 즉시 P0:   없음 (P0 클리어)
 다음 P1:   W-0282 F-3 Telegram deeplink last-mile (W-0305) 🟡 + F-14 PatternObject lifecycle (W-0308) 🟡
 퀀트 경화:  **W-0286 ✅ PR #560** + **W-0290~W-0293 ✅ PR #587** + **W-0290 Ph2 ✅ PR #591** + **W-0294 ✅ PR #592**
@@ -147,7 +147,7 @@ H-08 / F-30 / F-17
 **⚠️ 잔여 검증**: 운영 Supabase에 023 적용 여부 — issue #481.
 **상세**: `work/completed/W-0253-f02-fix-verdict-label.md`
 
-### F-3: Telegram alert → 1-click Verdict deep link (M, 3일)
+### ~~F-3: Telegram alert → 1-click Verdict deep link (M, 3일)~~ ✅ **완료 (2026-04-29 PR #639 / W-0305)**
 
 ```
 POST /alerts/{alert_id}/verdict-link → signed JWT (72h TTL, HMAC-SHA256)
@@ -205,8 +205,8 @@ CSS Grid, resizable, min-width per pane
 | ↳ 50 query eval set + LCS 가중 튜닝 (0.6/0.3/0.1) | | | | |
 | ~~H-07 F-60 Gate~~ | W-0238 | — | — | ✅ **완료 (PR #437)** `GET /users/{id}/f60-status` |
 | ~~H-08 per-user verdict accuracy~~ | W-0239 | — | — | ✅ **완료 (PR #437)** IN clause 배치 포함 |
-| F-18 Stripe $29/mo + tier enforcement | W-0248 | M | — | JWT Auth BUILT, Stripe 미연결 |
-| ↳ tier enforcement (Free/Pro) + rate limit + migration 028 | | | | |
+| ~~F-18 Stripe $29/mo + tier enforcement~~ | W-0248 | — | — | ✅ **완료 (2026-04-29 PR #653)** Stripe SDK + webhook + quota gate |
+| ↳ tier enforcement (Free/Pro) + rate limit + migration 030 | | | | |
 | F-19 Sentry + observability | W-0249 | M | — | H-04/H-05 flywheel 체크 BUILT |
 | ↳ p95 latency / error rate / cost-per-WAA 대시보드 | | | | |
 | F-20~22 Infra cleanup | W-0250 | S | — | Vercel guardrail + GCP Cloud Build |
