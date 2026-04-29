@@ -2,7 +2,7 @@
 
 > Wave: 4 | Priority: P1 | Effort: S
 > Charter: In-Scope L0 (자동매매 frozen — Execute 모드는 manual order intent UI만, 실주문 X)
-> Status: 🟡 Design Draft
+> Status: 🔵 PR Open — #652
 > Created: 2026-04-29
 > Issue: #634
 
@@ -31,17 +31,19 @@ app
   - 상단 헤더에 `TerminalModeToggle` 마운트
 - `app/src/components/terminal/__tests__/W0306_mode_toggle.test.ts` (신규 — vitest)
 
-**모드 프리셋** (사용자 가이드 반영):
-| 모드 | left | center | right | 의도 |
+**모드 프리셋** (실 구현 — `ModePanelConfig` visibility 기반):
+| 모드 | showLeftRail | showRightRail | showWorkspace | 의도 |
 |---|---|---|---|---|
-| Observe | 0% | 70% | 30% | 차트 + HUD only (수동 모니터링) |
-| Analyze (default) | 25% | 45% | 30% | 검색 + 차트 + HUD (탐색 mode) |
-| Execute | 30% | 40% | 30% | 워크스페이스 + 차트 + quick-trade |
+| Observe | false | false | false | 차트 full-screen (수동 모니터링) |
+| Analyze (default) | true | true | true | 검색 + 차트 + HUD (탐색 mode) |
+| Execute | true | true | false | workspace 숨김 + 차트 + right-rail |
+
+> **설계 변경 (실측)**: 너비 % 프리셋 → panel visibility 토글로 구현됨. `terminalLayoutController.ts:10`
 
 **Execute 모드의 Charter 호환성**:
-- Execute right panel = "quick-trade widget" — **manual order intent UI만 (실자금 주문 X)**
-- 거래소 API 콜 X. `app/src/lib/components/intent/QuickTradePanel.svelte` (신규) — 사용자가 entry/stop/target을 수기 입력 후 클립보드 복사 또는 Telegram 알림 전송
-- 자동매매·실자금 주문은 Charter §Frozen — 명시적으로 차단 (UI에서 disable 처리)
+- Execute right panel = 기존 RightRailPanel 그대로 유지 (별도 QuickTradePanel 컴포넌트 미생성)
+- inline disclaimer `"수기 입력 · 실주문 X"` div 표시 (`+page.svelte:1752`)
+- 자동매매·실자금 주문은 Charter §Frozen — 명시적으로 차단
 
 ## Non-Goals
 
@@ -71,12 +73,12 @@ app
 - feature flag `PUBLIC_TERMINAL_MODE_TOGGLE=false` → toggle 숨김, default 'analyze' layout 유지
 - 또는 single PR revert (3 file change)
 
-### Files Touched
-- `app/src/components/terminal/terminalLayoutController.ts` (수정)
-- `app/src/components/terminal/TerminalModeToggle.svelte` (신규)
-- `app/src/lib/components/intent/QuickTradePanel.svelte` (신규)
-- `app/src/routes/terminal/+page.svelte` (수정 — 마운트)
-- `app/src/components/terminal/__tests__/W0306_mode_toggle.test.ts` (신규)
+### Files Touched (실 구현)
+- `app/src/components/terminal/terminalLayoutController.ts` (수정 — TerminalMode type + MODE_PRESETS + applyModePreset)
+- `app/src/lib/stores/terminalMode.ts` (신규 — localStorage `wtd_terminal_mode` + URL param sync)
+- `app/src/components/terminal/workspace/TerminalCommandBar.svelte` (수정 — mode-pill 3-button + mobile hide ≤ 1023px)
+- `app/src/routes/terminal/+page.svelte` (수정 — $effect preset apply, svelte:window Cmd/Ctrl+1/2/3, execute-disclaimer)
+- `app/src/components/terminal/__tests__/W0306_mode_toggle.test.ts` (신규 — 10 vitest assertions PASS)
 
 ## AI Researcher 관점
 
@@ -126,31 +128,32 @@ app
 
 ## Exit Criteria
 
-- [ ] **AC1**: 모드 전환 → 패널 width 적용 시간 ≤ 300ms (CSS transition 측정)
-- [ ] **AC2**: localStorage `wtd:terminal:mode` 저장 → 다음 세션 동일 모드 복원
-- [ ] **AC3**: corrupt localStorage 값 → 'analyze' fallback (vitest)
-- [ ] **AC4**: Mobile/Tablet (< 1024px) → 토글 숨김 (CSS media query)
-- [ ] **AC5**: Execute 모드 quick-trade UI에 "수기 입력 / 실주문 X" disclaimer 표시
-- [ ] **AC6**: Cmd+1/2/3 keyboard shortcut 작동 (input field focus 중에는 비활성)
-- [ ] CI green (vitest + svelte check)
+- [x] **AC1**: 모드 전환 → CSS transition 280ms (panel show/hide) ≤ 300ms
+- [x] **AC2**: localStorage `wtd_terminal_mode` 저장 → URL param sync + 다음 세션 동일 모드 복원
+- [x] **AC3**: corrupt localStorage 값 → 'analyze' fallback (vitest PASS)
+- [x] **AC4**: Mobile/Tablet (< 1024px) → 토글 숨김 (CSS `max-width:1023px { display:none }`)
+- [x] **AC5**: Execute 모드 disclaimer `"수기 입력 · 실주문 X"` 표시 (inline div)
+- [x] **AC6**: Cmd/Ctrl+1/2/3 keyboard shortcut (Mac + Windows 모두 지원)
+- [ ] CI green (App CI pending → PR #652)
 - [ ] PR merged + CURRENT.md SHA 업데이트
 
 ## Facts
 
-(grep 실측 결과 — 2026-04-29)
-1. `app/src/components/terminal/terminalLayoutController.ts` — 333줄, left/center/right 패널 + drag handler
-2. `BP_MOBILE = 768`, `BP_TABLET = 1024` — breakpoint 정의 존재
-3. `app/src/components/terminal/workspace/DecisionHUD.svelte` 544줄 — F-4 완성
-4. RightRailPanel mount 확인 (사용자 컨텍스트)
-5. `app/src/routes/terminal/+page.svelte` 존재 (확인 필요 — 실측에서 마운트 위치)
-6. 자동매매 코드 0 (`grep -r "exchange.*place.*order" app/src/` → empty 가정)
+(구현 완료 실측 — 2026-04-29, PR #652)
+1. `terminalLayoutController.ts:6` — `export type TerminalMode = 'observe' | 'analyze' | 'execute'` ✅
+2. `terminalLayoutController.ts:7` — `ModePanelConfig = { showLeftRail, showRightRail, showWorkspace }` ✅
+3. `terminalLayoutController.ts:10-17` — `MODE_PRESETS` + `applyModePreset()` ✅
+4. `lib/stores/terminalMode.ts` — localStorage key `wtd_terminal_mode`, URL param `?mode=`, browser-safe ✅
+5. `TerminalCommandBar.svelte:71-79` — 3-button mode-pill, `display:none` @ `max-width:1023px` ✅
+6. `+page.svelte:218-224` — `handleModeKeydown`: `(e.metaKey || e.ctrlKey) + key 1/2/3` (Mac+Windows) ✅
+7. `+page.svelte:1751-1754` — execute-disclaimer div `"수기 입력 · 실주문 X"` ✅
+8. `W0306_mode_toggle.test.ts` — 10 vitest assertions PASS ✅
 
 ## Assumptions
 
-- `terminalLayoutController.ts`의 width 상태는 reactive store (Svelte writable)
-- breakpoint 분기는 기존 로직 그대로 사용
-- posthog 또는 동등한 이벤트 트래킹 툴 활성 (확인 필요)
-- Charter §Frozen "자동매매" 정의에 quick-trade UI는 포함되지 않음 (사용자 결정 — D-0306-2 명시)
+- PR #652 merge 후 CI green 확인 필요 (App CI pending)
+- posthog `terminal_mode_changed` 이벤트는 구현 미포함 — 후속 W-item 필요
+- Charter §Frozen "자동매매" 정의에 quick-trade UI는 포함되지 않음 (D-0306-2 명시 — disclaimer로 해소)
 
 ## Canonical Files
 

@@ -315,6 +315,8 @@
   }
   .markets-label { font-size: 10px; }
 
+  @media (max-width: 1023px) { .mode-pill { display: none; } }
+
   @media (max-width: 767px) {
     .cmd-bar { height: 38px; padding: 0 8px; }
     .ticker-pair { font-size: 13px; }

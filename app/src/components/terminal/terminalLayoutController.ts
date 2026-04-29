@@ -3,6 +3,20 @@ import { clampPercent } from './terminalHelpers';
 export const BP_MOBILE = 768;
 export const BP_TABLET = 1024;
 
+export type TerminalMode = 'observe' | 'analyze' | 'execute';
+
+export type ModePanelConfig = { showLeftRail: boolean; showRightRail: boolean; showWorkspace: boolean };
+
+export const MODE_PRESETS: Record<TerminalMode, ModePanelConfig> = {
+  observe:  { showLeftRail: false, showRightRail: false, showWorkspace: false },
+  analyze:  { showLeftRail: true,  showRightRail: true,  showWorkspace: true },
+  execute:  { showLeftRail: true,  showRightRail: true,  showWorkspace: false },
+};
+
+export function applyModePreset(mode: TerminalMode): ModePanelConfig {
+  return MODE_PRESETS[mode] ?? MODE_PRESETS.analyze;
+}
+
 export type DragTarget = 'left' | 'right' | null;
 export type MobileTab = 'warroom' | 'chart' | 'intel';
 export type MobileResizeAxis = 'x' | 'y';
