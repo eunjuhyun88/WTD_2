@@ -255,6 +255,7 @@ def _scan_one_symbol(
     combos: list[PatternCombo],
     risk_cfg: RiskConfig,
     costs: ExecutionCosts,
+    macro: pd.DataFrame | None = None,
 ) -> list[PatternResult]:
     results = []
     scan_ts = datetime.now(timezone.utc).isoformat()
@@ -267,7 +268,7 @@ def _scan_one_symbol(
 
         klines = _klines_for_context(raw)
         perp = _build_perp_from_store(store, symbol)
-        features = compute_features_table(klines, symbol=symbol, perp=perp)
+        features = compute_features_table(klines, symbol=symbol, perp=perp, macro=macro)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
@@ -340,14 +341,16 @@ class PatternScanner:
         combos: list[PatternCombo] | None = None,
         risk_cfg: RiskConfig | None = None,
         costs: ExecutionCosts | None = None,
+        macro: pd.DataFrame | None = None,
     ) -> None:
         self.store = store or ParquetStore()
         self.combos = combos or ALL_COMBOS
         self.risk_cfg = risk_cfg or _DEFAULT_RISK
         self.costs = costs or _DEFAULT_COSTS
+        self._macro = macro
 
     def scan_symbol(self, symbol: str) -> list[PatternResult]:
-        return _scan_one_symbol(symbol, self.store, self.combos, self.risk_cfg, self.costs)
+        return _scan_one_symbol(symbol, self.store, self.combos, self.risk_cfg, self.costs, macro=self._macro)
 
     def scan_universe(
         self,

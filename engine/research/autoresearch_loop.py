@@ -30,6 +30,7 @@ from typing import NamedTuple
 import pandas as pd
 
 from data_cache.parquet_store import ParquetStore
+from data_cache.loader import load_macro_bundle
 from data_cache.universe_builder import load_universe
 from research.pattern_scan.scanner import PatternScanner
 from research.pattern_scan.pattern_object_combos import LIBRARY_COMBOS
@@ -163,7 +164,10 @@ class AutoResearchLoop:
         scan_workers: int = 8,
     ) -> None:
         self.store = store or ParquetStore()
-        self.scanner = PatternScanner(store=self.store, combos=LIBRARY_COMBOS)
+        _macro = load_macro_bundle(offline=True)  # cached read; None if not available
+        if _macro is None:
+            log.debug("Macro bundle not cached — Fear&Greed features will be neutral")
+        self.scanner = PatternScanner(store=self.store, combos=LIBRARY_COMBOS, macro=_macro)
         self.scan_workers = scan_workers
         self._cycle_count = 0
         self._experiment_log: list[dict] = []
