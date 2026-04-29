@@ -14,14 +14,14 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0248-f18-stripe-tier` | P0 | 🟢 Merged — PR #653 |
-| `W-0306-f5-terminal-mode-toggle` | P1 | 🟢 Merged — PR #652 |
 | `W-0309-f4-decision-hud-wiring` | P1 | 🟡 PR #656 — CI 대기 중 |
-| `W-0311-quant-risk-engine-v2` | P1 | 🟢 Merged — PR #651 |
-| `W-0312-personalization-engine` | P1 | 🟢 코드 머지 — 추가 기능 후속 필요 |
-| `W-0313-algorithm-hardening` | P1 | 🟢 Merged — PR #651 |
-| `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft (#635) |
 | `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft (#636) |
+| `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft (#635) |
+| `W-0312-personalization-engine` | P1 | 🟡 코드 존재, 추가 기능 후속 필요 |
+| ~~`W-0248-f18-stripe-tier`~~ | P0 | ✅ 머지 — PR #653 |
+| ~~`W-0306-f5-terminal-mode-toggle`~~ | P1 | ✅ 머지 — PR #652 |
+| ~~`W-0311-quant-risk-engine-v2`~~ | P1 | ✅ 머지 — PR #651 |
+| ~~`W-0313-algorithm-hardening`~~ | P1 | ✅ 머지 — PR #651 |
 
 ---
 
