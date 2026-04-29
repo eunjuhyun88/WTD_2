@@ -34,7 +34,12 @@ from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from verification import run_paper_verification
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
-from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
+from patterns.active_variant_registry import (
+    ACTIVE_PATTERN_VARIANT_STORE,
+    ACTIVE_VARIANT_REGISTRY_DIR,
+    ActivePatternVariantEntry,
+    derive_watch_phases_from_pattern,
+)
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.lifecycle_store import get_lifecycle_store
 from patterns.registry import PATTERN_REGISTRY_STORE
@@ -52,6 +57,35 @@ _capture_store = CaptureStore()
 _benchmark_pack_store = BenchmarkPackStore()
 _pattern_search_artifact_store = PatternSearchArtifactStore()
 _negative_search_memory_store = NegativeSearchMemoryStore()
+
+
+def _lifecycle_default_status(slug: str) -> str:
+    """Legacy library patterns are already production objects unless explicitly changed."""
+    return "object" if slug in PATTERN_LIBRARY else "draft"
+
+
+def _sync_lifecycle_runtime(slug: str, to_status: str) -> None:
+    """Keep lifecycle status aligned with the live scanner registry."""
+    if to_status == "candidate":
+        if ACTIVE_PATTERN_VARIANT_STORE.get(slug) is not None:
+            return
+        try:
+            pattern = get_pattern(slug)
+        except KeyError:
+            return
+        ACTIVE_PATTERN_VARIANT_STORE.upsert(
+            ActivePatternVariantEntry(
+                pattern_slug=slug,
+                variant_slug=f"{slug}__canonical",
+                timeframe=pattern.timeframe,
+                watch_phases=derive_watch_phases_from_pattern(pattern),
+                source_kind="operator",
+            )
+        )
+    elif to_status == "archived":
+        variant_file = ACTIVE_VARIANT_REGISTRY_DIR / f"{slug}.json"
+        if variant_file.exists():
+            variant_file.unlink()
 
 
 # ── Request models ───────────────────────────────────────────────────────────
@@ -591,6 +625,35 @@ async def get_all_stats(
     )
 
 
+@router.get("/lifecycle")
+async def get_lifecycle_statuses() -> dict:
+    """Return lifecycle status for all known PatternObjects.
+
+    File-backed lifecycle records are sparse. Existing library patterns are
+    production objects by default; explicit draft/candidate/archive records
+    override that default.
+    """
+    store = get_lifecycle_store()
+    explicit_by_slug = {entry["slug"]: entry for entry in store.get_all()}
+
+    entries: list[dict[str, Any]] = []
+    for slug, pattern in sorted(PATTERN_LIBRARY.items()):
+        explicit = explicit_by_slug.get(slug)
+        status = explicit["status"] if explicit else _lifecycle_default_status(slug)
+        entries.append({
+            "slug": slug,
+            "name": pattern.name,
+            "status": status,
+            "updated_at": explicit["updated_at"] if explicit else None,
+            "updated_by": explicit["updated_by"] if explicit else None,
+            "reason": explicit["reason"] if explicit else "",
+            "timeframe": pattern.timeframe,
+            "tags": list(pattern.tags),
+        })
+
+    return {"ok": True, "count": len(entries), "entries": entries}
+
+
 # ── Per-pattern endpoints ────────────────────────────────────────────────────
 
 @router.get("/{slug}/candidates")
@@ -734,8 +797,12 @@ async def set_alert_policy(slug: str, body: _PatternAlertPolicyBody) -> dict:
 @router.get("/{slug}/lifecycle-status")
 async def get_lifecycle_status(slug: str) -> dict:
     """Return current lifecycle status for a pattern (draft/candidate/object/archived)."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
     store = get_lifecycle_store()
-    status = store.get_status(slug)
+    status = store.get_status(slug, default=_lifecycle_default_status(slug))
     return {"ok": True, "slug": slug, "status": status}
 
 
@@ -760,9 +827,12 @@ async def patch_pattern_status(slug: str, body: _PatternStatusBody, request: Req
             to_status=body.status,
             user_id=user_id,
             reason=body.reason,
+            default_from_status=_lifecycle_default_status(slug),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    _sync_lifecycle_runtime(slug, result["to_status"])
 
     log.info(
         "lifecycle transition: slug=%s %s→%s by=%s reason=%r",

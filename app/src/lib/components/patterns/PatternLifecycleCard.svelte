@@ -19,13 +19,17 @@
 
   interface Props {
     slug: string;
+    /** Card heading, useful when rendering a lifecycle list. */
+    title?: string;
+    /** Optional compact metadata line. */
+    meta?: string;
     /** Optional initial status (avoids extra fetch if parent already knows). */
     initialStatus?: LifecycleStatus;
     /** Called after a successful transition. */
     ontransition?: (from: LifecycleStatus, to: LifecycleStatus) => void;
   }
 
-  let { slug, initialStatus, ontransition }: Props = $props();
+  let { slug, title = 'Lifecycle Status', meta, initialStatus, ontransition }: Props = $props();
 
   let status = $state<LifecycleStatus>('draft');
   let loading = $state(true);
@@ -101,13 +105,17 @@
 
 <div class="lifecycle-card">
   <div class="card-header">
-    <span class="card-title">Lifecycle Status</span>
+    <span class="card-title">{title}</span>
     {#if loading}
       <span class="status-chip status-loading">…</span>
     {:else}
       <span class="status-chip {statusColor[status]}">{STATUS_LABEL[status]}</span>
     {/if}
   </div>
+
+  {#if meta}
+    <p class="card-meta">{meta}</p>
+  {/if}
 
   {#if error}
     <p class="error-msg">{error}</p>
@@ -172,6 +180,13 @@
     color: rgba(255, 255, 255, 0.5);
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+
+  .card-meta {
+    margin: -4px 0 0;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    font-family: var(--sc-font-mono, monospace);
   }
 
   .status-chip {

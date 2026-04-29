@@ -1093,6 +1093,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lifecycle Statuses
+         * @description Return lifecycle status for all known PatternObjects.
+         *
+         *     File-backed lifecycle records are sparse. Existing library patterns are
+         *     production objects by default; explicit draft/candidate/archive records
+         *     override that default.
+         */
+        get: operations["get_lifecycle_statuses_patterns_lifecycle_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/candidates": {
         parameters: {
             query?: never;
@@ -6941,6 +6965,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lifecycle_statuses_patterns_lifecycle_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

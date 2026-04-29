@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.routes import patterns as pattern_routes
+from patterns.active_variant_registry import ActivePatternVariantEntry, ActivePatternVariantStore
 from patterns.lifecycle_store import PatternLifecycleStore
 
 
@@ -47,7 +48,18 @@ def test_pattern_lifecycle_routes_transition_and_reject_invalid(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     store = PatternLifecycleStore(store_dir=tmp_path)
+    variant_store = ActivePatternVariantStore(tmp_path / "variants")
+    variant_store.upsert(
+        ActivePatternVariantEntry(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug="tradoor-oi-reversal-v1__canonical",
+            timeframe="1h",
+            watch_phases=["ACCUMULATION"],
+        )
+    )
     monkeypatch.setattr(pattern_routes, "get_lifecycle_store", lambda: store)
+    monkeypatch.setattr(pattern_routes, "ACTIVE_PATTERN_VARIANT_STORE", variant_store)
+    monkeypatch.setattr(pattern_routes, "ACTIVE_VARIANT_REGISTRY_DIR", tmp_path / "variants")
 
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
@@ -55,22 +67,71 @@ def test_pattern_lifecycle_routes_transition_and_reject_invalid(
 
     initial = client.get("/patterns/tradoor-oi-reversal-v1/lifecycle-status")
     assert initial.status_code == 200
-    assert initial.json()["status"] == "draft"
+    assert initial.json()["status"] == "object"
 
-    promoted = client.patch(
+    invalid = client.patch(
         "/patterns/tradoor-oi-reversal-v1/status",
         json={"status": "candidate", "reason": "manual review"},
         headers={"x-user-id": "jin"},
     )
-    assert promoted.status_code == 200
-    assert promoted.json()["from_status"] == "draft"
-    assert promoted.json()["to_status"] == "candidate"
-
-    invalid = client.patch(
-        "/patterns/tradoor-oi-reversal-v1/status",
-        json={"status": "draft"},
-    )
     assert invalid.status_code == 422
+
+    archived = client.patch(
+        "/patterns/tradoor-oi-reversal-v1/status",
+        json={"status": "archived", "reason": "retired"},
+        headers={"x-user-id": "jin"},
+    )
+    assert archived.status_code == 200
+    assert archived.json()["from_status"] == "object"
+    assert archived.json()["to_status"] == "archived"
+    assert variant_store.get("tradoor-oi-reversal-v1") is None
+
+
+def test_pattern_lifecycle_list_defaults_library_patterns_to_object(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = PatternLifecycleStore(store_dir=tmp_path)
+    monkeypatch.setattr(pattern_routes, "get_lifecycle_store", lambda: store)
+
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.get("/patterns/lifecycle")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["count"] >= 1
+
+    tradoor = next(e for e in body["entries"] if e["slug"] == "tradoor-oi-reversal-v1")
+    assert tradoor["status"] == "object"
+    assert tradoor["timeframe"] == "1h"
+
+
+def test_pattern_lifecycle_list_uses_explicit_status(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = PatternLifecycleStore(store_dir=tmp_path)
+    store.transition(
+        "tradoor-oi-reversal-v1",
+        "archived",
+        user_id="jin",
+        reason="retired",
+        default_from_status="object",
+    )
+    monkeypatch.setattr(pattern_routes, "get_lifecycle_store", lambda: store)
+
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.get("/patterns/lifecycle")
+    assert response.status_code == 200
+    tradoor = next(e for e in response.json()["entries"] if e["slug"] == "tradoor-oi-reversal-v1")
+    assert tradoor["status"] == "archived"
+    assert tradoor["updated_by"] == "jin"
 
 
 def test_pattern_lifecycle_route_rejects_unknown_pattern(

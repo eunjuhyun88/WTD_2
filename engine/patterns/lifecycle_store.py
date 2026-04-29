@@ -76,16 +76,29 @@ class PatternLifecycleStore:
         except Exception as exc:
             log.error("lifecycle_store: save failed: %s", exc)
 
-    def get_status(self, slug: str) -> str:
-        """Return current status for slug; defaults to 'draft'."""
+    def get_record(self, slug: str) -> dict[str, Any] | None:
+        """Return the explicit lifecycle record for slug, if one has been written."""
         with self._lock:
-            return self._cache.get(slug, LifecycleRecord(slug=slug, status="draft", updated_at=0)).status
+            record = self._cache.get(slug)
+            return asdict(record) if record is not None else None
+
+    def get_status(self, slug: str, default: str = "draft") -> str:
+        """Return current status for slug; default is caller-selected."""
+        with self._lock:
+            return self._cache.get(slug, LifecycleRecord(slug=slug, status=default, updated_at=0)).status
 
     def get_all(self) -> list[dict[str, Any]]:
         with self._lock:
             return [asdict(r) for r in self._cache.values()]
 
-    def transition(self, slug: str, to_status: str, user_id: str = "system", reason: str = "") -> dict[str, Any]:
+    def transition(
+        self,
+        slug: str,
+        to_status: str,
+        user_id: str = "system",
+        reason: str = "",
+        default_from_status: str = "draft",
+    ) -> dict[str, Any]:
         """Apply status transition. Raises ValueError on invalid transition.
 
         Returns: { slug, from_status, to_status, updated_at }
@@ -95,7 +108,7 @@ class PatternLifecycleStore:
 
         with self._lock:
             current = self._cache.get(slug)
-            from_status = current.status if current else "draft"
+            from_status = current.status if current else default_from_status
 
             allowed = ALLOWED_TRANSITIONS.get(from_status, set())
             if to_status not in allowed:
