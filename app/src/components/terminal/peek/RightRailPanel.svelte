@@ -2,6 +2,7 @@
   import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
   import DecisionHUD from '../workspace/DecisionHUD.svelte';
   import WhaleWatchCard from '../workspace/WhaleWatchCard.svelte';
+  import PatternClassBreakdown from '$lib/components/terminal/PatternClassBreakdown.svelte';
   import type { TerminalAnalyzeData } from '$lib/terminal/terminalDataOrchestrator';
   import type { LiveSignal } from '$lib/terminal/terminalDataOrchestrator';
   import type { TerminalAsset, TerminalVerdict } from '$lib/types/terminal';
@@ -31,6 +32,10 @@
     hasActiveSavedAlert: boolean;
     verdictMap: Record<string, TerminalVerdict>;
     loadingSymbols: Set<string>;
+    /** W-0322: similar captures for PatternClassBreakdown */
+    similarCaptures?: any[];
+    /** W-0322: pattern phases for classification */
+    patternPhases?: Array<{ phaseName?: string; symbols?: string[] }>;
     onTabChange: (tab: string) => void;
     onAction: (text: string) => void;
     onPinToggle: () => Promise<void>;
@@ -64,6 +69,8 @@
     hasActiveSavedAlert,
     verdictMap,
     loadingSymbols,
+    similarCaptures = [],
+    patternPhases = [],
     onTabChange,
     onAction,
     onPinToggle,
@@ -179,6 +186,11 @@
     <div class="whale-wrap">
       <WhaleWatchCard symbol={activeSymbol} />
     </div>
+    <!-- W-0322: Pattern classification breakdown -->
+    <PatternClassBreakdown
+      similar={similarCaptures}
+      phases={patternPhases}
+    />
   {:else}
     <div class="board-empty">
       <p class="empty-icon">◈</p>
