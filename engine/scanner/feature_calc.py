@@ -1384,6 +1384,19 @@ def compute_features_table(
         except Exception:
             perp = None
 
+    # Columns passed through from perp to features without transformation.
+    # W-0316: building blocks read these directly from ctx.features.
+    _PERP_PASSTHROUGH_COLS = {
+        "oi_exchange_conc":      1.0,   # default: one exchange dominates
+        "total_oi_change_1h":    0.0,
+        "total_oi_change_24h":   0.0,
+        "total_perp_oi":         0.0,
+        "coinbase_premium":      0.0,
+        "coinbase_premium_norm": 0.0,
+        "dex_buy_pct":           0.5,   # default: balanced buy/sell
+    }
+    _perp_extra: dict[str, np.ndarray] = {}
+
     if perp is not None and len(perp) > 0:
         perp_aligned = perp.reindex(index, method="ffill")
         funding_rate = (
@@ -1403,6 +1416,9 @@ def compute_features_table(
         long_short_ratio = (
             perp_aligned["long_short_ratio"].fillna(1.0).to_numpy(dtype=np.float64)
         )
+        for col, default in _PERP_PASSTHROUGH_COLS.items():
+            if col in perp_aligned.columns:
+                _perp_extra[col] = perp_aligned[col].fillna(default).to_numpy(dtype=np.float64)
     else:
         funding_rate = np.zeros(len(index), dtype=np.float64)
         oi_raw = np.zeros(len(index), dtype=np.float64)
@@ -1779,6 +1795,10 @@ def compute_features_table(
             **onchain_arrays,
             **dex_arrays,
             **chain_arrays,
+            # W-0316 Phase 1: perp passthrough (exchange OI, coinbase premium, dex buy pct)
+            # Only included when the ParquetStore has pre-fetched this data.
+            # Falls back to registry-driven columns when absent (no conflict).
+            **{k: v for k, v in _perp_extra.items() if k not in macro_arrays and k not in onchain_arrays and k not in dex_arrays},
             "price": close.to_numpy(),
             "symbol": symbol,
         },

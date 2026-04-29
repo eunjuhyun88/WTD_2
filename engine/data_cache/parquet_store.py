@@ -176,6 +176,68 @@ class ParquetStore:
         path = self._onchain_path(base.upper())
         return pd.read_parquet(path) if path.exists() else pd.DataFrame()
 
+    # ── Exchange OI (per-symbol, hourly) ──────────────────────────────────────
+
+    def write_exchange_oi(self, symbol: str, df: pd.DataFrame) -> None:
+        self._upsert(self._deriv_path(symbol, "exchange_oi"), df)
+
+    def read_exchange_oi(self, symbol: str) -> pd.DataFrame:
+        path = self._deriv_path(symbol, "exchange_oi")
+        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+
+    # ── Liquidations (per-symbol, hourly) ─────────────────────────────────────
+
+    def write_liquidations(self, symbol: str, df: pd.DataFrame) -> None:
+        self._upsert(self._deriv_path(symbol, "liquidations"), df)
+
+    def read_liquidations(self, symbol: str) -> pd.DataFrame:
+        path = self._deriv_path(symbol, "liquidations")
+        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+
+    # ── DEX (per-symbol, daily) ────────────────────────────────────────────────
+
+    def write_dex(self, symbol: str, df: pd.DataFrame) -> None:
+        self._upsert(self._deriv_path(symbol, "dex"), df)
+
+    def read_dex(self, symbol: str) -> pd.DataFrame:
+        path = self._deriv_path(symbol, "dex")
+        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+
+    # ── Global data (not per-symbol) ──────────────────────────────────────────
+
+    def _global_path(self, name: str) -> Path:
+        d = self._base / "global"
+        d.mkdir(parents=True, exist_ok=True)
+        return d / f"{name}.parquet"
+
+    def write_coinbase_premium(self, df: pd.DataFrame) -> None:
+        self._upsert(self._global_path("coinbase_premium"), df)
+
+    def read_coinbase_premium(self) -> pd.DataFrame:
+        path = self._global_path("coinbase_premium")
+        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+
+    def write_macro(self, df: pd.DataFrame) -> None:
+        self._upsert(self._global_path("macro"), df)
+
+    def read_macro(self) -> pd.DataFrame:
+        path = self._global_path("macro")
+        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+
+    def write_upbit(self, df: pd.DataFrame) -> None:
+        self._upsert(self._global_path("upbit_kimchi"), df)
+
+    def read_upbit(self) -> pd.DataFrame:
+        path = self._global_path("upbit_kimchi")
+        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+
+    def write_etf_flow(self, df: pd.DataFrame) -> None:
+        self._upsert(self._global_path("etf_flow"), df)
+
+    def read_etf_flow(self) -> pd.DataFrame:
+        path = self._global_path("etf_flow")
+        return pd.read_parquet(path) if path.exists() else pd.DataFrame()
+
     # ── Inventory ─────────────────────────────────────────────────────────────
 
     def list_symbols(self, tf: str = "1h") -> list[str]:

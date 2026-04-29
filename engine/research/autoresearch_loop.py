@@ -31,7 +31,8 @@ import pandas as pd
 
 from data_cache.parquet_store import ParquetStore
 from data_cache.universe_builder import load_universe
-from research.pattern_scan.scanner import PatternScanner, ALL_COMBOS
+from research.pattern_scan.scanner import PatternScanner
+from research.pattern_scan.pattern_object_combos import LIBRARY_COMBOS
 from research.validation.stats import (
     bootstrap_ci,
     hit_rate,
@@ -162,7 +163,7 @@ class AutoResearchLoop:
         scan_workers: int = 8,
     ) -> None:
         self.store = store or ParquetStore()
-        self.scanner = PatternScanner(store=self.store, combos=ALL_COMBOS)
+        self.scanner = PatternScanner(store=self.store, combos=LIBRARY_COMBOS)
         self.scan_workers = scan_workers
         self._cycle_count = 0
         self._experiment_log: list[dict] = []
@@ -201,7 +202,7 @@ class AutoResearchLoop:
             )
 
         # Step 2: Pattern scan
-        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(ALL_COMBOS))
+        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(LIBRARY_COMBOS))
         scan_df = self.scanner.scan_universe(symbols, workers=self.scan_workers)
 
         if scan_df.empty:
