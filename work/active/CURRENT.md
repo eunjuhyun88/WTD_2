@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`2baa77c6` — origin/main (2026-04-29) — PR #655 W-0311 WVPL 통합 검증 머지
+`28110150` — origin/main (2026-04-29) — PR #656 W-0309 DecisionHUD wiring 머지
 
 ---
 
@@ -14,14 +14,9 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0309-f4-decision-hud-wiring` | P1 | 🟡 PR #656 — CI 대기 중 |
 | `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft (#636) |
 | `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft (#635) |
 | `W-0312-personalization-engine` | P1 | 🟡 코드 존재, 추가 기능 후속 필요 |
-| ~~`W-0248-f18-stripe-tier`~~ | P0 | ✅ 머지 — PR #653 |
-| ~~`W-0306-f5-terminal-mode-toggle`~~ | P1 | ✅ 머지 — PR #652 |
-| ~~`W-0311-quant-risk-engine-v2`~~ | P1 | ✅ 머지 — PR #651 |
-| ~~`W-0313-algorithm-hardening`~~ | P1 | ✅ 머지 — PR #651 |
 
 ---
 
@@ -29,8 +24,7 @@
 
 ```
 완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0311/312/313 퀀트 ✅
-즉시:  W-0309 HUD wiring PR #656 머지 대기
-Week1: W-0308 F-14 promote UI (S) + W-0307 F-12 kimchi UI (S)
+즉시:  W-0308 F-14 promote UI (S) + W-0307 F-12 kimchi UI (S)
 Week2: F-16 recall 개선
 Week3: F-19 Sentry + F-20 infra cleanup
 Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
@@ -62,10 +56,8 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ```bash
 ./tools/start.sh
-# 즉시: PR #656 W-0309 HUD wiring CI 확인 후 머지
 # P1:   W-0308 F-14 promote UI 구현
 # P2:   W-0307 F-12 kimchi UI 구현
-gh pr checks 656
 cat work/active/W-0308-f14-pattern-lifecycle-promote-ui.md
 cat work/active/W-0307-f12-kimchi-premium-ui.md
 ```
