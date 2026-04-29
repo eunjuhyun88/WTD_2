@@ -221,11 +221,13 @@ class AutoResearchLoop:
         rejected = gated[~gated["gate_passed"]].copy()
         log.info("Gate: %d passed / %d total", len(passed), len(gated))
 
-        # Step 4: Walk-forward check
+        # Step 4: Walk-forward annotation (proxy: n >= folds * min_signals)
+        # Annotates wf_ok flag but does NOT filter — quality patterns fire
+        # infrequently (~2-3x/yr) so hard n≥30 cut removes real signals.
         if not passed.empty:
             passed = _walkforward_validate(passed)
-            passed = passed[passed["wf_ok"]].copy()
-            log.info("Walk-forward: %d passed", len(passed))
+            n_wf = int(passed["wf_ok"].sum())
+            log.info("Walk-forward capable: %d / %d", n_wf, len(passed))
 
         # Step 5: Rank by Sharpe
         if not passed.empty:
