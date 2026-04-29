@@ -280,6 +280,25 @@ def _inject_live_aggtrades(features: pd.DataFrame, symbol: str) -> None:
         log.debug("[%s] AggTrades injection failed: %s", symbol, exc)
 
 
+def _inject_sector_scores(
+    features: pd.DataFrame,
+    symbol: str,
+    sector_scores: dict[str, float] | None,
+) -> None:
+    """Inject sector_score_norm and sector_avg_pct into all rows (uniform value)."""
+    if not sector_scores:
+        return
+    try:
+        score_norm = sector_scores.get(symbol, 0.0)
+        sector_avg_map = sector_scores.get("__sector_avg__", {}) or {}
+        from data_cache.token_universe import get_sector
+        sector_avg_pct = sector_avg_map.get(get_sector(symbol), 0.0) if sector_avg_map else 0.0
+        features["sector_score_norm"] = float(score_norm)
+        features["sector_avg_pct"] = float(sector_avg_pct)
+    except Exception as exc:
+        log.debug("[%s] Sector score injection failed: %s", symbol, exc)
+
+
 def _scan_one_symbol(
     symbol: str,
     store: ParquetStore,
@@ -287,6 +306,7 @@ def _scan_one_symbol(
     risk_cfg: RiskConfig,
     costs: ExecutionCosts,
     macro: pd.DataFrame | None = None,
+    sector_scores: dict[str, float] | None = None,
 ) -> list[PatternResult]:
     results = []
     scan_ts = datetime.now(timezone.utc).isoformat()
@@ -302,6 +322,7 @@ def _scan_one_symbol(
         features = compute_features_table(klines, symbol=symbol, perp=perp, macro=macro)
         _inject_live_ob(features, symbol)
         _inject_live_aggtrades(features, symbol)
+        _inject_sector_scores(features, symbol, sector_scores)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
@@ -375,15 +396,20 @@ class PatternScanner:
         risk_cfg: RiskConfig | None = None,
         costs: ExecutionCosts | None = None,
         macro: pd.DataFrame | None = None,
+        sector_scores: dict[str, float] | None = None,
     ) -> None:
         self.store = store or ParquetStore()
         self.combos = combos or ALL_COMBOS
         self.risk_cfg = risk_cfg or _DEFAULT_RISK
         self.costs = costs or _DEFAULT_COSTS
         self._macro = macro
+        self._sector_scores = sector_scores
 
     def scan_symbol(self, symbol: str) -> list[PatternResult]:
-        return _scan_one_symbol(symbol, self.store, self.combos, self.risk_cfg, self.costs, macro=self._macro)
+        return _scan_one_symbol(
+            symbol, self.store, self.combos, self.risk_cfg, self.costs,
+            macro=self._macro, sector_scores=self._sector_scores,
+        )
 
     def scan_universe(
         self,
