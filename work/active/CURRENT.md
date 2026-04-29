@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`2baa77c6` — origin/main (2026-04-29) — PR #655 W-0311 WVPL 통합 검증 머지
+`28110150` — origin/main (2026-04-29) — PR #656 W-0309 DecisionHUD live wiring 머지
 
 ---
 
@@ -17,14 +17,13 @@
 | `W-0248-f18-stripe-tier` | P0 | 🟢 Foundation merged — PR #653; remaining billing polish/open Qs |
 | `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft — kimchi_premium_pct Dashboard 노출 (#635) |
 | `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft — Draft→Candidate→Object promote UI (#636) |
-| `W-0309-f4-decision-hud-wiring` | P1 | 🟡 Design Draft — HUD API mock→live |
 
 ---
 
 ## Wave 4 실행 계획 (갭 분석 반영, 2026-04-29)
 
 ```
-완료:  W-0305 F-3 last mile (#639) → W-0306 F-5 mode toggle (#652) → W-0311 WVPL verification (#655)
+완료:  W-0305 F-3 last mile (#639) → W-0306 F-5 mode toggle (#652) → W-0311 WVPL verification (#655) → W-0309 DecisionHUD live (#656)
 Week1: W-0308 F-14 promote UI (S) + W-0307 F-12 kimchi UI (S)
 Week2: W-0307 F-12 kimchi UI (S) + F-16 recall 개선
 Week3: F-19 Sentry + F-20 infra cleanup
