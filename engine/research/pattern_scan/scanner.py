@@ -280,6 +280,19 @@ def _inject_live_aggtrades(features: pd.DataFrame, symbol: str) -> None:
         log.debug("[%s] AggTrades injection failed: %s", symbol, exc)
 
 
+def _inject_multi_exchange(features: pd.DataFrame, symbol: str) -> None:
+    """Inject MEXC/Bitget multi-exchange features into last row of features (in-place)."""
+    try:
+        from data_cache.fetch_multi_exchange import fetch_multi_exchange_snapshot
+        snap = fetch_multi_exchange_snapshot(symbol)
+        if snap is not None:
+            idx = features.index[-1]
+            features.loc[idx, "mexc_vol_ratio"] = snap.mexc_vol_ratio
+            features.loc[idx, "mexc_price_lead"] = snap.mexc_price_lead
+    except Exception as exc:
+        log.debug("[%s] Multi-exchange injection failed: %s", symbol, exc)
+
+
 def _inject_mtf_features(features: pd.DataFrame, klines: pd.DataFrame) -> None:
     """Compute MTF EMA confluence and merge into features (in-place)."""
     try:
@@ -335,6 +348,7 @@ def _scan_one_symbol(
         _inject_live_aggtrades(features, symbol)
         _inject_sector_scores(features, symbol, sector_scores)
         _inject_mtf_features(features, klines)
+        _inject_multi_exchange(features, symbol)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
