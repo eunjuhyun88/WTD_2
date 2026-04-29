@@ -289,6 +289,19 @@ app
 4. SSE handler `applyChartAction()` 교체
 5. vitest + PR
 
+## Exit Criteria
+
+- [ ] E1: `paneIndicators.ts` 구현 — createPaneIndicatorStore() 반환값이 Map에 paneId 키로 저장
+- [ ] E2: ChartPane에 global chartIndicators import 없음 (svelte-check 0 errors)
+- [ ] E3: SSE add_indicator/remove_indicator → activePaneId store에만 dispatch 확인 (vitest)
+- [ ] E4: localStorage 키 `chart_indicators::pane_${id}` 형식 저장/복원 동작
+- [ ] E5: PR merged + CI green
+
+## Open Questions
+
+- [ ] [Q-1] activePaneId가 null일 때 SSE add_indicator → 첫 번째 pane에 적용? 드롭? (현재: 드롭 결정)
+- [ ] [Q-2] W-0102 SSE 공유 store 결정과 이 변경 간 정합성 재검토 필요 (issue #617 참조)
+
 ## Handoff Checklist
 
 - [ ] `paneIndicators.ts` 구현 + vitest E1/E4/E5/E6
