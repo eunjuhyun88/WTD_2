@@ -4,7 +4,7 @@
 > Charter: In-Scope L4 (Execution Engine)
 > Status: 🟡 Design Draft
 > Created: 2026-04-29
-> Issue: TBD
+> Issue: #643
 
 ---
 

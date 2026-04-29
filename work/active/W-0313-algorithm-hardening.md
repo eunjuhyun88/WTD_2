@@ -4,7 +4,7 @@
 > Charter: In-Scope L5 (Search) + L7 (AutoResearch)
 > Status: 🟡 Design Draft
 > Created: 2026-04-29
-> Issue: TBD
+> Issue: #645
 
 ## Goal
 

@@ -4,7 +4,7 @@
 > Charter: In-Scope L7 (AutoResearch — personalized layer over global L4 PromotionGate)
 > Status: 🟡 Design Draft v1
 > Created: 2026-04-29
-> Issue: TBD
+> Issue: #644
 >
 > **Source design context:**
 > - Global variant store: `engine/patterns/active_variant_registry.py`
