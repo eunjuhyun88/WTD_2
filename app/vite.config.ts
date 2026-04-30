@@ -1,14 +1,10 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import path from 'path';
-import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig({
 	plugins: [
 		sveltekit(),
-		...(process.env.VITE_BUNDLE_ANALYZE === 'true'
-			? [visualizer({ open: true, filename: 'stats.html', gzipSize: true, brotliSize: true })]
-			: []),
 	],
 	server: {
 		host: '0.0.0.0',
