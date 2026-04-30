@@ -178,7 +178,7 @@ def _safe_eval(fn: Callable, ctx: Context, name: str) -> pd.Series:
         result = fn(ctx)
         return result.fillna(False).astype(bool)
     except Exception as exc:
-        log.debug("Block %s failed: %s", name, exc)
+        log.warning("[%s] block %s evaluation failed: %s", ctx.symbol, name, exc)
         return pd.Series(False, index=ctx.features.index, dtype=bool)
 
 

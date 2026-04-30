@@ -57,6 +57,11 @@ from research.pattern_scan.oos_split import holdout_cutoff as _oos_cutoff
 log = logging.getLogger("engine.pattern_scan.scanner")
 
 _OOS_WIRING = os.getenv("RESEARCH_OOS_WIRING", "off").lower() == "on"
+
+# Disable live market data injection during historical backtests.
+# Set LIVE_SIGNALS_MODE=on only for real-time signal generation.
+_LIVE_SIGNALS_MODE = os.getenv("LIVE_SIGNALS_MODE", "off").lower() == "on"
+
 _OOS_HOLDOUT_FRAC = 0.30
 _MIN_HOLDOUT_TRADES = 10
 
@@ -351,11 +356,12 @@ def _scan_one_symbol(
         klines = _klines_for_context(raw)
         perp = _build_perp_from_store(store, symbol)
         features = compute_features_table(klines, symbol=symbol, perp=perp, macro=macro)
-        _inject_live_ob(features, symbol)
-        _inject_live_aggtrades(features, symbol)
+        if _LIVE_SIGNALS_MODE:
+            _inject_live_ob(features, symbol)
+            _inject_live_aggtrades(features, symbol)
+            _inject_multi_exchange(features, symbol)
         _inject_sector_scores(features, symbol, sector_scores)
         _inject_mtf_features(features, klines)
-        _inject_multi_exchange(features, symbol)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
