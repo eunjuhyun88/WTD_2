@@ -442,7 +442,7 @@ class _VerdictBody(BaseModel):
 
 
 @router.post("/{capture_id}/verdict")
-async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
+async def set_capture_verdict(capture_id: str, body: _VerdictBody, request: Request) -> dict:
     """Apply user verdict to a resolved capture.
 
     Requires status in {'outcome_ready', 'verdict_ready'} — the capture must
@@ -503,6 +503,21 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
         get_wiki_agent().on_verdict_submitted(capture.pattern_slug, outcome.id)
     except Exception:
         pass
+
+    # Update per-user reranker weights with verdict feedback (fire-and-forget, W-0346).
+    try:
+        user_id = getattr(request.state, "user_id", None)
+        if user_id and body.verdict:
+            from memory.rerank import apply_verdict_feedback
+            apply_verdict_feedback(
+                user_id,
+                body.verdict,
+                symbol=capture.symbol,
+                timeframe=capture.timeframe,
+                pattern_slug=capture.pattern_slug,
+            )
+    except Exception:
+        pass  # reranker feedback is best-effort; must not affect verdict response
 
     return {
         "ok": True,
