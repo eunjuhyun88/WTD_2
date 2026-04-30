@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -49,6 +50,7 @@ from patterns.types import PatternObject, PhaseCondition
 from research.live_monitor import search_pattern_state_similarity
 from scoring.block_evaluator import _BLOCKS
 from api.schemas_pattern_draft import PatternDraftBody, PatternDraftPhaseBody
+from api.schemas_search import PnLStatsPoint, PnLStatsResponse
 from features.materialization_store import FeatureMaterializationStore
 
 router = APIRouter()
@@ -751,6 +753,76 @@ async def get_stats(
         _ledger,
         definition_id=definition_id,
         definition_scope=definition_scope,
+    )
+
+
+@router.get("/{slug}/pnl-stats", response_model=PnLStatsResponse)
+async def get_pnl_stats(slug: str) -> PnLStatsResponse:
+    """W-0365: Realized P&L statistics for a pattern slug.
+
+    Queries ledger_outcomes for pnl_bps_net + pnl_verdict.
+    Returns preliminary=True if N < 30.
+    """
+    import numpy as np
+
+    _empty = PnLStatsResponse(
+        pattern_slug=slug, n=0,
+        mean_pnl_bps=None, std_pnl_bps=None, sharpe_like=None,
+        win_rate=None, loss_rate=None, indeterminate_rate=None,
+        ci_low=None, ci_high=None, preliminary=True,
+        btc_hold_return_pct=None, equity_curve=[],
+    )
+
+    try:
+        from supabase import create_client
+        c = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+        resp = (
+            c.table("ledger_outcomes")
+            .select("pnl_bps_net, pnl_verdict, created_at")
+            .eq("pattern_slug", slug)
+            .not_.is_("pnl_bps_net", "null")
+            .order("created_at")
+            .execute()
+        )
+        rows = resp.data
+    except Exception:
+        rows = []
+
+    if not rows:
+        return _empty
+
+    pnl_arr = np.array([r["pnl_bps_net"] for r in rows], dtype=float)
+    verdicts = [r["pnl_verdict"] for r in rows]
+    n = len(pnl_arr)
+
+    mean_v = float(np.mean(pnl_arr))
+    std_v = float(np.std(pnl_arr, ddof=1)) if n > 1 else 0.0
+    sharpe = mean_v / std_v if std_v > 0 else None
+
+    win_rate = verdicts.count("WIN") / n
+    loss_rate = verdicts.count("LOSS") / n
+    ind_rate = verdicts.count("INDETERMINATE") / n
+
+    ci_low = ci_high = None
+    if n >= 30:
+        se = std_v / (n ** 0.5)
+        ci_low = mean_v - 1.96 * se
+        ci_high = mean_v + 1.96 * se
+
+    cum = 0.0
+    equity_curve: list[PnLStatsPoint] = []
+    for r in rows:
+        cum += r["pnl_bps_net"]
+        equity_curve.append(PnLStatsPoint(ts=str(r["created_at"]), cumulative_pnl_bps=cum))
+
+    return PnLStatsResponse(
+        pattern_slug=slug, n=n,
+        mean_pnl_bps=mean_v, std_pnl_bps=std_v, sharpe_like=sharpe,
+        win_rate=win_rate, loss_rate=loss_rate, indeterminate_rate=ind_rate,
+        ci_low=ci_low, ci_high=ci_high,
+        preliminary=(n < 30),
+        btc_hold_return_pct=None,
+        equity_curve=equity_curve,
     )
 
 

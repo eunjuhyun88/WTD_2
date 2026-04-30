@@ -139,6 +139,35 @@ def _build_window_signature(klines: pd.DataFrame, features: pd.DataFrame) -> dic
     }
 
 
+def _apply_indicator_filters(
+    features_df: pd.DataFrame,
+    filters: tuple,
+) -> "pd.Series[bool]":
+    """Return boolean mask: True = passes all hard filters."""
+    mask = pd.Series(True, index=features_df.index)
+    for f in filters:
+        if f.filter_type != 'hard':
+            continue
+        col = f.feature_name
+        if col not in features_df.columns:
+            import logging
+            logging.getLogger(__name__).warning("IndicatorFilter: column %r not in features", col)
+            continue
+        series = features_df[col]
+        op = f.operator
+        if op == '<':    mask &= series < f.value
+        elif op == '>':  mask &= series > f.value
+        elif op == '<=': mask &= series <= f.value
+        elif op == '>=': mask &= series >= f.value
+        elif op == '==': mask &= series == f.value
+        elif op == '!=': mask &= series != f.value
+        elif op == 'in': mask &= series.isin(f.value)
+        elif op == 'between':
+            lo, hi = f.value[0], f.value[1]
+            mask &= (series >= lo) & (series <= hi)
+    return mask
+
+
 def _signature_distance(reference: dict[str, float], candidate: dict[str, float]) -> float:
     deltas: list[float] = []
     for key, ref_value in reference.items():
@@ -471,6 +500,7 @@ def run_pattern_market_search(
     universe: list[str] | None = None,
     warmup_bars: int = 240,
     index_store: MarketRetrievalIndexStore | None = None,
+    indicator_filters: tuple | None = None,
 ) -> MarketSearchResult:
     if timeframe != "1h":
         raise ValueError("W-0152 market retrieval currently supports timeframe='1h' only")
@@ -543,6 +573,13 @@ def run_pattern_market_search(
                 continue
             if len(klines) < reference_window_bars:
                 continue
+
+            # W-0366: apply indicator pre-filters on the last row (current state)
+            if indicator_filters:
+                last_row = features.iloc[[-1]]
+                mask = _apply_indicator_filters(last_row, indicator_filters)
+                if not mask.iloc[0]:
+                    continue
 
             best_candidate: MarketSearchCandidate | None = None
             for entry in _iter_recent_window_entries(
