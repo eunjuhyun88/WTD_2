@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`feed5be7` — origin/main (2026-05-01) — PR #797 W-0361 TV-style keyboard shortcuts merged
+`a4daa1c4` — origin/main (2026-05-01) — PR #792 W-0358 Chart Note Overlay merged
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0358-chart-note-overlay` | P1 | 🟡 Design Draft → 구현 대상 |
+| `W-0358-chart-note-overlay` | P1 | ✅ PR #792 Merged |
 | `W-0361-cogochi-keyboard-shortcuts` | P1 | ✅ PR #797 Merged |
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
