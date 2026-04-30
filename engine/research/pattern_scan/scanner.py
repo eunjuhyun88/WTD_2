@@ -161,6 +161,38 @@ _DEFAULT_COSTS = ExecutionCosts()
 import io as _io
 _NULL_LOGGER = StructuredLogger(module="scanner", run_id="scan", stream=_io.StringIO())
 
+_FALLBACK_PROB: float = 0.6
+_FALLBACK_THRESHOLD: float = 0.55
+
+
+def _predict_safe(
+    pattern_slug: str,
+    feature_snapshot: dict,
+) -> tuple[float, float, str]:
+    """Return (predicted_prob, threshold, model_source). Never raises.
+
+    model_source is "registry" when a trained model was used, "fallback" otherwise.
+    Falls back to (_FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback") when:
+      - no registry entry exists for this pattern
+      - the engine has not been trained yet (predict_feature_row returns None)
+      - any unexpected exception occurs
+    """
+    try:
+        model_ref = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+            pattern_slug,
+            definition_id=_current_definition_id(pattern_slug),
+        )
+        if model_ref is None:
+            return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+        engine = get_engine(model_ref.model_key)
+        p_win = engine.predict_feature_row(feature_snapshot)
+        if p_win is None:
+            return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+        threshold = resolve_threshold(model_ref.threshold_policy_version)
+        return float(p_win), threshold, "registry"
+    except Exception:
+        return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+
 
 _FALLBACK_PROB: float = 0.6
 _FALLBACK_THRESHOLD: float = 0.55
