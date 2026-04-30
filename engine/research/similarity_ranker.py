@@ -31,6 +31,7 @@ Sequence matching algorithm:
 """
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -331,19 +332,33 @@ def compute_sequence_score(
 # Layer C: Context similarity
 # ─────────────────────────────────────────────────────────────────────────────
 
-def compute_context_score(spec: SearchQuerySpec, candidate: CandidateWindow) -> float:
-    """Lightweight context match score.
-
-    - Timeframe match: +0.5
-    - Symbol in scope: +0.3
-    - (Pattern family stored on candidate not available yet) +0.2 reserved
-    """
+def _rule_context_score(spec: SearchQuerySpec, candidate: CandidateWindow) -> float:
+    """Rule-based fallback: timeframe match + symbol scope."""
     score = 0.0
     if candidate.timeframe in (spec.preferred_timeframes or []):
         score += 0.5
     if spec.symbol_scope and candidate.symbol in spec.symbol_scope:
         score += 0.3
     return min(1.0, score)
+
+
+def compute_context_score(spec: SearchQuerySpec, candidate: CandidateWindow) -> float:
+    """Layer C context score.
+
+    When LightGBM model is trained and LGBM_CONTEXT_SCORE_ENABLED is not 'false',
+    returns P(win) from the model (preferred — personalised win probability).
+    Falls back to rule-based score (timeframe + symbol match) when model is absent.
+    """
+    if os.environ.get("LGBM_CONTEXT_SCORE_ENABLED", "true").lower() != "false":
+        try:
+            from scoring.lightgbm_engine import get_engine  # local import to avoid circular
+            engine = get_engine()
+            prob = engine.predict_feature_row(candidate.signals)
+            if prob is not None:
+                return float(prob)
+        except Exception:  # noqa: BLE001 — model load errors must not break ranking
+            pass
+    return _rule_context_score(spec, candidate)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
