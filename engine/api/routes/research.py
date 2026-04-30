@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import os
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+
+from api.limiter import limiter
 
 router = APIRouter()
 
@@ -36,10 +38,11 @@ class ValidateResponse(BaseModel):
 
 
 @router.post("/validate", response_model=ValidateResponse)
-async def validate_pattern(req: ValidateRequest) -> ValidateResponse:
+@limiter.limit("20/day")
+async def validate_pattern(request: Request, req: ValidateRequest) -> ValidateResponse:
     """Run validate_and_gate() for a pattern slug.
 
-    Rate limit: 20/day (enforced by caller middleware).
+    Rate limit: 20/day per IP.
     503 if VALIDATION_PIPELINE_ENABLED=false.
     """
     if os.environ.get("VALIDATION_PIPELINE_ENABLED", "true").lower() == "false":
@@ -78,7 +81,6 @@ async def validate_pattern(req: ValidateRequest) -> ValidateResponse:
 class DiscoverResponse(BaseModel):
     cycle_id: str
     proposals: int
-    total_cost_usd: float
     turns_used: int
     stop_reason: str | None
     error: str | None
@@ -86,13 +88,18 @@ class DiscoverResponse(BaseModel):
 
 
 @router.post("/discover", response_model=DiscoverResponse)
-async def discover() -> DiscoverResponse:
+@limiter.limit("5/day")
+async def discover(request: Request) -> DiscoverResponse:
     """Trigger autonomous pattern discovery agent (W-0316).
 
-    Rate limit: 5/day (discovery is expensive).
+    Internal-only: requires x-engine-internal-secret header.
+    Rate limit: 5/day. Discovery runs cost up to $0.50/cycle.
     503 if DISCOVERY_AGENT_ENABLED=false.
-    Runs synchronously — use background task for production cron.
     """
+    secret = os.environ.get("ENGINE_INTERNAL_SECRET", "")
+    if not secret or request.headers.get("x-engine-internal-secret", "") != secret:
+        raise HTTPException(status_code=403, detail="Internal endpoint")
+
     if os.environ.get("DISCOVERY_AGENT_ENABLED", "true").lower() == "false":
         raise HTTPException(status_code=503, detail="DISCOVERY_AGENT_ENABLED=false")
 
@@ -105,7 +112,6 @@ async def discover() -> DiscoverResponse:
     return DiscoverResponse(
         cycle_id=result.cycle_id,
         proposals=len(result.proposals),
-        total_cost_usd=result.total_cost_usd,
         turns_used=result.turns_used,
         stop_reason=result.stop_reason,
         error=result.error,
@@ -120,7 +126,8 @@ class FindingsResponse(BaseModel):
 
 
 @router.get("/findings", response_model=FindingsResponse)
-async def list_findings(date: str | None = None) -> FindingsResponse:
+@limiter.limit("60/hour")
+async def list_findings(request: Request, date: str | None = None) -> FindingsResponse:
     """List inbox findings. date format: YYYY-MM-DD."""
     from research.finding_store import list_findings as _list
     from datetime import date as _date
