@@ -2939,6 +2939,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/top-patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Top Patterns */
+        get: operations["get_top_patterns_research_top_patterns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/propfirm/summary": {
         parameters: {
             query?: never;
@@ -5418,6 +5435,44 @@ export interface components {
             is_futures: boolean;
             /** Trending Score */
             trending_score: number;
+        };
+        /** TopPatternItem */
+        TopPatternItem: {
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** Symbol */
+            symbol: string | null;
+            /** Direction */
+            direction: string | null;
+            /** Composite Score */
+            composite_score: number | null;
+            /** Quality Grade */
+            quality_grade: string | null;
+            /** N Trades Paper */
+            n_trades_paper: number | null;
+            /** Win Rate Paper */
+            win_rate_paper: number | null;
+            /** Sharpe Paper */
+            sharpe_paper: number | null;
+            /** Max Drawdown Pct Paper */
+            max_drawdown_pct_paper: number | null;
+            /** Expectancy Pct Paper */
+            expectancy_pct_paper: number | null;
+            /** Model Source */
+            model_source?: string | null;
+        };
+        /** TopPatternsResponse */
+        TopPatternsResponse: {
+            /** Patterns */
+            patterns: components["schemas"]["TopPatternItem"][];
+            /** Generated At */
+            generated_at: string | null;
+            /** Pipeline Run Id */
+            pipeline_run_id: string | null;
+            /** Total Available */
+            total_available: number;
+            /** Limit Applied */
+            limit_applied: number;
         };
         /** TradeRecord */
         TradeRecord: {
@@ -10628,6 +10683,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_top_patterns_research_top_patterns_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                min_grade?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopPatternsResponse"];
                 };
             };
             /** @description Validation Error */
