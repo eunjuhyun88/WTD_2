@@ -1231,3 +1231,52 @@ async def verify_paper(slug: str) -> dict:
         "pass_gate": result.pass_gate,
         "gate_reasons": result.gate_reasons,
     }
+
+
+@router.get("/{slug}/backtest")
+async def get_pattern_backtest(
+    slug: str,
+    tf: str = "1h",
+    universe: str = "default",
+    since_days: int = 365,
+) -> dict:
+    """Historical backtest stats for a pattern (W-0369 Phase 1).
+
+    ?tf=1h            — kline timeframe
+    ?universe=default — comma-separated symbols, or "default" for DEFAULT_UNIVERSE
+    ?since_days=365   — lookback window in days
+    """
+    from fastapi import HTTPException
+    from datetime import timedelta
+    from research.backtest import run_pattern_backtest
+    from research.live_monitor import DEFAULT_UNIVERSE as _DEFAULT_UNIVERSE
+
+    try:
+        get_pattern(slug)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"Pattern {slug!r} not found")
+
+    uni = _DEFAULT_UNIVERSE if universe == "default" else [s.strip() for s in universe.split(",") if s.strip()]
+    since = datetime.now(timezone.utc) - timedelta(days=since_days)
+
+    result = await asyncio.to_thread(
+        run_pattern_backtest, slug, uni,
+        timeframe=tf,
+        since=since,
+    )
+
+    return {
+        "slug": result.pattern_slug,
+        "timeframe": result.timeframe,
+        "universe_size": result.universe_size,
+        "since": result.since.isoformat() if result.since else None,
+        "n_signals": result.n_signals,
+        "win_rate": result.win_rate,
+        "avg_return_72h": result.avg_return_72h,
+        "hit_rate": result.hit_rate,
+        "avg_peak_pct": result.avg_peak_pct,
+        "sharpe": result.sharpe,
+        "apr": result.apr,
+        "equity_curve": result.equity_curve,
+        "insufficient_data": result.n_signals < 10,
+    }
