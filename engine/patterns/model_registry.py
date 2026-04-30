@@ -221,3 +221,25 @@ class PatternModelRegistryStore:
 
 
 MODEL_REGISTRY_STORE = PatternModelRegistryStore()
+
+_THRESHOLD_POLICY: dict[int, float] = {
+    1: 0.55,   # v1 baseline
+    2: 0.60,   # v2 strict
+    3: 0.50,   # v3 recall-max
+}
+
+
+def resolve_threshold(policy_version: int | None, default: float = 0.55) -> float:
+    """Return the probability threshold for a given policy version.
+
+    Args:
+        policy_version: version number from PatternModelRegistryEntry.threshold_policy_version,
+                        or None when no registry entry is available.
+        default: fallback when policy_version is None or unmapped.
+
+    Returns:
+        Threshold float in (0, 1).
+    """
+    if policy_version is None:
+        return default
+    return _THRESHOLD_POLICY.get(policy_version, default)

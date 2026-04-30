@@ -34,6 +34,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 from cache.http_client import get_client
 from capture.store import CaptureStore
+from patterns.model_registry import resolve_threshold as _resolve_threshold
 from scanner._verdict_link import build_verdict_url
 
 log = logging.getLogger("engine.scanner.alerts_pattern")
@@ -41,7 +42,10 @@ log = logging.getLogger("engine.scanner.alerts_pattern")
 TELEGRAM_API = "https://api.telegram.org/bot{token}"
 
 # p_win gate: skip alert if ML model is trained AND p_win < this value.
-P_WIN_GATE: float = float(os.environ.get("PATTERN_ALERT_P_WIN_GATE", "0.55"))
+# Default derived from policy version 1 (0.55) so the constant stays in sync
+# with resolve_threshold's policy table (W-0358).
+_DEFAULT_P_WIN_GATE = _resolve_threshold(1)  # policy_version=1 → 0.55
+P_WIN_GATE: float = float(os.environ.get("PATTERN_ALERT_P_WIN_GATE", str(_DEFAULT_P_WIN_GATE)))
 
 # Per-pattern entry zone / target / stop defaults (as fractions of current price).
 # Source: benchmark avg gains from W-0086/W-0091/W-0100 + quant risk management.
