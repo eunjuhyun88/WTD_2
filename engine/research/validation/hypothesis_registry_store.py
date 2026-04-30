@@ -34,18 +34,28 @@ class HypothesisRegistryStore:
         family: str,
         overall_pass: bool,
         stage: str,
+        as_of: datetime | None = None,
         gate_dict: dict[str, Any] | None = None,
         result_dict: dict[str, Any] | None = None,
     ) -> str:
-        """Insert one row. Returns the UUID id."""
-        now = datetime.now(timezone.utc)
+        """Insert one row. Returns the UUID id.
+
+        as_of: timestamp of the last bar in the validation window.
+               Must not be None — prevents silent lookahead bias.
+        """
+        if as_of is None:
+            raise ValueError(
+                "as_of must be provided to prevent lookahead bias. "
+                "Pass the timestamp of the last bar in the validation window."
+            )
+        computed_at = as_of if as_of.tzinfo else as_of.replace(tzinfo=timezone.utc)
         row = {
             "slug": slug,
             "family": family,
             "overall_pass": overall_pass,
             "stage": stage,
-            "computed_at": now.isoformat(),
-            "expires_at": (now + timedelta(days=self.EXPIRE_DAYS)).isoformat(),
+            "computed_at": computed_at.isoformat(),
+            "expires_at": (computed_at + timedelta(days=self.EXPIRE_DAYS)).isoformat(),
             "gate_json": gate_dict,
             "result_json": result_dict,
         }

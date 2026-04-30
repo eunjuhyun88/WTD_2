@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 
 from api.schemas_memory import (
@@ -14,6 +15,100 @@ from api.schemas_memory import (
 
 STATE_DIR = Path(__file__).resolve().parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "memory_runtime.sqlite"
+
+# Per-user verdict weight deltas
+_VERDICT_DELTA: dict[str, float] = {
+    "valid": 0.05,
+    "near_miss": 0.02,
+    "too_early": 0.01,
+    "too_late": 0.01,
+    "invalid": -0.08,
+}
+_WEIGHT_CAP = 1.0
+_COLD_START_MIN_VERDICTS = 5
+
+
+def _utcnow() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+class UserVerdictWeightStore:
+    """Per-user verdict-feedback weight adjustments, SQLite-backed.
+
+    Schema: (user_id, context_tag) → (delta, verdict_count)
+    context_tag examples: "symbol:BTCUSDT", "timeframe:4h", "intent:scalp"
+    """
+
+    def __init__(self, db_path: Path | str = DEFAULT_DB_PATH) -> None:
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_table()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        return conn
+
+    def _init_table(self) -> None:
+        with self._connect() as conn:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS user_verdict_weights (
+                  user_id     TEXT NOT NULL,
+                  context_tag TEXT NOT NULL,
+                  delta       REAL NOT NULL DEFAULT 0.0,
+                  verdict_count INTEGER NOT NULL DEFAULT 0,
+                  updated_at  TEXT NOT NULL,
+                  PRIMARY KEY (user_id, context_tag)
+                );
+                """
+            )
+
+    def apply(self, user_id: str, context_tags: list[str], verdict: str) -> None:
+        """Apply a verdict delta to each context_tag for this user."""
+        raw_delta = _VERDICT_DELTA.get(verdict, 0.0)
+        if raw_delta == 0.0:
+            return
+        now = _utcnow()
+        with self._connect() as conn:
+            for tag in context_tags:
+                conn.execute(
+                    """
+                    INSERT INTO user_verdict_weights (user_id, context_tag, delta, verdict_count, updated_at)
+                    VALUES (?, ?, ?, 1, ?)
+                    ON CONFLICT(user_id, context_tag) DO UPDATE SET
+                      delta = MAX(-?, MIN(?, delta + ?)),
+                      verdict_count = verdict_count + 1,
+                      updated_at = excluded.updated_at
+                    """,
+                    (user_id, tag, max(-_WEIGHT_CAP, min(_WEIGHT_CAP, raw_delta)), now,
+                     _WEIGHT_CAP, _WEIGHT_CAP, raw_delta),
+                )
+
+    def get_adjustments(self, user_id: str) -> dict[str, float]:
+        """Return {context_tag: delta} for the user. Empty dict on cold start."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT context_tag, delta, verdict_count FROM user_verdict_weights WHERE user_id = ?",
+                (user_id,),
+            ).fetchall()
+        total_verdicts = sum(r["verdict_count"] for r in rows)
+        if total_verdicts < _COLD_START_MIN_VERDICTS:
+            return {}  # cold start: baseline weights
+        return {r["context_tag"]: r["delta"] for r in rows}
+
+    def get_total_verdict_count(self, user_id: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(verdict_count), 0) as total FROM user_verdict_weights WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+        return int(row["total"])
+
+
+USER_VERDICT_WEIGHT_STORE = UserVerdictWeightStore()
 
 
 def _json_dumps(value: object) -> str:
