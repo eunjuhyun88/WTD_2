@@ -61,6 +61,7 @@ from data_cache.fetch_social import (
 )
 from data_cache.fetch_dexscreener import fetch_dex_token_data
 from data_cache.fetch_bscscan import fetch_holder_concentration
+from data_cache.fetch_venue_funding import fetch_venue_funding
 
 
 # ─── Global macro sources (symbol-independent) ──────────────────────────────
@@ -170,6 +171,14 @@ ONCHAIN_SOURCES: list[DataSource] = [
         cache_file="src_{symbol}_exchange_oi.csv",
     ),
     # ── W-0114 딸깍 전략: 소셜 신호 ─────────────────────────────────────────
+    DataSource(
+        name="exchange_funding",
+        fetcher=fetch_venue_funding,
+        columns=["binance_funding", "bybit_funding", "okx_funding"],
+        defaults={"binance_funding": 0.0, "bybit_funding": 0.0, "okx_funding": 0.0},
+        scope="per_symbol",
+        cache_file="src_{symbol}_venue_funding.csv",
+    ),
     DataSource(
         name="coingecko_trending",
         fetcher=fetch_coingecko_trending,

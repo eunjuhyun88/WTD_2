@@ -1807,6 +1807,17 @@ def compute_features_table(
     # Drop the warmup region — features there are biased by short EMA windows.
     df = df.iloc[MIN_HISTORY_BARS:].copy()
 
+    # --- W-0337: Per-venue OI change 1h (derived from absolute OI columns) ---
+    # binance_oi/bybit_oi/okx_oi arrive via ONCHAIN_SOURCES (forward-filled daily→hourly).
+    # pct_change(1) over the hourly index gives the 1h % change per venue.
+    for _venue in ("binance", "bybit", "okx"):
+        _oi_col = f"{_venue}_oi"
+        _change_col = f"{_venue}_oi_change_1h"
+        if _oi_col in df.columns:
+            df[_change_col] = df[_oi_col].pct_change(1).fillna(0.0)
+        else:
+            df[_change_col] = 0.0
+
     # --- W-0292 D-G: Derived DEX efficiency ratio ---
     # Computed post-alignment so NaN-safe; does not touch any existing column.
     from features.dex_ratios import calc_volume_tvl_ratio  # noqa: PLC0415
