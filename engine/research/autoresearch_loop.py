@@ -30,7 +30,9 @@ from typing import NamedTuple
 import pandas as pd
 
 from data_cache.parquet_store import ParquetStore
+from data_cache.loader import load_macro_bundle
 from data_cache.universe_builder import load_universe
+from data_cache.fetch_sector_momentum import fetch_sector_scores
 from research.pattern_scan.scanner import PatternScanner
 from research.pattern_scan.pattern_object_combos import LIBRARY_COMBOS
 from research.validation.stats import (
@@ -163,7 +165,15 @@ class AutoResearchLoop:
         scan_workers: int = 8,
     ) -> None:
         self.store = store or ParquetStore()
-        self.scanner = PatternScanner(store=self.store, combos=LIBRARY_COMBOS)
+        _macro = load_macro_bundle(offline=True)  # cached read; None if not available
+        if _macro is None:
+            log.debug("Macro bundle not cached — Fear&Greed features will be neutral")
+        _sector = fetch_sector_scores()  # live fetch; None on network error
+        if _sector is None:
+            log.debug("Sector scores unavailable — sector_momentum_strong block will be inactive")
+        self.scanner = PatternScanner(
+            store=self.store, combos=LIBRARY_COMBOS, macro=_macro, sector_scores=_sector,
+        )
         self.scan_workers = scan_workers
         self._cycle_count = 0
         self._experiment_log: list[dict] = []

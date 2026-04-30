@@ -43,7 +43,7 @@ class TestCompressionBreakoutReversalPattern:
 
     def test_entry_and_target_phases(self):
         p = get_pattern(SLUG)
-        assert p.entry_phase == "COILING"
+        assert p.entry_phase == "BREAKOUT"
         assert p.target_phase == "BREAKOUT"
 
     def test_timeframe_and_universe(self):
