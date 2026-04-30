@@ -8,9 +8,30 @@ from typing import Any, Awaitable, Callable
 import httpx
 
 from cache.http_client import get_client
+from data_cache.fetch_orderbook_depth import fetch_orderbook_depth5
 from exceptions import CacheMiss
 
 log = logging.getLogger("engine.scanner.jobs")
+
+
+def _inject_ob_depth(features_df: Any, symbol: str) -> None:
+    """Inject live orderbook depth5 snapshot into the last bar (in-place).
+
+    Falls back gracefully: perp first, then spot, then 0.0 if both fail.
+    This wires ob_bid_usd / ob_ask_usd into orderbook_imbalance_ratio block.
+    """
+    try:
+        result = fetch_orderbook_depth5(symbol, perp=True) or fetch_orderbook_depth5(symbol, perp=False)
+        if result is not None:
+            bid_usd, ask_usd = result
+            features_df.loc[features_df.index[-1], "ob_bid_usd"] = bid_usd
+            features_df.loc[features_df.index[-1], "ob_ask_usd"] = ask_usd
+            return
+    except Exception as exc:
+        log.debug("[%s] OB injection failed: %s", symbol, exc)
+    features_df.loc[features_df.index[-1], "ob_bid_usd"] = 0.0
+    features_df.loc[features_df.index[-1], "ob_ask_usd"] = 0.0
+
 
 # Max symbols evaluated concurrently. Each slot does CSV I/O + CPU feature
 # calc, so we cap at 12 to avoid thrashing the event loop thread pool while
@@ -73,6 +94,8 @@ def _eval_symbol_sync(
 
     if features_df.empty:
         return None
+
+    _inject_ob_depth(features_df, symbol)
 
     perp_dict: dict | None = None
     if perp_df is not None and not perp_df.empty:
