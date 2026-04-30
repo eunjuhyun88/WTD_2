@@ -91,8 +91,8 @@ describe('W-0289: DrawingManager 소스 구조 확인', () => {
 const THRESHOLDS = {
   /** localStorage 100 drawings 직렬화: 왕복 ≤ 10ms */
   STORAGE_ROUNDTRIP_MS: 10,
-  /** 50 drawings 렌더 루프 시뮬레이션: ≤ 20ms (CPU only, no actual paint; 4× CI headroom per A077) */
-  RENDER_LOOP_50_MS:    20,
+  /** 50 drawings 렌더 루프 시뮬레이션: ≤ 5ms (CPU only, no actual paint) */
+  RENDER_LOOP_50_MS:    5,
   /** FSM 100회 전환: ≤ 2ms */
   FSM_TOGGLE_100_MS:    2,
   /** localStorage 100 drawings 직렬화 크기: ≤ 200KB */
@@ -245,7 +245,7 @@ describe('PERF4: render 루프 시뮬레이션 (canvas mock)', () => {
 describe('성능 기준 요약', () => {
   it('기준 상수 확인', () => {
     expect(THRESHOLDS.STORAGE_ROUNDTRIP_MS).toBe(10);
-    expect(THRESHOLDS.RENDER_LOOP_50_MS).toBe(20);
+    expect(THRESHOLDS.RENDER_LOOP_50_MS).toBe(5);
     expect(THRESHOLDS.STORAGE_SIZE_KB).toBe(200);
     console.log('');
     console.log('  ┌─────────────────────────────────────────────┐');

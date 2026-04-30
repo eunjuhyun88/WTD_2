@@ -18,7 +18,6 @@
     onSetWorkMode: (mode: ShellWorkMode) => void;
     onSetWorkspaceMode: (mode: WorkspaceStageMode) => void;
     onResetWorkspaceStage: () => void;
-    onIndicators?: () => void;
   }
 
   const {
@@ -38,7 +37,6 @@
     onSetWorkMode,
     onSetWorkspaceMode,
     onResetWorkspaceStage,
-    onIndicators,
   }: Props = $props();
 
   function tabColor(kind: string): string {
@@ -203,17 +201,6 @@
       >{wm.label}</button>
     {/each}
   </div>
-
-  {#if onIndicators}
-    <div class="tab-bar-sep"></div>
-    <button
-      class="ind-tab-btn"
-      type="button"
-      title="Indicator settings"
-      onclick={onIndicators}
-      aria-label="Indicator settings"
-    >⚙</button>
-  {/if}
 </div>
 
 <style>
@@ -486,27 +473,4 @@
   .work-mode-btn.active[aria-pressed='true'][title*='Observe'] { color: #8bb0ff; border-color: color-mix(in srgb, #8bb0ff 22%, transparent); background: color-mix(in srgb, #8bb0ff 8%, transparent); }
   .work-mode-btn.active[aria-pressed='true'][title*='Analyze'] { color: var(--brand); border-color: color-mix(in srgb, var(--brand) 22%, transparent); background: color-mix(in srgb, var(--brand) 8%, transparent); }
   .work-mode-btn.active[aria-pressed='true'][title*='Execute'] { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 22%, transparent); background: color-mix(in srgb, var(--pos) 8%, transparent); }
-
-  /* INDICATORS button (right side) */
-  .ind-tab-btn {
-    width: 28px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: var(--g5);
-    font-size: 11px;
-    cursor: pointer;
-    transition: color 0.12s, background 0.12s;
-    flex-shrink: 0;
-  }
-  .ind-tab-btn:hover {
-    color: var(--g8);
-    background: color-mix(in srgb, var(--g3) 50%, transparent);
-  }
-  @media (max-width: 900px) {
-    .ind-tab-btn { display: none; }
-  }
 </style>

@@ -5,8 +5,21 @@
     fetchAnalyze,
     fetchAnalyzeAndChart,
     fetchAlphaWorldModel,
+    fetchConfluenceCurrent,
+    fetchConfluenceHistory,
+    fetchFundingFlip,
+    fetchFundingHistory,
+    fetchIndicatorContext,
+    fetchLiqClusters,
     fetchMarketMicrostructure,
+    fetchOptionsSnapshot,
+    fetchRecentCaptures,
+    fetchRvCone,
+    fetchSsr,
+    fetchVenueDivergence,
     submitTradeOutcome,
+    type ConfluenceHistoryEntry,
+    type RecentCaptureSummary,
     type TradeOutcomeResult,
   } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
@@ -20,14 +33,23 @@
   import ConfluenceBanner from '$lib/components/confluence/ConfluenceBanner.svelte';
   import ConfluencePeekChip from '$lib/components/confluence/ConfluencePeekChip.svelte';
   import DivergenceAlertToast from '$lib/components/confluence/DivergenceAlertToast.svelte';
+  import type { ConfluenceResult } from '$lib/confluence/types';
   import type { GammaPinData } from '../../../components/terminal/chart/primitives/GammaPinPrimitive';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
-  import { buildIndicatorValues } from '$lib/indicators/adapter';
+  import {
+    buildIndicatorValues,
+    type VenueDivergencePayload,
+    type LiqClusterPayload,
+    type IndicatorContextPayload,
+    type SsrPayload,
+    type RvConePayload,
+    type FundingFlipPayload,
+    type OptionsSnapshotPayload,
+    type FundingHistoryPayload,
+  } from '$lib/indicators/adapter';
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
-  import { useMicrostructureSocket } from '$lib/trade/useMicrostructureSocket.svelte';
-  import { useTradeData } from '$lib/trade/useTradeData.svelte';
 
   type ChartBar = ChartSeriesPayload['klines'][number];
   type MicroOrderbook = MarketMicrostructurePayload['orderbook'];
@@ -67,16 +89,11 @@
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
   let microstructureLoading = $state(false);
+  let microWsState = $state<'idle' | 'connecting' | 'live' | 'error' | 'closed'>('idle');
+  let microWsUpdatedAt = $state<number | null>(null);
+  let liveOrderbook = $state<MicroOrderbook | null>(null);
+  let liveTrades = $state<MarketTradePrint[]>([]);
   let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
-
-  const microSocket = useMicrostructureSocket(
-    () => symbol,
-    () => microstructurePayload?.currentPrice ?? null
-  );
-  let microWsState = $derived(microSocket.microWsState);
-  let microWsUpdatedAt = $derived(microSocket.microWsUpdatedAt);
-  let liveOrderbook = $derived(microSocket.liveOrderbook);
-  let liveTrades = $derived(microSocket.liveTrades);
 
   // Fetch initial bundle (one-shot per symbol/tf)
   $effect(() => {
@@ -122,34 +139,235 @@
     };
   });
 
+  // Browser live layer: REST snapshot is the boot/fallback, WS is the live surface.
+  $effect(() => {
+    const sym = toBinanceFuturesStreamSymbol(symbol);
+    if (typeof WebSocket === 'undefined' || !sym) return;
 
-  // ── Pillar data (venue divergence, liq clusters, context, options, confluence …)
-  const tradeData = useTradeData(() => symbol, () => timeframe);
+    let closed = false;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: number | null = null;
+
+    const connect = () => {
+      if (closed) return;
+      microWsState = 'connecting';
+      ws = new WebSocket(`wss://fstream.binance.com/stream?streams=${sym}@aggTrade/${sym}@depth20@100ms`);
+
+      ws.onopen = () => {
+        if (!closed) microWsState = 'live';
+      };
+
+      ws.onmessage = (event) => {
+        if (closed) return;
+        try {
+          const message = JSON.parse(String(event.data));
+          const data = message?.data ?? message;
+          if (data?.e === 'aggTrade') {
+            const trade = toLiveTrade(data);
+            if (!trade) return;
+            liveTrades = [trade, ...liveTrades.filter((row) => row.id !== trade.id)].slice(0, 120);
+            microWsUpdatedAt = Date.now();
+            microWsState = 'live';
+          } else if (data?.e === 'depthUpdate' && Array.isArray(data.b) && Array.isArray(data.a)) {
+            liveOrderbook = buildLiveOrderbook(data.b, data.a, liveTrades[0]?.price ?? microstructurePayload?.currentPrice ?? null);
+            microWsUpdatedAt = Date.now();
+            microWsState = 'live';
+          }
+        } catch {
+          // Keep REST snapshot active; malformed stream packets should not blank the UI.
+        }
+      };
+
+      ws.onerror = () => {
+        if (!closed) microWsState = 'error';
+      };
+
+      ws.onclose = () => {
+        if (closed) return;
+        microWsState = liveTrades.length > 0 || liveOrderbook ? 'closed' : 'error';
+        reconnectTimer = window.setTimeout(connect, 3_000);
+      };
+    };
+
+    liveTrades = [];
+    liveOrderbook = null;
+    microWsUpdatedAt = null;
+    connect();
+
+    return () => {
+      closed = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      ws?.close();
+    };
+  });
+
+  function toBinanceFuturesStreamSymbol(rawSymbol: string): string {
+    const compact = rawSymbol.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!compact) return '';
+    return compact.endsWith('usdt') ? compact : `${compact}usdt`;
+  }
 
   // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
   // On candle close, refresh analyze only — chart live updates are handled inside ChartBoard.
   async function handleCandleClose(bar: { time: number }) {
-    if (lastCandleTime === bar.time) return;
+    if (lastCandleTime === bar.time) return; // dedup duplicate fires
     lastCandleTime = bar.time;
     try {
       const nextAnalyze = await fetchAnalyze(symbol, timeframe);
       if (nextAnalyze) analyzeData = nextAnalyze;
     } catch { /* retry on next candle */ }
-    void tradeData.refreshVenueDivergence();
-    void tradeData.refreshLiqClusters();
-    void tradeData.refreshConfluence();
+    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
+    // in lock-step with analyze on candle close.
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
+    void refreshConfluence();
   }
-  let venueDivergence = $derived(tradeData.venueDivergence);
-  let liqClusters = $derived(tradeData.liqClusters);
-  let indicatorContext = $derived(tradeData.indicatorContext);
-  let ssr = $derived(tradeData.ssr);
-  let rvCone = $derived(tradeData.rvCone);
-  let fundingFlip = $derived(tradeData.fundingFlip);
-  let fundingHistory = $derived(tradeData.fundingHistory);
-  let pastCaptures = $derived(tradeData.pastCaptures);
-  let optionsSnapshot = $derived(tradeData.optionsSnapshot);
-  let confluence = $derived(tradeData.confluence);
-  let confluenceHistory = $derived(tradeData.confluenceHistory);
+
+  // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
+  let venueDivergence = $state<VenueDivergencePayload | null>(null);
+
+  async function refreshVenueDivergence() {
+    try {
+      venueDivergence = await fetchVenueDivergence(symbol);
+    } catch { /* tolerate: next refresh will retry */ }
+  }
+
+  // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
+  let liqClusters = $state<LiqClusterPayload | null>(null);
+
+  async function refreshLiqClusters() {
+    try {
+      liqClusters = await fetchLiqClusters(symbol, '4h');
+    } catch { /* tolerate */ }
+  }
+
+  // ── Rolling Percentile Context (W-0122 rolling percentile) ───────────
+  // 30d distribution data: OI deltas + funding history → real percentiles.
+  // 10-min cache on the server so polling is cheap.
+  let indicatorContext = $state<IndicatorContextPayload | null>(null);
+
+  async function refreshIndicatorContext() {
+    try {
+      indicatorContext = await fetchIndicatorContext(symbol);
+    } catch { /* tolerate */ }
+  }
+
+  // ── W-0122-F Free Wins — SSR, RV Cone, Funding Flip ─────────────────
+  let ssr = $state<SsrPayload | null>(null);
+  let rvCone = $state<RvConePayload | null>(null);
+  let fundingFlip = $state<FundingFlipPayload | null>(null);
+
+  async function refreshSsr() {
+    try {
+      ssr = await fetchSsr();
+    } catch { /* tolerate */ }
+  }
+
+  async function refreshRvCone() {
+    try {
+      rvCone = await fetchRvCone(symbol);
+    } catch { /* tolerate */ }
+  }
+
+  async function refreshFundingFlip() {
+    try {
+      fundingFlip = await fetchFundingFlip(symbol);
+    } catch { /* tolerate */ }
+  }
+
+  // ── Funding history (270 bars = ~90d of 8h intervals) → real G curve ──
+  let fundingHistory = $state<FundingHistoryPayload | null>(null);
+
+  async function refreshFundingHistory() {
+    try {
+      fundingHistory = await fetchFundingHistory(symbol, 270);
+    } catch { /* tolerate */ }
+  }
+
+  // ── Past captures (real historical setups for PAST strip) ─────────────
+  let pastCaptures = $state<RecentCaptureSummary[]>([]);
+
+  async function refreshPastCaptures() {
+    try {
+      pastCaptures = await fetchRecentCaptures(8);
+    } catch { /* tolerate */ }
+  }
+
+  // ── Pillar 2: Options snapshot (W-0122-C1) ───────────────────────────
+  let optionsSnapshot = $state<OptionsSnapshotPayload | null>(null);
+
+  async function refreshOptionsSnapshot() {
+    // Deribit supports BTC and ETH currencies.
+    const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
+    if (!currency) { optionsSnapshot = null; return; }
+    try {
+      optionsSnapshot = await fetchOptionsSnapshot(currency);
+    } catch { /* tolerate */ }
+  }
+
+  // ── Confluence Engine (W-0122 master score) ──────────────────────────
+  let confluence = $state<ConfluenceResult | null>(null);
+  let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
+
+  async function refreshConfluence() {
+    try {
+      confluence = await fetchConfluenceCurrent(symbol, timeframe);
+    } catch { /* tolerate */ }
+  }
+
+  async function refreshConfluenceHistory() {
+    try {
+      confluenceHistory = await fetchConfluenceHistory(symbol, 96);
+    } catch { /* tolerate */ }
+  }
+
+  // Trigger on symbol change + initial mount. Polling every 60s as a safety net
+  // (candle close also triggers refresh above). Indicator context polls only
+  // every 5m since its server cache TTL is 10m. SSR/RV/flip are slower still.
+  $effect(() => {
+    void symbol;
+    venueDivergence = null;
+    liqClusters = null;
+    indicatorContext = null;
+    ssr = null;
+    rvCone = null;
+    fundingFlip = null;
+    fundingHistory = null;
+    optionsSnapshot = null;
+    confluence = null;
+    confluenceHistory = [];
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
+    void refreshIndicatorContext();
+    void refreshSsr();
+    void refreshRvCone();
+    void refreshFundingFlip();
+    void refreshFundingHistory();
+    void refreshOptionsSnapshot();
+    void refreshConfluence();
+    void refreshConfluenceHistory();
+    void refreshPastCaptures();
+    const fastIv = setInterval(() => {
+      void refreshVenueDivergence();
+      void refreshLiqClusters();
+      void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
+      void refreshConfluenceHistory(); // pull updated sparkline entries
+    }, 60_000);
+    const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
+    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
+    const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
+    const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
+    const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
+    const optIv = setInterval(() => void refreshOptionsSnapshot(), 5 * 60_000);
+    return () => {
+      clearInterval(fastIv);
+      clearInterval(slowIv);
+      clearInterval(flipIv);
+      clearInterval(ssrIv);
+      clearInterval(rvIv);
+      clearInterval(optIv);
+    };
+  });
 
   // ── Indicator pipeline: analyze + side fetches → registry-keyed values ─
   const indicatorValues = $derived(buildIndicatorValues({
@@ -483,6 +701,77 @@
     return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v.toFixed(4);
   }
 
+  function toLiveTrade(data: any): MarketTradePrint | null {
+    const price = Number.parseFloat(data?.p);
+    const qty = Number.parseFloat(data?.q);
+    const id = Number(data?.a);
+    const time = Number(data?.T);
+    if (!Number.isFinite(price) || !Number.isFinite(qty) || !Number.isFinite(id) || !Number.isFinite(time)) return null;
+    const isBuyerMaker = Boolean(data?.m);
+    return {
+      id,
+      time,
+      price,
+      qty,
+      notional: price * qty,
+      side: isBuyerMaker ? 'SELL' : 'BUY',
+      isBuyerMaker,
+    };
+  }
+
+  function normalizeDepthLevels(rawLevels: any[], maxNotional: number): MarketDepthLevel[] {
+    return rawLevels
+      .slice(0, 20)
+      .map((row) => {
+        const price = Number.parseFloat(row?.[0]);
+        const qty = Number.parseFloat(row?.[1]);
+        return { price, qty, notional: price * qty };
+      })
+      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0)
+      .slice(0, 12)
+      .map((level) => ({
+        ...level,
+        weight: level.notional / Math.max(1, maxNotional),
+      }));
+  }
+
+  function buildLiveOrderbook(bidsRaw: any[], asksRaw: any[], current: number | null): MicroOrderbook {
+    const parsedBids = bidsRaw
+      .slice(0, 20)
+      .map((row) => {
+        const price = Number.parseFloat(row?.[0]);
+        const qty = Number.parseFloat(row?.[1]);
+        return { price, qty, notional: price * qty };
+      })
+      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
+    const parsedAsks = asksRaw
+      .slice(0, 20)
+      .map((row) => {
+        const price = Number.parseFloat(row?.[0]);
+        const qty = Number.parseFloat(row?.[1]);
+        return { price, qty, notional: price * qty };
+      })
+      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
+    const maxNotional = Math.max(1, ...parsedBids.map((level) => level.notional), ...parsedAsks.map((level) => level.notional));
+    const bids = normalizeDepthLevels(bidsRaw, maxNotional);
+    const asks = normalizeDepthLevels(asksRaw, maxNotional);
+    const bidNotional = bids.reduce((sum, level) => sum + level.notional, 0);
+    const askNotional = asks.reduce((sum, level) => sum + level.notional, 0);
+    const bestBid = bids[0]?.price ?? null;
+    const bestAsk = asks[0]?.price ?? null;
+    const refPrice = current ?? (bestBid != null && bestAsk != null ? (bestBid + bestAsk) / 2 : null);
+
+    return {
+      bestBid,
+      bestAsk,
+      spreadBps: bestBid != null && bestAsk != null && refPrice != null && refPrice > 0 ? ((bestAsk - bestBid) / refPrice) * 10_000 : null,
+      imbalanceRatio: askNotional > 0 ? bidNotional / askNotional : null,
+      bidNotional,
+      askNotional,
+      bids,
+      asks,
+    };
+  }
 
   function buildFootprintBucketsFromTrades(trades: MarketTradePrint[], current: number | null): FootprintBucket[] {
     if (trades.length === 0) return [];
@@ -1434,9 +1723,9 @@
     <!-- PEEK bar — at bottom of chart column -->
     <div class="peek-bar" role="tablist" aria-label="Analysis tabs">
       {#each [
-        { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)',  badge: confidenceAlpha, badgeColor: 'var(--amb)' },
-        { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',       badge: scanCandidates.length > 0 ? `${scanCandidates.length}` : '—',   badgeColor: '#7aa2e0' },
-        { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)',    badge: analyzeData?.entryPlan?.riskReward != null ? `R:R ${analyzeData.entryPlan.riskReward.toFixed(1)}×` : '—', badgeColor: 'var(--amb)' },
+        { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)',  badge: 'α82', badgeColor: 'var(--amb)' },
+        { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',       badge: '5',   badgeColor: '#7aa2e0' },
+        { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)',    badge: 'R:R 4.2×', badgeColor: 'var(--amb)' },
       ] as tab}
         <button
           class="pb-tab"
@@ -1599,14 +1888,14 @@
                     <span class="workspace-kicker">TIME & SALES</span>
                     <span class="workspace-panel-copy">aggressor side and print intensity</span>
                   </div>
-                  <div class="tm-tape-list" aria-label="Recent trade tape">
+                  <div class="tape-list" aria-label="Recent trade tape">
                     {#each timeSalesRows as row}
-                      <div class="tm-tape-row" class:buy={row.side === 'BUY'} class:sell={row.side === 'SELL'}>
-                        <span class="tm-tape-time">{row.time}</span>
-                        <span class="tm-tape-side">{row.side}</span>
-                        <span class="tm-tape-price">{row.price}</span>
-                        <span class="tm-tape-size">{row.size}</span>
-                        <span class="tm-tape-intensity"><span style:width={row.intensity}></span></span>
+                      <div class="tape-row" class:buy={row.side === 'BUY'} class:sell={row.side === 'SELL'}>
+                        <span class="tape-time">{row.time}</span>
+                        <span class="tape-side">{row.side}</span>
+                        <span class="tape-price">{row.price}</span>
+                        <span class="tape-size">{row.size}</span>
+                        <span class="tape-intensity"><span style:width={row.intensity}></span></span>
                       </div>
                     {/each}
                     {#if timeSalesRows.length === 0}
@@ -1715,12 +2004,12 @@
                     <span class="workspace-kicker">LEDGER</span>
                     <span class="workspace-panel-copy">saved evidence memory</span>
                   </div>
-                  <div class="tm-ledger-stats">
+                  <div class="ledger-stats">
                     {#each ledgerStats as stat}
-                      <div class="tm-ledger-stat">
-                        <span class="tm-ledger-label">{stat.label}</span>
-                        <span class="tm-ledger-value">{stat.value}</span>
-                        <span class="tm-ledger-note">{stat.note}</span>
+                      <div class="ledger-stat">
+                        <span class="ledger-label">{stat.label}</span>
+                        <span class="ledger-value">{stat.value}</span>
+                        <span class="ledger-note">{stat.note}</span>
                       </div>
                     {/each}
                   </div>
@@ -1859,13 +2148,13 @@
                 {/each}
                 {/if}
               </div>
-              <div class="tm-past-strip">
-                <div class="tm-past-header">
-                  <span class="tm-past-title">★ SAVED · {pastCaptures.length}</span>
+              <div class="past-strip">
+                <div class="past-header">
+                  <span class="past-title">★ SAVED · {pastCaptures.length}</span>
                   <span class="spacer"></span>
-                  <span class="tm-past-hint">저장된 셋업</span>
+                  <span class="past-hint">저장된 셋업</span>
                 </div>
-                <div class="tm-past-cards">
+                <div class="past-cards">
                   {#if pastCaptures.length === 0}
                     <span class="past-empty">저장된 셋업 없음 — 차트에서 Save Setup으로 추가</span>
                   {:else}
@@ -1873,10 +2162,10 @@
                       {@const sym = s.symbol.replace('USDT','').replace('PERP','')}
                       {@const dateStr = new Date(s.captured_at_ms).toISOString().slice(0,10)}
                       {@const patternSlug = s.pattern_slug ?? 'saved-setup'}
-                      <button class="tm-past-card" title="{patternSlug} · {s.timeframe}">
-                        <span class="tm-past-sym">{sym}</span>
-                        <span class="tm-past-pnl" style:color="var(--g6)">{dateStr}</span>
-                        <span class="tm-past-sim">{s.status === 'outcome_ready' ? '⚡' : s.status === 'verdict_ready' ? '✓' : '…'}</span>
+                      <button class="past-card" title="{patternSlug} · {s.timeframe}">
+                        <span class="past-sym">{sym}</span>
+                        <span class="past-pnl" style:color="var(--g6)">{dateStr}</span>
+                        <span class="past-sim">{s.status === 'outcome_ready' ? '⚡' : s.status === 'verdict_ready' ? '✓' : '…'}</span>
                       </button>
                     {/each}
                   {/if}
@@ -1885,26 +2174,26 @@
             </div>
           {:else if drawerTab === 'judge'}
             <!-- trade_act.jsx ActPanel: A(Plan) + B(Judge Now) + C(After Result) -->
-            <div class="tm-act-panel">
+            <div class="act-panel">
               {#if confluence}
                 <div style="padding: 6px 10px 0;">
                   <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
                 </div>
               {/if}
               <!-- Header -->
-              <div class="tm-act-header">
-                <span class="tm-act-step">STEP 04 · ACT & JUDGE</span>
-                <span class="tm-act-div"></span>
-                <span class="tm-act-sym">{symbol}</span>
-                <span class="tm-act-tf">{timeframe.toUpperCase()}</span>
-                <span class="tm-act-dir">LONG</span>
-                <span class="tm-act-pat">OI reversal · accumulation</span>
+              <div class="act-header">
+                <span class="act-step">STEP 04 · ACT & JUDGE</span>
+                <span class="act-div"></span>
+                <span class="act-sym">{symbol}</span>
+                <span class="act-tf">{timeframe.toUpperCase()}</span>
+                <span class="act-dir">LONG</span>
+                <span class="act-pat">OI reversal · accumulation</span>
                 <span class="spacer"></span>
-                <span class="tm-act-alpha">{confidenceAlpha}</span>
+                <span class="act-alpha">{confidenceAlpha}</span>
               </div>
-              <div class="tm-act-cols">
+              <div class="act-cols">
                 <!-- A: Trade Plan -->
-                <div class="tm-act-col plan-col">
+                <div class="act-col plan-col">
                   <div class="col-label">A · TRADE PLAN</div>
                   <div class="lvl-row">
                     {#each judgePlan as lvl}
@@ -1931,10 +2220,10 @@
                   <button class="exchange-btn">OPEN IN EXCHANGE ↗</button>
                 </div>
 
-                <div class="tm-act-divider"></div>
+                <div class="act-divider"></div>
 
                 <!-- B: Judge Now -->
-                <div class="tm-act-col judge-col">
+                <div class="act-col judge-col">
                   <div class="judge-head">
                     <span class="col-label">B · JUDGE NOW</span>
                     <span class="judge-q">이 셋업, <strong>내 돈을 걸만한가?</strong></span>
@@ -1964,10 +2253,10 @@
                   </div>
                 </div>
 
-                <div class="tm-act-divider"></div>
+                <div class="act-divider"></div>
 
                 <!-- C: After Result -->
-                <div class="tm-act-col tm-after-col">
+                <div class="act-col after-col">
                   <div class="col-label">C · AFTER RESULT</div>
                   <div class="outcome-row">
                     {#each [
@@ -2012,7 +2301,7 @@
                     </div>
                     {#if judgeVerdict && judgeRejudged}
                       {@const consistent = (judgeVerdict === 'agree' && judgeRejudged === 'right') || (judgeVerdict === 'disagree' && judgeRejudged === 'wrong')}
-                      <div class="tm-bias-box" class:tm-bias-good={consistent} class:tm-bias-warn={!consistent}>
+                      <div class="bias-box" class:bias-good={consistent} class:bias-warn={!consistent}>
                         {#if consistent}
                           <strong>✓ 일관 판정</strong> <span>· 가중치 +0.04</span>
                         {:else}
@@ -2021,7 +2310,7 @@
                       </div>
                     {/if}
                   {:else}
-                    <div class="tm-after-empty">매매 결과 선택시<br>재판정 가능</div>
+                    <div class="after-empty">매매 결과 선택시<br>재판정 가능</div>
                   {/if}
                 </div>
               </div>
@@ -2347,6 +2636,116 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+  }
+  .indicator-lane-stack {
+    min-height: 66px;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 0.5px solid rgba(255,255,255,0.055);
+    border-bottom: 0.5px solid rgba(255,255,255,0.05);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.018), rgba(0,0,0,0.12)),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 48px),
+      #0b0f17;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .indicator-lane {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+    padding: 7px 10px 6px;
+    border-right: 0.5px solid rgba(255,255,255,0.07);
+    position: relative;
+    overflow: hidden;
+  }
+  .indicator-lane::before {
+    content: '';
+    position: absolute;
+    inset: auto 10px 50% 112px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+    opacity: 0.42;
+    pointer-events: none;
+  }
+  .indicator-lane[data-mode='heatmap']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 86% 45%, rgba(232,184,106,0.13), transparent 48%);
+    pointer-events: none;
+  }
+  .indicator-lane-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    position: relative;
+    z-index: 1;
+  }
+  .indicator-lane-meta span {
+    color: var(--g5);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+  .indicator-lane-meta strong {
+    color: var(--g9);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .indicator-lane-meta em {
+    color: var(--g5);
+    font-size: 7px;
+    font-style: normal;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .indicator-lane[data-tone='buy'] .indicator-lane-meta strong { color: #5bd2aa; }
+  .indicator-lane[data-tone='sell'] .indicator-lane-meta strong { color: #ff7373; }
+  .indicator-lane[data-tone='warn'] .indicator-lane-meta strong { color: #e8b86a; }
+  .indicator-lane[data-tone='info'] .indicator-lane-meta strong { color: #7aa2e0; }
+  .indicator-lane-plot {
+    min-width: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(2px, 1fr);
+    gap: 2px;
+    align-items: end;
+    position: relative;
+    z-index: 1;
+  }
+  .indicator-cell {
+    width: 100%;
+    min-height: 2px;
+    align-self: end;
+    border-radius: 2px 2px 0 0;
+    background: rgba(166,176,196,0.42);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.025) inset;
+  }
+  .indicator-cell[data-tone='buy'] {
+    background: linear-gradient(180deg, rgba(91,210,170,0.94), rgba(91,210,170,0.2));
+  }
+  .indicator-cell[data-tone='sell'] {
+    background: linear-gradient(180deg, rgba(255,115,115,0.94), rgba(255,115,115,0.18));
+  }
+  .indicator-cell[data-tone='warn'] {
+    background: linear-gradient(180deg, rgba(232,184,106,0.96), rgba(232,184,106,0.16));
+  }
+  .indicator-cell[data-tone='info'] {
+    background: linear-gradient(180deg, rgba(122,162,224,0.94), rgba(122,162,224,0.16));
+  }
+  .indicator-cell.active {
+    filter: saturate(1.25);
+    box-shadow: 0 0 10px rgba(255,255,255,0.14);
   }
   .microstructure-belt {
     min-height: 54px;
@@ -2790,8 +3189,32 @@
   .sc-age { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); }
 
   /* ── ACT panel (trade_act.jsx) ── */
+  .act-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--g1);
+  }
+  .act-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-bottom: 0.5px solid var(--g4);
+    background: var(--g0); flex-shrink: 0; height: 34px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .act-step { font-size: 7px; color: var(--amb); letter-spacing: 0.22em; }
+  .act-div { width: 1px; height: 12px; background: var(--g4); }
+  .act-sym { font-size: 12px; color: var(--g9); font-weight: 600; }
+  .act-tf { font-size: 9px; color: var(--g6); }
+  .act-dir { font-size: 9px; color: var(--brand); font-weight: 600; }
+  .act-pat { font-size: 9px; color: var(--g6); }
+  .act-alpha {
+    font-size: 10px; color: var(--amb); font-weight: 600;
+    padding: 2px 7px; background: var(--g2); border-radius: 3px;
+  }
+  .act-cols { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+  .act-col { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
   .plan-col { flex: 1.3; min-width: 0; }
   .judge-col { flex: 1.4; min-width: 0; }
+  .after-col { flex: 1.2; min-width: 0; }
+  .act-divider { width: 0.5px; background: var(--g4); flex-shrink: 0; }
   .col-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); letter-spacing: 0.2em; }
 
   /* Plan col */
@@ -2891,6 +3314,16 @@
   .rj-pos.active { background: var(--pos-d); border-color: var(--pos); }
   .rj-neg { background: var(--neg-dd); color: var(--neg); border-color: var(--neg-d); }
   .rj-neg.active { background: var(--neg-d); border-color: var(--neg); }
+  .bias-box {
+    padding: 5px 8px; border-radius: 3px; font-size: 9px; line-height: 1.5;
+  }
+  .bias-good { background: var(--pos-dd); border: 0.5px solid var(--pos-d); color: var(--pos); }
+  .bias-warn { background: var(--amb-dd); border: 0.5px solid var(--amb-d); color: var(--amb); }
+  .after-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 10px; border: 0.5px dashed var(--g4); border-radius: 3px;
+    font-size: 10px; color: var(--g5); text-align: center; line-height: 1.5;
+  }
 
   /* PeekBar rich summary */
   .pb-sep { font-size: 8px; color: var(--g5); flex-shrink: 0; }
@@ -2903,6 +3336,32 @@
 
   /* MiniChart */
   .sc-minichart { width: 100%; height: 48px; display: block; }
+
+  /* PastSamplesStrip */
+  .past-strip {
+    border-top: 0.5px solid var(--g4);
+    background: var(--g0);
+    padding: 8px 14px 10px;
+    flex-shrink: 0;
+  }
+  .past-header {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 8px;
+    letter-spacing: 0.14em; margin-bottom: 8px;
+  }
+  .past-title { color: var(--amb); font-weight: 600; }
+  .past-hint { font-size: 7.5px; color: var(--g5); letter-spacing: 0.04em; text-transform: none; }
+  .past-cards { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .past-card {
+    padding: 7px 10px; border-radius: 4px; cursor: pointer; min-width: 72px;
+    background: var(--g1); border: 0.5px solid var(--g4);
+    display: flex; flex-direction: column; gap: 2px; flex-shrink: 0;
+    transition: all 0.12s; text-align: left;
+  }
+  .past-card:hover { background: var(--g2); border-color: var(--g4); }
+  .past-sym { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--g9); font-weight: 500; }
+  .past-pnl { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; }
+  .past-sim { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); }
 
   /* ── Layout switcher strip ─────────────────────────────────────────────── */
   .layout-strip {
@@ -3437,7 +3896,7 @@
     box-shadow: inset 0 0 0 1px rgba(232,184,106,0.075), 0 0 22px rgba(232,184,106,0.035);
   }
   .dom-ladder,
-  .tm-tape-list,
+  .tape-list,
   .footprint-table,
   .heatmap-grid {
     font-family: 'JetBrains Mono', monospace;
@@ -3506,6 +3965,50 @@
   }
   .dom-row.bid-heavy .dom-price { color: var(--pos); }
   .dom-row.ask-heavy .dom-price { color: var(--neg); }
+  .tape-list {
+    display: grid;
+    gap: 3px;
+  }
+  .tape-row {
+    display: grid;
+    grid-template-columns: 38px 34px minmax(58px, 1fr) 42px 48px;
+    gap: 6px;
+    align-items: center;
+    min-height: 14px;
+    padding: 2px 3px;
+    border-radius: 3px;
+    color: var(--g7);
+    font-size: 8px;
+    background: rgba(255,255,255,0.012);
+  }
+  .tape-row.buy { color: var(--pos); background: rgba(74,187,142,0.035); }
+  .tape-row.sell { color: var(--neg); background: rgba(226,91,91,0.035); }
+  .tape-time,
+  .tape-size {
+    color: var(--g5);
+  }
+  .tape-side {
+    font-weight: 900;
+    letter-spacing: 0.08em;
+  }
+  .tape-price,
+  .tape-size {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .tape-intensity {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .tape-intensity span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0.76;
+  }
   .footprint-table {
     display: grid;
     gap: 3px;
@@ -3677,9 +4180,37 @@
     letter-spacing: 0.08em;
     cursor: pointer;
   }
+  .ledger-stats,
   .execution-mini-grid {
     display: grid;
     gap: 6px;
+  }
+  .ledger-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ledger-stat {
+    padding: 8px;
+    border-radius: 6px;
+    background: var(--g0);
+    border: 0.5px solid var(--g4);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ledger-label,
+  .ledger-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--g5);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .ledger-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--g9);
+    font-weight: 800;
   }
   .judgment-options {
     display: grid;
@@ -3898,7 +4429,7 @@
     border-color: rgba(122,162,224,0.10);
   }
   .dom-row,
-  .tm-tape-row,
+  .tape-row,
   .footprint-row {
     min-height: 13px;
   }
@@ -4011,6 +4542,36 @@
     background: #0f131d !important;
   }
 
+  .observe-mode .indicator-lane-stack {
+    min-height: 52px;
+  }
+
+  .observe-mode .indicator-lane {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 6px;
+    padding: 5px 8px;
+  }
+
+  .observe-mode .indicator-lane::before {
+    left: 94px;
+  }
+
+  .observe-mode .indicator-lane-meta span {
+    font-size: 7px;
+  }
+
+  .observe-mode .indicator-lane-meta strong {
+    font-size: 10px;
+  }
+
+  .observe-mode .indicator-lane-meta em {
+    display: none;
+  }
+
+  .observe-mode .indicator-lane-plot {
+    gap: 1.5px;
+  }
+
   .observe-mode .microstructure-belt {
     min-height: 32px;
     grid-template-columns: 126px minmax(300px, 0.72fr) minmax(360px, 1fr);
@@ -4056,6 +4617,13 @@
     font-size: 9px;
   }
   @media (max-width: 1120px) {
+    .indicator-lane-stack {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      min-height: 112px;
+    }
+    .indicator-lane:nth-child(2n) {
+      border-right: none;
+    }
     .microstructure-belt {
       grid-template-columns: 1fr;
       min-height: auto;

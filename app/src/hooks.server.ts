@@ -8,27 +8,14 @@
 // NOTE: Response compression should be handled by CDN/reverse proxy.
 
 import { redirect } from '@sveltejs/kit';
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit';
 import { building, dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import { handleErrorWithSentry, sentryHandle } from '@sentry/sveltekit';
-import * as Sentry from '@sentry/sveltekit';
-import { sequence } from '@sveltejs/kit/hooks';
 import { readRequestHost, isHostAllowed } from '$lib/server/hostSecurity';
 import { runMutatingApiOriginGuard } from '$lib/server/originGuard';
 import { assertAppServerRuntimeSecurity } from '$lib/server/runtimeSecurity';
 import { shouldApplyNoIndexHeader } from '$lib/seo/policy';
 import { getAuthUserFromCookies, checkBetaAllowlist } from '$lib/server/authGuard';
-
-// Sentry: init server-side only when DSN is present
-const serverDsn = env.SENTRY_DSN?.trim();
-if (serverDsn) {
-  Sentry.init({
-    dsn: serverDsn,
-    tracesSampleRate: parseFloat(env.SENTRY_TRACES_SAMPLE_RATE ?? '0.1'),
-    environment: env.SENTRY_ENVIRONMENT ?? 'production',
-  });
-}
 
 // Immutable asset path pattern (Vite hashed filenames)
 const IMMUTABLE_ASSET = /\/_app\/immutable\//;
@@ -114,9 +101,7 @@ function isPublicPagePath(pathname: string): boolean {
   );
 }
 
-export const handleError: HandleServerError = handleErrorWithSentry();
-
-const _appHandle: Handle = async ({ event, resolve }) => {
+export const handle: Handle = async ({ event, resolve }) => {
   // Runtime security validation runs once per worker on the first real request.
   // Skipped during build (prerender) since SECURITY_ALLOWED_HOSTS is not present
   // at build time and there's no live traffic to defend.
@@ -218,5 +203,3 @@ const _appHandle: Handle = async ({ event, resolve }) => {
 
   return response;
 };
-
-export const handle: Handle = sequence(sentryHandle(), _appHandle);

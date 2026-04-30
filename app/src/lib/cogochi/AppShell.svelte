@@ -3,7 +3,7 @@
   import CommandBar from './CommandBar.svelte';
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
-  import WatchlistRail from './WatchlistRail.svelte';
+  import Sidebar from './Sidebar.svelte';
   import AIPanel from './AIPanel.svelte';
   import Splitter from './Splitter.svelte';
   import TradeMode from './modes/TradeMode.svelte';
@@ -64,11 +64,6 @@
     if ($viewportTier.tier === 'MOBILE') {
       shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
       shellStore.updateTabState(s => ({ ...s, layoutMode: 'C' }));
-    } else {
-      // Desktop / tablet: WatchlistRail + AIPanel are always visible.
-      shellStore.update(s =>
-        s.sidebarVisible && s.aiVisible ? s : { ...s, sidebarVisible: true, aiVisible: true },
-      );
     }
   });
 
@@ -88,45 +83,15 @@
       }
     }
 
-    const isInputActive = () => {
-      const el = document.activeElement as HTMLElement | null;
-      return (
-        el instanceof HTMLInputElement ||
-        el instanceof HTMLTextAreaElement ||
-        el?.isContentEditable === true
-      );
-    };
-
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      // Cmd+B / Cmd+L removed: WatchlistRail + AIPanel are always visible on desktop.
+      if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); shellStore.toggleSidebar(); }
+      if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); shellStore.toggleAI(); }
       if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); paletteOpen = !paletteOpen; }
       if (mod && e.key.toLowerCase() === 't') { e.preventDefault(); shellStore.openTab({ kind: 'trade', title: 'new session' }); }
       if (mod && e.key.toLowerCase() === 'w') {
         const st = get(shellStore);
         if (st.tabs.length > 1) { e.preventDefault(); shellStore.closeTab(st.activeTabId); }
-      }
-
-      // TV-style shortcuts (desktop only, no modifier)
-      if (!mod && e.key.toLowerCase() === 'b' && !isInputActive()) {
-        e.preventDefault();
-        chartSaveMode.enterRangeMode();
-        shellStore.updateTabState(s => ({ ...s, rangeSelection: true }));
-      }
-      if (e.key === 'Escape') {
-        if (chartSaveMode.snapshot().active) {
-          chartSaveMode.exitRangeMode();
-          shellStore.updateTabState(s => ({ ...s, rangeSelection: false }));
-        }
-        if (desktopSymbolPickerOpen) desktopSymbolPickerOpen = false;
-      }
-      if (!mod && e.key === '/' && !isInputActive()) {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('cogochi:cmd', { detail: { id: 'focus_ai_input' } }));
-      }
-      if (mod && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        desktopSymbolPickerOpen = true;
       }
     };
 
@@ -231,27 +196,29 @@
         else chartSaveMode.exitRangeMode();
       }}
       hasRange={$activeTabState.rangeSelection || $chartSaveMode.active}
+      aiVisible={$shellStore.aiVisible}
+      toggleAI={() => shellStore.toggleAI()}
       {paletteOpen}
       setPaletteOpen={(open) => (paletteOpen = open)}
+      onIndicators={() => (indicatorSettingsOpen = true)}
     />
 
     <div class="main-row">
-      <!-- Left: WatchlistRail — always visible -->
-      <div class="sidebar-pane" style:width={`${Math.max(180, $shellStore.sidebarWidth)}px`}>
-        <WatchlistRail
-          activeSymbol={desktopSymbol}
-          onSelectSymbol={(s) => shellStore.setSymbol(s)}
-        />
-      </div>
-      <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
+      <!-- Sidebar -->
+      {#if $shellStore.sidebarVisible}
+        <div class="sidebar-pane" style:width={`${$shellStore.sidebarWidth}px`}>
+          <Sidebar
+            visible={true}
+            activeSection={$shellStore.activeSection}
+            setActiveSection={(id) => shellStore.setActiveSection(id)}
+            onOpenTab={(tab) => shellStore.openTab(tab)}
+          />
+        </div>
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
+      {/if}
 
-      <!-- Center: Canvas + TabBar -->
-      <div class="canvas-col" style:position="relative">
-        {#if $chartSaveMode.active}
-          <div class="range-hint">
-            {$chartSaveMode.anchorA == null ? 'Click anchor A on chart' : 'Click anchor B on chart'} — <kbd>Esc</kbd> to cancel
-          </div>
-        {/if}
+      <!-- Canvas + TabBar -->
+      <div class="canvas-col">
         <TabBar
           tabs={$shellStore.tabs}
           activeTabId={$shellStore.activeTabId}
@@ -269,7 +236,6 @@
           onSetWorkMode={(mode) => shellStore.setWorkMode(mode)}
           onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
           onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
-          onIndicators={() => (indicatorSettingsOpen = true)}
         />
 
         <WorkspaceStage
@@ -286,25 +252,24 @@
         />
       </div>
 
-      <!-- Right: AI panel — always visible -->
-      <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
-      <div class="ai-pane" style:width={`${Math.max(300, $shellStore.aiWidth)}px`}>
-        <AIPanel
-          messages={$activeTabState.chat || []}
-          onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
-          onApplySetup={(setup) => {
-            shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
-            shellStore.update(st => ({
-              ...st,
-              tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
-            }));
-          }}
-          onClose={() => {}}
-          symbol={desktopSymbol}
-          timeframe={$activeTabState.timeframe ?? '4h'}
-          onSelectSymbol={(s) => shellStore.setSymbol(s)}
-        />
-      </div>
+      <!-- AI panel -->
+      {#if $shellStore.aiVisible}
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
+        <div class="ai-pane" style:width={`${Math.max(300, $shellStore.aiWidth)}px`}>
+          <AIPanel
+            messages={$activeTabState.chat || []}
+            onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
+            onApplySetup={(setup) => {
+              shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
+              shellStore.update(st => ({
+                ...st,
+                tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
+              }));
+            }}
+            onClose={() => shellStore.toggleAI()}
+          />
+        </div>
+      {/if}
     </div>
 
     <StatusBar
@@ -357,33 +322,6 @@
     display: flex;
     overflow: hidden;
     min-height: 0;
-  }
-
-  .range-hint {
-    position: absolute;
-    top: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    background: var(--amb-d);
-    border: 1px solid var(--amb);
-    color: var(--amb);
-    font-size: 10px;
-    padding: 3px 10px;
-    border-radius: 4px;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 0.04em;
-  }
-
-  .range-hint kbd {
-    font-family: inherit;
-    background: var(--g4);
-    border: 1px solid var(--g5);
-    border-radius: 2px;
-    padding: 0 3px;
-    font-size: 9px;
-    color: var(--g8);
   }
 
   .sidebar-pane {

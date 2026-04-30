@@ -45,6 +45,6 @@ describe('opportunityScan helper', () => {
 		expect(second.payload.result.coins[0].symbol).toBe('ETH');
 		expect(vi.mocked(runOpportunityScan)).toHaveBeenCalledTimes(1);
 		expect(vi.mocked(extractAlerts)).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(query)).toHaveBeenCalledTimes(2); // persistToDb + fetchRecentEngineAlerts
+		expect(vi.mocked(query)).toHaveBeenCalledTimes(1);
 	});
 });

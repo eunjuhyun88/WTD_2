@@ -1,4 +1,4 @@
-import { query, withTransaction } from './db';
+import { query } from './db';
 import { isIP } from 'node:net';
 import { recoverMessageAddress, type Hex } from 'viem';
 
@@ -10,10 +10,6 @@ export interface IssueWalletNonceResult {
   nonce: string;
   message: string;
   expiresAt: string;
-}
-
-function isLegacyAuthSchemaError(error: any): boolean {
-  return error?.code === '42P01' || error?.code === '42703';
 }
 
 function buildNonceMessage(address: string, nonce: string, issuedAtIso: string): string {
@@ -217,27 +213,19 @@ export async function linkWalletToUser(args: {
   const chain = args.chain?.trim() || 'ARB';
   const metaJson = JSON.stringify(args.meta ?? {});
 
-  try {
-    await query(
-      `
-        UPDATE users
-        SET
-          wallet_address = $1,
-          wallet_signature = $2,
-          tier = 'verified',
-          phase = GREATEST(phase, 2),
-          updated_at = now()
-        WHERE id = $3
-        `,
-      [args.address, args.signature, args.userId]
-    );
-  } catch (error: any) {
-    if (!isLegacyAuthSchemaError(error)) throw error;
-    await linkWalletToLegacyUser({
-      ...args,
-      chain,
-    });
-  }
+  await query(
+    `
+      UPDATE users
+      SET
+        wallet_address = $1,
+        wallet_signature = $2,
+        tier = 'verified',
+        phase = GREATEST(phase, 2),
+        updated_at = now()
+      WHERE id = $3
+      `,
+    [args.address, args.signature, args.userId]
+  );
 
   try {
     await query(
@@ -269,64 +257,4 @@ export async function linkWalletToUser(args: {
       throw error;
     }
   }
-}
-
-async function linkWalletToLegacyUser(args: {
-  userId: string;
-  address: string;
-  signature: string;
-  provider?: string | null;
-  chain: string;
-}): Promise<void> {
-  await withTransaction(async (client) => {
-    await client.query(
-      `
-        UPDATE app_users
-        SET
-          tier = 'verified',
-          phase = GREATEST(phase, 2)::smallint,
-          updated_at = now()
-        WHERE id = $1
-      `,
-      [args.userId]
-    );
-
-    try {
-      await client.query(
-        `
-          INSERT INTO user_wallets (
-            user_id,
-            address,
-            chain,
-            provider,
-            is_primary,
-            is_verified,
-            signature,
-            connected_at
-          )
-          VALUES ($1, $2, $3, $4, true, true, $5, now())
-        `,
-        [args.userId, args.address, args.chain, args.provider || null, args.signature]
-      );
-    } catch (error: any) {
-      if (error?.code !== '23505') throw error;
-      await client.query(
-        `
-          UPDATE user_wallets
-          SET
-            user_id = $1,
-            chain = $3,
-            provider = $4,
-            is_primary = true,
-            is_verified = true,
-            signature = $5,
-            connected_at = now(),
-            disconnected_at = NULL,
-            updated_at = now()
-          WHERE lower(address) = lower($2)
-        `,
-        [args.userId, args.address, args.chain, args.provider || null, args.signature]
-      );
-    }
-  });
 }

@@ -95,12 +95,10 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
 
     // Look up or auto-create user by wallet
     let user = await findAuthUserByWallet(walletAddress);
-    let action: 'login' | 'register' = 'login';
 
     if (!user) {
       try {
         user = await createWalletOnlyUser(walletAddress, walletSignature);
-        action = 'register';
       } catch (createError: any) {
         // Race condition: another request created the same wallet — retry lookup
         if (createError?.code === '23505') {
@@ -129,7 +127,7 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
 
     return json({
       success: true,
-      action,
+      action: 'login',
       user: {
         id: user.id,
         email: user.email,

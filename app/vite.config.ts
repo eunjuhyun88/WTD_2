@@ -14,7 +14,7 @@ export default defineConfig({
 		}
 	},
 	ssr: {
-		external: ['pg-native', 'cloudflare:sockets', 'lightweight-charts'],
+		external: ['pg-native', 'cloudflare:sockets'],
 	},
 	build: {
 		rollupOptions: {

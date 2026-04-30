@@ -41,10 +41,9 @@
   import StrategyBuilder from '../../components/lab/StrategyBuilder.svelte';
   import ResultPanel from '../../components/lab/ResultPanel.svelte';
   import RefinementPanel from '../../components/lab/RefinementPanel.svelte';
-  import PatternRunPanel from '../../components/lab/PatternRunPanel.svelte';
 
   let mode = $state<'auto' | 'manual'>('auto');
-  let activeTab = $state<'strategy' | 'result' | 'order' | 'trades' | 'refinement' | 'pattern-run'>('strategy');
+  let activeTab = $state<'strategy' | 'result' | 'order' | 'trades' | 'refinement'>('strategy');
   let interval = $state('4h');
   let isRunning = $state(false);
   let error = $state<string | null>(null);
@@ -415,12 +414,11 @@
           </div>
         </div>
 
-        <div class="tab-bar" class:tab-bar-4={mode === 'auto'}>
+        <div class="tab-bar" class:tab-bar-3={mode === 'auto'}>
           {#if mode === 'auto'}
             <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>챌린지</button>
             <button class="tab" class:active={activeTab === 'result'} onclick={() => activeTab = 'result'}>런 결과</button>
             <button class="tab" class:active={activeTab === 'refinement'} onclick={() => activeTab = 'refinement'}>리더보드</button>
-            <button class="tab" class:active={activeTab === 'pattern-run'} onclick={() => activeTab = 'pattern-run'}>패턴 런</button>
           {:else}
             <button class="tab" class:active={activeTab === 'order'} onclick={() => activeTab = 'order'}>리플레이</button>
             <button class="tab" class:active={activeTab === 'trades'} onclick={() => activeTab = 'trades'}>로그</button>
@@ -448,8 +446,6 @@
             />
           {:else if activeTab === 'refinement'}
             <RefinementPanel />
-          {:else if activeTab === 'pattern-run'}
-            <PatternRunPanel />
           {:else if activeTab === 'order'}
             <div class="manual-order">
               <div class="manual-hero">
@@ -594,10 +590,6 @@
 
   .tab-bar.tab-bar-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .tab-bar.tab-bar-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .tab {

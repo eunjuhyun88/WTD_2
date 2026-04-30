@@ -17,7 +17,7 @@
   interface Props {
     annotation: CaptureAnnotation | null;
     onClose?: () => void;
-    onVerdict?: (captureId: string, verdict: 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late') => void;
+    onVerdict?: (captureId: string, verdict: 'valid' | 'invalid' | 'missed') => void;
     /** 'drawer' = fixed right rail (desktop), 'sheet' = bottom sheet (mobile), 'inline' = flow inside parent (tablet PeekDrawer). Default: 'drawer'. */
     variant?: 'drawer' | 'sheet' | 'inline';
   }
@@ -42,11 +42,9 @@
   };
 
   const VERDICT_LABEL: Record<string, string> = {
-    valid:     '✅ Valid',
-    invalid:   '❌ Invalid',
-    near_miss: '🟡 Near Miss',
-    too_early: '⏪ Too Early',
-    too_late:  '⏩ Too Late',
+    valid:   '✅ Valid',
+    invalid: '❌ Invalid',
+    missed:  '⚠️ Missed',
   };
 
   function _fmt(p: number | null): string {
@@ -59,7 +57,7 @@
     return `${Math.round(v * 100)}%`;
   }
 
-  async function _submitVerdict(verdict: 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late'): Promise<void> {
+  async function _submitVerdict(verdict: 'valid' | 'invalid' | 'missed'): Promise<void> {
     if (!annotation || submitting) return;
     submitting = true;
     try {
@@ -172,32 +170,17 @@
               class="verdict-btn valid"
               onclick={() => _submitVerdict('valid')}
               disabled={submitting}
-              title="패턴 유효, 진입 성공"
             >✅ Valid</button>
+            <button
+              class="verdict-btn missed"
+              onclick={() => _submitVerdict('missed')}
+              disabled={submitting}
+            >⚠️ Missed</button>
             <button
               class="verdict-btn invalid"
               onclick={() => _submitVerdict('invalid')}
               disabled={submitting}
-              title="패턴 자체가 잘못됨"
             >❌ Invalid</button>
-            <button
-              class="verdict-btn near-miss"
-              onclick={() => _submitVerdict('near_miss')}
-              disabled={submitting}
-              title="패턴 유효, 아슬아슬하게 놓침"
-            >🟡 Near</button>
-            <button
-              class="verdict-btn too-early"
-              onclick={() => _submitVerdict('too_early')}
-              disabled={submitting}
-              title="진입이 너무 일렀음"
-            >⏪ Early</button>
-            <button
-              class="verdict-btn too-late"
-              onclick={() => _submitVerdict('too_late')}
-              disabled={submitting}
-              title="진입 타이밍이 늦었음"
-            >⏩ Late</button>
           </div>
         </section>
       {/if}
@@ -332,11 +315,9 @@
     font-weight: 600;
     text-align: center;
   }
-  .verdict-badge.verdict-valid     { background: rgba(34,197,94,0.15);   color: #22c55e; }
-  .verdict-badge.verdict-invalid   { background: rgba(239,68,68,0.15);   color: #ef4444; }
-  .verdict-badge.verdict-near_miss { background: rgba(251,191,36,0.15);  color: #fbbf24; }
-  .verdict-badge.verdict-too_early { background: rgba(147,197,253,0.15); color: #93c5fd; }
-  .verdict-badge.verdict-too_late  { background: rgba(167,139,250,0.15); color: #a78bfa; }
+  .verdict-badge.verdict-valid   { background: rgba(34,197,94,0.15);  color: #22c55e; }
+  .verdict-badge.verdict-invalid { background: rgba(239,68,68,0.15);  color: #ef4444; }
+  .verdict-badge.verdict-missed  { background: rgba(251,191,36,0.15); color: #fbbf24; }
 
   .note-input {
     width: 100%;
@@ -353,14 +334,11 @@
   .note-input:focus { outline: none; border-color: rgba(77,143,245,0.5); }
 
   .verdict-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
     gap: 6px;
   }
-  /* Valid spans full width as primary action */
-  .verdict-btn.valid { grid-column: 1 / -1; }
   .verdict-btn {
-    min-height: 44px;
+    flex: 1;
     padding: 6px 4px;
     border: none;
     border-radius: 6px;
@@ -370,11 +348,9 @@
     transition: opacity 0.15s;
   }
   .verdict-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .verdict-btn.valid     { background: rgba(34,197,94,0.20);   color: #22c55e; }
-  .verdict-btn.invalid   { background: rgba(239,68,68,0.20);   color: #ef4444; }
-  .verdict-btn.near-miss { background: rgba(251,191,36,0.20);  color: #fbbf24; }
-  .verdict-btn.too-early { background: rgba(147,197,253,0.20); color: #93c5fd; }
-  .verdict-btn.too-late  { background: rgba(167,139,250,0.20); color: #a78bfa; }
+  .verdict-btn.valid   { background: rgba(34,197,94,0.20);  color: #22c55e; }
+  .verdict-btn.invalid { background: rgba(239,68,68,0.20);  color: #ef4444; }
+  .verdict-btn.missed  { background: rgba(251,191,36,0.20); color: #fbbf24; }
   .verdict-btn:hover:not(:disabled) { opacity: 0.85; }
 
   .capture-id {

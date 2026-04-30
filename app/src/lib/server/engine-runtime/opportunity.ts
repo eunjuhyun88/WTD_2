@@ -10,7 +10,7 @@ import {
 } from './remote/opportunity';
 import { getEngineRuntimeMode } from './config';
 
-export type { OpportunityScore, OpportunityAlert, OpportunityScanResult } from './local/opportunity';
+export type { OpportunityAlert, OpportunityScanResult } from './local/opportunity';
 
 export async function runOpportunityScan(limit = 15): Promise<OpportunityScanResult> {
   switch (getEngineRuntimeMode()) {

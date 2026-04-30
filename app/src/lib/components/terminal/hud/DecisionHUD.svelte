@@ -18,7 +18,6 @@
   import RiskCard from '$lib/components/terminal/hud/RiskCard.svelte';
   import TransitionCard from '$lib/components/terminal/hud/TransitionCard.svelte';
   import ActionsCard from '$lib/components/terminal/hud/ActionsCard.svelte';
-  import KimchiPremiumBadge from '$lib/components/market/KimchiPremiumBadge.svelte';
 
   export let capture_id: string;
   export let class_names: string = '';
@@ -53,12 +52,9 @@
 <section class="decision-hud {class_names}">
   <div class="hud-header">
     <span class="hud-title">DECISION HUD</span>
-    <div class="hud-header-right">
-      <KimchiPremiumBadge />
-      <button class="hud-refresh" onclick={load} disabled={loading}>
-        {loading ? '…' : 'Refresh'}
-      </button>
-    </div>
+    <button class="hud-refresh" onclick={load} disabled={loading}>
+      {loading ? '…' : 'Refresh'}
+    </button>
   </div>
 
   {#if loading}
@@ -93,12 +89,6 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-
-  .hud-header-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 
   .hud-title {

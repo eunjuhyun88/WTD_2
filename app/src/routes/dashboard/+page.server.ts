@@ -23,31 +23,9 @@ export interface FlywheelHealth {
   promotion_gate_pass_rate_30d: number;
 }
 
-export interface OpportunityScore {
-  symbol: string;
-  name: string;
-  price: number;
-  change1h: number;
-  change24h: number;
-  volume24h: number;
-  marketCap: number;
-  momentumScore: number;
-  volumeScore: number;
-  socialScore: number;
-  macroScore: number;
-  onchainScore: number;
-  totalScore: number;
-  direction: 'long' | 'short' | 'neutral';
-  confidence: number;
-  reasons: string[];
-  alerts: string[];
-  compositeScore: number | null;
-}
-
 export const load: PageServerLoad = async ({ locals }) => {
   const userId = locals.user?.id;
-
-  const [verdictResp, flywheelResp, opportunityResp] = await Promise.allSettled([
+  const [verdictResp, flywheelResp] = await Promise.allSettled([
     userId
       ? engineFetch(`/captures?user_id=${encodeURIComponent(userId)}&status=outcome_ready&limit=50`, {
           signal: AbortSignal.timeout(5000),
@@ -60,12 +38,6 @@ export const load: PageServerLoad = async ({ locals }) => {
         ),
     engineFetch('/observability/flywheel/health', {
       signal: AbortSignal.timeout(4000),
-    }),
-    engineFetch('/opportunity/run', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ limit: 10, user_id: userId ?? null }),
-      signal: AbortSignal.timeout(8000),
     }),
   ]);
 
@@ -80,18 +52,5 @@ export const load: PageServerLoad = async ({ locals }) => {
     flywheelHealth = (await flywheelResp.value.json()) as FlywheelHealth;
   }
 
-  let topOpportunities: OpportunityScore[] = [];
-  let macroRegime = 'neutral';
-  let opportunityPersonalized = false;
-  if (opportunityResp.status === 'fulfilled' && opportunityResp.value.ok) {
-    const data = (await opportunityResp.value.json()) as {
-      coins?: OpportunityScore[];
-      macroBackdrop?: { regime?: string };
-    };
-    topOpportunities = data.coins ?? [];
-    macroRegime = data.macroBackdrop?.regime ?? 'neutral';
-    opportunityPersonalized = !!userId && topOpportunities.length > 0;
-  }
-
-  return { pendingVerdicts, flywheelHealth, topOpportunities, macroRegime, opportunityPersonalized };
+  return { pendingVerdicts, flywheelHealth };
 };

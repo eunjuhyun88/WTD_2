@@ -113,11 +113,7 @@
   import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
   import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
   import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
-  import DecisionHUD from '$lib/components/terminal/hud/DecisionHUD.svelte';
   import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
-  import SplitPaneLayout from '$lib/components/terminal/SplitPaneLayout.svelte';
-  import ModeToggle from '$lib/components/terminal/ModeToggle.svelte';
-  import { terminalLayout } from '$lib/stores/terminalLayout';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
@@ -217,12 +213,6 @@
     terminalModeStore.set(terminalMode);
     const preset = applyModePreset(terminalMode);
     showLeftRail = preset.showLeftRail;
-  });
-
-  // W-0317: sync ModeToggle (store→local) without loop
-  $effect(() => {
-    const storeVal = $terminalModeStore;
-    if (storeVal && storeVal !== terminalMode) terminalMode = storeVal;
   });
 
   function handleModeKeydown(e: KeyboardEvent) {
@@ -1587,11 +1577,7 @@
   <link rel="canonical" href={buildCanonicalHref('/terminal')} />
 </svelte:head>
 
-<div
-  class="surface-page terminal-page-peek"
-  data-theme={$terminalLayout.theme}
-  data-density={$terminalLayout.density}
->
+<div class="surface-page terminal-page-peek">
   <section class="terminal-shell-head">
     <TerminalCommandBar
       assetsCount={boardAssets.length}
@@ -1632,187 +1618,175 @@
     </aside>
     {/if}
 
-    <!-- W-0317: SplitPaneLayout wraps center + right rail for drag-resize -->
-    <SplitPaneLayout mode={terminalMode}>
-      {#snippet children()}
-      <div class="center-col">
-      <CenterPanel
-        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-        tf={symbolToTF(gTf)}
-        verdictLevels={chartLevels as Record<string, number>}
-        alphaMarkers={alphaMarkersWithNews}
-        initialData={activeChartPayload}
-        depthSnapshot={readPathDepth}
-        liqSnapshot={readPathLiq}
-        quantRegime={boardModel.quantRegime}
-        cvdDivergence={boardModel.cvdDivergence}
-        change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
-        analysisData={activeAnalysisData as any}
-        {showLabCta}
-        {labCtaSlug}
-        analyzeCount={peekAnalyzeCount}
-        scanCount={peekScanCount}
-        judgeCount={peekJudgeCount}
-        reviewCount={reviewInboxCount}
-        onCaptureSaved={handleCaptureSaved}
-        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
-        onDismissLabCta={() => showLabCta = false}
-      >
-        {#snippet analyze()}
-          {#if lastSavedCaptureId}
-            <DecisionHUD capture_id={lastSavedCaptureId} class_names="terminal-hud" />
-          {/if}
-          <TerminalContextPanel
-            analysisData={activeAnalysisData}
-            {newsData}
-            activeTab={activeAnalysisTab}
-            onTabChange={handleAnalysisTabChange}
-            onAction={sendCommand}
-            onPinToggle={handlePinToggle}
-            onAlertToggle={handleAlertToggle}
-            onRetry={handleRetryAnalysis}
-            isPinned={isActivePinned}
-            hasSavedAlert={hasActiveSavedAlert}
-            bars={ohlcvBars}
-            {layerBarsMap}
-            {patternRecallMatches}
-          />
-        {/snippet}
-        {#snippet scan()}
-          <div class="scan-universe-tabs">
-            {#each (['ALL', 'ALPHA', 'SHORT'] as const) as u}
-              <button
-                class="scan-tab {alphaUniverse === u ? 'scan-tab--active' : ''}"
-                onclick={async () => {
-                  alphaUniverse = u;
-                  if (u === 'ALPHA' && !alphaWorldData && !alphaWorldLoading) {
-                    alphaWorldLoading = true;
-                    try { alphaWorldData = await fetchAlphaWorldModel(); }
-                    finally { alphaWorldLoading = false; }
-                  }
-                }}
-              >{u === 'ALPHA' ? 'ALPHA ▲' : u === 'SHORT' ? 'SHORT ↓' : 'ALL'}</button>
-            {/each}
-          </div>
-          {#if alphaUniverse === 'ALPHA'}
-            <div class="alpha-world-pane">
-              {#if alphaWorldLoading}
-                <div class="alpha-loading">Loading Alpha Universe…</div>
-              {:else if alphaWorldData}
-                {#each alphaWorldData.phases.filter(p => p.phase !== 'IDLE') as row}
-                  <button
-                    class="alpha-row"
-                    onclick={() => selectAsset(row.symbol)}
-                  >
-                    <span class="alpha-sym">{row.symbol.replace('USDT','')}</span>
-                    <span class="alpha-grade grade-{row.grade}">{row.grade}</span>
-                    <span class="alpha-phase phase-{row.phase}">{row.phase}</span>
-                    <span class="alpha-bars">{row.bars_in_phase}b</span>
-                  </button>
-                {/each}
-                {#if alphaWorldData.phases.filter(p => p.phase !== 'IDLE').length === 0}
-                  <div class="alpha-empty">No active Alpha tokens — next COLD scan in up to 4h</div>
-                {/if}
-              {:else}
-                <button class="alpha-fetch-btn" onclick={async () => {
-                  alphaWorldLoading = true;
-                  try { alphaWorldData = await fetchAlphaWorldModel(); }
-                  finally { alphaWorldLoading = false; }
-                }}>Load Alpha Universe</button>
-              {/if}
-            </div>
-          {:else}
-            <ScanGrid
-              alerts={alphaUniverse === 'SHORT'
-                ? scannerAlerts.filter((a: any) => (a.blocks_triggered ?? []).some((b: string) => b.includes('short') || b.includes('bear')))
-                : scannerAlerts}
-              similar={peekSimilar}
-              activeSymbol={activeSymbol || pairToSymbol(gPair)}
-              loadingSimilar={peekLoadingSimilar}
-              onOpenCapture={handlePeekOpenCapture}
-            />
-          {/if}
-        {/snippet}
-        {#snippet judge()}
-          <JudgePanel
-            symbol={activeSymbol || pairToSymbol(gPair)}
-            timeframe={symbolToTF(gTf)}
-            verdict={peekVerdict}
-            entry={peekEntry}
-            stop={peekStop}
-            target={peekTarget}
-            pWin={peekPWin}
-            lastPrice={peekLast}
-            captures={peekCaptures}
-            saving={false}
-            onSaveJudgment={handlePeekSaveJudgment}
-            onRejudge={handlePeekRejudge}
-            onOpenCapture={handlePeekOpenCapture}
-          />
-        {/snippet}
-        {#snippet review()}
-          <VerdictInboxPanel
-            onVerdictSubmit={(id, verdict) => {
-              if (reviewInboxCount > 0) reviewInboxCount = reviewInboxCount - 1;
-            }}
-          />
-        {/snippet}
-      </CenterPanel>
-      {#if applyModePreset(terminalMode).showWorkspace}
-        <WorkspacePanel
-          analysisData={activeAnalysisData as any}
-          symbol={activeSymbol || pairToSymbol(gPair)}
-          tf={symbolToTF(gTf)}
-          onJudge={handleWorkspaceJudge}
-        />
-      {/if}
-      </div>
-      {/snippet}
-
-      {#snippet rightPane()}
-        {#if terminalMode === 'execute'}
-          <div class="execute-disclaimer" role="note" aria-label="Execute mode notice">
-            수기 입력 · 실주문 X
-          </div>
-        {/if}
-        {#if applyModePreset(terminalMode).showRightRail}
-        <RightRailPanel
-          {isStreaming}
-          {isScanMode}
-          {scanAssets}
-          boardAssetsCount={boardAssets.length}
-          {liveSignals}
-          {liveSignalsCached}
-          {liveSignalsScannedAt}
-          activeSymbol={activeSymbol || pairToSymbol(gPair)}
-          {activePairDisplay}
-          {isLoadingActive}
-          {heroAsset}
-          {heroVerdict}
+    <div class="center-col">
+    <CenterPanel
+      symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+      tf={symbolToTF(gTf)}
+      verdictLevels={chartLevels as Record<string, number>}
+      alphaMarkers={alphaMarkersWithNews}
+      initialData={activeChartPayload}
+      depthSnapshot={readPathDepth}
+      liqSnapshot={readPathLiq}
+      quantRegime={boardModel.quantRegime}
+      cvdDivergence={boardModel.cvdDivergence}
+      change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+      analysisData={activeAnalysisData as any}
+      {showLabCta}
+      {labCtaSlug}
+      analyzeCount={peekAnalyzeCount}
+      scanCount={peekScanCount}
+      judgeCount={peekJudgeCount}
+      reviewCount={reviewInboxCount}
+      onCaptureSaved={handleCaptureSaved}
+      onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+      onDismissLabCta={() => showLabCta = false}
+    >
+      {#snippet analyze()}
+        <TerminalContextPanel
           analysisData={activeAnalysisData}
           {newsData}
-          {activeAnalysisTab}
-          {ohlcvBars}
-          {layerBarsMap}
-          {patternRecallMatches}
-          {isActivePinned}
-          {hasActiveSavedAlert}
-          {verdictMap}
-          {loadingSymbols}
+          activeTab={activeAnalysisTab}
           onTabChange={handleAnalysisTabChange}
           onAction={sendCommand}
           onPinToggle={handlePinToggle}
           onAlertToggle={handleAlertToggle}
           onRetry={handleRetryAnalysis}
-          onSelectAsset={selectAsset}
-          onClearBoard={clearBoard}
-          onWorkspaceToggle={undefined}
-          similarCaptures={peekSimilar}
-          {patternPhases}
+          isPinned={isActivePinned}
+          hasSavedAlert={hasActiveSavedAlert}
+          bars={ohlcvBars}
+          {layerBarsMap}
+          {patternRecallMatches}
         />
+      {/snippet}
+      {#snippet scan()}
+        <div class="scan-universe-tabs">
+          {#each (['ALL', 'ALPHA', 'SHORT'] as const) as u}
+            <button
+              class="scan-tab {alphaUniverse === u ? 'scan-tab--active' : ''}"
+              onclick={async () => {
+                alphaUniverse = u;
+                if (u === 'ALPHA' && !alphaWorldData && !alphaWorldLoading) {
+                  alphaWorldLoading = true;
+                  try { alphaWorldData = await fetchAlphaWorldModel(); }
+                  finally { alphaWorldLoading = false; }
+                }
+              }}
+            >{u === 'ALPHA' ? 'ALPHA ▲' : u === 'SHORT' ? 'SHORT ↓' : 'ALL'}</button>
+          {/each}
+        </div>
+        {#if alphaUniverse === 'ALPHA'}
+          <div class="alpha-world-pane">
+            {#if alphaWorldLoading}
+              <div class="alpha-loading">Loading Alpha Universe…</div>
+            {:else if alphaWorldData}
+              {#each alphaWorldData.phases.filter(p => p.phase !== 'IDLE') as row}
+                <button
+                  class="alpha-row"
+                  onclick={() => selectAsset(row.symbol)}
+                >
+                  <span class="alpha-sym">{row.symbol.replace('USDT','')}</span>
+                  <span class="alpha-grade grade-{row.grade}">{row.grade}</span>
+                  <span class="alpha-phase phase-{row.phase}">{row.phase}</span>
+                  <span class="alpha-bars">{row.bars_in_phase}b</span>
+                </button>
+              {/each}
+              {#if alphaWorldData.phases.filter(p => p.phase !== 'IDLE').length === 0}
+                <div class="alpha-empty">No active Alpha tokens — next COLD scan in up to 4h</div>
+              {/if}
+            {:else}
+              <button class="alpha-fetch-btn" onclick={async () => {
+                alphaWorldLoading = true;
+                try { alphaWorldData = await fetchAlphaWorldModel(); }
+                finally { alphaWorldLoading = false; }
+              }}>Load Alpha Universe</button>
+            {/if}
+          </div>
+        {:else}
+          <ScanGrid
+            alerts={alphaUniverse === 'SHORT'
+              ? scannerAlerts.filter((a: any) => (a.blocks_triggered ?? []).some((b: string) => b.includes('short') || b.includes('bear')))
+              : scannerAlerts}
+            similar={peekSimilar}
+            activeSymbol={activeSymbol || pairToSymbol(gPair)}
+            loadingSimilar={peekLoadingSimilar}
+            onOpenCapture={handlePeekOpenCapture}
+          />
         {/if}
       {/snippet}
-    </SplitPaneLayout>
+      {#snippet judge()}
+        <JudgePanel
+          symbol={activeSymbol || pairToSymbol(gPair)}
+          timeframe={symbolToTF(gTf)}
+          verdict={peekVerdict}
+          entry={peekEntry}
+          stop={peekStop}
+          target={peekTarget}
+          pWin={peekPWin}
+          lastPrice={peekLast}
+          captures={peekCaptures}
+          saving={false}
+          onSaveJudgment={handlePeekSaveJudgment}
+          onRejudge={handlePeekRejudge}
+          onOpenCapture={handlePeekOpenCapture}
+        />
+      {/snippet}
+      {#snippet review()}
+        <VerdictInboxPanel
+          onVerdictSubmit={(id, verdict) => {
+            if (reviewInboxCount > 0) reviewInboxCount = reviewInboxCount - 1;
+          }}
+        />
+      {/snippet}
+    </CenterPanel>
+    {#if applyModePreset(terminalMode).showWorkspace}
+      <WorkspacePanel
+        analysisData={activeAnalysisData as any}
+        symbol={activeSymbol || pairToSymbol(gPair)}
+        tf={symbolToTF(gTf)}
+        onJudge={handleWorkspaceJudge}
+      />
+    {/if}
+    </div>
+
+    {#if terminalMode === 'execute'}
+      <div class="execute-disclaimer" role="note" aria-label="Execute mode notice">
+        수기 입력 · 실주문 X
+      </div>
+    {/if}
+    {#if applyModePreset(terminalMode).showRightRail}
+    <RightRailPanel
+      {isStreaming}
+      {isScanMode}
+      {scanAssets}
+      boardAssetsCount={boardAssets.length}
+      {liveSignals}
+      {liveSignalsCached}
+      {liveSignalsScannedAt}
+      activeSymbol={activeSymbol || pairToSymbol(gPair)}
+      {activePairDisplay}
+      {isLoadingActive}
+      {heroAsset}
+      {heroVerdict}
+      analysisData={activeAnalysisData}
+      {newsData}
+      {activeAnalysisTab}
+      {ohlcvBars}
+      {layerBarsMap}
+      {patternRecallMatches}
+      {isActivePinned}
+      {hasActiveSavedAlert}
+      {verdictMap}
+      {loadingSymbols}
+      onTabChange={handleAnalysisTabChange}
+      onAction={sendCommand}
+      onPinToggle={handlePinToggle}
+      onAlertToggle={handleAlertToggle}
+      onRetry={handleRetryAnalysis}
+      onSelectAsset={selectAsset}
+      onClearBoard={clearBoard}
+      onWorkspaceToggle={undefined}
+    />
+    {/if}
   </div>
 </div>
 
@@ -1909,16 +1883,6 @@
     cursor: pointer;
   }
 
-  /* ── W-0322: Theme × Density CSS variable system ──────────────── */
-  [data-theme="dark"]        { --t-bg: #0b0e14; --t-accent: #63b3ed; --t-text: #f7f2ea; --t-rail-border: rgba(255,255,255,0.06); }
-  [data-theme="deep"]        { --t-bg: #060810; --t-accent: #a78bfa; --t-text: #e2e8f0; --t-rail-border: rgba(255,255,255,0.05); }
-  [data-theme="neon"]        { --t-bg: #030508; --t-accent: #39ff14; --t-text: #ffffff;  --t-rail-border: rgba(57,255,20,0.12);   }
-  [data-theme="muted"]       { --t-bg: #111318; --t-accent: #94a3b8; --t-text: #cbd5e1; --t-rail-border: rgba(255,255,255,0.05); }
-
-  [data-density="compact"]     { --t-rail-w: 200px; --t-row-h: 28px; --t-font: 11px; }
-  [data-density="cozy"]        { --t-rail-w: 260px; --t-row-h: 36px; --t-font: 12px; }
-  [data-density="comfortable"] { --t-rail-w: 320px; --t-row-h: 44px; --t-font: 13px; }
-
   .terminal-page-peek {
     width: min(100%, calc(100% - 8px));
     height: calc(100dvh - 8px);
@@ -1970,7 +1934,7 @@
   }
 
   .peek-left-rail {
-    width: var(--t-rail-w, 260px);
+    width: 260px;
     flex-shrink: 0;
     border-right: 1px solid rgba(255,255,255,0.06);
     overflow-y: auto;
@@ -1982,13 +1946,6 @@
   }
 
   @media (max-width: 1279px) { .peek-left-rail { display: none; } }
-
-  /* W-0317: mobile scroll — allow center column to scroll on small screens */
-  @media (max-width: 767px) {
-    .center-col {
-      overflow-y: auto;
-    }
-  }
 
   .execute-disclaimer {
     position: absolute;

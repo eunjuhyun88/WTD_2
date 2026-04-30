@@ -6,15 +6,11 @@
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
   import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
-  import KimchiPremiumBadge from '$lib/components/market/KimchiPremiumBadge.svelte';
-  import type { CaptureRow, FlywheelHealth, OpportunityScore } from './+page.server';
+  import type { CaptureRow, FlywheelHealth } from './+page.server';
 
   let { data } = $props();
   const sourcePendingVerdicts = $derived(data.pendingVerdicts ?? []);
   const flywheel = $derived(data.flywheelHealth as FlywheelHealth | null);
-  const topOpportunities = $derived((data.topOpportunities ?? []) as OpportunityScore[]);
-  const macroRegime = $derived(data.macroRegime ?? 'neutral');
-  const opportunityPersonalized = $derived(data.opportunityPersonalized ?? false);
 
   let pendingVerdicts = $state<CaptureRow[]>([]);
   $effect(() => {
@@ -176,27 +172,6 @@
     goto('/lab');
   }
 
-  function opScoreColor(s: number): string {
-    if (s >= 56) return '#4ade80';
-    if (s >= 40) return '#fbbf24';
-    return '#f87171';
-  }
-  function opDirColor(d: string): string {
-    if (d === 'long') return '#4ade80';
-    if (d === 'short') return '#f87171';
-    return '#94a3b8';
-  }
-  function opDirIcon(d: string): string {
-    if (d === 'long') return '↑';
-    if (d === 'short') return '↓';
-    return '→';
-  }
-  function fmtOpPrice(p: number): string {
-    if (!p) return '—';
-    if (p >= 1000) return '$' + p.toLocaleString('en-US', { maximumFractionDigits: 0 });
-    if (p >= 1) return '$' + p.toFixed(2);
-    return '$' + p.toPrecision(3);
-  }
 
 </script>
 
@@ -234,7 +209,6 @@
       </article>
     </div>
     <div class="topbar-actions">
-      <KimchiPremiumBadge />
       <button class="surface-button" onclick={() => goto('/cogochi')}>Open Terminal</button>
       <button class="surface-button-secondary" onclick={() => goto('/lab')}>Open Lab</button>
     </div>
@@ -420,74 +394,6 @@
     </div>
   </section>
   {/if}
-
-  <!-- Opportunity Scanner -->
-  <section class="surface-grid">
-    <div class="surface-section-head">
-      <div>
-        <span class="surface-kicker">기회 스캐너</span>
-        <h2>Top Opportunities</h2>
-      </div>
-      <div class="op-header-right">
-        {#if opportunityPersonalized}
-          <span class="surface-chip op-chip--personal">개인화됨</span>
-        {/if}
-        <span class="surface-chip op-chip--regime" class:op-chip--risk-on={macroRegime === 'risk-on'} class:op-chip--risk-off={macroRegime === 'risk-off'}>
-          {macroRegime}
-        </span>
-        {#if topOpportunities.length > 0}
-          <span class="surface-chip">{topOpportunities.length} coins</span>
-        {/if}
-      </div>
-    </div>
-
-    {#if topOpportunities.length === 0}
-      <div class="op-empty">엔진 연결 중… 잠시 후 새로고침하세요.</div>
-    {:else}
-      <div class="op-grid">
-        {#each topOpportunities as pick, i (pick.symbol)}
-          <div class="surface-card op-card">
-            <div class="op-head">
-              <span class="op-rank" style="color:{opScoreColor(pick.totalScore)}">#{i + 1}</span>
-              <span class="op-sym">{pick.symbol}</span>
-              <span class="op-dir" style="color:{opDirColor(pick.direction)}">{opDirIcon(pick.direction)} {pick.direction}</span>
-              <span class="op-score" style="color:{opScoreColor(pick.totalScore)}">{pick.totalScore}</span>
-            </div>
-            <div class="op-price">
-              {fmtOpPrice(pick.price)}
-              <span class="op-chg" class:op-chg--up={pick.change24h >= 0} class:op-chg--dn={pick.change24h < 0}>
-                {pick.change24h >= 0 ? '+' : ''}{pick.change24h.toFixed(1)}%
-              </span>
-            </div>
-            <div class="op-bar">
-              <div class="op-seg op-seg--mom" style="width:{pick.momentumScore}px" title="Momentum {pick.momentumScore}/25"></div>
-              <div class="op-seg op-seg--vol" style="width:{pick.volumeScore}px" title="Volume {pick.volumeScore}/20"></div>
-              <div class="op-seg op-seg--soc" style="width:{pick.socialScore}px" title="Social {pick.socialScore}/20"></div>
-              <div class="op-seg op-seg--mac" style="width:{pick.macroScore}px" title="Macro {pick.macroScore}/15"></div>
-              <div class="op-seg op-seg--onc" style="width:{pick.onchainScore}px" title="OnChain {pick.onchainScore}/20"></div>
-            </div>
-            <div class="op-tags">
-              {#each pick.reasons as r}
-                <span class="op-tag">{r}</span>
-              {/each}
-              {#if pick.compositeScore != null}
-                <span class="op-tag op-tag--cs" title="Perp composite: funding + LS ratio">
-                  CS {Math.round(pick.compositeScore * 100)}%
-                </span>
-              {/if}
-            </div>
-            {#if pick.alerts.length > 0}
-              <div class="op-alerts">
-                {#each pick.alerts.slice(0, 2) as a}
-                  <span class="op-alert">{a}</span>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </section>
 
   <!-- Watching + Adapters -->
   <section class="surface-grid cols-2">
@@ -918,116 +824,6 @@
     border: 1px solid rgba(248, 113, 113, 0.25);
     font-size: 0.82rem;
     color: #f87171;
-  }
-
-  /* ── Opportunity Scanner ───────────────────────────────────────────── */
-  .op-header-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .op-chip--personal {
-    background: rgba(99, 179, 237, 0.15);
-    color: #63b3ed;
-  }
-  .op-chip--regime {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--sc-text-2);
-    text-transform: capitalize;
-  }
-  .op-chip--risk-on { background: rgba(74, 222, 128, 0.12); color: #4ade80; }
-  .op-chip--risk-off { background: rgba(248, 113, 113, 0.12); color: #f87171; }
-
-  .op-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
-  }
-
-  .op-card {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    padding: 11px 13px;
-  }
-
-  .op-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.78rem;
-    font-family: var(--sc-font-mono, monospace);
-  }
-  .op-rank { font-weight: 700; flex-shrink: 0; }
-  .op-sym  { font-weight: 700; color: var(--sc-text-0); font-size: 0.88rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .op-dir  { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; flex-shrink: 0; }
-  .op-score { font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
-
-  .op-price {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.82rem;
-    font-family: var(--sc-font-mono, monospace);
-    color: var(--sc-text-1);
-  }
-  .op-chg { font-size: 0.75rem; font-weight: 600; }
-  .op-chg--up { color: #4ade80; }
-  .op-chg--dn { color: #f87171; }
-
-  .op-bar {
-    display: flex;
-    height: 4px;
-    gap: 2px;
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .op-seg { height: 100%; border-radius: 1px; min-width: 2px; }
-  .op-seg--mom { background: #f59e0b; }
-  .op-seg--vol { background: #3b82f6; }
-  .op-seg--soc { background: #a855f7; }
-  .op-seg--mac { background: #14b8a6; }
-  .op-seg--onc { background: #06b6d4; }
-
-  .op-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .op-tag {
-    font-size: 0.68rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.07);
-    color: var(--sc-text-2);
-    font-family: var(--sc-font-mono, monospace);
-    white-space: nowrap;
-  }
-  .op-tag--cs {
-    background: rgba(99, 179, 237, 0.12);
-    color: #63b3ed;
-  }
-
-  .op-alerts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .op-alert {
-    font-size: 0.68rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: rgba(251, 191, 36, 0.1);
-    color: #fbbf24;
-    font-family: var(--sc-font-mono, monospace);
-  }
-
-  .op-empty {
-    padding: 24px;
-    text-align: center;
-    color: var(--sc-text-2);
-    font-size: 0.88rem;
   }
 
   @media (max-width: 640px) {
