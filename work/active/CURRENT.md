@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`5ba00aaa` — origin/main (2026-04-30) — PR #705 W-0324~0330 7-indicator pipeline merged
+`3b9b6ca8` — origin/main (2026-04-30) — PR #706 W-0249 Sentry unit tests merged
 
 ---
 
@@ -14,7 +14,6 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0249-f19-sentry-observability` | P2 | ✅ 완료 (PR #697) |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
 
 ---
