@@ -3854,6 +3854,8 @@ export interface components {
              * @default 15
              */
             limit: number;
+            /** User Id */
+            user_id?: string | null;
         };
         /** OpportunityRunResponse */
         OpportunityRunResponse: {
@@ -3911,6 +3913,8 @@ export interface components {
             galaxyScore?: number | null;
             /** Alerts */
             alerts: string[];
+            /** Compositescore */
+            compositeScore?: number | null;
         };
         /** ParseRequest */
         ParseRequest: {
