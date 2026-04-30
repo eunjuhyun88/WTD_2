@@ -1,9 +1,17 @@
-# Ptrack: PropFirm MVP — Master
+# Ptrack: ML Pattern Intelligence — Master
 
-> Issue: [#769](https://github.com/ej-wtd/wtd-v2/issues/769)
-> Wave: 5 | Priority: P0 | Effort: XL (P1=M, P2=L, P3=L+legal)
+> Wave: 5 | Priority: P0 | Track: ML-INTEL
 > Status: 🟡 P1 설계 완료 / 구현 대기
 > Created: 2026-04-30
+
+---
+
+## 트랙 목적
+
+**"모델이 학습되면 scanner가 즉시 반영하고, pipeline 결과가 frontend에 보인다"**
+
+지금 상태: 모델 학습 → promote → 아무것도 안 됨. scanner는 predicted_prob=0.6 고정. composite_score는 parquet에 묻힘.
+목표 상태: Train → Promote → Infer → Score → API → IntelPanel 전 구간 연결.
 
 ---
 
@@ -11,76 +19,53 @@
 
 | 파일 | 내용 |
 |---|---|
-| [P-01-prd.md](P-01-prd.md) | Product Requirements Document v1.1 |
-| [P-02-architecture.md](P-02-architecture.md) | System Architecture v1.1 (HL 연동, 데이터 모델) |
-| [P-03-phases.md](P-03-phases.md) | 3-Phase Roadmap v1.2 (Work Items + Exit Criteria) |
+| [P-01-prd.md](P-01-prd.md) | Product Requirements — 사용자가 보는 것 |
+| [P-02-architecture.md](P-02-architecture.md) | 전체 ML loop 아키텍처 + 하드코딩 제거 계획 |
+| [P-03-phases.md](P-03-phases.md) | Phase별 Work Items + Exit Criteria |
 
 ---
 
 ## Phase 상태
 
-| Phase | 목적 | 자금 | 상태 |
-|---|---|---|---|
-| **P1** | 내부 검증 Loop (INTERNAL_RUN) | 가상 | 🟡 설계 완료 |
-| **P2** | 베타 사용자 챌린지 (구독·평가) | 가상 | ⏸ P1 완료 후 |
-| **P3** | HL 실거래 + Payout | 실 USDC | 🔴 Entry Gate (법무 7개) 미통과 |
+| Phase | 목적 | 상태 |
+|---|---|---|
+| **Ph-1** | Pipeline 결과 → API → Frontend 노출 | 🟡 설계 |
+| **Ph-2** | ML inference scanner 연결 | 🟡 설계 |
+| **Ph-3** | Personalization + Sector/MTF surface | 🟡 설계 |
+| **Infra** | Hypothesis Registry + UI 강화 | 🟡 일부 설계 |
 
 ---
 
-## P1 Work Items
+## Work Items
 
-| W-# | 제목 | 이슈 | Effort | 상태 |
+| W-# | 제목 | Phase | 이슈 | 상태 |
 |---|---|---|---|---|
-| W-PF-101 | 031_propfirm_p1_core.sql 통합 스키마 | [#770](https://github.com/ej-wtd/wtd-v2/issues/770) | S | ⏸ |
-| W-PF-102 | HL market feed worker (BTC/ETH/SOL → Redis) | [#771](https://github.com/ej-wtd/wtd-v2/issues/771) | M | ⏸ |
-| W-PF-103 | PatternFireRouter + scanner hook | [#772](https://github.com/ej-wtd/wtd-v2/issues/772) | M | ⏸ Q-PF-001,004 차단 |
-| W-PF-104 | EntryDecider + LimitMatcher (시뮬 fill) | [#773](https://github.com/ej-wtd/wtd-v2/issues/773) | M | ⏸ Q-PF-002 차단 |
-| W-PF-105 | ExitMonitor (TP/SL/TTL) | [#774](https://github.com/ej-wtd/wtd-v2/issues/774) | S | ⏸ Q-PF-002 차단 |
-| W-PF-106 | PatternRunPanel (Lab "패턴 런" 탭) + EquityCurve | [#775](https://github.com/ej-wtd/wtd-v2/issues/775) | M | ⏸ |
+| W-0341 | Hypothesis Registry Supabase 배포 | Infra | #728 | 🟡 설계 |
+| W-0346 | Verdict → reranker weight feedback | Ph-3 | #737 | 🟡 설계 |
+| W-0347 | Sector/MTF Surface (opportunity scan) | Ph-3 | #738 | 🟡 설계 |
+| W-0348 | Pipeline E2E (Stage 6+7 composite) | Ph-1 | #750 | ✅ 머지 |
+| W-0353 | composite_score → IntelPanel + VerdictInbox | Ph-1 | TBD | 🟡 설계 |
+| W-0354 | CaptureReviewDrawer 5-verdict 정렬 | Infra | TBD | 🟡 설계 |
+| W-0355 | Extreme events 카드 (funding/OI/price) | Infra | TBD | 🟡 설계 |
+| W-0356 | Pipeline top-patterns → REST API | Ph-1 | TBD | 🟡 설계 |
+| W-0357 | Research scanner ML model inference | Ph-2 | TBD | 🟡 설계 |
 
 ---
 
-## Open Questions (P1 착수 전 답변 필요)
+## 핵심 하드코딩 제거 목록
 
-- [ ] **[Q-PF-001]** P1 SUPPORTED_STRATEGIES 목록 — 10개 패턴 중 어떤 것? → 차단: W-PF-103
-- [ ] **[Q-PF-002]** exit_policy 기본값 — tp_bps / sl_bps / ttl_min → 차단: W-PF-104, W-PF-105
-- [ ] **[Q-PF-004]** blocks_triggered → strategy_id 매핑 룰 → 차단: W-PF-103
-- [x] ~~**[Q-PF-003]** Surface 위치~~ → 확정: `/lab` "패턴 런" 탭
-
----
-
-## P3 Entry Gate (7개 모두 PASS 시에만 W-PF-301~ 착수)
-
-**법무 4**:
-- [ ] 가상자산이용자보호법 (2024-07-19 시행) 적용 범위 검토
-- [ ] FX마진/유사수신 규제 위배 여부 확인
-- [ ] 한국 사용자 차단 vs 허용 정책 결정 + 차단 메커니즘 구현
-- [ ] 약관·위험고지 한글 법무 검토 + 유사수신 여부 법률 자문
-
-**운영 3**:
-- [ ] HL sub-account API 권한 확인 + 운영 절차 문서화
-- [ ] USDC 지급 운영 매뉴얼 (수동 → 자동 단계적)
-- [ ] 다계정/카피트레이딩 탐지 룰 베이스라인 설정
+| 위치 | 현재값 | 목표 | W-# |
+|---|---|---|---|
+| `scanner.py:392` | `predicted_prob=0.6` | `MODEL_REGISTRY_STORE.get_active(slug).predict_one()` | W-0357 |
+| `scanner.py:418` | `threshold=0.55` | `resolve_threshold(registry_entry)` | W-0357 |
+| `alerts_pattern.py:43` | `P_WIN_GATE=0.55` | registry threshold_policy | W-0357 |
+| `training_service.py` | `_AUTO_PROMOTE_MIN_AUC=0.60` | 명시적 AUC 기준 강화 | W-0357 |
 
 ---
 
 ## Key Decisions
 
-- **[D-PF-001]** trading_accounts 단일 + account_type 분기 (INTERNAL_RUN/PAPER/FUNDED)
-- **[D-PF-002]** ScanSignal → pattern_fires 단일 영속화 라인
-- **[D-PF-003]** 5컴포넌트 분리: Router / Entry / Match / Exit / Live
-- **[D-PF-004]** P3 Entry Gate 격상 (법무 7-checklist)
-- **[D-PF-005]** strategy_id = `wtd.{ledger_record_dirname}`
-- **[D-PF-006]** P1 Surface = `/lab` "패턴 런" 탭
-- **[D-PF-007]** Migration 031 → 032 → 033 순차 additive
-
----
-
-## Exit Criteria 요약
-
-상세: [P-03-phases.md](P-03-phases.md)
-
-- [ ] P1 AC1~AC6: 24h 연속 실행, slippage ≤ 5 bps, Lab 탭 렌더, equity delta < $0.01, 영속화율 100%, CI green
-- [ ] P2 AC1~AC3: 베타 ≥ 10명, 룰 탐지율 100%, 결제 양쪽 정상
-- [ ] P3 Entry Gate: 법무 4 + 운영 3 모두 PASS
-- [ ] P3 AC: HL funded → 실 USDC payout 1건 성공
+- **[D-ML-001]** pipeline composite_score는 GET /research/top-patterns로 노출, 프런트는 IntelPanel에서 소비
+- **[D-ML-002]** scanner ML inference는 research/live 양쪽 동일 MODEL_REGISTRY_STORE.get_active() 진입점
+- **[D-ML-003]** fallback: active model 없으면 predicted_prob=0.6 유지 (model_source="fallback" 마킹)
+- **[D-ML-004]** personalization은 verdict 5건 이상 시 점진 활성 (cold start 보호)
