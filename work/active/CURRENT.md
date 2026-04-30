@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`88cdbdb5` — origin/main (2026-05-01) — PR #783 W-PF-101~106 PropFirm P1 merged
+`1eec30ca` — origin/main (2026-05-01) — PR #801 W-0363/W-0364 perf phase1 merged
 
 ---
 
