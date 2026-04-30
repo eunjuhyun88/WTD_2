@@ -24,16 +24,14 @@
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const [React, { createRoot }, { WalletConnectProvider, useWalletConnect, useAccount }] =
         await Promise.all([
-          import('react') as Promise<any>,
-          import('react-dom/client') as Promise<any>,
-          import('@dogeos/dogeos-sdk') as Promise<any>,
+          import('react'),
+          import('react-dom/client'),
+          import('@dogeos/dogeos-sdk'),
         ]);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (import('@dogeos/dogeos-sdk/style.css') as Promise<any>);
+      await import('@dogeos/dogeos-sdk/style.css');
 
       const config = { clientId };
 
@@ -60,7 +58,6 @@
       }
 
       const root = createRoot(hostEl);
-      // @ts-ignore
       root.render(React.createElement(WalletConnectProvider, { config }, React.createElement(WalletBtn)));
 
       unmountFn = () => root.unmount();
