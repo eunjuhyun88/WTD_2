@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`df9fad3f` — origin/main (2026-04-30) — PR #696 W-0322 terminal 3-Rail Pro merged
+`eb415ccf` — origin/main (2026-04-30) — PR #708 W-0316/0317 자율 탐색 에이전트 + Validation 연결 merged
 
 ---
 
