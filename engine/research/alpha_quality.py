@@ -1,4 +1,4 @@
-"""W-0367: Alpha quality aggregation — Welch t-test + BH-FDR + Spearman."""
+"""W-0367/W-0368: Alpha quality aggregation — Welch t-test + BH-FDR + Spearman + decay detection."""
 from __future__ import annotations
 
 import logging
@@ -155,3 +155,80 @@ def _spearman_indicators(group: list[dict]) -> dict[str, float]:
                 result[field] = 0.0
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# W-0368: Decay detection
+# ---------------------------------------------------------------------------
+
+def detect_decay(
+    pattern_slug: str,
+    window_days: int = 7,
+    baseline_days: int = 30,
+    sigma_threshold: float = 2.0,
+) -> dict[str, Any]:
+    """Detect statistical decay in pattern alpha vs rolling baseline.
+
+    Compares recent profit_take_rate (window_days) to baseline (baseline_days)
+    using bootstrap std. Returns z_score, alert flag, and rates.
+
+    Prerequisite: ≥ 20 signals per pattern (W-0367 AC8). If insufficient data,
+    returns alert=False with a note.
+    """
+    from research.signal_event_store import fetch_resolved_outcomes
+    from research.validation.stats import bootstrap_ci
+
+    baseline_rows = fetch_resolved_outcomes(lookback_days=baseline_days, pattern_slug=pattern_slug)
+    recent_rows = fetch_resolved_outcomes(lookback_days=window_days, pattern_slug=pattern_slug)
+
+    def _profit_take_rate(rows: list[dict]) -> float:
+        if not rows:
+            return 0.0
+        return sum(1 for r in rows if r.get("triple_barrier_outcome") == "profit_take") / len(rows)
+
+    if len(baseline_rows) < 20:
+        return {
+            "pattern": pattern_slug,
+            "alert": False,
+            "z_score": 0.0,
+            "baseline_rate": _profit_take_rate(baseline_rows),
+            "recent_rate": _profit_take_rate(recent_rows),
+            "note": f"insufficient baseline data ({len(baseline_rows)} < 20 signals)",
+        }
+
+    baseline_rate = _profit_take_rate(baseline_rows)
+    recent_rate = _profit_take_rate(recent_rows)
+
+    # Bootstrap std of baseline profit_take_rate
+    baseline_pnls = np.array(
+        [r.get("realized_pnl_pct", 0.0) or 0.0 for r in baseline_rows], dtype=float
+    )
+    try:
+        _, _, std_est = bootstrap_ci(baseline_pnls, n_iter=500)
+        bootstrap_std = float(std_est) if std_est and float(std_est) > 0 else 0.01
+    except Exception:
+        bootstrap_std = 0.01
+
+    z = (recent_rate - baseline_rate) / bootstrap_std
+    alert = abs(z) >= sigma_threshold
+
+    if alert:
+        import sentry_sdk
+        try:
+            sentry_sdk.capture_message(
+                f"Alpha decay detected: {pattern_slug} z={z:.2f} "
+                f"(baseline={baseline_rate:.2%} recent={recent_rate:.2%})",
+                level="warning",
+            )
+        except Exception:
+            pass
+
+    return {
+        "pattern": pattern_slug,
+        "alert": alert,
+        "z_score": float(z),
+        "baseline_rate": baseline_rate,
+        "recent_rate": recent_rate,
+        "baseline_n": len(baseline_rows),
+        "recent_n": len(recent_rows),
+    }
