@@ -41,6 +41,7 @@
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
   import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
+  import { createLiveTickState } from '$lib/chart/liveTickState.svelte';
   // ── W-0289: Drawing Tools ────────────────────────────────────────────────────
   import DrawingCanvas from './DrawingCanvas.svelte';
   import DrawingToolbar from './DrawingToolbar.svelte';
@@ -165,20 +166,18 @@
   let drawingActiveTool   = $state<DrawingToolType>('cursor');
   let drawingMgr: DrawingManager | null = null;
 
-  // ── Live WS reference (non-reactive) ──────────────────────────────────────
-  let _ws: WebSocket | null = null;
-  let currentPrice = $state<number | null>(null);
-  let currentTime  = $state<number | null>(null);
-  let currentChangePct = $state<number | null>(null);
-  let currentOiDelta = $state<number | null>(null);
+  // ── Live tick scalars (price / time / changePct / oiDelta) ───────────────
+  // Owned by liveTickState; callbacks (DataFeed.onBar, renderCharts, crosshair)
+  // call liveTick.update() — coupling stays here, ownership does not.
+  const liveTick = createLiveTickState();
   let captureWindowLabel = $state('Visible range capture unavailable');
   let captureBarCount = $state<number | null>(null);
   let depthData = $state<DepthLadderEnvelope['data'] | null>(null);
   let liqData = $state<LiquidationClustersEnvelope['data'] | null>(null);
-  let depthRatio = $derived(computeDepthRatio(depthData, currentOiDelta));
+  let depthRatio = $derived(computeDepthRatio(depthData, liveTick.oiDelta));
   let bidPct = $derived(Math.round((depthRatio / (1 + depthRatio)) * 100));
   let askPct = $derived(100 - bidPct);
-  let liqAnchor = $derived(liqData?.currentPrice ?? currentPrice ?? verdictLevels?.entry ?? 0);
+  let liqAnchor = $derived(liqData?.currentPrice ?? liveTick.price ?? verdictLevels?.entry ?? 0);
   let liqLong = $derived(liqData?.nearestLong?.price ?? (liqAnchor ? liqAnchor * 0.985 : 0));
   let liqShort = $derived(liqData?.nearestShort?.price ?? (liqAnchor ? liqAnchor * 1.012 : 0));
   let contextSummaryItems = $derived.by<MetricItem[]>(() =>
@@ -727,7 +726,7 @@
         low:   bar.low,
         close: bar.close,
       });
-      currentPrice = bar.close;
+      liveTick.update({ price: bar.close });
       if (isClosed) onCandleClose?.(bar);
     };
 
@@ -821,10 +820,12 @@
 
     const lastBar = klines[klines.length - 1];
     const prevBar = klines[klines.length - 2];
-    currentPrice = lastBar?.close ?? null;
-    currentTime = lastBar?.time ?? null;
-    currentChangePct = lastBar && prevBar && prevBar.close > 0 ? ((lastBar.close - prevBar.close) / prevBar.close) * 100 : null;
-    currentOiDelta = oiBars?.length ? oiBars[oiBars.length - 1]?.value ?? null : null;
+    liveTick.update({
+      price:     lastBar?.close ?? null,
+      time:      lastBar?.time  ?? null,
+      changePct: lastBar && prevBar && prevBar.close > 0 ? ((lastBar.close - prevBar.close) / prevBar.close) * 100 : null,
+      oiDelta:   oiBars?.length ? oiBars[oiBars.length - 1]?.value ?? null : null,
+    });
 
     if (chartMode === 'line') {
       const lineSeries = mainChart.addSeries(LineSeries, {
@@ -1103,13 +1104,12 @@
 
     mainChart.subscribeCrosshairMove((param) => {
       if (param.time) {
-        currentTime = param.time as number;
         const series = priceSeries;
-        if (series) {
-          const d = param.seriesData.get(series) as { close?: number; value?: number } | undefined;
-          if (d?.close != null) currentPrice = d.close;
-          else if (d?.value != null) currentPrice = d.value;
-        }
+        const d = series ? param.seriesData.get(series) as { close?: number; value?: number } | undefined : undefined;
+        liveTick.update({
+          time:  param.time as number,
+          price: d?.close ?? d?.value ?? liveTick.price,
+        });
       }
     });
 
@@ -1451,7 +1451,7 @@
       from = data.klines[0].time;
       to = data.klines[data.klines.length - 1].time;
     }
-    return slicePayloadToViewport(data, from, to, currentTime ?? undefined);
+    return slicePayloadToViewport(data, from, to, liveTick.time ?? undefined);
   }
 
   function handleSaveSetup() {
@@ -1466,7 +1466,7 @@
     showSaveModal = false;
     savedCaptureId = captureId;
     onCaptureSaved?.(captureId);
-    onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
+    onSaveSetup?.({ symbol, timestamp: liveTick.time ?? Math.floor(Date.now() / 1000), tf });
     setTimeout(() => { savedCaptureId = null; }, 4000);
   }
 
@@ -1476,7 +1476,7 @@
     chartSaveMode.exitRangeMode();
     savedCaptureId = captureId;
     onCaptureSaved?.(captureId);
-    onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
+    onSaveSetup?.({ symbol, timestamp: liveTick.time ?? Math.floor(Date.now() / 1000), tf });
     setTimeout(() => { savedCaptureId = null; }, 4000);
   }
 
@@ -1796,7 +1796,7 @@
           <small>
             Spread {depthData?.spreadBps != null ? `${depthData.spreadBps.toFixed(1)} bps` : 'est.'}
             {' · '}
-            Mid {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}
+            Mid {liveTick.price ? liveTick.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}
           </small>
         </div>
         <div class="depth-bar">
@@ -1830,7 +1830,7 @@
         </div>
         <div class="liq-labels">
           <small class="liq-l">Long liq {liqData?.nearestLong?.usd != null ? `${(liqData.nearestLong.usd / 1000).toFixed(1)}k @ ` : ''}{liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
-          <small class="liq-c">Now {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+          <small class="liq-c">Now {liveTick.price ? liveTick.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
           <small class="liq-s">Short liq {liqData?.nearestShort?.usd != null ? `${(liqData.nearestShort.usd / 1000).toFixed(1)}k @ ` : ''}{liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
         </div>
       </div>
@@ -1859,7 +1859,7 @@
 <!-- Save Setup Modal (mobile / legacy path) -->
 <SaveSetupModal
   symbol={symbol}
-  timestamp={currentTime ?? Math.floor(Date.now() / 1000)}
+  timestamp={liveTick.time ?? Math.floor(Date.now() / 1000)}
   tf={tf}
   open={showSaveModal && !showResearchPanel}
   getViewportCapture={getViewportForSave}
