@@ -45,6 +45,10 @@ research-cli = "research.cli:main"
 testpaths = ["tests", "research/validation"]
 pythonpath = [".", ".."]
 asyncio_mode = "auto"
+markers = [
+    "e2e: real LLM / external service calls, opt-in only (set DISCOVERY_AGENT_ENABLED=true)",
+    "integration: requires live Supabase connection",
+]
 
 [dependency-groups]
 dev = [
