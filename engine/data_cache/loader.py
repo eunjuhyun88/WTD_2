@@ -461,10 +461,11 @@ def list_cached_symbols(*, require_perp: bool = True) -> list[str]:
             perp CSV (i.e. futures symbols). If False, return all symbols with
             a 1h CSV regardless of perp availability.
     """
-    if not CACHE_DIR.exists():
+    search_dir = _primary_cache_dir()
+    if not search_dir.exists():
         return []
     symbols = []
-    for path in sorted(CACHE_DIR.glob("*_1h.csv")):
+    for path in sorted(search_dir.glob("*_1h.csv")):
         symbol = path.stem.removesuffix("_1h")
         if require_perp and not perp_cache_path(symbol).exists():
             continue

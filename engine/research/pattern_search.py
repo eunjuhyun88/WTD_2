@@ -188,6 +188,41 @@ class ReplayBenchmarkPack:
 
 
 @dataclass(frozen=True)
+class IndicatorFilter:
+    """W-0366: hard pre-filter applied before signature similarity search."""
+    feature_name: str       # must be in USER_FACING_FEATURES or FEATURE_COLUMNS
+    operator: str           # '<' | '>' | '<=' | '>=' | '==' | '!=' | 'in' | 'between'
+    value: float | str | list | tuple
+    weight: float = 1.0     # reserved for soft filter v2
+    filter_type: str = 'hard'
+
+    def __post_init__(self) -> None:
+        from research.feature_catalog import ALLOWED_OPERATORS
+        if self.operator not in ALLOWED_OPERATORS:
+            raise ValueError(f"Invalid operator: {self.operator!r}")
+        if self.operator == 'in' and not isinstance(self.value, (list, tuple)):
+            raise ValueError("'in' operator requires list/tuple value")
+        if self.operator == 'between':
+            if not (isinstance(self.value, (list, tuple)) and len(self.value) == 2):
+                raise ValueError("'between' operator requires [low, high]")
+
+    def evaluate(self, val: float | str) -> bool:
+        """Return True if val passes this hard filter."""
+        op = self.operator
+        if op == '<':    return val < self.value      # type: ignore[operator]
+        if op == '>':    return val > self.value      # type: ignore[operator]
+        if op == '<=':   return val <= self.value     # type: ignore[operator]
+        if op == '>=':   return val >= self.value     # type: ignore[operator]
+        if op == '==':   return val == self.value
+        if op == '!=':   return val != self.value
+        if op == 'in':   return val in self.value     # type: ignore[operator]
+        if op == 'between':
+            lo, hi = self.value[0], self.value[1]     # type: ignore[index]
+            return lo <= val <= hi                    # type: ignore[operator]
+        return True
+
+
+@dataclass(frozen=True)
 class PatternVariantSpec:
     pattern_slug: str
     variant_slug: str
@@ -198,12 +233,32 @@ class PatternVariantSpec:
     hypotheses: list[str] = field(default_factory=list)
     variant_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     duration_scale: float = 1.0
+    indicator_filters: tuple[IndicatorFilter, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        # Convert IndicatorFilter tuples -> list of dicts (JSON serializable)
+        d['indicator_filters'] = [
+            {'feature_name': f.feature_name, 'operator': f.operator,
+             'value': list(f.value) if isinstance(f.value, tuple) else f.value,
+             'weight': f.weight, 'filter_type': f.filter_type}
+            for f in self.indicator_filters
+        ]
+        return d
 
     @classmethod
     def from_dict(cls, payload: dict) -> "PatternVariantSpec":
+        raw_filters = payload.get('indicator_filters', [])
+        indicator_filters = tuple(
+            IndicatorFilter(
+                feature_name=f['feature_name'],
+                operator=f['operator'],
+                value=tuple(f['value']) if isinstance(f['value'], list) and f.get('operator') in ('in', 'between') else f['value'],
+                weight=float(f.get('weight', 1.0)),
+                filter_type=f.get('filter_type', 'hard'),
+            )
+            for f in raw_filters
+        )
         return cls(
             pattern_slug=payload["pattern_slug"],
             variant_slug=payload["variant_slug"],
@@ -214,6 +269,7 @@ class PatternVariantSpec:
             hypotheses=list(payload.get("hypotheses", [])),
             variant_id=payload.get("variant_id", str(uuid.uuid4())),
             duration_scale=float(payload.get("duration_scale", 1.0)),
+            indicator_filters=indicator_filters,
         )
 
 

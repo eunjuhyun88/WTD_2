@@ -4,7 +4,11 @@
   import { flattenPatternStates } from '$lib/contracts';
   import type { PatternStateView } from '$lib/contracts';
   import type { PatternStats } from '$lib/types/patternStats';
+  import type { PnLStats } from '$lib/types/pnlStats';
   import PatternLifecycleCard from '$lib/components/patterns/PatternLifecycleCard.svelte';
+  import PatternStatsCard from '$lib/components/patterns/PatternStatsCard.svelte';
+  import PatternEquityCurve from '$lib/components/patterns/PatternEquityCurve.svelte';
+  import TradeHistoryTab from '$lib/components/patterns/TradeHistoryTab.svelte';
 
   const slug = $derived($page.params.slug ?? '');
 
@@ -22,6 +26,8 @@
   let states = $state<PatternStateView[]>([]);
   let transitions = $state<Transition[]>([]);
   let stats = $state<PatternStats | null>(null);
+  let pnlStats = $state<PnLStats | null>(null);
+  let pnlLoading = $state(true);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -35,12 +41,14 @@
 
   async function loadAll() {
     loading = true;
+    pnlLoading = true;
     error = null;
     try {
-      const [statesRes, transRes, statsRes] = await Promise.allSettled([
+      const [statesRes, transRes, statsRes, pnlRes] = await Promise.allSettled([
         fetch(`/api/patterns/states`),
         fetch(`/api/patterns/transitions?slug=${encodeURIComponent(slug)}&limit=30`),
         fetch(`/api/patterns/${encodeURIComponent(slug)}/stats`),
+        fetch(`/api/patterns/${encodeURIComponent(slug)}/pnl-stats`),
       ]);
 
       if (statesRes.status === 'fulfilled' && statesRes.value.ok) {
@@ -59,10 +67,16 @@
         const d = await statsRes.value.json();
         stats = d ?? null;
       }
+
+      if (pnlRes.status === 'fulfilled' && pnlRes.value.ok) {
+        const d = await pnlRes.value.json();
+        pnlStats = d ?? null;
+      }
     } catch (e) {
       error = String(e);
     } finally {
       loading = false;
+      pnlLoading = false;
     }
   }
 
@@ -120,6 +134,26 @@
         </div>
       </section>
     {/if}
+
+    <!-- P&L Stats -->
+    <section class="section">
+      <div class="pnl-row">
+        <div class="pnl-card-wrap">
+          <PatternStatsCard stats={pnlStats} loading={pnlLoading} />
+        </div>
+        {#if pnlStats && pnlStats.equity_curve.length >= 2}
+          <div class="equity-wrap">
+            <PatternEquityCurve points={pnlStats.equity_curve} width={160} height={48} />
+          </div>
+        {/if}
+      </div>
+    </section>
+
+    <!-- Trade History -->
+    <section class="section">
+      <h2>Trade History</h2>
+      <TradeHistoryTab stats={pnlStats} />
+    </section>
 
     <!-- Phase distribution -->
     {#if Object.keys(phaseCounts).length > 0}
@@ -246,6 +280,9 @@
   .stat-label { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; }
 
   .section { margin-bottom: 40px; }
+  .pnl-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .pnl-card-wrap { flex: 1; min-width: 220px; }
+  .equity-wrap { display: flex; align-items: center; padding-top: 12px; }
 
   .phase-dist { display: flex; flex-wrap: wrap; gap: 8px; }
   .phase-pill {
