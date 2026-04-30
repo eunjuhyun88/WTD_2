@@ -14,10 +14,12 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0356-cogochi-3column-redesign` | P0 | ✅ Merged PR #778 |
-| `W-0357-cogochi-tv-indicators-ai-list-ux` | P0 | ✅ Merged PR #782 |
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
+
+### 최근 완료
+- PR #778 W-0356 Cogochi 3-column redesign ✅
+- PR #782 W-0357 Cogochi TV-Style Indicators + AI Results List UX ✅
 
 ---
 
