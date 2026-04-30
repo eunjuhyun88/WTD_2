@@ -26,13 +26,13 @@ TASK_MODEL: dict[str, str] = {
     "judge":   os.environ.get("LLM_JUDGE_MODEL",   "groq/llama-3.3-70b-versatile"),
     # summary: 속도 최우선 → Cerebras (가장 빠른 추론)
     "summary": os.environ.get("LLM_SUMMARY_MODEL", "cerebras/qwen-3-235b-a22b-instruct-2507"),
-    # scan: reasoning 최우선 → NVIDIA Nemotron-70b (무료 크레딧, 추론 특화)
-    "scan":    os.environ.get("LLM_SCAN_MODEL",    "nvidia_nim/nvidia/llama-3.1-nemotron-70b-instruct"),
+    # scan: reasoning 최우선 → NVIDIA NIM Llama-3.3-70b (무료 크레딧)
+    "scan":    os.environ.get("LLM_SCAN_MODEL",    "nvidia_nim/meta/llama-3.3-70b-instruct"),
 }
 
 # judge fallback 우선순위: NVIDIA NIM → DeepSeek → HuggingFace
 JUDGE_FALLBACK_MODEL: str = os.environ.get(
-    "LLM_JUDGE_FALLBACK_MODEL", "nvidia_nim/meta/llama-3.3-70b-instruct"
+    "LLM_JUDGE_FALLBACK_MODEL", "nvidia_nim/meta/llama-3.1-70b-instruct"
 )
 
 # 전체 fallback 체인 (순서대로 시도)
