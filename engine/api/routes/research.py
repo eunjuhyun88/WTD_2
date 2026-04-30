@@ -283,7 +283,7 @@ async def list_findings(request: Request, date: str | None = None) -> FindingsRe
 
 # --- W-0367: Alpha Quality Endpoints ---
 
-@router.get("/alpha-quality")
+@router.get("/alpha-quality")  # W-0367
 async def get_alpha_quality(
     lookback: str = "30d",
     pattern_slug: str | None = None,

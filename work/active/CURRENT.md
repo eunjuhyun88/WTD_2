@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-01
+# CURRENT — 2026-04-30
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`c603c10d` — origin/main (2026-05-01) — PR #814 W-0365+W-0366 P&L engine + indicator filters merged
+`1eec30ca` — origin/main (2026-05-01) — PR #801 W-0363/W-0364 perf phase1 merged
 
 ---
 
@@ -14,10 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0358-research-scanner-ml-inference` | P1 | ✅ Merged (#805) |
-| `W-0365-alpha-1cycle-pnl-verified` | P0 | ✅ Merged (#814) |
-| `W-0366-pattern-indicator-filters` | P1 | ✅ Merged (#814) |
-| `W-0352-pipeline-top-patterns-api` | P1 | 🟡 Design Draft |
+| `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 | `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
