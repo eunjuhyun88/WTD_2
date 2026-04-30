@@ -1239,6 +1239,13 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "regime",
     "hour_of_day",
     "day_of_week",
+    # W-0359 cross-exchange features (top-20 only; NaN for others)
+    "spot_futures_basis_pct",
+    "spot_futures_basis_zscore",
+    "coinbase_premium_pct",
+    "kimchi_premium_pct",
+    "xchg_volume_concentration_hhi",
+    "xchg_price_dispersion",
 )
 
 # Registry-driven columns — auto-expands when new sources are added to
@@ -1399,6 +1406,13 @@ def compute_features_table(
         "coinbase_premium":      0.0,
         "coinbase_premium_norm": 0.0,
         "dex_buy_pct":           0.5,   # default: balanced buy/sell
+        # W-0359 cross-exchange (injected later by _inject_cross_exchange)
+        "spot_futures_basis_pct":         np.nan,
+        "spot_futures_basis_zscore":      np.nan,
+        "coinbase_premium_pct":           np.nan,
+        "kimchi_premium_pct":             np.nan,
+        "xchg_volume_concentration_hhi":  np.nan,
+        "xchg_price_dispersion":          np.nan,
     }
     _perp_extra: dict[str, np.ndarray] = {}
 
@@ -1843,6 +1857,16 @@ def compute_features_table(
     )
     # Drop the warmup region — features there are biased by short EMA windows.
     df = df.iloc[MIN_HISTORY_BARS:].copy()
+
+    # --- W-0359: Ensure cross-exchange columns exist (injected later by _inject_cross_exchange) ---
+    _CROSS_EXCHANGE_COLS = [
+        "spot_futures_basis_pct", "spot_futures_basis_zscore",
+        "coinbase_premium_pct", "kimchi_premium_pct",
+        "xchg_volume_concentration_hhi", "xchg_price_dispersion",
+    ]
+    for _col in _CROSS_EXCHANGE_COLS:
+        if _col not in df.columns:
+            df[_col] = np.nan
 
     # --- W-0337: Per-venue OI change 1h (derived from absolute OI columns) ---
     # binance_oi/bybit_oi/okx_oi arrive via ONCHAIN_SOURCES (forward-filled daily→hourly).

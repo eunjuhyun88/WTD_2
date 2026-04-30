@@ -124,4 +124,4 @@ engine + app
 - `s20_basis()` — mark_price vs index_price, real spot-futures basis 없음 (실측)
 - `l8_kimchi()` — ctx.usd_krw + ctx.upbit_map 작동 중 (실측)
 - `DeepRequest.spot_price` 필드 없음 (실측)
-- 다음 migration 번호: 034 (033 최신)
+- 다음 migration 번호: 035 (034_chart_notes.sql 최신, W-0358 선점)

@@ -114,7 +114,9 @@ export const GET: RequestHandler = async ({ url }) => {
     }
 
     _cache = { ts: Date.now(), data: positions, rawSymbol: symbolParam };
-    return json({ positions, cached: false });
+    return json({ positions, cached: false }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60' },
+    });
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

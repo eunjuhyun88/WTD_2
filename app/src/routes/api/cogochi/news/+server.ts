@@ -105,7 +105,9 @@ export const GET: RequestHandler = async ({ url }) => {
     );
 
     _cache = { ts: Date.now(), data: filtered, symbol: symbolParam };
-    return json({ events: filtered.slice(0, limit), cached: false });
+    return json({ events: filtered.slice(0, limit), cached: false }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' },
+    });
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

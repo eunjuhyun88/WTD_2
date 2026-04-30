@@ -265,6 +265,7 @@
     direction: 'long' | 'short' | 'neutral'; confidence: number;
     reasons: string[]; alerts: string[];
     sentiment?: number | null; galaxyScore?: number | null;
+    compositeScore?: number | null;
   }
   interface OpAlert { symbol: string; type: string; severity: string; message: string; score: number; }
   let topPicks: OpScore[] = [];
@@ -1253,6 +1254,11 @@
                           {#each pick.reasons as reason}
                             <span class="pr-tag">{reason}</span>
                           {/each}
+                          {#if pick.compositeScore != null}
+                            <span class="pr-tag cs-chip" title="Perp composite: funding + LS ratio">
+                              CS {Math.round(pick.compositeScore * 100)}%
+                            </span>
+                          {/if}
                         </div>
                         {#if pick.alerts.length > 0}
                           <div class="pick-alerts">
@@ -2727,6 +2733,8 @@
     background: rgba(255,255,255,.05); color: rgba(255,255,255,.55);
     border: 1px solid rgba(255,255,255,.06);
   }
+
+  .cs-chip { background: rgba(99,179,237,.12); color: #63b3ed; border-color: rgba(99,179,237,.2); }
 
   .pick-alerts { display: flex; flex-wrap: wrap; gap: 3px; }
   .pa-mini {

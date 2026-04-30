@@ -50,8 +50,11 @@ from building_blocks.triggers.sweep_below_low import sweep_below_low
 from building_blocks.triggers.gap_up import gap_up
 from building_blocks.entries.rsi_threshold import rsi_threshold
 from data_cache.parquet_store import ParquetStore
+from patterns.definitions import current_definition_id as _current_definition_id
+from patterns.model_registry import MODEL_REGISTRY_STORE, resolve_threshold
 from scanner.feature_calc import compute_features_table, MIN_HISTORY_BARS
 from scanner.pnl import ExecutionCosts
+from scoring.lightgbm_engine import get_engine
 from research.pattern_scan.oos_split import holdout_cutoff as _oos_cutoff
 
 log = logging.getLogger("engine.pattern_scan.scanner")
@@ -70,6 +73,16 @@ _MIN_HOLDOUT_TRADES = 10
 
 _RESULTS_PATH = Path(__file__).parent.parent / "experiments" / "pattern_scan_results.parquet"
 _COMPRESS = "zstd"
+
+# Top-20 symbols for cross-exchange features (W-0358 Tier 1 data available)
+_TIER1_SYMBOLS: frozenset[str] = frozenset({
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+    "DOGEUSDT", "ADAUSDT", "TRXUSDT", "AVAXUSDT", "TONUSDT",
+    "SHIBUSDT", "DOTUSDT", "LINKUSDT", "MATICUSDT", "LTCUSDT",
+    "BCHUSDT", "UNIUSDT", "NEARUSDT", "AAVEUSDT", "APTUSDT",
+})
+_COINBASE_SYMBOLS: frozenset[str] = frozenset({"BTCUSDT", "ETHUSDT"})
+_KIMCHI_SYMBOLS: frozenset[str] = frozenset({"BTCUSDT", "ETHUSDT"})
 
 
 # ── Pattern combo registry ────────────────────────────────────────────────────
@@ -150,6 +163,71 @@ _DEFAULT_RISK = RiskConfig()
 _DEFAULT_COSTS = ExecutionCosts()
 import io as _io
 _NULL_LOGGER = StructuredLogger(module="scanner", run_id="scan", stream=_io.StringIO())
+
+_FALLBACK_PROB: float = 0.6
+_FALLBACK_THRESHOLD: float = 0.55
+
+
+def _predict_safe(
+    pattern_slug: str,
+    feature_snapshot: dict,
+) -> tuple[float, float, str]:
+    """Return (predicted_prob, threshold, model_source). Never raises.
+
+    model_source is "registry" when a trained model was used, "fallback" otherwise.
+    Falls back to (_FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback") when:
+      - no registry entry exists for this pattern
+      - the engine has not been trained yet (predict_feature_row returns None)
+      - any unexpected exception occurs
+    """
+    try:
+        model_ref = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+            pattern_slug,
+            definition_id=_current_definition_id(pattern_slug),
+        )
+        if model_ref is None:
+            return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+        engine = get_engine(model_ref.model_key)
+        p_win = engine.predict_feature_row(feature_snapshot)
+        if p_win is None:
+            return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+        threshold = resolve_threshold(model_ref.threshold_policy_version)
+        return float(p_win), threshold, "registry"
+    except Exception:
+        return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+
+
+_FALLBACK_PROB: float = 0.6
+_FALLBACK_THRESHOLD: float = 0.55
+
+
+def _predict_safe(
+    pattern_slug: str,
+    feature_snapshot: dict,
+) -> tuple[float, float, str]:
+    """Return (predicted_prob, threshold, model_source). Never raises.
+
+    model_source is "registry" when a trained model was used, "fallback" otherwise.
+    Falls back to (_FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback") when:
+      - no registry entry exists for this pattern
+      - the engine has not been trained yet (predict_feature_row returns None)
+      - any unexpected exception occurs
+    """
+    try:
+        model_ref = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+            pattern_slug,
+            definition_id=_current_definition_id(pattern_slug),
+        )
+        if model_ref is None:
+            return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+        engine = get_engine(model_ref.model_key)
+        p_win = engine.predict_feature_row(feature_snapshot)
+        if p_win is None:
+            return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
+        threshold = resolve_threshold(model_ref.threshold_policy_version)
+        return float(p_win), threshold, "registry"
+    except Exception:
+        return _FALLBACK_PROB, _FALLBACK_THRESHOLD, "fallback"
 
 
 def _klines_for_context(df: pd.DataFrame) -> pd.DataFrame:
@@ -318,6 +396,129 @@ def _inject_mtf_features(features: pd.DataFrame, klines: pd.DataFrame) -> None:
         log.debug("MTF feature injection failed: %s", exc)
 
 
+def _inject_cross_exchange(
+    features: pd.DataFrame,
+    symbol: str,
+    store: "ParquetStore",
+) -> None:
+    """Inject 6 cross-exchange features into the full features DataFrame (in-place).
+
+    Features are computed over the entire historical window (all rows),
+    not just the last bar. All features use shift(1) to prevent lookahead.
+
+    Only populated for top-20 symbols (W-0358 Tier 1 data); others stay NaN.
+    """
+    if symbol not in _TIER1_SYMBOLS:
+        return
+
+    try:
+        import numpy as np
+
+        ohlcv_dir = store._ohlcv  # engine/data_cache/market_data/ohlcv/
+
+        # Resolve features index: must be DatetimeIndex for reindex to work.
+        # If features has an integer index but a 'ts' column, use that column.
+        # If neither, fall back to loading ts from the store (for test scripts
+        # that build features with pd.DataFrame({'close': raw['close'].values})).
+        feat_index = features.index
+        if not isinstance(feat_index, pd.DatetimeIndex):
+            if "ts" in features.columns:
+                feat_index = pd.to_datetime(features["ts"], utc=True)
+            else:
+                try:
+                    raw_ts = store.read_ohlcv(symbol)
+                    if "ts" in raw_ts.columns and len(raw_ts) == len(features):
+                        feat_index = pd.to_datetime(raw_ts["ts"], utc=True)
+                    else:
+                        log.debug("[%s] _inject_cross_exchange: cannot resolve DatetimeIndex, skipping", symbol)
+                        return
+                except Exception:
+                    log.debug("[%s] _inject_cross_exchange: no DatetimeIndex, skipping", symbol)
+                    return
+
+        def _read_exchange(exchange_id: str) -> pd.DataFrame | None:
+            p = ohlcv_dir / exchange_id / f"{symbol}_1h.parquet"
+            if not p.exists():
+                return None
+            try:
+                df = pd.read_parquet(p)
+                if "ts" in df.columns:
+                    df["ts"] = pd.to_datetime(df["ts"], unit="ms", utc=True)
+                    return df.set_index("ts").sort_index()
+                elif isinstance(df.index, pd.DatetimeIndex):
+                    if df.index.tz is None:
+                        df.index = df.index.tz_localize("UTC")
+                    return df.sort_index()
+                else:
+                    return None
+            except Exception:
+                return None
+
+        # Read spot data from 3 exchanges for HHI and price dispersion
+        binance_spot  = _read_exchange("binance_spot")
+        okx_spot      = _read_exchange("okx_spot")
+        bybit_spot    = _read_exchange("bybit_spot")
+        coinbase_spot = _read_exchange("coinbase_spot") if symbol in _COINBASE_SYMBOLS else None
+
+        # fut_close: use feat_index for reindex, then align back to features
+        close_series = pd.Series(features["close"].values, index=feat_index)
+        fut_close = close_series.shift(1)  # lookahead-free futures close
+
+        # ── Feature 1 & 2: Spot-Futures Basis ──────────────────────────────
+        if binance_spot is not None and "close" in binance_spot.columns:
+            spot_close = binance_spot["close"].reindex(feat_index, method="ffill").shift(1)
+            basis_pct = (fut_close - spot_close) / spot_close * 100
+
+            # 30d rolling zscore (720 hours)
+            roll = basis_pct.rolling(720, min_periods=48)
+            basis_zscore = (basis_pct - roll.mean()) / roll.std().replace(0, np.nan)
+
+            features["spot_futures_basis_pct"]   = basis_pct.values
+            features["spot_futures_basis_zscore"] = basis_zscore.values
+
+        # ── Feature 3: Coinbase Premium (BTC/ETH only) ─────────────────────
+        if coinbase_spot is not None and "close" in coinbase_spot.columns:
+            cb_close = coinbase_spot["close"].reindex(feat_index, method="ffill").shift(1)
+            features["coinbase_premium_pct"] = ((cb_close - fut_close) / fut_close * 100).values
+
+        # ── Feature 4: Kimchi Premium (BTC/ETH only) ───────────────────────
+        if symbol in _KIMCHI_SYMBOLS:
+            try:
+                upbit_df = store.read_upbit()
+                base = symbol.replace("USDT", "")
+                if base in upbit_df.columns:
+                    usd_krw_df = store.read_macro() if hasattr(store, "read_macro") else None
+                    if usd_krw_df is not None and "usd_krw" in usd_krw_df.columns:
+                        usd_krw = usd_krw_df["usd_krw"].reindex(feat_index, method="ffill").shift(1)
+                        upbit_usd = upbit_df[base].reindex(feat_index, method="ffill").shift(1) / usd_krw
+                        features["kimchi_premium_pct"] = ((upbit_usd - fut_close) / fut_close * 100).values
+            except Exception:
+                pass  # kimchi_premium_pct stays NaN
+
+        # ── Feature 5 & 6: Cross-Exchange Volume HHI + Price Dispersion ────
+        closes = []
+        volumes = []
+        for _exch_df in [binance_spot, okx_spot, bybit_spot]:
+            if _exch_df is not None and "close" in _exch_df.columns and "volume" in _exch_df.columns:
+                closes.append(_exch_df["close"].reindex(feat_index, method="ffill").shift(1))
+                volumes.append(_exch_df["volume"].reindex(feat_index, method="ffill").shift(1))
+
+        if len(closes) >= 2:
+            close_matrix  = pd.concat(closes,  axis=1)
+            volume_matrix = pd.concat(volumes, axis=1)
+
+            # Price dispersion: std of close across venues
+            features["xchg_price_dispersion"] = (close_matrix.std(axis=1) / close_matrix.mean(axis=1)).values
+
+            # Volume HHI: sum of squared market shares
+            vol_sum = volume_matrix.sum(axis=1).replace(0, np.nan)
+            shares  = volume_matrix.div(vol_sum, axis=0)
+            features["xchg_volume_concentration_hhi"] = ((shares ** 2).sum(axis=1)).values
+
+    except Exception as exc:
+        log.debug("[%s] Cross-exchange injection failed: %s", symbol, exc)
+
+
 def _inject_sector_scores(
     features: pd.DataFrame,
     symbol: str,
@@ -436,6 +637,7 @@ def _scan_one_symbol(
             _inject_multi_exchange(features, symbol)
         _inject_sector_scores(features, symbol, sector_scores)
         _inject_mtf_features(features, klines)
+        _inject_cross_exchange(features, symbol, store)  # W-0359
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
@@ -458,12 +660,25 @@ def _scan_one_symbol(
             fired = combo.fire(ctx)
             # Exclude the last bar: signal at bar T enters at T+1, needs T+1 to exist
             last_valid_ts = klines.index[-2] if len(klines) > 1 else None
+
+            # ML inference: use latest feature row as the scoring snapshot.
+            # Falls back gracefully when no model is registered for this pattern yet.
+            _last_feature_row = features.iloc[-1].to_dict() if len(features) > 0 else {}
+            predicted_prob, threshold, model_source = _predict_safe(
+                combo.name, _last_feature_row
+            )
+            if model_source == "registry":
+                log.debug(
+                    "[%s/%s] ML score=%.3f threshold=%.2f (registry)",
+                    symbol, combo.name, predicted_prob, threshold,
+                )
+
             signals: list[EntrySignal] = [
                 EntrySignal(
                     symbol=symbol,
                     timestamp=ts,
                     direction=combo.direction,
-                    predicted_prob=0.6,
+                    predicted_prob=predicted_prob,
                     source_model=combo.name,
                 )
                 for ts, val in fired.items()
@@ -489,7 +704,7 @@ def _scan_one_symbol(
                 adv_by_symbol={symbol: adv},
                 risk_cfg=risk_cfg,
                 costs=costs,
-                threshold=0.55,
+                threshold=threshold,
                 logger=_NULL_LOGGER,
             )
             m = bt.metrics
