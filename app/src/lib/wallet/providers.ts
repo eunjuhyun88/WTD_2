@@ -198,11 +198,12 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
   let provider: unknown;
 
   // SDK v4 preferred API: createCoinbaseWalletSDK({ preference: { options } })
+  // eoaOnly: extension/mobile only — Smart Wallet is handled by the dedicated Base Smart Wallet button
   if (typeof mod?.createCoinbaseWalletSDK === 'function') {
     const sdk = mod.createCoinbaseWalletSDK({
       appName: 'wtd',
       appChainIds: [getPreferredChainId()],
-      preference: { options: 'all' },
+      preference: { options: 'eoaOnly' },
     });
     provider = typeof sdk?.getProvider === 'function' ? sdk.getProvider() : null;
   } else {
@@ -216,7 +217,7 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
       appChainIds: [getPreferredChainId()],
     });
     provider = typeof sdk?.makeWeb3Provider === 'function'
-      ? sdk.makeWeb3Provider({ options: 'all' })
+      ? sdk.makeWeb3Provider({ options: 'eoaOnly' })
       : typeof sdk?.getProvider === 'function'
         ? sdk.getProvider()
         : null;
