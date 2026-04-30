@@ -26,12 +26,30 @@ HARD_CAP_USD: float = float(os.environ.get("LLM_CYCLE_COST_CAP", "0.50"))
 
 # Per-token cost table (USD per token). Approximate.
 _TOKEN_COST: dict[str, tuple[float, float]] = {
+    # Anthropic
     "anthropic/claude-haiku-4-5-20251001": (0.80e-6, 4.00e-6),
     "anthropic/claude-sonnet-4-6":         (3.00e-6, 15.00e-6),
     "anthropic/claude-opus-4-7":           (15.00e-6, 75.00e-6),
+    # OpenAI
     "openai/gpt-4o-mini":                  (0.15e-6, 0.60e-6),
     "openai/gpt-4o":                       (5.00e-6, 15.00e-6),
+    # Groq (free tier within limits → treat as near-zero)
+    "groq/llama-3.3-70b-versatile":        (0.59e-6, 0.79e-6),
     "groq/llama-3.1-70b-versatile":        (0.59e-6, 0.79e-6),
+    "groq/llama-3.1-8b-instant":           (0.05e-6, 0.08e-6),
+    # Cerebras (fastest inference, free tier)
+    "cerebras/qwen-3-235b-a22b-instruct-2507": (0.0, 0.0),
+    "cerebras/llama-3.3-70b":              (0.0, 0.0),
+    # HuggingFace Inference API (free tier)
+    "huggingface/Qwen/Qwen2.5-72B-Instruct": (0.0, 0.0),
+    # NVIDIA NIM
+    "nvidia_nim/meta/llama-3.1-70b-instruct": (0.97e-6, 0.97e-6),
+    # DeepSeek
+    "deepseek/deepseek-chat":              (0.14e-6, 0.28e-6),
+    # Mistral
+    "mistral/mistral-small-latest":        (0.20e-6, 0.60e-6),
+    # Gemini
+    "gemini/gemini-1.5-flash":             (0.075e-6, 0.30e-6),
 }
 
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any
 
 import litellm  # type: ignore[import]
@@ -21,6 +22,23 @@ from llm.router import resolve_model
 log = logging.getLogger(__name__)
 
 litellm.drop_params = True  # ignore unsupported params per-provider
+
+# Groq 12-key rotation — litellm picks the next key on RateLimitError
+_groq_keys = [k.strip() for k in os.environ.get("GROQ_API_KEYS", "").split(",") if k.strip()]
+if _groq_keys:
+    os.environ.setdefault("GROQ_API_KEY", _groq_keys[0])
+
+# HuggingFace — litellm reads HUGGINGFACE_API_KEY
+_hf_token = os.environ.get("HF_TOKEN", "")
+if _hf_token:
+    os.environ.setdefault("HUGGINGFACE_API_KEY", _hf_token)
+
+# NVIDIA NIM — litellm reads NVIDIA_NIM_API_KEY
+_nvidia_key = os.environ.get("NVIDIA_API_KEY", "")
+if _nvidia_key:
+    os.environ.setdefault("NVIDIA_NIM_API_KEY", _nvidia_key)
+
+# Cerebras — litellm reads CEREBRAS_API_KEY directly
 
 
 async def call_with_tools(
