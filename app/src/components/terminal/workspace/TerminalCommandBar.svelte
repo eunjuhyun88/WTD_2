@@ -3,6 +3,7 @@
   import SymbolPicker from './SymbolPicker.svelte';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
   import PineScriptGenerator from './PineScriptGenerator.svelte';
+  import DogeOSWalletButton from '$lib/components/wallet/DogeOSWalletButton.svelte';
 
   interface Props {
     assetsCount?: number;
@@ -107,6 +108,11 @@
     </svg>
     <span>Indicators</span>
   </button>
+
+  <!-- DogeOS embedded wallet -->
+  <div class="wallet-wrap">
+    <DogeOSWalletButton />
+  </div>
 
   <!-- Markets toggle -->
   <button
@@ -283,6 +289,14 @@
     background: rgba(255,199,80,0.10);
     border-color: rgba(255,199,80,0.30);
     color: #ffc750;
+  }
+
+  /* Wallet wrapper — keeps React root in flow without affecting flex height */
+  .wallet-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+    flex-shrink: 0;
   }
 
   /* Markets button */
