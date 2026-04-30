@@ -109,6 +109,41 @@ app/src/components/terminal/workspace/__tests__/W0358_chart_note_overlay.test.ts
    - 다른 TF에서 markers 0개
    - free 50개 초과 시 insert reject
 
+## Owner
+app (ChartBoard.svelte + FloatingNoteButton + NotePanel + chartNotesStore + chartNotesRepository + migration 034)
+
+## Canonical Files
+- `app/supabase/migrations/034_chart_notes.sql`
+- `app/src/components/chart/FloatingNoteButton.svelte`
+- `app/src/components/chart/NotePanel.svelte`
+- `app/src/lib/stores/chartNotesStore.svelte.ts`
+- `app/src/lib/server/chartNotesRepository.ts`
+- `app/src/routes/api/chart/notes/+server.ts`
+- `app/src/routes/api/chart/notes/[id]/+server.ts`
+- `app/src/components/terminal/workspace/ChartBoard.svelte`
+
+## Facts
+- Supabase `chart_notes` 테이블: `id, user_id, symbol, timeframe, bar_time, price, body, tag, created_at, is_training_eligible` (확인: migration 034)
+- RLS 4 policy (select/insert/update/delete — `user_id = auth.uid()`)
+- `candleMarkerApi` (ChartBoard.svelte:914 기준) 이미 존재 — 확장만
+- free tier cap 50개: DB CHECK + 클라이언트 pre-check
+
+## Assumptions
+- Supabase auth (`supabaseClient.auth.getUser()`) 동작 중
+- `candleMarkerApi.setMarkers()` LightweightCharts 5.x API 안정적
+- migration 033 배포 완료 (033_pattern_objects + 033_propfirm_p1_core)
+
+## Next Steps
+- migration 034 Supabase prod 적용 (`supabase db push`)
+- RLS pgTAP 또는 2-account 수동 검증 (AC4)
+- ChartBoard.svelte markers concat 회귀 테스트 (AC6)
+
+## Handoff Checklist
+- [ ] migration 034 prod 적용 확인
+- [ ] FloatingNoteButton 우하단 위치 확인 (모바일 safe-area 포함)
+- [ ] free tier 50개 cap UI 경고 확인
+- [ ] RLS 타 계정 격리 수동 확인
+
 ## Exit Criteria
 - [ ] AC1: 메모 저장 성공률 ≥ 99% (10회 시도, 네트워크 정상 환경)
 - [ ] AC2: 심볼+TF 로드 후 markers 렌더 ≤ 500ms (50개 기준 p95)
