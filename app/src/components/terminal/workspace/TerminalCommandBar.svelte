@@ -2,7 +2,6 @@
   import { canonicalChange24h, canonicalSymbol, terminalState } from '$lib/stores/terminalState';
   import SymbolPicker from './SymbolPicker.svelte';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
-  import PineScriptGenerator from './PineScriptGenerator.svelte';
 
   interface Props {
     assetsCount?: number;
@@ -28,7 +27,6 @@
 
   let showSymbolDrop = $state(false);
   let showIndicatorLib = $state(false);
-  let showPineGen = $state(false);
 
   function fmtPrice(p: number): string {
     if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -81,19 +79,6 @@
     {/each}
   </div>
 
-  <!-- Pine Script Generator -->
-  <button
-    class="cmd-btn cmd-btn--pine"
-    class:cmd-btn--active={showPineGen}
-    type="button"
-    onclick={() => showPineGen = !showPineGen}
-    aria-label="Pine Script Generator"
-    title="자연어 → Pine Script"
-  >
-    <span style="font-size:11px">⌥</span>
-    <span>Script</span>
-  </button>
-
   <!-- Indicators -->
   <button
     class="cmd-btn"
@@ -127,11 +112,6 @@
 <IndicatorLibrary
   open={showIndicatorLib}
   onClose={() => showIndicatorLib = false}
-/>
-
-<PineScriptGenerator
-  open={showPineGen}
-  onClose={() => showPineGen = false}
 />
 
 {#if showSymbolDrop}
@@ -278,11 +258,6 @@
     background: rgba(34,171,148,0.10);
     border-color: rgba(34,171,148,0.28);
     color: #22AB94;
-  }
-  .cmd-btn--pine.cmd-btn--active {
-    background: rgba(255,199,80,0.10);
-    border-color: rgba(255,199,80,0.30);
-    color: #ffc750;
   }
 
   /* Markets button */
