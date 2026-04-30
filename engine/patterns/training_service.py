@@ -12,6 +12,7 @@ from ledger.store import (
     get_ledger_store,
     list_outcomes_for_definition,
 )
+from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE, ActivePatternVariantStore
 from patterns.definition_refs import definition_id_from_ref
 from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
@@ -39,6 +40,7 @@ def train_pattern_model_from_ledger(
     ledger: LedgerStore | None = None,
     record_store: LedgerRecordStore | None = None,
     registry_store: PatternModelRegistryStore | None = None,
+    variant_store: ActivePatternVariantStore | None = None,
     get_engine_fn=get_engine,
 ) -> dict:
     """Train a pattern-scoped model from ledger evidence and record artifacts."""
@@ -46,6 +48,7 @@ def train_pattern_model_from_ledger(
     ledger = ledger or get_ledger_store()
     record_store = record_store or LEDGER_RECORD_STORE
     registry_store = registry_store or MODEL_REGISTRY_STORE
+    variant_store = variant_store or ACTIVE_PATTERN_VARIANT_STORE
 
     outcomes = list_outcomes_for_definition(
         ledger,
@@ -155,6 +158,15 @@ def train_pattern_model_from_ledger(
                 },
             )
             auto_promoted = True
+            # Also mark the active variant as refreshed by this training run
+            try:
+                existing = variant_store.get(pattern_slug)
+                if existing is not None:
+                    existing.source_kind = "refinement"
+                    existing.source_ref = model_key
+                    variant_store.upsert(existing)
+            except Exception:
+                pass  # variant store update is best-effort
         except Exception:
             pass  # auto-promotion is best-effort; candidate is still usable
 
