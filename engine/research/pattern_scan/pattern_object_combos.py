@@ -61,18 +61,6 @@ def _make_registry() -> dict[str, Callable]:
         # macro-based confirmations (W-0325)
         ("building_blocks.confirmations.fear_greed_extreme",             "fear_greed_extreme"),
         ("building_blocks.confirmations.kimchi_premium_extreme",         "kimchi_premium_extreme"),
-        # live orderbook confirmations (W-0326)
-        ("building_blocks.confirmations.orderbook_imbalance_ratio",      "orderbook_imbalance_ratio"),
-        # live aggTrades confirmations (W-0327)
-        ("building_blocks.confirmations.cvd_surge_long",                 "cvd_surge_long"),
-        ("building_blocks.confirmations.whale_tick_buy",                 "whale_tick_buy"),
-        # sector momentum (W-0328)
-        ("building_blocks.confirmations.sector_momentum_strong",         "sector_momentum_strong"),
-        # multi-timeframe EMA confluence (W-0329)
-        ("building_blocks.confirmations.mtf_bullish_alignment",          "mtf_bullish_alignment"),
-        ("building_blocks.confirmations.mtf_bullish_alignment",          "mtf_bearish_alignment"),
-        # multi-exchange supply (W-0330)
-        ("building_blocks.confirmations.mexc_volume_lead",               "mexc_volume_lead"),
         ("building_blocks.confirmations.cvd_absorption",                 "cvd_absorption"),
         ("building_blocks.confirmations.bb_squeeze_adaptive",            "bb_squeeze_adaptive"),
         ("building_blocks.confirmations.oi_price_divergence_long",       "oi_price_divergence_long"),

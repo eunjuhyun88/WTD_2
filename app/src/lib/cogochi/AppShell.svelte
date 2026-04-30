@@ -200,7 +200,6 @@
       toggleAI={() => shellStore.toggleAI()}
       {paletteOpen}
       setPaletteOpen={(open) => (paletteOpen = open)}
-      onIndicators={() => (indicatorSettingsOpen = true)}
     />
 
     <div class="main-row">
@@ -236,6 +235,7 @@
           onSetWorkMode={(mode) => shellStore.setWorkMode(mode)}
           onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
           onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
+          onIndicators={() => (indicatorSettingsOpen = true)}
         />
 
         <WorkspaceStage

@@ -249,80 +249,6 @@ def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | N
         return None
 
 
-def _inject_live_ob(features: pd.DataFrame, symbol: str) -> None:
-    """Inject live orderbook depth5 snapshot into the last row of features (in-place)."""
-    try:
-        from data_cache.fetch_orderbook_depth import fetch_orderbook_depth5
-        result = fetch_orderbook_depth5(symbol, perp=True)
-        if result is None:
-            result = fetch_orderbook_depth5(symbol, perp=False)
-        if result is not None:
-            bid_usd, ask_usd = result
-            features.loc[features.index[-1], "ob_bid_usd"] = bid_usd
-            features.loc[features.index[-1], "ob_ask_usd"] = ask_usd
-    except Exception as exc:
-        log.debug("[%s] OB depth injection failed: %s", symbol, exc)
-
-
-def _inject_live_aggtrades(features: pd.DataFrame, symbol: str) -> None:
-    """Inject live aggTrades metrics into the last row of features (in-place)."""
-    try:
-        from data_cache.fetch_aggtrades import fetch_aggtrades_snapshot
-        snap = fetch_aggtrades_snapshot(symbol, perp=True)
-        if snap is None:
-            snap = fetch_aggtrades_snapshot(symbol, perp=False)
-        if snap is not None:
-            idx = features.index[-1]
-            features.loc[idx, "cvd_1m_usd"] = snap.cvd_usd
-            features.loc[idx, "vol_velocity_1m"] = snap.vol_velocity
-            features.loc[idx, "whale_tick_count"] = float(snap.whale_tick_count)
-    except Exception as exc:
-        log.debug("[%s] AggTrades injection failed: %s", symbol, exc)
-
-
-def _inject_multi_exchange(features: pd.DataFrame, symbol: str) -> None:
-    """Inject MEXC/Bitget multi-exchange features into last row of features (in-place)."""
-    try:
-        from data_cache.fetch_multi_exchange import fetch_multi_exchange_snapshot
-        snap = fetch_multi_exchange_snapshot(symbol)
-        if snap is not None:
-            idx = features.index[-1]
-            features.loc[idx, "mexc_vol_ratio"] = snap.mexc_vol_ratio
-            features.loc[idx, "mexc_price_lead"] = snap.mexc_price_lead
-    except Exception as exc:
-        log.debug("[%s] Multi-exchange injection failed: %s", symbol, exc)
-
-
-def _inject_mtf_features(features: pd.DataFrame, klines: pd.DataFrame) -> None:
-    """Compute MTF EMA confluence and merge into features (in-place)."""
-    try:
-        from scanner.mtf_features import compute_mtf_confluence
-        mtf = compute_mtf_confluence(klines)
-        for col in ["mtf_confluence_score", "mtf_ema_bull_count", "mtf_ema_bear_count"]:
-            features[col] = mtf[col].reindex(features.index, method="ffill")
-    except Exception as exc:
-        log.debug("MTF feature injection failed: %s", exc)
-
-
-def _inject_sector_scores(
-    features: pd.DataFrame,
-    symbol: str,
-    sector_scores: dict[str, float] | None,
-) -> None:
-    """Inject sector_score_norm and sector_avg_pct into all rows (uniform value)."""
-    if not sector_scores:
-        return
-    try:
-        score_norm = sector_scores.get(symbol, 0.0)
-        sector_avg_map = sector_scores.get("__sector_avg__", {}) or {}
-        from data_cache.token_universe import get_sector
-        sector_avg_pct = sector_avg_map.get(get_sector(symbol), 0.0) if sector_avg_map else 0.0
-        features["sector_score_norm"] = float(score_norm)
-        features["sector_avg_pct"] = float(sector_avg_pct)
-    except Exception as exc:
-        log.debug("[%s] Sector score injection failed: %s", symbol, exc)
-
-
 def _scan_one_symbol(
     symbol: str,
     store: ParquetStore,
@@ -330,7 +256,6 @@ def _scan_one_symbol(
     risk_cfg: RiskConfig,
     costs: ExecutionCosts,
     macro: pd.DataFrame | None = None,
-    sector_scores: dict[str, float] | None = None,
 ) -> list[PatternResult]:
     results = []
     scan_ts = datetime.now(timezone.utc).isoformat()
@@ -344,11 +269,6 @@ def _scan_one_symbol(
         klines = _klines_for_context(raw)
         perp = _build_perp_from_store(store, symbol)
         features = compute_features_table(klines, symbol=symbol, perp=perp, macro=macro)
-        _inject_live_ob(features, symbol)
-        _inject_live_aggtrades(features, symbol)
-        _inject_sector_scores(features, symbol, sector_scores)
-        _inject_mtf_features(features, klines)
-        _inject_multi_exchange(features, symbol)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
@@ -422,20 +342,15 @@ class PatternScanner:
         risk_cfg: RiskConfig | None = None,
         costs: ExecutionCosts | None = None,
         macro: pd.DataFrame | None = None,
-        sector_scores: dict[str, float] | None = None,
     ) -> None:
         self.store = store or ParquetStore()
         self.combos = combos or ALL_COMBOS
         self.risk_cfg = risk_cfg or _DEFAULT_RISK
         self.costs = costs or _DEFAULT_COSTS
         self._macro = macro
-        self._sector_scores = sector_scores
 
     def scan_symbol(self, symbol: str) -> list[PatternResult]:
-        return _scan_one_symbol(
-            symbol, self.store, self.combos, self.risk_cfg, self.costs,
-            macro=self._macro, sector_scores=self._sector_scores,
-        )
+        return _scan_one_symbol(symbol, self.store, self.combos, self.risk_cfg, self.costs, macro=self._macro)
 
     def scan_universe(
         self,
