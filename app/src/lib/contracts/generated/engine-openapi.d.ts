@@ -3760,6 +3760,8 @@ export interface components {
              * @default 15
              */
             limit: number;
+            /** User Id */
+            user_id?: string | null;
         };
         /** OpportunityRunResponse */
         OpportunityRunResponse: {
