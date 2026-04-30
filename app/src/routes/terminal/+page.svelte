@@ -114,6 +114,7 @@
   import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
   import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
   import DecisionHUD from '$lib/components/terminal/hud/DecisionHUD.svelte';
+  import BottomIndicatorDock from '$lib/components/terminal/BottomIndicatorDock.svelte';
   import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
@@ -1742,6 +1743,16 @@
         />
       {/snippet}
     </CenterPanel>
+
+    <!-- W-0332: Bottom Indicator Dock — OI × FUNDING × CVD -->
+    <BottomIndicatorDock
+      oiBars={layerBarsMap['oi'] ?? []}
+      flowBars={layerBarsMap['flow'] ?? []}
+      {ohlcvBars}
+      {heroAsset}
+      loading={isLoadingActive && !ohlcvBars.length}
+    />
+
     {#if applyModePreset(terminalMode).showWorkspace}
       <WorkspacePanel
         analysisData={activeAnalysisData as any}
