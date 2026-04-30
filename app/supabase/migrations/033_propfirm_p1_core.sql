@@ -9,7 +9,7 @@
 -- ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS trading_accounts (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id               UUID REFERENCES app_users(id) ON DELETE SET NULL,  -- NULL for INTERNAL_RUN
+  user_id               UUID REFERENCES users(id) ON DELETE SET NULL,  -- NULL for INTERNAL_RUN
   account_type          TEXT NOT NULL CHECK (account_type IN ('INTERNAL_RUN','PAPER','FUNDED')),
   label                 TEXT,                          -- human label (INTERNAL_RUN 식별용)
   mode                  TEXT NOT NULL DEFAULT 'MANUAL'
@@ -89,7 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_pattern_fires_strategy
 CREATE TABLE IF NOT EXISTS pf_orders (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id         UUID NOT NULL REFERENCES trading_accounts(id) ON DELETE CASCADE,
-  user_id            UUID REFERENCES app_users(id) ON DELETE SET NULL,
+  user_id            UUID REFERENCES users(id) ON DELETE SET NULL,
   source             TEXT NOT NULL
                        CHECK (source IN ('INTERNAL_RUN','USER','AUTO_STRATEGY','ASSISTED_USER')),
   pattern_fire_id    UUID REFERENCES pattern_fires(id),

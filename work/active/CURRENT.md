@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-01
+# CURRENT — 2026-04-30
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`a654ea26` — origin/main (2026-05-01) — PR #782 W-0357 Cogochi TV-Style Indicators + AI Results List UX merged
+`88cdbdb5` — origin/main (2026-05-01) — PR #783 W-PF-101~106 PropFirm P1 merged
 
 ---
 
@@ -16,11 +16,7 @@
 |---|---|---|
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-PF-100-propfirm-master-epic` | P1 | 🟡 W-PF-101 schema PR #783 (CI) |
-
-### 최근 완료
-- PR #778 W-0356 Cogochi 3-column redesign ✅
-- PR #782 W-0357 Cogochi TV-Style Indicators + AI Results List UX ✅
+| `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
 ---
 
