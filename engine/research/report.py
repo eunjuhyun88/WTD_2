@@ -330,20 +330,6 @@ def _footer() -> str:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-_DERIVATIVES_BLOCKED = [
-    "tradoor-oi-reversal-v1",
-    "funding-flip-reversal-v1",
-    "wyckoff-spring-reversal-v1",
-    "liquidity-sweep-reversal-v1",
-    "oi-presurge-long-v1",
-    "alpha-confluence-v1",
-    "funding-flip-short-v1",
-    "gap-fade-short-v1",
-    "whale-accumulation-reversal-v1",
-    "alpha-presurge-v1",
-]
-
-
 def generate_report(
     df_gate: pd.DataFrame,
     *,
@@ -379,7 +365,19 @@ def generate_report(
     n_symbols = n_symbols or 0
     n_total_combos = n_symbols * n_combos
 
-    blocked = blocked_patterns if blocked_patterns is not None else _DERIVATIVES_BLOCKED
+    if blocked_patterns is not None:
+        blocked = blocked_patterns
+    elif not df_all.empty and "pattern" in df_all.columns and "n_signals" in df_all.columns:
+        # Dynamic: patterns that produced 0 signals across all scanned symbols
+        pattern_signals = df_all.groupby("pattern")["n_signals"].sum()
+        blocked = [p for p, n in pattern_signals.items() if n == 0]
+    elif not df_all.empty and "pattern" in df_all.columns:
+        # Fallback: patterns with no rows at all in df_all
+        all_patterns_present = set(df_all["pattern"].unique())  # noqa: F841
+        # Can't determine blocked without n_signals — empty list
+        blocked = []
+    else:
+        blocked = []
 
     # Sort gate-passed by sharpe
     df_ranked = (

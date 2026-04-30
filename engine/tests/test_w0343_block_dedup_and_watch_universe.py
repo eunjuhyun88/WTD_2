@@ -2,7 +2,7 @@
 
 Verifies:
 1. _BLOCKS has no duplicate names
-2. Total block count is 90 (not 96)
+2. Total block count is 92 (90 base + cvd_surge_long + whale_tick_buy from W-0340)
 3. _load_universe_with_watches unions base + watched symbols
 4. Watched symbols outside base universe are still included
 5. _load_universe_with_watches is graceful when CaptureStore fails
@@ -20,9 +20,9 @@ class TestBlockDedup:
         dupes = [n for n, c in Counter(names).items() if c > 1]
         assert dupes == [], f"Duplicate block names: {dupes}"
 
-    def test_block_count_is_90(self):
+    def test_block_count_is_92(self):
         from scoring.block_evaluator import _BLOCKS
-        assert len(_BLOCKS) == 90, f"Expected 90, got {len(_BLOCKS)}"
+        assert len(_BLOCKS) == 92, f"Expected 92, got {len(_BLOCKS)}"
 
 
 class TestWatchUniverse:

@@ -65,6 +65,8 @@ from building_blocks.confirmations.post_dump_compression import post_dump_compre
 from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
+from building_blocks.confirmations.cvd_surge_long import cvd_surge_long
+from building_blocks.confirmations.whale_tick_buy import whale_tick_buy
 from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.delta_flip_var import delta_flip_var
 from building_blocks.confirmations.volume_dryup import volume_dryup
@@ -161,6 +163,8 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
+    ("cvd_surge_long",     cvd_surge_long),
+    ("whale_tick_buy",     whale_tick_buy),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),
     ("smart_money_accumulation", smart_money_accumulation),

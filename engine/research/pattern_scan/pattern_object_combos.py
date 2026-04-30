@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable
@@ -212,7 +213,6 @@ class PatternObjectCombo(PatternCombo):
             log.debug("[%s/%s] unknown blocks (will be absent): %s",
                       ctx.symbol, self.pattern_obj.slug, unknown)
 
-        # Compute all block signals (vectorized per-block, then pivot to per-bar)
         block_series: dict[str, pd.Series] = {
             name: _safe_eval(fn, ctx, name)
             for name, fn in known.items()
@@ -221,20 +221,43 @@ class PatternObjectCombo(PatternCombo):
         sm = PatternStateMachine(self.pattern_obj)
         entry_phase = self.pattern_obj.entry_phase
 
+        # Build co-occurrence windows for phases that need them
+        phase_co_windows: dict[str, deque] = {}
+        phase_co_sizes: dict[str, int] = {}
+        for phase in self.pattern_obj.phases:
+            w = getattr(phase, 'co_occurrence_window_bars', 1)
+            if w > 1:
+                phase_co_windows[phase.phase_id] = deque(maxlen=w)
+                phase_co_sizes[phase.phase_id] = w
+
         entry_flags = pd.Series(False, index=ctx.features.index, dtype=bool)
         last_valid_idx = len(ctx.features) - 2  # exclude last bar (entry at T+1)
 
         for i, ts in enumerate(ctx.features.index):
             if i > last_valid_idx:
                 break
-            fired = [name for name, series in block_series.items()
-                     if series.iloc[i]]
+            fired_now = frozenset(
+                name for name, series in block_series.items() if series.iloc[i]
+            )
+
+            # Windowed co-occurrence: accumulate fired blocks over window for current phase
+            cur_phase_id = sm.get_current_phase(ctx.symbol)
+            if cur_phase_id in phase_co_windows:
+                phase_co_windows[cur_phase_id].append(fired_now)
+                eval_fired = list(set().union(*phase_co_windows[cur_phase_id]))
+            else:
+                eval_fired = list(fired_now)
+
             ts_aware = ts.to_pydatetime()
             if ts_aware.tzinfo is None:
                 ts_aware = ts_aware.replace(tzinfo=timezone.utc)
-            transition = sm.evaluate(ctx.symbol, fired, ts_aware)
-            if transition and transition.to_phase == entry_phase:
-                entry_flags.iloc[i] = True
+            transition = sm.evaluate(ctx.symbol, eval_fired, ts_aware)
+            if transition:
+                # Clear windows on any phase transition or reset
+                for phase_id in phase_co_windows:
+                    phase_co_windows[phase_id].clear()
+                if transition.to_phase == entry_phase:
+                    entry_flags.iloc[i] = True
 
         return entry_flags
 
