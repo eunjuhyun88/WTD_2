@@ -2,7 +2,7 @@
 
 > Wave: 4 | Priority: P0 | Effort: M
 > Issue: #781
-> Status: 🟡 Design Draft
+> Status: ✅ Merged PR #782
 > Created: 2026-04-30
 
 ## Goal
@@ -176,12 +176,49 @@ Funding: 히스토그램 (양수=초록, 음수=빨간, 기준선 0.01%).
 ## Canonical Files
 
 ```
-engine/api/routes/chart.py              — /chart/indicators 추가
-engine/data_cache/fetch_binance_perp.py — cvd/oi series 조회 (읽기 전용)
-app/src/routes/api/chart/indicators/+server.ts   — 신규
 app/src/lib/chart/usePriceLines.ts      — setAILines() 추가
-app/src/lib/chart/chartIndicators.ts    — cvd/oi/funding 키 추가
-app/src/components/terminal/workspace/ChartBoard.svelte  — overlay + 서브패널
-app/src/lib/cogochi/AIPanel.svelte      — scan list UX + setSymbol
+app/src/components/terminal/workspace/ChartBoard.svelte  — chartAIOverlay 구독 + clearAIOverlay
+app/src/lib/cogochi/AIPanel.svelte      — scan list active UX + shellStore.setSymbol()
+app/src/lib/cogochi/WatchlistRail.svelte — subscribeMiniTicker 실시간 가격
 app/src/components/terminal/workspace/TerminalCommandBar.svelte  — Pine Script 제거
 ```
+
+---
+
+## Owner
+
+app (Svelte) — W-0356 debt 완결 + UI 개선
+
+---
+
+## Facts
+
+- CVD/OI/Funding 서브패널: W-0356 이전부터 `chartIndicators.ts`에 구현됨 (기본값 ON). Phase C 불필요했음.
+- `subscribeMiniTicker`: `app/src/lib/api/binance.ts:179` — 이미 구현됨, 재사용.
+- `shellStore.setSymbol()`: AppShell에서 이미 `onSelectSymbol={(s) => shellStore.setSymbol(s)}`로 연결됨.
+
+---
+
+## Assumptions
+
+- Binance WebSocket 접근 가능 (miniTicker stream). 불가 시 WatchlistRail은 "…" 상태 유지.
+- `chartAIOverlay` store는 컴포넌트 마운트 후 동작 (SSR 없음, browser-only).
+
+---
+
+## Next Steps
+
+- W-0358: WatchlistRail 스파크라인 + 내 패턴 클릭 → 차트 전환
+- W-0358: chartSaveMode 구간선택 → AI 자동분석 워크플로
+
+---
+
+## Handoff Checklist
+
+- [x] PR #782 merged — SHA `a654ea26`
+- [x] typecheck 0 errors
+- [x] CI green (App CI, Contract CI, Engine Tests, Design Verify)
+- [x] chartAIOverlay → ChartBoard 연결 완료
+- [x] WatchlistRail Binance miniTicker 실시간 가격
+- [x] scan-row 클릭 → shellStore.setSymbol() 심볼 전환
+- [x] Pine Script 완전 제거
