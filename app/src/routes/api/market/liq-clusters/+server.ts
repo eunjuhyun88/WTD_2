@@ -36,6 +36,9 @@ export const GET: RequestHandler = async ({ url, fetch, request, getClientAddres
 	});
 
 	return json(payload, {
-		headers: { 'X-Cache': cacheStatus.toUpperCase() },
+		headers: {
+			'X-Cache': cacheStatus.toUpperCase(),
+			'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+		},
 	});
 };

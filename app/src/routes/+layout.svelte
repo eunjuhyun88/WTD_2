@@ -2,6 +2,7 @@
   import '../app.css';
   import { dev } from '$app/environment';
   import { injectAnalytics } from '@vercel/analytics/sveltekit';
+  import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
   import Header from '../components/layout/Header.svelte';
   import AppNavRail from '../components/layout/AppNavRail.svelte';
   import AppTopBar from '../components/layout/AppTopBar.svelte';
@@ -19,6 +20,7 @@
   import { onMount, onDestroy } from 'svelte';
 
   injectAnalytics({ mode: dev ? 'development' : 'production' });
+  injectSpeedInsights();
 
   let { children } = $props();
 
