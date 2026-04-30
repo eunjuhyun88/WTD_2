@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`51b10032` — origin/main (2026-04-30) — PR #754 W-0340 Wallet 실연결화 merged
+`88cdbdb5` — origin/main (2026-05-01) — PR #783 W-PF-101~106 PropFirm P1 merged
 
 ---
 
@@ -16,7 +16,7 @@
 |---|---|---|
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-PF-100-propfirm-master-epic` | P1 | 🟡 W-PF-101 schema PR #783 (CI) |
+| `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
 ---
 
