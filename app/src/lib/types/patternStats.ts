@@ -48,6 +48,6 @@ export function adaptEngineStats(raw: Record<string, unknown>, slug: string): Pa
     decay_direction:         raw.decay_direction != null ? String(raw.decay_direction) : null,
     recent_30d_count:        Number(raw.recent_30d_count ?? 0),
     recent_30d_success_rate: raw.recent_30d_success_rate != null ? Number(raw.recent_30d_success_rate) : null,
-    ml_shadow:               raw.ml_shadow ?? null,
+    ml_shadow:               (raw.ml_shadow ?? null) as PatternStats['ml_shadow'],
   };
 }
