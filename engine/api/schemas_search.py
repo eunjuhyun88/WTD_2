@@ -185,3 +185,49 @@ class QualityStatsResponse(BaseModel):
     layers: dict[str, Any] = Field(default_factory=dict)
     active_weights: dict[str, float] = Field(default_factory=dict)
     generated_at: str
+
+
+# ── W-0365: POST /research/market-search ─────────────────────────────────────
+
+class MarketSearchRequest(BaseModel):
+    pattern_slug: str
+    variant_slug: str | None = None
+    timeframe: str = "1h"
+    universe: list[str] | None = None
+    top_k: int = 20
+    run_type: str = "user"
+    indicator_filters: list[dict[str, Any]] | None = None
+
+
+class MarketSearchResponse(BaseModel):
+    run_id: str
+    pattern_slug: str
+    candidates: list[dict[str, Any]]
+    total_candidates: int
+    retrieval_source: str
+    run_type: str
+    elapsed_ms: float
+    no_candidates_reason: str | None = None
+
+
+# ── W-0365: GET /patterns/{slug}/pnl-stats ───────────────────────────────────
+
+class PnLStatsPoint(BaseModel):
+    ts: str
+    cumulative_pnl_bps: float
+
+
+class PnLStatsResponse(BaseModel):
+    pattern_slug: str
+    n: int
+    mean_pnl_bps: float | None
+    std_pnl_bps: float | None
+    sharpe_like: float | None
+    win_rate: float | None
+    loss_rate: float | None
+    indeterminate_rate: float | None
+    ci_low: float | None
+    ci_high: float | None
+    preliminary: bool
+    btc_hold_return_pct: float | None
+    equity_curve: list[PnLStatsPoint]

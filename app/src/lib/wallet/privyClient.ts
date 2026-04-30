@@ -1,27 +1,35 @@
-// Privy integration stub.
-// To activate: install `@privy-io/js-sdk-core` and set PUBLIC_PRIVY_APP_ID in .env.
-// The loginWithPrivyEmail flow returns an access token you then POST to /api/auth/privy.
-
 import { env } from '$env/dynamic/public';
+
+let _privy: any = null;
 
 export function isPrivyConfigured(): boolean {
   return !!env.PUBLIC_PRIVY_APP_ID;
 }
 
-export async function initPrivy(): Promise<void> {
-  if (!isPrivyConfigured()) throw new Error('Privy not configured');
-  // Dynamic import so the bundle is not affected when Privy is absent.
-  // const { PrivyClient } = await import('@privy-io/js-sdk-core');
-  // privy = new PrivyClient(env.PUBLIC_PRIVY_APP_ID);
+async function getPrivy(): Promise<any> {
+  if (_privy) return _privy;
+  const { default: Privy, LocalStorage } = await import('@privy-io/js-sdk-core');
+  _privy = new Privy({
+    appId: env.PUBLIC_PRIVY_APP_ID!,
+    storage: new LocalStorage(),
+  });
+  return _privy;
 }
 
-export async function loginWithPrivyEmail(
-  email: string
-): Promise<{ address: string; accessToken: string } | null> {
-  if (!isPrivyConfigured()) throw new Error('Privy not configured');
-  // const { PrivyClient } = await import('@privy-io/js-sdk-core');
-  // const client = new PrivyClient(env.PUBLIC_PRIVY_APP_ID);
-  // const result = await client.loginWithEmail(email);
-  // return { address: result.user.wallet?.address ?? '', accessToken: result.accessToken };
-  return null;
+export async function privySendCode(email: string): Promise<void> {
+  const privy = await getPrivy();
+  await privy.auth.email.sendCode(email);
+}
+
+export async function privyLoginWithCode(
+  email: string,
+  code: string
+): Promise<{ address: string; accessToken: string }> {
+  const privy = await getPrivy();
+  const result = await privy.auth.email.loginWithCode(email, code, 'login-or-sign-up');
+  const wallets: any[] = result.user?.linked_accounts?.filter(
+    (a: any) => a.type === 'wallet' && /^0x[0-9a-fA-F]{40}$/.test(a.address)
+  ) ?? [];
+  const address = wallets[0]?.address ?? '';
+  return { address, accessToken: result.accessToken };
 }

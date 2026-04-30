@@ -12,6 +12,7 @@
   import { profileDrawerOpen } from '$lib/stores/profileDrawerStore';
   import NotificationTray from '../components/shared/NotificationTray.svelte';
   import ToastStack from '../components/shared/ToastStack.svelte';
+  import SystemToastStack from '../components/shared/SystemToastStack.svelte';
   import CookieConsent from '../components/shared/CookieConsent.svelte';
   import { page } from '$app/stores';
   import { setActiveView } from '$lib/stores/activePairStore';
@@ -97,6 +98,7 @@
 <ProfileDrawer open={$profileDrawerOpen} onClose={() => profileDrawerOpen.set(false)} />
 {#if !$isTerminal}<NotificationTray />{/if}
 {#if !$isTerminal}<ToastStack />{/if}
+<SystemToastStack />
 <CookieConsent />
 
 <style>

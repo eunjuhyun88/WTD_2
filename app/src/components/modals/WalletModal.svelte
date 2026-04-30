@@ -1,392 +1,216 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     walletStore,
     closeWalletModal,
     setWalletModalStep,
     applyAuthenticatedUser,
-    clearAuthenticatedUser,
     connectWallet,
     signMessage,
-    disconnectWallet
+    disconnectWallet,
+    clearAuthenticatedUser,
   } from '$lib/stores/walletStore';
-  import type { WalletState } from '$lib/stores/walletStore';
-  import { loginAuth, logoutAuth, registerAuth, requestWalletNonce, verifyWalletSignature, walletAuth } from '$lib/api/auth';
+  import { systemToasts } from '$lib/stores/notificationStore';
+  import { loginAuth, logoutAuth, requestWalletNonce, walletAuth } from '$lib/api/auth';
   import {
     WALLET_PROVIDER_LABEL,
     getPreferredEvmChainCode,
-    hasInjectedEvmProvider,
     isWalletConnectConfigured,
     requestInjectedEvmAccount,
-    requestPhantomSolanaAccount,
     signInjectedEvmMessage,
-    type WalletProviderKey
+    type WalletProviderKey,
   } from '$lib/wallet/providers';
-
-  type AuthMode = 'signup' | 'login';
-  type WalletFunnelStep = 'modal_open' | 'connect' | 'sign' | 'auth' | 'disconnect';
-  type WalletFunnelStatus = 'view' | 'success' | 'error';
-
-  const STEP_TITLE: Record<WalletState['walletModalStep'], string> = {
-    'wallet-select': 'CONNECT WALLET',
-    connecting: 'CONNECTING',
-    'sign-message': 'VERIFY OWNERSHIP',
-    connected: 'WALLET READY',
-    signup: 'CREATE ACCOUNT',
-    login: 'LOG IN',
-  };
+  import { detectInjectedWallets, RDNS_TO_PROVIDER, type DetectedWallet } from '$lib/wallet/eip6963';
+  import { isPrivyConfigured, privySendCode, privyLoginWithCode } from '$lib/wallet/privyClient';
 
   const WALLET_SIGNATURE_RE = /^0x[0-9a-f]{130}$/i;
+  const privyReady = isPrivyConfigured();
   const preferredEvmChain = getPreferredEvmChainCode();
   const walletConnectReady = isWalletConnectConfigured();
 
   $: state = $walletStore;
   $: step = state.walletModalStep;
 
-  let authMode: AuthMode = 'signup';
-  let emailInput = '';
-  let nicknameInput = '';
-  let emailError = '';
-  let actionError = '';
+  // EIP-6963 detected wallets
+  let detectedWallets: DetectedWallet[] = [];
+
+  // local state
   let connectingProvider = '';
   let signingMessage = false;
-  let authSubmitting = false;
+  let actionError = '';
   let signedWalletMessage = '';
   let signedWalletSignature = '';
   let trackedModalOpen = false;
+  let panelEl: HTMLDivElement | null = null;
 
-  $: headerTitle = STEP_TITLE[step] ?? 'WALLET ACCESS';
+  // Privy email flow
+  let privyStep: 'hidden' | 'email' | 'otp' = 'hidden';
+  let privyEmail = '';
+  let privyCode = '';
+  let privySending = false;
+  let privyVerifying = false;
 
-  interface GTMWindow extends Window {
-    dataLayer?: Array<Record<string, unknown>>;
-  }
-
+  // ── GTM ───────────────────────────────────────────────────────
+  interface GTMWindow extends Window { dataLayer?: Array<Record<string, unknown>>; }
   function gtmEvent(event: string, payload: Record<string, unknown> = {}) {
     if (typeof window === 'undefined') return;
     const w = window as GTMWindow;
     if (!Array.isArray(w.dataLayer)) return;
-    w.dataLayer.push({
-      event,
-      area: 'wallet_modal',
-      ...payload,
-    });
+    w.dataLayer.push({ event, area: 'wallet_modal', ...payload });
   }
 
-  function trackWalletFunnel(
-    stepName: WalletFunnelStep,
-    status: WalletFunnelStatus,
-    payload: Record<string, unknown> = {}
-  ) {
-    gtmEvent('wallet_funnel', {
-      step: stepName,
-      status,
-      mode: authMode,
-      ...payload,
-    });
+  // ── Helpers ───────────────────────────────────────────────────
+  function isWalletProviderKey(v: string): v is WalletProviderKey {
+    return v === 'metamask' || v === 'coinbase' || v === 'walletconnect' || v === 'phantom' || v === 'base';
   }
 
-  function toErrorReason(error: unknown): string {
-    const message = error instanceof Error ? error.message.toLowerCase() : '';
-    if (!message) return 'unknown';
-    if (message.includes('reject') || message.includes('denied')) return 'user_rejected';
-    if (message.includes('timeout')) return 'timeout';
-    if (message.includes('network')) return 'network';
-    if (message.includes('wallet')) return 'wallet';
-    if (message.includes('signature') || message.includes('sign')) return 'signature';
-    if (message.includes('email') || message.includes('nickname')) return 'form_validation';
-    return 'unexpected';
-  }
+  function isEvmAddress(address: string) { return address.startsWith('0x'); }
 
-  function isWalletProviderKey(value: string): value is WalletProviderKey {
-    return value === 'metamask'
-      || value === 'coinbase'
-      || value === 'walletconnect'
-      || value === 'phantom'
-      || value === 'base';
-  }
-
-  function isEvmAddress(address: string): boolean {
-    return address.startsWith('0x');
-  }
-
-  function clearErrors() {
-    emailError = '';
-    actionError = '';
-  }
-
-  function clearWalletProof() {
-    signedWalletMessage = '';
-    signedWalletSignature = '';
-  }
-
-  function hasWalletProof(): boolean {
+  function clearErrors() { actionError = ''; }
+  function clearWalletProof() { signedWalletMessage = ''; signedWalletSignature = ''; }
+  function hasWalletProof() {
     return Boolean(signedWalletMessage && WALLET_SIGNATURE_RE.test(signedWalletSignature));
   }
 
-  function setAuthMode(mode: AuthMode) {
-    authMode = mode;
-    clearErrors();
-    if (step === 'signup' || step === 'login') {
-      setWalletModalStep(mode);
-    }
+  // deduplicate EIP-6963 list vs static — hide static entry if EIP-6963 already has it
+  function isStaticHidden(providerKey: WalletProviderKey): boolean {
+    return detectedWallets.some(w => RDNS_TO_PROVIDER[w.rdns] === providerKey);
   }
 
-  function startAuthFlow(mode: AuthMode) {
-    setAuthMode(mode);
+  // ── EIP-6963 mount ────────────────────────────────────────────
+  onMount(async () => {
+    detectedWallets = await detectInjectedWallets(300);
+    gtmEvent('eip6963_detected', {
+      count: detectedWallets.length,
+      rdns_list: detectedWallets.map(w => w.rdns),
+    });
+  });
 
-    if (state.connected && state.address) {
-      if (hasWalletProof()) {
-        setWalletModalStep(mode);
+  // ── focus trap ────────────────────────────────────────────────
+  function trapFocus(e: KeyboardEvent) {
+    if (!panelEl) return;
+    const focusable = Array.from(
+      panelEl.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(el => el.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.key === 'Tab') {
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
       } else {
-        setWalletModalStep('sign-message');
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
-      return;
-    }
-
-    setWalletModalStep('wallet-select');
-  }
-
-  function parseEmailOnly(): { email: string } | null {
-    clearErrors();
-    const email = emailInput.trim();
-    if (!email.includes('@')) {
-      emailError = 'Valid email required';
-      return null;
-    }
-    if (email.length > 254) {
-      emailError = 'Email is too long';
-      return null;
-    }
-    return { email };
-  }
-
-  function parseSignupInput(): { email: string; nickname: string } | null {
-    const emailPayload = parseEmailOnly();
-    if (!emailPayload) return null;
-
-    const nickname = nicknameInput.trim();
-    if (nickname.length < 2) {
-      emailError = 'Nickname must be 2+ characters';
-      return null;
-    }
-    if (nickname.length > 32) {
-      emailError = 'Nickname must be 32 characters or less';
-      return null;
-    }
-
-    return {
-      email: emailPayload.email,
-      nickname,
-    };
-  }
-
-  function parseLoginInput(): { email: string; nickname?: string } | null {
-    const emailPayload = parseEmailOnly();
-    if (!emailPayload) return null;
-
-    const nickname = nicknameInput.trim();
-    if (nickname && nickname.length < 2) {
-      emailError = 'Nickname must be 2+ characters if provided';
-      return null;
-    }
-    if (nickname.length > 32) {
-      emailError = 'Nickname must be 32 characters or less';
-      return null;
-    }
-
-    return nickname
-      ? { email: emailPayload.email, nickname }
-      : { email: emailPayload.email };
-  }
-
-  function getSignedWalletProof(): { walletMessage: string; walletSignature: string } | null {
-    if (!hasWalletProof()) return null;
-    return {
-      walletMessage: signedWalletMessage,
-      walletSignature: signedWalletSignature,
-    };
-  }
-
-  function ensureWalletReadyForAuth(): boolean {
-    if (!state.connected || !state.address) {
-      actionError = 'Connect wallet first.';
-      setWalletModalStep('wallet-select');
-      return false;
-    }
-
-    const walletProof = getSignedWalletProof();
-    if (!walletProof) {
-      actionError = 'Sign wallet message first.';
-      setWalletModalStep('sign-message');
-      return false;
-    }
-
-    return true;
-  }
-
-  async function handleSignupSubmit() {
-    const payload = parseSignupInput();
-    if (!payload) return;
-    if (!ensureWalletReadyForAuth()) return;
-
-    const walletProof = getSignedWalletProof();
-    if (!walletProof || !state.address) return;
-
-    authSubmitting = true;
-    try {
-      const res = await registerAuth({
-        ...payload,
-        walletAddress: state.address,
-        walletMessage: walletProof.walletMessage,
-        walletSignature: walletProof.walletSignature,
-      });
-      applyAuthenticatedUser(res.user);
-      trackWalletFunnel('auth', 'success', {
-        auth_mode: 'signup',
-        chain: state.chain,
-      });
-    } catch (error) {
-      emailError = error instanceof Error ? error.message : 'Failed to create account';
-      trackWalletFunnel('auth', 'error', {
-        auth_mode: 'signup',
-        reason: toErrorReason(error),
-      });
-    } finally {
-      authSubmitting = false;
     }
   }
 
-  async function handleLoginSubmit() {
-    const payload = parseLoginInput();
-    if (!payload) return;
-    if (!ensureWalletReadyForAuth()) return;
-
-    const walletProof = getSignedWalletProof();
-    if (!walletProof || !state.address) return;
-
-    authSubmitting = true;
-    try {
-      const res = await loginAuth({
-        email: payload.email,
-        nickname: payload.nickname ?? '',
-        walletAddress: state.address,
-        walletMessage: walletProof.walletMessage,
-        walletSignature: walletProof.walletSignature,
-      });
-      applyAuthenticatedUser(res.user);
-      trackWalletFunnel('auth', 'success', {
-        auth_mode: 'login',
-        chain: state.chain,
-      });
-    } catch (error) {
-      emailError = error instanceof Error ? error.message : 'Failed to log in';
-      trackWalletFunnel('auth', 'error', {
-        auth_mode: 'login',
-        reason: toErrorReason(error),
-      });
-    } finally {
-      authSubmitting = false;
-    }
+  $: if (state.showWalletModal && panelEl) {
+    setTimeout(() => {
+      const first = panelEl?.querySelector<HTMLElement>('button:not([disabled])');
+      first?.focus();
+    }, 50);
   }
 
-  async function handleConnect(provider: string) {
+  // ── GTM modal open ────────────────────────────────────────────
+  $: if (state.showWalletModal && !trackedModalOpen) {
+    gtmEvent('wallet_modal_open', { entry_step: step });
+    trackedModalOpen = true;
+  }
+  $: if (!state.showWalletModal) {
+    signingMessage = false;
+    connectingProvider = '';
+    trackedModalOpen = false;
+    privyStep = 'hidden';
+    privyEmail = '';
+    privyCode = '';
+  }
+
+  // ── Connect ───────────────────────────────────────────────────
+  async function handleConnect(provider: string, eip6963Provider?: EIP1193Provider) {
     clearErrors();
     clearWalletProof();
 
-    if (!isWalletProviderKey(provider)) {
-      actionError = 'Unsupported wallet provider.';
+    // EIP-6963 path
+    if (eip6963Provider) {
+      connectingProvider = provider;
+      setWalletModalStep('connecting');
+      try {
+        const accounts = await (eip6963Provider as any).request({ method: 'eth_requestAccounts' }) as string[];
+        const walletAddress = accounts[0];
+        if (!walletAddress) throw new Error('No account returned');
+        // switch to Base
+        try {
+          await (eip6963Provider as any).request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x2105' }], // Base = 8453
+          });
+        } catch { /* ignore chain switch failure */ }
+        connectWallet('metamask', walletAddress, preferredEvmChain);
+        gtmEvent('wallet_connected', { method: 'eip6963', rdns: provider });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : '';
+        actionError = msg.toLowerCase().includes('reject') || (error as any)?.code === 4001
+          ? 'Connection cancelled.'
+          : msg || 'Failed to connect wallet.';
+        gtmEvent('wallet_connect_failed', { method: 'eip6963', rdns: provider });
+        setWalletModalStep('wallet-select');
+      } finally {
+        connectingProvider = '';
+      }
       return;
     }
-    if (provider === 'walletconnect' && !walletConnectReady) {
-      actionError = 'WalletConnect project id is missing. Set PUBLIC_WALLETCONNECT_PROJECT_ID first.';
-      return;
-    }
+
+    // Static provider path
+    if (!isWalletProviderKey(provider)) { actionError = 'Unsupported wallet provider.'; return; }
 
     connectingProvider = WALLET_PROVIDER_LABEL[provider];
     setWalletModalStep('connecting');
-
     try {
-      if (provider === 'phantom') {
-        if (hasInjectedEvmProvider('phantom')) {
-          const walletAddress = await requestInjectedEvmAccount('phantom');
-          connectWallet(provider, walletAddress, preferredEvmChain);
-        } else {
-          throw new Error('Phantom EVM required. Enable "Ethereum" in Phantom wallet settings and reload.');
-        }
-      } else {
-        const walletAddress = await requestInjectedEvmAccount(provider);
-        // Switch to Base chain before proceeding (EVM providers only, not WalletConnect — WC handles internally)
-        if (provider !== 'walletconnect') {
-          const { ensureBaseChain } = await import('$lib/wallet/chainSwitch');
-          await ensureBaseChain(provider as import('$lib/wallet/providers').WalletProviderKey);
-        }
-        connectWallet(provider, walletAddress, preferredEvmChain);
+      const walletAddress = await requestInjectedEvmAccount(provider as WalletProviderKey);
+      if (provider !== 'walletconnect') {
+        const { ensureBaseChain } = await import('$lib/wallet/chainSwitch');
+        await ensureBaseChain(provider as WalletProviderKey);
       }
-      trackWalletFunnel('connect', 'success', {
-        provider,
-        chain: preferredEvmChain,
-      });
+      connectWallet(provider as WalletProviderKey, walletAddress, preferredEvmChain);
+      gtmEvent('wallet_connected', { method: provider });
     } catch (error) {
       const msg = error instanceof Error ? error.message : '';
       if (msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('denied') || (error as any)?.code === 4001) {
         actionError = 'Connection cancelled.';
       } else if (msg.toLowerCase().includes('not detected') || msg.toLowerCase().includes('install')) {
         actionError = msg;
-      } else if (msg.toLowerCase().includes('invalid options')) {
-        actionError = 'Wallet SDK initialization failed. Try refreshing.';
       } else {
         actionError = msg || 'Failed to connect wallet. Check extension and try again.';
       }
-      trackWalletFunnel('connect', 'error', { provider, reason: toErrorReason(error) });
+      gtmEvent('wallet_connect_failed', { method: provider, error_code: actionError });
       setWalletModalStep('wallet-select');
     } finally {
       connectingProvider = '';
     }
   }
 
+  // ── Sign & Auth ───────────────────────────────────────────────
   async function handleSignMessage() {
     signingMessage = true;
     actionError = '';
 
     try {
-      if (!state.address) {
-        throw new Error('Wallet address is missing');
-      }
-
-      if (!state.provider || !isWalletProviderKey(state.provider)) {
-        throw new Error('Wallet provider is missing');
-      }
+      if (!state.address) throw new Error('Wallet address is missing');
+      if (!state.provider || !isWalletProviderKey(state.provider)) throw new Error('Wallet provider is missing');
+      if (!isEvmAddress(state.address)) throw new Error('Solana wallet auth is temporarily unavailable. Use an EVM wallet.');
 
       const provider = state.provider;
-
-      if (!isEvmAddress(state.address)) {
-        throw new Error('Solana wallet auth is temporarily unavailable. Use an EVM wallet.');
-      }
-
-      const noncePayload = await requestWalletNonce({
-        address: state.address,
-        provider,
-        chain: state.chain,
-      });
-
+      const noncePayload = await requestWalletNonce({ address: state.address, provider, chain: state.chain });
       const signature = await signInjectedEvmMessage(provider, noncePayload.message, state.address);
-
-      if (state.email) {
-        await verifyWalletSignature({
-          address: state.address,
-          message: noncePayload.message,
-          signature,
-          provider,
-          chain: state.chain,
-        });
-      }
 
       signedWalletMessage = noncePayload.message;
       signedWalletSignature = signature;
       signMessage(signature);
+      gtmEvent('auth_sign_success', { method: provider });
 
-      trackWalletFunnel('sign', 'success', { provider, chain: state.chain });
-
-      // Wallet-first: auto-login or auto-register
+      // wallet-first auto login/register
       try {
         const authResult = await walletAuth({
           walletAddress: state.address!,
@@ -395,273 +219,373 @@
         });
         if (authResult.user) {
           applyAuthenticatedUser(authResult.user);
-          trackWalletFunnel('auth', 'success', {
-            action: authResult.action === 'register' ? 'auto_register' : 'auto_login',
+          const isNew = authResult.action === 'register';
+          const nickname = authResult.user.nickname ?? `Trader_${state.address!.slice(-6).toUpperCase()}`;
+          gtmEvent('auth_success', { method: provider, is_new_user: isNew });
+          closeWalletModal();
+          systemToasts.add({
+            type: 'success',
+            message: `Connected as ${nickname}`,
+            action: { label: 'Settings →', href: '/settings' },
           });
+        } else {
+          closeWalletModal();
         }
-        closeWalletModal();
-      } catch (walletAuthError) {
-        console.warn('[WalletModal] wallet-auth error', walletAuthError);
+      } catch {
         closeWalletModal();
       }
     } catch (error) {
       clearWalletProof();
-      actionError = error instanceof Error ? error.message : 'Failed to sign wallet message';
-      trackWalletFunnel('sign', 'error', { reason: toErrorReason(error) });
+      const msg = error instanceof Error ? error.message : 'Failed to sign wallet message';
+      const isRejected = msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('denied') || (error as any)?.code === 4001;
+      actionError = isRejected ? 'Signature cancelled. Click "Sign Message" to try again.' : msg;
+      gtmEvent('auth_sign_failed', { error_code: isRejected ? 'rejected' : 'unknown' });
+      // keep modal open for retry — do NOT close
     } finally {
       signingMessage = false;
     }
   }
 
-  async function handleDisconnect() {
+  // ── Privy Email ───────────────────────────────────────────────
+  async function handlePrivySendCode() {
+    privySending = true;
+    actionError = '';
     try {
-      await logoutAuth();
-    } catch (error) {
-      console.warn('[WalletModal] logout api failed', error);
+      await privySendCode(privyEmail.trim());
+      privyStep = 'otp';
+    } catch (err) {
+      actionError = err instanceof Error ? err.message : 'Failed to send code.';
+    } finally {
+      privySending = false;
     }
+  }
 
+  async function handlePrivyVerify() {
+    privyVerifying = true;
+    actionError = '';
+    try {
+      const { address, accessToken } = await privyLoginWithCode(privyEmail.trim(), privyCode.trim());
+      const res = await fetch('/api/auth/privy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Authentication failed');
+      if (data.user) {
+        applyAuthenticatedUser(data.user);
+        const nickname = data.user.nickname ?? `Trader_${(address || '').slice(-6).toUpperCase()}`;
+        gtmEvent('auth_success', { method: 'privy_email', is_new_user: false });
+        closeWalletModal();
+        systemToasts.add({
+          type: 'success',
+          message: `Connected as ${nickname}`,
+          action: { label: 'Settings →', href: '/settings' },
+        });
+      }
+    } catch (err) {
+      actionError = err instanceof Error ? err.message : 'Verification failed.';
+      privyCode = '';
+    } finally {
+      privyVerifying = false;
+    }
+  }
+
+  function resetPrivy() {
+    privyStep = 'hidden';
+    privyEmail = '';
+    privyCode = '';
+    actionError = '';
+  }
+
+  // ── Disconnect ────────────────────────────────────────────────
+  async function handleDisconnect() {
+    try { await logoutAuth(); } catch { /* ignore */ }
     clearWalletProof();
     disconnectWallet();
     clearAuthenticatedUser();
-    trackWalletFunnel('disconnect', 'success', {
-      had_session: Boolean(state.email),
-    });
+    gtmEvent('wallet_disconnected');
     closeWalletModal();
   }
 
+  // ── Close ─────────────────────────────────────────────────────
   function handleClose() {
+    if (step !== 'wallet-select') {
+      gtmEvent('modal_dismiss', { stage: step, reason: 'x_button' });
+    }
     closeWalletModal();
   }
 
-  function connectStepState(): 'active' | 'done' | 'idle' {
-    if (state.connected) return 'done';
-    if (step === 'wallet-select' || step === 'connecting') return 'active';
-    return 'idle';
+  function handleOverlayClick() {
+    gtmEvent('modal_dismiss', { stage: step, reason: 'overlay' });
+    closeWalletModal();
   }
 
-  function signStepState(): 'active' | 'done' | 'idle' {
-    if (hasWalletProof()) return 'done';
-    if (step === 'sign-message') return 'active';
-    if (!state.connected) return 'idle';
-    return 'idle';
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      gtmEvent('modal_dismiss', { stage: step, reason: 'esc' });
+      closeWalletModal();
+    }
+    trapFocus(e);
   }
 
-  function authStepState(): 'active' | 'done' | 'idle' {
-    if (state.nickname || state.email) return 'done';
-    if (step === 'signup' || step === 'login' || step === 'connected') return 'active';
-    return 'idle';
-  }
-
-  $: if (state.showWalletModal && !trackedModalOpen) {
-    trackWalletFunnel('modal_open', 'view', { entry_step: step });
-    trackedModalOpen = true;
-  }
-
-  $: if (!state.showWalletModal) {
-    authSubmitting = false;
-    signingMessage = false;
-    connectingProvider = '';
-    trackedModalOpen = false;
-  }
+  // ── EIP1193Provider type for eip6963 ─────────────────────────
+  type EIP1193Provider = import('$lib/wallet/eip6963').EIP1193Provider;
 </script>
 
+<svelte:window on:keydown={handleKeydown} />
+
 {#if state.showWalletModal}
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" onclick={handleClose}>
-  <div class="wallet-panel" onclick={(e) => e.stopPropagation()}>
-    <div class="wh">
-      <div class="wh-left">
-        <span class="wh-tag">//WALLET AUTH</span>
-        <span class="wht">{headerTitle}</span>
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="지갑 연결" tabindex="-1" onclick={handleOverlayClick} onkeydown={handleKeydown}>
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="wallet-panel" role="document" bind:this={panelEl} onclick={(e) => e.stopPropagation()}>
+
+      <!-- Header -->
+      <div class="wh">
+        <div class="wh-left">
+          <span class="wh-tag">//WALLET AUTH</span>
+          <span class="wht">
+            {step === 'connecting' ? 'CONNECTING' : step === 'sign-message' ? 'VERIFY OWNERSHIP' : privyStep === 'otp' ? 'VERIFY EMAIL' : 'CONNECT WALLET'}
+          </span>
+        </div>
+        <button class="whc" type="button" aria-label="Close" onclick={handleClose}>✕</button>
       </div>
 
-      <button class="whc" type="button" aria-label="Close wallet modal" onclick={handleClose}>✕</button>
+      <!-- Progress -->
+      <div class="progress-row" aria-hidden="true">
+        <div class="pstep" class:active={step === 'wallet-select' || step === 'connecting'} class:done={state.connected}>1 CONNECT</div>
+        <div class="pstep" class:active={step === 'sign-message'} class:done={hasWalletProof()}>2 SIGN</div>
+      </div>
+
+      <!-- Error banner -->
+      {#if actionError}
+        <div class="global-error" role="alert">{actionError}</div>
+      {/if}
+
+      <!-- ── Step: wallet-select ── -->
+      {#if step === 'wallet-select'}
+        <div class="wb">
+
+          {#if privyStep === 'email'}
+            <!-- Privy: email input -->
+            <div class="step-hero">
+              <span class="hero-kicker">EMAIL LOGIN</span>
+              <h3 class="hero-title">Enter your email</h3>
+              <p class="hero-sub">We'll send a one-time code to verify it's you.</p>
+            </div>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+              class="privy-input"
+              type="email"
+              placeholder="you@example.com"
+              bind:value={privyEmail}
+              autofocus
+              onkeydown={(e) => e.key === 'Enter' && privyEmail.trim() && handlePrivySendCode()}
+            />
+            <button class="btn-primary" type="button" onclick={handlePrivySendCode} disabled={privySending || !privyEmail.trim()}>
+              {privySending ? 'SENDING...' : 'SEND CODE'}
+            </button>
+            <button class="btn-ghost" type="button" onclick={resetPrivy}>BACK</button>
+
+          {:else if privyStep === 'otp'}
+            <!-- Privy: OTP input -->
+            <div class="step-hero">
+              <span class="hero-kicker">EMAIL LOGIN</span>
+              <h3 class="hero-title">Check your inbox</h3>
+              <p class="hero-sub">Enter the 6-digit code sent to <strong>{privyEmail}</strong>.</p>
+            </div>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+              class="privy-input privy-otp"
+              type="text"
+              inputmode="numeric"
+              placeholder="000000"
+              maxlength="6"
+              bind:value={privyCode}
+              autofocus
+              onkeydown={(e) => e.key === 'Enter' && privyCode.trim().length >= 6 && handlePrivyVerify()}
+            />
+            <button class="btn-primary" type="button" onclick={handlePrivyVerify} disabled={privyVerifying || privyCode.trim().length < 6}>
+              {privyVerifying ? 'VERIFYING...' : 'VERIFY'}
+            </button>
+            <button class="btn-ghost" type="button" onclick={() => { privyStep = 'email'; privyCode = ''; actionError = ''; }}>RESEND CODE</button>
+
+          {:else}
+            <!-- Wallet list -->
+            <div class="step-hero">
+              <span class="hero-kicker">STEP 1</span>
+              <h3 class="hero-title">Connect your wallet</h3>
+              <p class="hero-sub">Sign in instantly — no email required.</p>
+            </div>
+
+            <div class="wallet-list">
+
+              <!-- Base Smart Wallet — passkey-first, always top -->
+              <button class="wopt wopt-featured" type="button" onclick={() => handleConnect('base')}>
+                <span class="wo-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect width="20" height="20" rx="6" fill="#0052FF"/>
+                    <path d="M10 4.5a5.5 5.5 0 1 1 0 11A5.5 5.5 0 0 1 10 4.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" fill="white" fill-rule="evenodd" clip-rule="evenodd"/>
+                  </svg>
+                </span>
+                <span class="wo-name">Base Smart Wallet</span>
+                <span class="wo-badge">PASSKEY</span>
+              </button>
+
+              <!-- EIP-6963 detected wallets -->
+              {#each detectedWallets as wallet (wallet.rdns)}
+                <button class="wopt" type="button" onclick={() => handleConnect(wallet.rdns, wallet.provider)}>
+                  {#if wallet.icon}
+                    <img class="wo-img" src={wallet.icon} alt={wallet.name} width="20" height="20" />
+                  {:else}
+                    <span class="wo-icon">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect width="20" height="20" rx="6" fill="rgba(255,255,255,0.1)"/>
+                        <circle cx="10" cy="10" r="5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+                      </svg>
+                    </span>
+                  {/if}
+                  <span class="wo-name">{wallet.name}</span>
+                  <span class="wo-chain wo-detected">DETECTED</span>
+                </button>
+              {/each}
+
+              <!-- Static: MetaMask -->
+              {#if !isStaticHidden('metamask')}
+                <button class="wopt" type="button" onclick={() => handleConnect('metamask')}>
+                  <span class="wo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect width="20" height="20" rx="6" fill="#F6851B"/>
+                      <path d="M14.5 5L10.9 7.9l.65-1.54L14.5 5Z" fill="#E17726"/>
+                      <path d="M5.5 5l3.56 2.93-.62-1.56L5.5 5Z" fill="#E27625"/>
+                      <path d="M13.2 13.2l-.96 1.47 2.06.57.59-2L13.2 13.2ZM5.1 13.24l.58 2 2.06-.57-.96-1.47-1.68.04Z" fill="#E27625"/>
+                      <path d="M7.6 9.97l-.56 1.56 2 .09-.07-2.16-1.37.51Z" fill="#E27625"/>
+                      <path d="M12.4 9.97l-1.38-.53-.07 2.18 2-.09-.55-1.56Z" fill="#E27625"/>
+                      <path d="M7.74 14.67l1.22-.57-.5-.45-1.22.57.5.45Z" fill="#D5BFB2"/>
+                      <path d="M11.04 14.1l1.22.57.5-.45-1.22-.57-.5.45Z" fill="#D5BFB2"/>
+                    </svg>
+                  </span>
+                  <span class="wo-name">MetaMask</span>
+                  <span class="wo-chain">EVM</span>
+                </button>
+              {/if}
+
+              <!-- Static: Coinbase Wallet -->
+              {#if !isStaticHidden('coinbase')}
+                <button class="wopt" type="button" onclick={() => handleConnect('coinbase')}>
+                  <span class="wo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect width="20" height="20" rx="6" fill="#1652F0"/>
+                      <rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="white"/>
+                    </svg>
+                  </span>
+                  <span class="wo-name">Coinbase Wallet</span>
+                  <span class="wo-chain">EVM</span>
+                </button>
+              {/if}
+
+              <!-- Static: Phantom -->
+              {#if !isStaticHidden('phantom')}
+                <button class="wopt" type="button" onclick={() => handleConnect('phantom')}>
+                  <span class="wo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect width="20" height="20" rx="6" fill="#AB9FF2"/>
+                      <path d="M10 5a4 4 0 0 1 4 4c0 1.5-.4 3.1-1.2 4.2-.6.8-1.2 1.4-1.8 1.4-.5 0-.8-.3-1-.7-.2.4-.5.7-1 .7-.6 0-1.2-.6-1.8-1.4C6.4 12.1 6 10.5 6 9a4 4 0 0 1 4-4Z" fill="white"/>
+                      <circle cx="8.5" cy="9" r="1" fill="#AB9FF2"/>
+                      <circle cx="11.5" cy="9" r="1" fill="#AB9FF2"/>
+                    </svg>
+                  </span>
+                  <span class="wo-name">Phantom</span>
+                  <span class="wo-chain">EVM</span>
+                </button>
+              {/if}
+
+              <!-- WalletConnect -->
+              {#if walletConnectReady}
+                <button class="wopt" type="button" onclick={() => handleConnect('walletconnect')}>
+                  <span class="wo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect width="20" height="20" rx="6" fill="#3B99FC"/>
+                      <path d="M6.8 8.6a4.6 4.6 0 0 1 6.4 0l.2.2-.8.8-.2-.2a3.4 3.4 0 0 0-4.8 0l-.2.2-.8-.8.2-.2Z" fill="white"/>
+                      <path d="M14 9.8l.8.8-4.8 4.8L5.2 10.6l.8-.8 4 4 4-4Z" fill="white"/>
+                    </svg>
+                  </span>
+                  <span class="wo-name">WalletConnect</span>
+                  <span class="wo-chain">QR</span>
+                </button>
+              {/if}
+
+            </div>
+
+            <!-- Privy email login divider -->
+            {#if privyReady}
+              <div class="privy-divider"><span>or</span></div>
+              <button class="wopt wopt-email" type="button" onclick={() => { privyStep = 'email'; actionError = ''; }}>
+                <span class="wo-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect width="20" height="20" rx="6" fill="rgba(255,255,255,0.08)"/>
+                    <path d="M5 7.5A1.5 1.5 0 0 1 6.5 6h7A1.5 1.5 0 0 1 15 7.5v5A1.5 1.5 0 0 1 13.5 14h-7A1.5 1.5 0 0 1 5 12.5v-5Z" stroke="rgba(250,247,235,0.5)" stroke-width="1"/>
+                    <path d="M5.5 7.5l4.5 3 4.5-3" stroke="rgba(250,247,235,0.5)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </span>
+                <span class="wo-name">Continue with Email</span>
+              </button>
+            {/if}
+
+          {/if}
+        </div>
+
+      <!-- ── Step: connecting ── -->
+      {:else if step === 'connecting'}
+        <div class="wb">
+          <div class="connecting-anim">
+            <div class="conn-spinner"></div>
+            <div class="conn-text">Connecting {connectingProvider || 'wallet'}...</div>
+            <div class="conn-sub">Approve the connection request in your wallet</div>
+          </div>
+        </div>
+
+      <!-- ── Step: sign-message ── -->
+      {:else if step === 'sign-message'}
+        <div class="wb">
+          <div class="step-hero">
+            <span class="hero-kicker">STEP 2</span>
+            <h3 class="hero-title">Sign to verify ownership</h3>
+            <p class="hero-sub">Free signature — proves you own this wallet. No transaction is sent.</p>
+          </div>
+
+          <div class="info-box">
+            <div class="info-row">
+              <span class="info-k">WALLET</span>
+              <span class="info-v">{state.shortAddr || '-'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-k">CHAIN</span>
+              <span class="info-v">{state.chain}</span>
+            </div>
+          </div>
+
+          <button class="btn-primary" type="button" onclick={handleSignMessage} disabled={signingMessage}>
+            {signingMessage ? 'SIGNING...' : 'SIGN MESSAGE'}
+          </button>
+          <button class="btn-ghost" type="button" onclick={() => { clearErrors(); setWalletModalStep('wallet-select'); }}>
+            USE DIFFERENT WALLET
+          </button>
+        </div>
+
+      {/if}
+
+      <!-- Disconnect link (if already connected) -->
+      {#if state.connected && step !== 'connecting'}
+        <div class="disconnect-row">
+          <button class="disconnect-link" type="button" onclick={handleDisconnect}>Disconnect wallet</button>
+        </div>
+      {/if}
+
     </div>
-
-    {#if actionError}
-      <div class="global-error">{actionError}</div>
-    {/if}
-
-    <div class="progress-row" aria-hidden="true">
-      <div class="pstep" class:active={connectStepState() === 'active'} class:done={connectStepState() === 'done'}>1 CONNECT</div>
-      <div class="pstep" class:active={signStepState() === 'active'} class:done={signStepState() === 'done'}>2 SIGN</div>
-      <div class="pstep" class:active={authStepState() === 'active'} class:done={authStepState() === 'done'}>3 ACCOUNT</div>
-    </div>
-    {#if step === 'wallet-select'}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">STEP 1</span>
-          <h3 class="hero-title">Connect your wallet</h3>
-          <p class="hero-sub">Connect your wallet to access or create your account automatically.</p>
-        </div>
-
-        <div class="wallet-list">
-          <button class="wopt" type="button" onclick={() => handleConnect('metamask')}>
-            <span class="wo-icon">🦊</span>
-            <span class="wo-name">MetaMask</span>
-            <span class="wo-chain">EVM</span>
-          </button>
-          <button
-            class="wopt"
-            type="button"
-            onclick={() => handleConnect('walletconnect')}
-            disabled={!walletConnectReady}
-            title={!walletConnectReady ? 'Set PUBLIC_WALLETCONNECT_PROJECT_ID in env first.' : undefined}
-          >
-            <span class="wo-icon">🔵</span>
-            <span class="wo-name">WalletConnect</span>
-            <span class="wo-chain">{walletConnectReady ? 'EVM' : 'SETUP REQUIRED'}</span>
-          </button>
-          <button class="wopt" type="button" onclick={() => handleConnect('coinbase')}>
-            <span class="wo-icon">🔷</span>
-            <span class="wo-name">Coinbase Wallet</span>
-            <span class="wo-chain">EVM</span>
-          </button>
-          <button class="wopt" type="button" onclick={() => handleConnect('base')}>
-            <span class="wo-icon">🔵</span>
-            <span class="wo-name">Base Smart Wallet</span>
-            <span class="wo-chain">BASE</span>
-          </button>
-          <button class="wopt" type="button" onclick={() => handleConnect('phantom')}>
-            <span class="wo-icon">👻</span>
-            <span class="wo-name">Phantom</span>
-            <span class="wo-chain">EVM</span>
-          </button>
-        </div>
-      </div>
-
-    {:else if step === 'connecting'}
-      <div class="wb">
-        <div class="connecting-anim">
-          <div class="conn-spinner"></div>
-          <div class="conn-text">Connecting {connectingProvider || 'wallet'}...</div>
-          <div class="conn-sub">Approve the connection request in wallet</div>
-        </div>
-      </div>
-
-    {:else if step === 'sign-message'}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">STEP 2</span>
-          <h3 class="hero-title">Sign to verify ownership</h3>
-          <p class="hero-sub">This signature is free and used only for account authentication.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="info-row">
-            <span class="info-k">WALLET</span>
-            <span class="info-v">{state.shortAddr || '-'}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">CHAIN</span>
-            <span class="info-v">{state.chain}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">MODE</span>
-            <span class="info-v">{authMode === 'login' ? 'LOG IN' : 'SIGN UP'}</span>
-          </div>
-        </div>
-
-        <button class="btn-primary" type="button" onclick={handleSignMessage} disabled={signingMessage}>
-          {#if signingMessage}SIGNING...{:else}SIGN MESSAGE{/if}
-        </button>
-        <button class="btn-ghost" type="button" onclick={() => setWalletModalStep('wallet-select')}>
-          USE DIFFERENT WALLET
-        </button>
-      </div>
-
-    {:else if step === 'connected'}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">WALLET READY</span>
-          <h3 class="hero-title">{state.shortAddr}</h3>
-          <p class="hero-sub">{hasWalletProof() ? 'Wallet challenge completed.' : 'Sign challenge is required before authentication.'}</p>
-        </div>
-
-        <div class="info-box">
-          <div class="info-row">
-            <span class="info-k">CHAIN</span>
-            <span class="info-v">{state.chain}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">ADDRESS</span>
-            <span class="info-v">{state.shortAddr}</span>
-          </div>
-        </div>
-
-        {#if hasWalletProof()}
-          <button class="btn-primary" type="button" onclick={() => setWalletModalStep(authMode)}>
-            CONTINUE TO {authMode === 'login' ? 'LOG IN' : 'SIGN UP'}
-          </button>
-        {:else}
-          <button class="btn-primary" type="button" onclick={() => setWalletModalStep('sign-message')}>
-            SIGN TO CONTINUE
-          </button>
-        {/if}
-
-        <button class="btn-ghost" type="button" onclick={handleDisconnect}>DISCONNECT WALLET</button>
-      </div>
-
-    {:else if step === 'signup'}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">STEP 3</span>
-          <h3 class="hero-title">Create account</h3>
-          <p class="hero-sub">Use only required identity fields.</p>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="signup-email">EMAIL</label>
-          <input id="signup-email" class="form-input" type="email" bind:value={emailInput} placeholder="you@example.com" />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="signup-nickname">NICKNAME</label>
-          <input id="signup-nickname" class="form-input" type="text" bind:value={nicknameInput} maxlength="32" placeholder="TraderDoge" />
-        </div>
-
-        {#if emailError}
-          <div class="form-error">{emailError}</div>
-        {/if}
-
-        <button class="btn-primary" type="button" onclick={handleSignupSubmit} disabled={authSubmitting}>
-          {#if authSubmitting}CREATING...{:else}CREATE ACCOUNT{/if}
-        </button>
-        <button class="btn-ghost" type="button" onclick={() => setWalletModalStep('sign-message')}>BACK TO SIGN</button>
-      </div>
-
-    {:else if step === 'login'}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">STEP 3</span>
-          <h3 class="hero-title">Log in account</h3>
-          <p class="hero-sub">Email + wallet signature is the primary login path.</p>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="login-email">EMAIL</label>
-          <input id="login-email" class="form-input" type="email" bind:value={emailInput} placeholder="you@example.com" />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="login-nickname">NICKNAME (OPTIONAL)</label>
-          <input id="login-nickname" class="form-input" type="text" bind:value={nicknameInput} maxlength="32" placeholder="Only if duplicate email history" />
-        </div>
-
-        {#if emailError}
-          <div class="form-error">{emailError}</div>
-        {/if}
-
-        <button class="btn-primary" type="button" onclick={handleLoginSubmit} disabled={authSubmitting}>
-          {#if authSubmitting}LOGGING IN...{:else}LOG IN{/if}
-        </button>
-        <button class="btn-ghost" type="button" onclick={() => setWalletModalStep('sign-message')}>BACK TO SIGN</button>
-      </div>
-
-    {/if}
   </div>
-</div>
 {/if}
 
 <style>
@@ -679,36 +603,36 @@
 
   .wallet-panel {
     --wm-bg: #09090b;
-    --wm-bg-2: #111114;
-    --wm-card: rgba(255, 255, 255, 0.03);
     --wm-border: rgba(249, 216, 194, 0.12);
     --wm-accent: #db9a9f;
     --wm-text: #faf7eb;
     --wm-muted: rgba(250, 247, 235, 0.62);
     --wm-kicker: rgba(219, 154, 159, 0.88);
-    width: min(560px, 100%);
-    max-height: min(88vh, 820px);
+    width: min(480px, 100%);
+    max-height: min(88vh, 760px);
     border: 1px solid var(--wm-border);
     border-radius: 24px;
     overflow: hidden;
     background:
-      linear-gradient(180deg, rgba(18, 18, 20, 0.94), rgba(10, 10, 12, 0.92)),
+      linear-gradient(180deg, rgba(18, 18, 20, 0.96), rgba(10, 10, 12, 0.94)),
       radial-gradient(circle at top right, rgba(249, 216, 194, 0.06), transparent 36%);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
     display: flex;
     flex-direction: column;
+    outline: none;
   }
 
+  /* ── Header ── */
   .wh {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 16px 18px;
     border-bottom: 1px solid rgba(249, 216, 194, 0.08);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
   }
 
   .wh-left {
+    flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -724,7 +648,7 @@
 
   .wht {
     font-family: var(--sc-font-body);
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
     letter-spacing: -0.03em;
     color: var(--wm-text);
@@ -741,36 +665,19 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     flex-shrink: 0;
+    transition: background 0.15s;
   }
 
-  .whc:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
+  .whc:hover { background: rgba(255, 255, 255, 0.08); }
 
-  .global-error,
-  .form-error {
-    margin: 10px 16px 0;
-    padding: 11px 12px;
-    border: 1px solid rgba(255, 89, 89, 0.45);
-    border-radius: 14px;
-    background: rgba(255, 89, 89, 0.08);
-    color: #ff9b9b;
-    font-family: var(--sc-font-body);
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .form-error {
-    margin: 0 0 6px;
-  }
-
+  /* ── Progress ── */
   .progress-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    padding: 12px 16px;
+    padding: 10px 16px;
     border-bottom: 1px solid rgba(249, 216, 194, 0.08);
   }
 
@@ -778,38 +685,53 @@
     border: 1px solid rgba(249, 216, 194, 0.08);
     border-radius: 999px;
     text-align: center;
-    padding: 7px 10px;
+    padding: 6px 10px;
     font-family: var(--sc-font-mono);
     font-size: 10px;
     letter-spacing: 0.12em;
-    color: rgba(250, 247, 235, 0.42);
+    color: rgba(250, 247, 235, 0.38);
+    transition: all 0.2s;
   }
 
   .pstep.active {
     color: var(--wm-text);
-    border-color: rgba(219, 154, 159, 0.18);
+    border-color: rgba(219, 154, 159, 0.2);
     background: rgba(255, 255, 255, 0.06);
   }
 
   .pstep.done {
     color: var(--wm-text);
-    border-color: rgba(219, 154, 159, 0.14);
-    background: rgba(219, 154, 159, 0.08);
+    border-color: rgba(219, 154, 159, 0.16);
+    background: rgba(219, 154, 159, 0.1);
   }
 
+  /* ── Errors ── */
+  .global-error {
+    margin: 10px 16px 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 89, 89, 0.4);
+    border-radius: 12px;
+    background: rgba(255, 89, 89, 0.07);
+    color: #ff9b9b;
+    font-family: var(--sc-font-body);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ── Body ── */
   .wb {
-    padding: 22px;
+    padding: 20px;
     overflow-y: auto;
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
   }
 
   .step-hero {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
   }
 
   .hero-kicker {
@@ -821,30 +743,26 @@
 
   .hero-title {
     font-family: var(--sc-font-body);
-    font-size: clamp(1.45rem, 2vw, 1.9rem);
-    letter-spacing: -0.045em;
+    font-size: clamp(1.35rem, 2vw, 1.75rem);
+    letter-spacing: -0.04em;
     color: var(--wm-text);
-    line-height: 1.05;
+    line-height: 1.1;
+    margin: 0;
   }
 
   .hero-sub {
     font-family: var(--sc-font-body);
-    font-size: 0.98rem;
+    font-size: 0.93rem;
     color: var(--wm-muted);
     line-height: 1.6;
+    margin: 0;
   }
 
-  .info-box {
-    border: 1px solid rgba(249, 216, 194, 0.08);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 14px;
-  }
-
+  /* ── Wallet list ── */
   .wallet-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
 
   .wopt {
@@ -853,58 +771,91 @@
     gap: 10px;
     width: 100%;
     border: 1px solid rgba(249, 216, 194, 0.08);
-    border-radius: 18px;
+    border-radius: 16px;
     background: rgba(255, 255, 255, 0.03);
     color: var(--wm-text);
-    padding: 14px;
+    padding: 13px 14px;
     cursor: pointer;
     text-align: left;
-    transition: border-color 0.16s ease, background 0.16s ease;
+    transition: border-color 0.15s, background 0.15s;
   }
 
   .wopt:hover {
-    border-color: rgba(219, 154, 159, 0.18);
+    border-color: rgba(219, 154, 159, 0.2);
     background: rgba(255, 255, 255, 0.06);
   }
 
-  .wopt:disabled {
-    opacity: 0.56;
-    cursor: not-allowed;
+  .wopt-featured {
+    border-color: rgba(0, 82, 255, 0.3);
+    background: rgba(0, 82, 255, 0.06);
+  }
+
+  .wopt-featured:hover {
+    border-color: rgba(0, 82, 255, 0.5);
+    background: rgba(0, 82, 255, 0.1);
   }
 
   .wo-icon {
-    font-size: 18px;
+    flex-shrink: 0;
+    line-height: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .wo-img {
+    flex-shrink: 0;
+    border-radius: 6px;
+    display: block;
   }
 
   .wo-name {
     font-family: var(--sc-font-body);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     flex: 1;
   }
 
   .wo-chain {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: 9px;
     letter-spacing: 0.12em;
     border: 1px solid rgba(249, 216, 194, 0.1);
     border-radius: 999px;
-    padding: 3px 6px;
+    padding: 3px 7px;
     color: var(--wm-kicker);
+    flex-shrink: 0;
   }
 
+  .wo-badge {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    border-radius: 999px;
+    padding: 3px 8px;
+    color: #60a5fa;
+    background: rgba(0, 82, 255, 0.14);
+    border: 1px solid rgba(0, 82, 255, 0.25);
+    flex-shrink: 0;
+  }
+
+  .wo-detected {
+    color: #4ade80;
+    border-color: rgba(52, 196, 112, 0.25);
+  }
+
+  /* ── Connecting spinner ── */
   .connecting-anim {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 24px 0;
+    gap: 10px;
+    padding: 32px 0;
   }
 
   .conn-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(232, 150, 125, 0.2);
+    border: 3px solid rgba(219, 154, 159, 0.2);
     border-top-color: var(--wm-accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -912,15 +863,24 @@
 
   .conn-text {
     font-family: var(--sc-font-body);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--wm-text);
   }
 
   .conn-sub {
     font-family: var(--sc-font-body);
-    font-size: 14px;
+    font-size: 13px;
     color: var(--wm-muted);
+    text-align: center;
+  }
+
+  /* ── Info box ── */
+  .info-box {
+    border: 1px solid rgba(249, 216, 194, 0.08);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px 14px;
   }
 
   .info-row {
@@ -928,65 +888,29 @@
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    padding: 6px 2px;
-    border-bottom: 1px solid rgba(249, 216, 194, 0.08);
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(249, 216, 194, 0.06);
   }
 
-  .info-row:last-child {
-    border-bottom: none;
-  }
+  .info-row:last-child { border-bottom: none; }
 
   .info-k {
     font-family: var(--sc-font-mono);
     font-size: 10px;
     letter-spacing: 0.12em;
-    color: rgba(250, 247, 235, 0.52);
+    color: rgba(250, 247, 235, 0.48);
   }
 
   .info-v {
     font-family: var(--sc-font-body);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--wm-text);
-    text-align: right;
     word-break: break-word;
+    text-align: right;
   }
 
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .form-label {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    color: rgba(250, 247, 235, 0.52);
-  }
-
-  .form-input {
-    width: 100%;
-    border: 1px solid rgba(249, 216, 194, 0.1);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--wm-text);
-    padding: 13px 14px;
-    font-family: var(--sc-font-body);
-    font-size: 15px;
-    outline: none;
-    transition: border-color 0.16s ease, box-shadow 0.16s ease;
-  }
-
-  .form-input:focus {
-    border-color: rgba(219, 154, 159, 0.24);
-    box-shadow: 0 0 0 2px rgba(219, 154, 159, 0.1);
-  }
-
-  .form-input::placeholder {
-    color: rgba(240, 237, 228, 0.34);
-  }
-
+  /* ── Buttons ── */
   .btn-primary,
   .btn-ghost {
     width: 100%;
@@ -994,81 +918,114 @@
     font-family: var(--sc-font-body);
     font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.01em;
     padding: 13px 14px;
     cursor: pointer;
     text-align: center;
-    text-decoration: none;
+    transition: transform 0.12s, opacity 0.12s;
   }
 
   .btn-primary {
     border: 1px solid rgba(219, 154, 159, 0.24);
     background: linear-gradient(180deg, rgba(250, 247, 235, 0.98), rgba(249, 246, 241, 0.96));
     color: #0f0f12;
-    box-shadow: 0 10px 20px rgba(219, 154, 159, 0.12);
+    box-shadow: 0 8px 20px rgba(219, 154, 159, 0.12);
   }
 
-  .btn-primary:hover {
-    transform: translateY(-1px);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-  }
+  .btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .btn-ghost {
     border: 1px solid rgba(249, 216, 194, 0.08);
     background: transparent;
-    color: rgba(250, 247, 235, 0.72);
+    color: rgba(250, 247, 235, 0.68);
   }
 
-  .btn-ghost:hover {
+  .btn-ghost:hover { color: var(--wm-text); border-color: rgba(219, 154, 159, 0.2); }
+
+  /* ── Disconnect ── */
+  .disconnect-row {
+    padding: 12px 20px;
+    border-top: 1px solid rgba(249, 216, 194, 0.06);
+    text-align: center;
+  }
+
+  .disconnect-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--sc-font-body);
+    font-size: 12px;
+    color: rgba(250, 247, 235, 0.38);
+    transition: color 0.15s;
+  }
+
+  .disconnect-link:hover { color: #ff9b9b; }
+
+  /* ── Mobile ── */
+  @media (max-width: 520px) {
+    .modal-overlay { padding: 8px; }
+    .wallet-panel { width: 100%; max-height: 92vh; border-radius: 20px; }
+    .wh { padding: 12px 14px; }
+    .wb { padding: 14px; gap: 10px; }
+    .btn-primary, .btn-ghost { font-size: 13px; padding: 12px; }
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Privy ── */
+  .privy-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(250, 247, 235, 0.28);
+    font-family: var(--sc-font-body);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+
+  .privy-divider::before,
+  .privy-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(249, 216, 194, 0.08);
+  }
+
+  .wopt-email {
+    border-color: rgba(249, 216, 194, 0.06);
+    color: rgba(250, 247, 235, 0.7);
+  }
+
+  .wopt-email .wo-name {
+    font-weight: 500;
+    color: rgba(250, 247, 235, 0.7);
+  }
+
+  .privy-input {
+    width: 100%;
+    padding: 13px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(249, 216, 194, 0.12);
+    border-radius: 14px;
     color: var(--wm-text);
-    border-color: rgba(219, 154, 159, 0.2);
-  }
-
-  .passport-link {
-    display: block;
+    font-family: var(--sc-font-body);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s;
     box-sizing: border-box;
   }
 
-  @media (max-width: 520px) {
-    .modal-overlay {
-      padding: 12px;
-    }
-
-    .wallet-panel {
-      width: 100%;
-      max-height: 92vh;
-      border-radius: 22px;
-    }
-
-    .wh {
-      padding: 10px 10px;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .whc {
-      margin-left: auto;
-    }
-
-    .wb {
-      padding: 16px;
-      gap: 12px;
-    }
-
-    .btn-primary,
-    .btn-ghost {
-      font-size: 13px;
-      padding: 12px 10px;
-    }
+  .privy-input:focus {
+    border-color: rgba(219, 154, 159, 0.4);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
+  .privy-input::placeholder {
+    color: rgba(250, 247, 235, 0.28);
+  }
+
+  .privy-otp {
+    font-size: 22px;
+    letter-spacing: 0.3em;
+    text-align: center;
   }
 </style>

@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from api.limiter import limiter
+from api.schemas_search import MarketSearchRequest, MarketSearchResponse
 
 router = APIRouter()
 
@@ -298,6 +299,76 @@ async def get_alpha_quality(
         raise HTTPException(status_code=422, detail="lookback must be 1d–365d")
     from research.alpha_quality import aggregate
     return aggregate(lookback_days=days, pattern_slug=pattern_slug)
+
+
+# ---------------------------------------------------------------------------
+# W-0365: POST /research/market-search
+# ---------------------------------------------------------------------------
+
+@router.post("/market-search")
+async def market_search(req: MarketSearchRequest) -> MarketSearchResponse:
+    """W-0365: Run pattern market search and return ranked candidates."""
+    import time
+    import uuid
+
+    start = time.perf_counter()
+    try:
+        from research.market_retrieval import run_pattern_market_search
+        result = await asyncio.to_thread(
+            run_pattern_market_search,
+            pattern_slug=req.pattern_slug,
+            variant_slug=req.variant_slug,
+            timeframe=req.timeframe,
+            universe=req.universe,
+            top_k=req.top_k,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    elapsed_ms = (time.perf_counter() - start) * 1000
+
+    no_reason: str | None = None
+    if not result.candidates:
+        if result.retrieval_source != "index":
+            no_reason = "market_index_not_built"
+        elif result.universe_size == 0:
+            no_reason = "universe_empty"
+        else:
+            no_reason = "no_similar_pattern_found"
+
+    return MarketSearchResponse(
+        run_id=str(uuid.uuid4()),
+        pattern_slug=req.pattern_slug,
+        candidates=[c.to_dict() for c in result.candidates],
+        total_candidates=len(result.candidates),
+        retrieval_source=result.retrieval_source,
+        run_type=req.run_type,
+        elapsed_ms=elapsed_ms,
+        no_candidates_reason=no_reason,
+    )
+
+
+# ---------------------------------------------------------------------------
+# W-0366 T5: GET /research/indicator-features
+# ---------------------------------------------------------------------------
+
+@router.get("/indicator-features")
+async def get_indicator_features():
+    """W-0366: Return user-facing indicator feature catalog for UI."""
+    from research.feature_catalog import USER_FACING_FEATURES
+    return {
+        name: {
+            "label": meta.label,
+            "unit": meta.unit,
+            "operators": list(meta.operators),
+            "value_type": meta.value_type,
+            "category": meta.category,
+            "range": list(meta.range) if meta.range else None,
+            "enum_values": list(meta.enum_values) if meta.enum_values else None,
+            "description": meta.description,
+        }
+        for name, meta in USER_FACING_FEATURES.items()
+    }
 
 
 @router.get("/signals/{signal_id}/components")
