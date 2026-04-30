@@ -224,5 +224,35 @@ Prediction is `predict_proba(X)[:, 1]` (P(win), NOT class label) — see
 - [ ] AC5: pytest ≥ 6 신규 PASS + 기존 scanner 테스트 0 회귀.
 - [ ] AC6: `_AUTO_PROMOTE_MIN_AUC=0.65` 적용 후 training_service 단위 테스트 갱신
   (0.62 AUC → no auto-promote, 0.66 AUC → auto-promote).
-- [ ] CI green
-- [ ] PR merged + CURRENT.md SHA 업데이트
+- [x] CI green
+- [x] PR merged (#805) + CURRENT.md SHA 업데이트
+
+## Owner
+engine
+
+## Canonical Files
+- `engine/research/pattern_scan/scanner.py`
+- `engine/patterns/model_registry.py`
+- `engine/scanner/alerts_pattern.py`
+- `engine/research/training_service.py`
+- `engine/tests/research/test_scanner_ml_inference.py`
+
+## Facts
+- `scanner.py:392` 하드코딩 `predicted_prob=0.6` 확인 (코드 grep)
+- `scanner.py:418` 하드코딩 `threshold=0.55` 확인 (코드 grep)
+- `MODEL_REGISTRY_STORE.get_preferred_scoring_model()` 존재 확인 (model_registry.py:172)
+- `LightGBMEngine.predict_feature_row()` 존재 확인 (lightgbm_engine.py:74)
+- `_AUTO_PROMOTE_MIN_AUC=0.60` 현행값 확인
+
+## Assumptions
+- LRU 캐시된 `get_engine(model_key)` 호출은 캐시 히트 기준 < 1ms
+- scanner 루프 frequency: 5분 주기, 패턴 수 ≤ 200
+
+## Next Steps
+- PR #805 머지 완료
+- W-0352 구현 시 `model_source` 컬럼이 parquet에 포함되는지 확인
+
+## Handoff Checklist
+- [x] PR #805 merged — feat(W-0358) scanner ML inference
+- [x] 15 tests PASS (engine/tests/research/test_scanner_ml_inference.py)
+- [x] resolve_threshold / _predict_safe 구현 완료
