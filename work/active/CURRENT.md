@@ -1,4 +1,4 @@
-# CURRENT — 2026-04-29
+# CURRENT — 2026-04-30
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`2baa77c6` — origin/main (2026-04-29) — PR #655 W-0311 WVPL 통합 검증 머지
+`51b10032` — origin/main (2026-04-30) — PR #754 W-0340 Wallet 실연결화 merged
 
 ---
 
@@ -14,24 +14,18 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0248-f18-stripe-tier` | P0 | 🟢 Merged — PR #653 |
-| `W-0306-f5-terminal-mode-toggle` | P1 | 🟢 Merged — PR #652 |
-| `W-0309-f4-decision-hud-wiring` | P1 | 🟡 PR #656 — CI 대기 중 |
-| `W-0311-quant-risk-engine-v2` | P1 | 🟢 Merged — PR #651 |
-| `W-0312-personalization-engine` | P1 | 🟢 코드 머지 — 추가 기능 후속 필요 |
-| `W-0313-algorithm-hardening` | P1 | 🟢 Merged — PR #651 |
-| `W-0307-f12-kimchi-premium-ui` | P2 | 🟡 Design Draft (#635) |
-| `W-0308-f14-pattern-lifecycle-promote-ui` | P1 | 🟡 Design Draft (#636) |
+| `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
+| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
+| `W-PF-100-propfirm-master-epic` | P1 | 🟡 W-PF-101 schema PR #783 (CI) |
 
 ---
 
-## Wave 4 실행 계획 (갭 분석 반영, 2026-04-29)
+## Wave 4 실행 계획 (갭 분석 반영, 2026-04-30)
 
 ```
-완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0311/312/313 퀀트 ✅
-즉시:  W-0309 HUD wiring PR #656 머지 대기
-Week1: W-0308 F-14 promote UI (S) + W-0307 F-12 kimchi UI (S)
-Week2: F-16 recall 개선
+완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅ | W-0247 F-16 recall ✅
+즉시:  W-PF-101 schema (PR #783) → W-PF-102~105 engine → W-PF-106 UI
+Week2: W-0317 SplitPane wire-up + W-0304 per-pane indicator
 Week3: F-19 Sentry + F-20 infra cleanup
 Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 ```
@@ -58,14 +52,18 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ---
 
+## A086 세션 핵심 lesson
+
+- **PR close 전 내용 비교 필수**: `gh pr diff` 읽고 아키텍처/성능/UX 3축 비교 후 close. 내용 확인 없이 "이미 됐다"로 close 금지 [A086]
+- **병렬 작업 도메인 분리**: `+page.svelte` 공유 파일은 같은 에이전트에서 순차 처리 [A086]
+
+---
+
 ## 다음 실행
 
 ```bash
 ./tools/start.sh
-# 즉시: PR #656 W-0309 HUD wiring CI 확인 후 머지
-# P1:   W-0308 F-14 promote UI 구현
-# P2:   W-0307 F-12 kimchi UI 구현
-gh pr checks 656
-cat work/active/W-0308-f14-pattern-lifecycle-promote-ui.md
-cat work/active/W-0307-f12-kimchi-premium-ui.md
+# W-PF-102~106 PropFirm P1 engine + UI
+gh pr checks 783
+cat work/active/W-PF-100-propfirm-master-epic.md
 ```
