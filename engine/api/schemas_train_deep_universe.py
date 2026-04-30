@@ -30,6 +30,7 @@ class DeepPerpData(BaseModel):
     index_price: Optional[float] = None
     short_liq_usd: float = 0.0
     long_liq_usd: float = 0.0
+    spot_price: Optional[float] = None  # Binance Spot last close price
 
 
 class DeepRequest(BaseModel):

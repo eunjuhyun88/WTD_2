@@ -109,6 +109,8 @@ async function buildAnalyzePayload({
       takerPoints,
       forceOrders,
       fundingRate,
+      spotKlines,
+      coinbaseSpotPrice,
     } = await collectAnalyzeInputs(symbol, tf);
     timer.mark('collector_ms');
 
@@ -163,7 +165,18 @@ async function buildAnalyzePayload({
       index_price: typeof indexPrice === 'number' ? indexPrice : undefined,
       short_liq_usd,
       long_liq_usd,
+      spot_price: spotKlines.length > 0
+        ? spotKlines[spotKlines.length - 1].close
+        : undefined,
     };
+
+    const coinbasePremiumPct =
+      coinbaseSpotPrice !== null && currentPrice > 0
+        ? ((coinbaseSpotPrice - currentPrice) / currentPrice) * 100
+        : null;
+    if (coinbasePremiumPct !== null) {
+      console.debug('[analyze] coinbase_premium_pct=%s symbol=%s', coinbasePremiumPct.toFixed(3), symbol);
+    }
 
     const perpScore: PerpSnapshot = {
       funding_rate: typeof fundingRate === 'number' ? fundingRate : 0,
@@ -217,7 +230,7 @@ async function buildAnalyzePayload({
     }
 
     const payload = mapAnalyzeResponse(
-      { klines, klines1h, ticker, markPrice, indexPrice, oiPoint, oiHistory1h, lsTop, depth, takerPoints, forceOrders, fundingRate },
+      { klines, klines1h, ticker, markPrice, indexPrice, oiPoint, oiHistory1h, lsTop, depth, takerPoints, forceOrders, fundingRate, spotKlines, coinbaseSpotPrice },
       {
         currentPrice,
         oi_notional,

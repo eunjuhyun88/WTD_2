@@ -94,7 +94,13 @@ def run_deep_analysis(
         oi_notional=p.get("oi_notional"),
     )
     layers["oi"] = s19_oi_squeeze(p.get("oi_notional"), p.get("vol_24h"), p.get("fr"))
-    layers["basis"] = s20_basis(p.get("mark_price"), p.get("index_price"))
+    spot_price_val = s.get("spot_price")
+    if spot_price_val is not None and spot_price_val > 0:
+        # Real spot-futures basis: (futures_close - spot) / spot
+        fut_price = p.get("mark_price") or float(df_1h["close"].iloc[-1])
+        layers["basis"] = s20_basis(fut_price, spot_price_val, is_real_basis=True)
+    else:
+        layers["basis"] = s20_basis(p.get("mark_price"), p.get("index_price"))
     layers["bb14"] = l14_bb(df_1h)
     layers["bb16"] = s16_bb(df_1h)
     layers["atr"] = l15_atr(df_1h)

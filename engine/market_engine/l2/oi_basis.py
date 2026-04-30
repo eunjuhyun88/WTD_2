@@ -95,6 +95,7 @@ def s19_oi_squeeze(
 def s20_basis(
     mark_price:  float | None,
     index_price: float | None,
+    is_real_basis: bool = False,
 ) -> LayerResult:
     """Perpetual futures basis analysis.
 
@@ -129,5 +130,6 @@ def s20_basis(
     r.meta["basis"]       = round(basis, 4)
     r.meta["mark_price"]  = mark_price
     r.meta["index_price"] = index_price
+    r.meta["basis_type"]  = "spot_futures" if is_real_basis else "mark_index"
     r.score = max(-12, min(12, round(r.score)))
     return r

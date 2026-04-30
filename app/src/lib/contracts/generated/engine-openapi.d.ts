@@ -3406,6 +3406,8 @@ export interface components {
              * @default 0
              */
             long_liq_usd: number;
+            /** Spot Price */
+            spot_price?: number | null;
         };
         /** DeepRequest */
         DeepRequest: {

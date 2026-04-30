@@ -57,12 +57,17 @@ def deep_sync(req: DeepRequest, ctx: GlobalCtx) -> DeepResponse:
     perp["short_liq_usd"] = p.short_liq_usd
     perp["long_liq_usd"] = p.long_liq_usd
 
+    spot_dict: dict = {}
+    if p.spot_price is not None:
+        spot_dict["spot_price"] = p.spot_price
+
     try:
         result = run_deep_analysis(
             symbol=req.symbol,
             df_1h=df_1h,
             ctx=ctx,
             perp=perp,
+            spot=spot_dict if spot_dict else None,
         )
     except Exception as exc:
         log.exception("run_deep_analysis failed for %s: %s", req.symbol, exc)
