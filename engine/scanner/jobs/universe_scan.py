@@ -3,12 +3,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from typing import Any, Awaitable, Callable
 
 import httpx
 
 from cache.http_client import get_client
 from exceptions import CacheMiss
+from scanner.watch_targets import WatchScanTarget, create_watch_hit_capture
 
 log = logging.getLogger("engine.scanner.jobs")
 
@@ -50,10 +52,14 @@ def _eval_symbol_sync(
     evaluate_blocks: Callable[..., list[str]],
     get_engine: Callable[[], Any],
     min_blocks: int,
+    watch_targets: list[WatchScanTarget] | None = None,
+    scan_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Evaluate one symbol synchronously. Runs in a thread-pool worker.
 
     Returns a ready-to-push alert payload dict, or None if no alert.
+    When watch_targets contains targets for this symbol and blocks fire,
+    also creates a pending_outcome CaptureRecord (W-0335 PR-2).
     """
     try:
         klines_df = load_klines(symbol, offline=True)
@@ -97,6 +103,14 @@ def _eval_symbol_sync(
     if len(triggered) < min_blocks:
         return None
 
+    # W-0335 PR-2: create pending_outcome captures for watched symbols that just fired
+    if watch_targets and triggered:
+        sid = scan_id or str(uuid.uuid4())
+        for target in watch_targets:
+            created = create_watch_hit_capture(target, triggered, features_df, sid)
+            if created:
+                log.info("W-0335: watch-hit capture created for %s (source=%s)", symbol, target.capture_id)
+
     p_win: float | None = None
     try:
         lgbm = get_engine()
@@ -132,12 +146,16 @@ async def scan_universe_job(
     push_alert_fn: Callable[[dict[str, Any]], Awaitable[None]],
     send_pattern_engine_alert: Callable[[dict[str, Any]], Awaitable[bool | None]],
     send_scan_summary: Callable[[dict[str, Any]], Awaitable[bool | None]],
+    watch_targets: list[WatchScanTarget] | None = None,
 ) -> None:
     """Scan all universe symbols in parallel and push alerts for any block hits.
 
     Each symbol is evaluated in a thread-pool worker (asyncio.to_thread) so
     the CPU-heavy feature calc runs off the event loop. A semaphore caps
     concurrency at _SCAN_CONCURRENCY to avoid overwhelming the CSV I/O layer.
+
+    watch_targets: Optional list of WatchScanTarget from watched captures (W-0335 PR-2).
+    When provided, block hits on watched symbols also create pending_outcome captures.
     """
     t_start = time.monotonic()
     universe = await load_universe_async(universe_name)
@@ -154,6 +172,13 @@ async def scan_universe_job(
     macro = load_macro_bundle(offline=True)
     sem = asyncio.Semaphore(_SCAN_CONCURRENCY)
 
+    # Build per-symbol watch target index and a shared scan_id for this run
+    scan_id = str(uuid.uuid4())
+    watch_by_symbol: dict[str, list[WatchScanTarget]] = {}
+    if watch_targets:
+        for wt in watch_targets:
+            watch_by_symbol.setdefault(wt.symbol, []).append(wt)
+
     async def _eval_one(symbol: str) -> dict[str, Any] | None:
         async with sem:
             return await asyncio.to_thread(
@@ -163,6 +188,8 @@ async def scan_universe_job(
                 compute_features_table, compute_snapshot,
                 evaluate_blocks, get_engine,
                 min_blocks,
+                watch_by_symbol.get(symbol),
+                scan_id,
             )
 
     results = await asyncio.gather(*[_eval_one(s) for s in universe], return_exceptions=True)
