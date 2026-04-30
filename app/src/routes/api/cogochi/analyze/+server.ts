@@ -16,7 +16,7 @@ import { AnalyzeRouteError, getAnalyzePayload } from '$lib/server/analyze/servic
 import { getRequestIp } from '$lib/server/requestIp';
 
 export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
-  const { symbol, tf, from, to } = parseAnalyzeRequest(url);
+  const { symbol, tf } = parseAnalyzeRequest(url);
   const requestId = request.headers.get('x-request-id') ?? randomUUID();
   const fallbackIp = getRequestIp({ request, getClientAddress });
   const guard = await runIpRateLimitGuard({
@@ -65,7 +65,7 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
   }
 
   try {
-    const { payload, cacheStatus } = await getAnalyzePayload({ symbol, tf, requestId, from, to });
+    const { payload, cacheStatus } = await getAnalyzePayload({ symbol, tf, requestId });
     const responsePayload = attachAnalyzeRequestMeta(payload, { requestId, cacheStatus });
     logAnalyzeRouteEvent({
       event: cacheStatus === 'bypass' ? 'fallback' : 'success',

@@ -11,21 +11,67 @@
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
-  import {
-    adaptPatternCandidates,
-    flattenPatternStates,
-    patternCapturePayload,
-    phaseMetaFor,
-  } from '$lib/contracts';
-  import type { PatternCandidateView, PatternStateView } from '$lib/contracts';
   import { buildCanonicalHref } from '$lib/seo/site';
-  import type { PatternStats } from '$lib/types/patternStats';
   import VerdictInboxSection from '$lib/components/patterns/VerdictInboxSection.svelte';
   import PatternCard from '$lib/components/patterns/PatternCard.svelte';
   import TransitionRow from '$lib/components/patterns/TransitionRow.svelte';
   import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
+  interface PhaseState {
+    symbol:       string;
+    pattern_id:   string;
+    current_phase: number;
+    phase_name:   string;
+    entered_at:   string;  // ISO
+    candles_in_phase: number;
+  }
+  interface Candidate {
+    symbol:     string;
+    pattern_id: string;
+    pattern_slug: string;
+    pattern_version: number;
+    phase:      number;
+    phase_name: string;
+    timeframe: string;
+    since:      string | null;
+    candidate_transition_id: string | null;
+  }
+  interface PatternStats {
+    pattern_slug:    string;
+    total_instances: number;
+    success_count:   number;
+    failure_count:   number;
+    pending_count:   number;
+    hit_rate:        number | null;
+    avg_gain_pct:    number | null;
+    avg_loss_pct:    number | null;
+    expected_value:  number | null;
+    btc_conditional: { bullish: number | null; bearish: number | null; sideways: number | null } | null;
+    decay_direction: string | null;
+    recent_30d_count: number;
+    recent_30d_success_rate: number | null;
+    ml_shadow: {
+      total_entries: number;
+      decided_entries: number;
+      state_counts: Record<string, number>;
+      scored_entries: number;
+      scored_decided_entries: number;
+      score_coverage: number | null;
+      avg_p_win: number | null;
+      threshold_pass_count: number;
+      threshold_pass_rate: number | null;
+      above_threshold_success_rate: number | null;
+      below_threshold_success_rate: number | null;
+      training_usable_count: number;
+      training_win_count: number;
+      training_loss_count: number;
+      ready_to_train: boolean;
+      readiness_reason: string;
+      last_model_version: string | null;
+    } | null;
+  }
+
   interface Transition {
     transition_id: string;
     symbol: string;
@@ -37,8 +83,8 @@
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
-  let candidates   = $state<PatternCandidateView[]>([]);
-  let states       = $state<PatternStateView[]>([]);
+  let candidates   = $state<Candidate[]>([]);
+  let states       = $state<PhaseState[]>([]);
   let stats        = $state<PatternStats[]>([]);
   let transitions  = $state<Transition[]>([]);
   let lastScan     = $state<string | null>(null);
@@ -65,6 +111,15 @@
     goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
   }
 
+  // Phase display config
+  const PHASE_META: Record<number, { label: string; color: string }> = {
+    0: { label: 'FAKE DUMP',    color: 'rgba(251,191,36,0.7)' },
+    1: { label: 'ARCH ZONE',    color: 'rgba(99,179,237,0.7)' },
+    2: { label: 'REAL DUMP',    color: 'rgba(239,83,80,0.8)' },
+    3: { label: 'ACCUMULATION', color: 'rgba(38,166,154,1)' },
+    4: { label: 'BREAKOUT',     color: 'rgba(74,222,128,1)' },
+  };
+
   // ── Data loading ───────────────────────────────────────────────────────────
   async function loadAll() {
     error = null;
@@ -78,12 +133,54 @@
 
       if (candRes.status === 'fulfilled' && candRes.value.ok) {
         const d = await candRes.value.json();
-        candidates = adaptPatternCandidates(d);
+        const records = Array.isArray(d.candidate_records) ? d.candidate_records : [];
+        candidates = records
+          .filter((record: any) => record?.alert_visible !== false)
+          .map((record: any) => ({
+            symbol: String(record.symbol ?? ''),
+            pattern_id: String(record.pattern_slug ?? record.slug ?? ''),
+            pattern_slug: String(record.pattern_slug ?? record.slug ?? ''),
+            pattern_version: Number(record.pattern_version ?? 1),
+            phase: Number(record.phase ?? 3),
+            phase_name: String(record.phase_label ?? 'ACCUMULATION'),
+            timeframe: String(record.timeframe ?? '1h'),
+            since: typeof record.entered_at === 'string' ? record.entered_at : null,
+            candidate_transition_id:
+              typeof record.candidate_transition_id === 'string'
+                ? record.candidate_transition_id
+                : typeof record.transition_id === 'string'
+                  ? record.transition_id
+                  : null,
+          }));
         lastScan = null;
       }
       if (stateRes.status === 'fulfilled' && stateRes.value.ok) {
         const d = await stateRes.value.json();
-        states = flattenPatternStates(d).sort((a, b) => b.phaseIdx - a.phaseIdx);
+        const flat: PhaseState[] = [];
+        for (const [pid, symbolMap] of Object.entries(d.patterns ?? {})) {
+          for (const [sym, st] of Object.entries(symbolMap as Record<string, any>)) {
+            if ((st.phase_idx ?? -1) >= 0) {
+              flat.push({
+                symbol: sym,
+                pattern_id: pid,
+                current_phase: st.phase_idx ?? 0,
+                phase_name: st.phase_id ?? 'UNKNOWN',
+                entered_at: st.entered_at ?? '',
+                candles_in_phase: st.bars_in_phase ?? 0,
+              });
+            }
+          }
+        }
+        states = flat.sort((a, b) => b.current_phase - a.current_phase);
+        const entrySince = new Map(
+          flat
+            .filter((row) => row.phase_name === 'ACCUMULATION' && row.entered_at)
+            .map((row) => [`${row.pattern_id}:${row.symbol}`, row.entered_at] as const)
+        );
+        candidates = candidates.map((candidate) => ({
+          ...candidate,
+          since: entrySince.get(`${candidate.pattern_id}:${candidate.symbol}`) ?? null,
+        }));
       }
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
         const d = await statsRes.value.json();
@@ -111,15 +208,23 @@
     }
   }
 
-  async function saveCandidate(candidate: PatternCandidateView) {
-    const candidateKey = `${candidate.patternSlug}:${candidate.symbol}`;
+  async function saveCandidate(candidate: Candidate) {
+    const candidateKey = `${candidate.pattern_slug}:${candidate.symbol}`;
     savingCandidateIds = new Set([...savingCandidateIds, candidateKey]);
     error = null;
     try {
       const res = await fetch('/api/captures', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patternCapturePayload(candidate)),
+        body: JSON.stringify({
+          capture_kind: 'pattern_candidate',
+          symbol: candidate.symbol,
+          pattern_slug: candidate.pattern_slug,
+          pattern_version: candidate.pattern_version,
+          phase: candidate.phase_name,
+          timeframe: candidate.timeframe,
+          candidate_transition_id: candidate.candidate_transition_id,
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -145,8 +250,8 @@
     return `${(value * 100).toFixed(digits)}%`;
   }
 
-  const accumulationCount = $derived(candidates.filter((c) => c.phaseId === 'ACCUMULATION').length);
-  const breakoutCount = $derived(states.filter((s) => s.phaseId === 'BREAKOUT').length);
+  const accumulationCount = $derived(candidates.filter((c) => c.phase_name === 'ACCUMULATION').length);
+  const breakoutCount = $derived(states.filter((s) => s.current_phase === 4).length);
   const filteredTransitions = $derived(
     symbolFilter ? transitions.filter((t) => t.symbol === symbolFilter) : transitions
   );
@@ -201,7 +306,6 @@
       <button class="surface-button" onclick={triggerScan} disabled={scanning}>
         {scanning ? 'Scanning…' : 'Run Scan'}
       </button>
-      <button class="surface-button-secondary" onclick={() => goto('/patterns/lifecycle')}>Lifecycle</button>
       <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
     </div>
   </header>
@@ -236,23 +340,23 @@
           </div>
         {:else}
           <div class="candidate-grid">
-            {#each candidates.filter((c) => c.phaseId === 'ACCUMULATION') as cand}
-              {@const candidateKey = `${cand.patternSlug}:${cand.symbol}`}
+            {#each candidates.filter((c) => c.phase_name === 'ACCUMULATION') as cand}
+              {@const candidateKey = `${cand.pattern_slug}:${cand.symbol}`}
               <div class="surface-card candidate-card">
                 <div class="cand-top">
                   <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
                   <span class="surface-chip accum-chip">Accumulation</span>
                 </div>
                 <div class="cand-meta">
-                  <span>{cand.patternId.replace(/_/g,' ')}</span>
-                  <span>{cand.enteredAt ? sinceHours(cand.enteredAt) : '진입 시간 미상'}</span>
+                  <span>{cand.pattern_id.replace(/_/g,' ')}</span>
+                  <span>{cand.since ? sinceHours(cand.since) : '진입 시간 미상'}</span>
                 </div>
                 <div class="cand-actions">
                   <a class="surface-button-ghost compact-action" href="/cogochi?symbol={cand.symbol}">Open Chart</a>
                   <button
                     class="surface-button-secondary compact-action valid"
                     onclick={() => saveCandidate(cand)}
-                    disabled={!cand.candidateTransitionId || savingCandidateIds.has(candidateKey)}
+                    disabled={!cand.candidate_transition_id || savingCandidateIds.has(candidateKey)}
                   >
                     {savingCandidateIds.has(candidateKey) ? 'Saving…' : 'Save Setup'}
                   </button>
@@ -306,15 +410,15 @@
                   <span>캔들 수</span>
                 </div>
                 {#each filteredStates as s}
-                  {@const meta = phaseMetaFor(s.phaseId, s.phaseLabel, s.phaseIdx)}
-                  <div class="table-row" class:highlight={s.phaseId === 'ACCUMULATION'}>
+                  {@const meta = PHASE_META[s.current_phase] ?? { label: String(s.current_phase), color: 'rgba(255,255,255,0.4)' }}
+                  <div class="table-row" class:highlight={s.current_phase === 3}>
                     <span class="row-sym">
                       <a href="/cogochi?symbol={s.symbol}">{s.symbol.replace('USDT','')}</a>
                     </span>
-                    <span class="row-pattern">{s.patternId.replace(/_/g,' ')}</span>
+                    <span class="row-pattern">{s.pattern_id.replace(/_/g,' ')}</span>
                     <span class="row-phase" style="--phase-color:{meta.color}">{meta.label}</span>
-                    <span class="row-time">{s.enteredAt ? sinceHours(s.enteredAt) : '—'}</span>
-                    <span class="row-candles">{s.barsInPhase}</span>
+                    <span class="row-time">{sinceHours(s.entered_at)}</span>
+                    <span class="row-candles">{s.candles_in_phase}</span>
                   </div>
                 {/each}
               </div>
@@ -324,12 +428,11 @@
               {#each filteredStates as s}
                 <PatternCard
                   symbol={s.symbol}
-                  patternId={s.patternId}
-                  phase={s.phaseIdx}
-                  phaseId={s.phaseId}
-                  phaseLabel={s.phaseLabel}
-                  enteredAt={s.enteredAt}
-                  barsInPhase={s.barsInPhase}
+                  patternId={s.pattern_id}
+                  phase={s.current_phase}
+                  phaseId={s.phase_name}
+                  enteredAt={s.entered_at}
+                  candlesInPhase={s.candles_in_phase}
                 />
               {/each}
             </div>
@@ -377,8 +480,6 @@
                   <span class="stat-value">{s.total_instances}</span>
                 </div>
                 {#if s.ml_shadow}
-                  {@const mlReady = s.ml_shadow.ready_to_train ?? false}
-                  {@const mlUsable = s.ml_shadow.training_usable_count ?? 0}
                   <div class="stat-row">
                     <span class="stat-label">ML coverage</span>
                     <span class="stat-value {s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.8 ? 'good' : s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.4 ? 'mid' : 'bad'}">
@@ -387,8 +488,8 @@
                   </div>
                   <div class="stat-row">
                     <span class="stat-label">학습 준비</span>
-                    <span class="stat-value" class:good={mlReady} class:mid={!mlReady && mlUsable >= 10} class:bad={!mlReady && mlUsable < 10}>
-                      {mlReady ? 'Ready' : 'Shadow'}
+                    <span class="stat-value" class:good={s.ml_shadow.ready_to_train} class:mid={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count >= 10} class:bad={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count < 10}>
+                      {s.ml_shadow.ready_to_train ? 'Ready' : 'Shadow'}
                     </span>
                   </div>
                   <p class="stat-footnote">{s.ml_shadow.readiness_reason}</p>

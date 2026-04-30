@@ -30,10 +30,7 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
 	try {
 		const { payload, cacheStatus } = await loadOptionsSnapshot(currency);
 		return json(payload, {
-			headers: {
-				'X-Cache': cacheStatus.toUpperCase(),
-				'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
-			},
+			headers: { 'X-Cache': cacheStatus.toUpperCase() },
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'upstream_unavailable';

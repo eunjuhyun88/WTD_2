@@ -4,15 +4,14 @@
   interface Props {
     symbol: string;
     patternId: string;
-    phase?: number | null;
-    phaseId: string;
-    phaseLabel?: string;
-    enteredAt: string | null;
-    barsInPhase: number;
+    phase: number;
+    phaseId?: string;
+    enteredAt: string;
+    candlesInPhase: number;
   }
-  const { symbol, patternId, phase = null, phaseId, phaseLabel, enteredAt, barsInPhase }: Props = $props();
+  const { symbol, patternId, phase, phaseId, enteredAt, candlesInPhase }: Props = $props();
 
-  function sinceHours(iso: string | null): string {
+  function sinceHours(iso: string): string {
     if (!iso) return '—';
     const diff = (Date.now() - new Date(iso).getTime()) / 1000 / 60;
     if (diff < 60)  return `${Math.round(diff)}m ago`;
@@ -24,11 +23,11 @@
 <a class="pattern-card" href="/cogochi?symbol={symbol}">
   <div class="card-top">
     <span class="card-sym">{symbol.replace('USDT', '')}</span>
-    <PhaseBadge {phase} {phaseId} {phaseLabel} size="sm" />
+    <PhaseBadge {phase} {phaseId} size="sm" />
   </div>
   <div class="card-bottom">
     <span class="card-pattern">{patternId.replace(/_/g, ' ')}</span>
-    <span class="card-meta">{sinceHours(enteredAt)} · {barsInPhase}c</span>
+    <span class="card-meta">{sinceHours(enteredAt)} · {candlesInPhase}c</span>
   </div>
 </a>
 

@@ -1,3 +1,4 @@
+// @ts-expect-error — pg ships without built-in types; install @types/pg to remove this
 import pg from 'pg';
 import { env } from '$env/dynamic/private';
 
@@ -51,8 +52,7 @@ export function getPool(): pg.Pool {
     idleTimeoutMillis,
     connectionTimeoutMillis,
     maxUses,
-  // connectionTimeoutMillis and maxUses are valid pg-pool options but not yet in @types/pg
-  } as pg.PoolConfig);
+  });
 
   if (useSsl && sslInsecureSkipVerify) {
     console.warn('[DB Pool] PGSSL_INSECURE_SKIP_VERIFY=true (TLS certificate validation disabled)');
@@ -75,12 +75,12 @@ export function getPool(): pg.Pool {
   return _pool;
 }
 
-export async function query<T extends pg.QueryResultRow = any>(
+export async function query<T = Record<string, unknown>>(
   text: string,
   params: unknown[] = []
 ): Promise<pg.QueryResult<T>> {
   const pool = getPool();
-  return pool.query(text, params) as unknown as Promise<pg.QueryResult<T>>;
+  return pool.query<T>(text, params);
 }
 
 export async function withTransaction<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {

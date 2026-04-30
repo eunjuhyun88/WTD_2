@@ -30,9 +30,6 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
 
 	const { payload, cacheStatus } = await loadVenueDivergence(symbol);
 	return json(payload, {
-		headers: {
-			'X-Cache': cacheStatus.toUpperCase(),
-			'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=30',
-		},
+		headers: { 'X-Cache': cacheStatus.toUpperCase() },
 	});
 };

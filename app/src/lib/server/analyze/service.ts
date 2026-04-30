@@ -35,23 +35,7 @@ export async function getAnalyzePayload(args: {
   symbol: string;
   tf: string;
   requestId: string;
-  from?: number;
-  to?: number;
 }): Promise<{ payload: Record<string, unknown>; cacheStatus: 'hit' | 'miss' | 'coalesced' | 'bypass' }> {
-  // Range queries bypass the shared cache — they're specific to the selected window.
-  if (args.from != null || args.to != null) {
-    try {
-      const payload = await buildAnalyzePayload(args);
-      return { payload, cacheStatus: 'bypass' };
-    } catch (error) {
-      if (error instanceof EngineError && (error.status === 502 || error.status === 504)) {
-        const payload = await buildFallbackAnalyzePayload(args.symbol, args.tf);
-        return { payload, cacheStatus: 'bypass' };
-      }
-      throw error;
-    }
-  }
-
   const cacheKey = buildAnalyzeCacheKey(args.symbol, args.tf);
   try {
     const { payload, cacheStatus } = await getOrRunAnalyzeResponse(cacheKey, async () =>
@@ -84,14 +68,10 @@ async function buildAnalyzePayload({
   symbol,
   tf,
   requestId,
-  from,
-  to,
 }: {
   symbol: string;
   tf: string;
   requestId: string;
-  from?: number;
-  to?: number;
 }): Promise<Record<string, unknown>> {
   const timer = createAnalyzeTimer();
 
@@ -109,8 +89,6 @@ async function buildAnalyzePayload({
       takerPoints,
       forceOrders,
       fundingRate,
-      spotKlines,
-      coinbaseSpotPrice,
     } = await collectAnalyzeInputs(symbol, tf);
     timer.mark('collector_ms');
 
@@ -165,18 +143,7 @@ async function buildAnalyzePayload({
       index_price: typeof indexPrice === 'number' ? indexPrice : undefined,
       short_liq_usd,
       long_liq_usd,
-      spot_price: spotKlines.length > 0
-        ? spotKlines[spotKlines.length - 1].close
-        : undefined,
     };
-
-    const coinbasePremiumPct =
-      coinbaseSpotPrice !== null && currentPrice > 0
-        ? ((coinbaseSpotPrice - currentPrice) / currentPrice) * 100
-        : null;
-    if (coinbasePremiumPct !== null) {
-      console.debug('[analyze] coinbase_premium_pct=%s symbol=%s', coinbasePremiumPct.toFixed(3), symbol);
-    }
 
     const perpScore: PerpSnapshot = {
       funding_rate: typeof fundingRate === 'number' ? fundingRate : 0,
@@ -186,7 +153,7 @@ async function buildAnalyzePayload({
       taker_buy_ratio: taker_ratio,
     };
 
-    let engineKlines: KlineBar[] = (klines as BinanceKlineWithTaker[]).map((k) => ({
+    const engineKlines: KlineBar[] = (klines as BinanceKlineWithTaker[]).map((k) => ({
       t: k.time,
       o: k.open,
       h: k.high,
@@ -195,13 +162,6 @@ async function buildAnalyzePayload({
       v: k.volume,
       tbv: k.takerBuyBaseAssetVolume ?? k.volume * 0.5,
     }));
-
-    if (from != null || to != null) {
-      const filtered = engineKlines.filter(
-        (k) => (from == null || k.t >= from) && (to == null || k.t <= to),
-      );
-      if (filtered.length >= 3) engineKlines = filtered;
-    }
 
     const { deepResult, scoreResult, deepError, scoreError } = await runEngineAnalysis(
       symbol,
@@ -230,7 +190,7 @@ async function buildAnalyzePayload({
     }
 
     const payload = mapAnalyzeResponse(
-      { klines, klines1h, ticker, markPrice, indexPrice, oiPoint, oiHistory1h, lsTop, depth, takerPoints, forceOrders, fundingRate, spotKlines, coinbaseSpotPrice },
+      { klines, klines1h, ticker, markPrice, indexPrice, oiPoint, oiHistory1h, lsTop, depth, takerPoints, forceOrders, fundingRate },
       {
         currentPrice,
         oi_notional,

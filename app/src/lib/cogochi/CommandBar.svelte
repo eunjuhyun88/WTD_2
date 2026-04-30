@@ -5,15 +5,14 @@
     sessionName: string;
     onRangeSelect: () => void;
     hasRange: boolean;
-    aiVisible?: boolean;
-    toggleAI?: () => void;
+    aiVisible: boolean;
+    toggleAI: () => void;
     paletteOpen: boolean;
     setPaletteOpen: (open: boolean) => void;
     onIndicators?: () => void;
   }
 
-  // `onIndicators` reserved for future use (currently the indicator sheet is opened via cogochi:cmd).
-  const { sessionName, onRangeSelect, hasRange, aiVisible, toggleAI, paletteOpen, setPaletteOpen, onIndicators: _onIndicators }: Props = $props();
+  const { sessionName, onRangeSelect, hasRange, aiVisible, toggleAI, paletteOpen, setPaletteOpen, onIndicators }: Props = $props();
   let q = $state('');
 
   $effect(() => {
@@ -47,19 +46,29 @@
     ◈ {hasRange ? 'RANGE 12 bars' : 'SELECT RANGE'}
   </button>
 
-  {#if toggleAI}
-    <span class="divider"></span>
+  <span class="divider"></span>
 
+  {#if onIndicators}
     <button
-      class="ai-btn"
-      class:active={aiVisible}
-      title="Toggle AI panel"
-      onclick={toggleAI}
+      class="ind-btn"
+      onclick={onIndicators}
+      title="Manage indicators"
     >
-      <span class="dot" class:active={aiVisible}></span>
-      AI
+      ⚙ INDICATORS
     </button>
+    <span class="divider"></span>
   {/if}
+
+  <button
+    class="ai-btn"
+    class:active={aiVisible}
+    title="Toggle AI panel (⌘L)"
+    onclick={toggleAI}
+  >
+    <span class="dot" class:active={aiVisible}></span>
+    AI
+    <span class="kbd">⌘L</span>
+  </button>
 
   {#if paletteOpen}
     <CommandPalette
@@ -179,6 +188,25 @@
     color: var(--amb);
     background: var(--amb-dd);
     border-color: var(--amb-d);
+  }
+
+  .ind-btn {
+    height: 22px;
+    padding: 0 8px;
+    background: transparent;
+    color: var(--g6);
+    border: 0.5px solid var(--g4);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ind-btn:hover {
+    background: var(--g2);
+    color: var(--g8);
+    border-color: var(--g5);
   }
 
   .ai-btn {

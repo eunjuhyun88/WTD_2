@@ -24,8 +24,6 @@ export type AnalyzeRawBundle = {
   takerPoints: Array<{ buySellRatio: number }>;
   forceOrders: ForceOrderLite[];
   fundingRate: number | null;
-  spotKlines: BinanceKline[];
-  coinbaseSpotPrice: number | null;   // raw Coinbase price (BTC/ETH only)
 };
 
 export type EngineSettled = {
@@ -38,8 +36,6 @@ export type EngineSettled = {
 export type AnalyzeRequestInput = {
   symbol: string;
   tf: string;
-  from?: number;
-  to?: number;
 };
 
 export type AnalyzeDerived = {

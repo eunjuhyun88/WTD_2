@@ -1,8 +1,8 @@
 <script lang="ts">
   import { canonicalChange24h, canonicalSymbol, terminalState } from '$lib/stores/terminalState';
-  import { page } from '$app/stores';
   import SymbolPicker from './SymbolPicker.svelte';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
+  import PineScriptGenerator from './PineScriptGenerator.svelte';
 
   interface Props {
     assetsCount?: number;
@@ -28,6 +28,7 @@
 
   let showSymbolDrop = $state(false);
   let showIndicatorLib = $state(false);
+  let showPineGen = $state(false);
 
   function fmtPrice(p: number): string {
     if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -80,6 +81,19 @@
     {/each}
   </div>
 
+  <!-- Pine Script Generator -->
+  <button
+    class="cmd-btn cmd-btn--pine"
+    class:cmd-btn--active={showPineGen}
+    type="button"
+    onclick={() => showPineGen = !showPineGen}
+    aria-label="Pine Script Generator"
+    title="자연어 → Pine Script"
+  >
+    <span style="font-size:11px">⌥</span>
+    <span>Script</span>
+  </button>
+
   <!-- Indicators -->
   <button
     class="cmd-btn"
@@ -93,12 +107,6 @@
     </svg>
     <span>Indicators</span>
   </button>
-
-  <!-- View tabs: Terminal / Peek -->
-  <div class="view-tabs">
-    <a href="/terminal" class="view-tab" class:view-tab--active={$page.url.pathname === '/terminal'}>CHART</a>
-    <a href="/terminal/peek" class="view-tab" class:view-tab--active={$page.url.pathname === '/terminal/peek'}>PEEK</a>
-  </div>
 
   <!-- Markets toggle -->
   <button
@@ -119,6 +127,11 @@
 <IndicatorLibrary
   open={showIndicatorLib}
   onClose={() => showIndicatorLib = false}
+/>
+
+<PineScriptGenerator
+  open={showPineGen}
+  onClose={() => showPineGen = false}
 />
 
 {#if showSymbolDrop}
@@ -207,31 +220,6 @@
   /* Spacer */
   .cmd-spacer { flex: 1 1 auto; min-width: 8px; }
 
-  /* View tabs */
-  .view-tabs {
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
-    border-radius: 5px;
-    overflow: hidden;
-    margin-right: 8px;
-    flex-shrink: 0;
-  }
-  .view-tab {
-    padding: 4px 9px;
-    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: rgba(209,212,220,0.38);
-    text-decoration: none;
-    border-right: 1px solid var(--tv-border, rgba(255,255,255,0.055));
-    transition: color 100ms, background 100ms;
-  }
-  .view-tab:last-child { border-right: none; }
-  .view-tab:hover { color: rgba(209,212,220,0.75); }
-  .view-tab--active { color: #D1D4DC; background: rgba(255,255,255,0.06); }
-
   /* Mode pill */
   .mode-pill {
     display: inline-flex;
@@ -290,6 +278,11 @@
     background: rgba(34,171,148,0.10);
     border-color: rgba(34,171,148,0.28);
     color: #22AB94;
+  }
+  .cmd-btn--pine.cmd-btn--active {
+    background: rgba(255,199,80,0.10);
+    border-color: rgba(255,199,80,0.30);
+    color: #ffc750;
   }
 
   /* Markets button */

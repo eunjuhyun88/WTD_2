@@ -2,14 +2,11 @@
   import '../app.css';
   import { dev } from '$app/environment';
   import { injectAnalytics } from '@vercel/analytics/sveltekit';
-  import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
   import Header from '../components/layout/Header.svelte';
   import AppNavRail from '../components/layout/AppNavRail.svelte';
   import AppTopBar from '../components/layout/AppTopBar.svelte';
   import MobileBottomNav from '../components/layout/MobileBottomNav.svelte';
   import WalletModal from '../components/modals/WalletModal.svelte';
-  import ProfileDrawer from '../components/layout/ProfileDrawer.svelte';
-  import { profileDrawerOpen } from '$lib/stores/profileDrawerStore';
   import NotificationTray from '../components/shared/NotificationTray.svelte';
   import ToastStack from '../components/shared/ToastStack.svelte';
   import SystemToastStack from '../components/shared/SystemToastStack.svelte';
@@ -21,7 +18,6 @@
   import { onMount, onDestroy } from 'svelte';
 
   injectAnalytics({ mode: dev ? 'development' : 'production' });
-  injectSpeedInsights();
 
   let { children } = $props();
 
@@ -53,13 +49,6 @@
     window.addEventListener('resize', handleResize);
     stopResizeTracking = () => window.removeEventListener('resize', handleResize);
     stopGlobalPriceFeed = startGlobalPriceFeed();
-
-    const { initWalletListeners, trySilentReconnect } = await import('$lib/stores/walletStore');
-    const stopWalletListeners = initWalletListeners();
-    trySilentReconnect();
-
-    const originalStopTracking = stopResizeTracking;
-    stopResizeTracking = () => { originalStopTracking?.(); stopWalletListeners(); };
   });
 
   onDestroy(() => {
@@ -95,7 +84,6 @@
 </div>
 
 <WalletModal />
-<ProfileDrawer open={$profileDrawerOpen} onClose={() => profileDrawerOpen.set(false)} />
 {#if !$isTerminal}<NotificationTray />{/if}
 {#if !$isTerminal}<ToastStack />{/if}
 <SystemToastStack />
