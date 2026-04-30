@@ -35,7 +35,23 @@ export async function getAnalyzePayload(args: {
   symbol: string;
   tf: string;
   requestId: string;
+  from?: number;
+  to?: number;
 }): Promise<{ payload: Record<string, unknown>; cacheStatus: 'hit' | 'miss' | 'coalesced' | 'bypass' }> {
+  // Range queries bypass the shared cache — they're specific to the selected window.
+  if (args.from != null || args.to != null) {
+    try {
+      const payload = await buildAnalyzePayload(args);
+      return { payload, cacheStatus: 'bypass' };
+    } catch (error) {
+      if (error instanceof EngineError && (error.status === 502 || error.status === 504)) {
+        const payload = await buildFallbackAnalyzePayload(args.symbol, args.tf);
+        return { payload, cacheStatus: 'bypass' };
+      }
+      throw error;
+    }
+  }
+
   const cacheKey = buildAnalyzeCacheKey(args.symbol, args.tf);
   try {
     const { payload, cacheStatus } = await getOrRunAnalyzeResponse(cacheKey, async () =>
@@ -68,10 +84,14 @@ async function buildAnalyzePayload({
   symbol,
   tf,
   requestId,
+  from,
+  to,
 }: {
   symbol: string;
   tf: string;
   requestId: string;
+  from?: number;
+  to?: number;
 }): Promise<Record<string, unknown>> {
   const timer = createAnalyzeTimer();
 
@@ -153,7 +173,7 @@ async function buildAnalyzePayload({
       taker_buy_ratio: taker_ratio,
     };
 
-    const engineKlines: KlineBar[] = (klines as BinanceKlineWithTaker[]).map((k) => ({
+    let engineKlines: KlineBar[] = (klines as BinanceKlineWithTaker[]).map((k) => ({
       t: k.time,
       o: k.open,
       h: k.high,
@@ -162,6 +182,13 @@ async function buildAnalyzePayload({
       v: k.volume,
       tbv: k.takerBuyBaseAssetVolume ?? k.volume * 0.5,
     }));
+
+    if (from != null || to != null) {
+      const filtered = engineKlines.filter(
+        (k) => (from == null || k.t >= from) && (to == null || k.t <= to),
+      );
+      if (filtered.length >= 3) engineKlines = filtered;
+    }
 
     const { deepResult, scoreResult, deepError, scoreError } = await runEngineAnalysis(
       symbol,

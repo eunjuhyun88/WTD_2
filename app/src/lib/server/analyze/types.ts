@@ -36,6 +36,8 @@ export type EngineSettled = {
 export type AnalyzeRequestInput = {
   symbol: string;
   tf: string;
+  from?: number;
+  to?: number;
 };
 
 export type AnalyzeDerived = {
