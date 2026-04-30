@@ -44,6 +44,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/cogochi/analyze',       // read-only shell bootstrap
   '/api/cogochi/alerts',        // read-only recent alert feed
   '/api/cogochi/thermometer',   // read-only market pulse
+  '/api/cogochi/news',          // read-only public news feed (CryptoPanic, no personal data)
+  '/api/cogochi/whales',        // read-only Hyperliquid leaderboard proxy (public data)
   '/api/cogochi/alpha/',        // read-only alpha world model
   '/api/captures/chart-annotations', // optional chart overlay feed
   '/api/market/ohlcv',
@@ -66,6 +68,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/rv-cone',           // W-0122-F: realized vol cone (Binance klines), 1h cache
   '/api/market/funding-flip',      // W-0122-F: funding flip clock (Binance history), 10m cache
   '/api/market/chain-intel',       // W-0122 extension: Solscan/TRONSCAN/Etherscan V2 canonical chain snapshots
+  '/api/market/kimchi-premium',      // W-0363: KRW/USDT premium (public, 30s cached)
   '/api/market/influencer-metrics', // W-0122 extension: influencer metric pack (public read-only)
   '/api/market/reference-stack',   // W-0122 extension: curated reference stack with live/blocked capability states
   '/api/confluence/',              // W-0122-Confluence: score aggregator (read-only)
