@@ -58,6 +58,98 @@ def _sb():
     return _client
 
 
+_TYPED_TABLE_MAP: dict[str, str] = {
+    "outcome": "ledger_outcomes",
+    "verdict": "ledger_verdicts",
+    "entry": "ledger_entries",
+    "score": "ledger_scores",
+}
+
+
+def _outcome_row_to_record(row: dict) -> "PatternLedgerRecord":
+    """Reconstruct PatternLedgerRecord from ledger_outcomes row."""
+    return PatternLedgerRecord(
+        id=row["id"],
+        pattern_slug=row.get("pattern_slug", ""),
+        record_type="outcome",
+        capture_id=row.get("capture_id"),
+        outcome_id=row.get("id"),
+        symbol=None,
+        user_id=None,
+        payload={
+            "outcome": row.get("outcome"),
+            "max_gain_pct": row.get("max_gain_pct"),
+            "exit_return_pct": row.get("exit_return_pct"),
+            "duration_hours": row.get("duration_hours"),
+        },
+        created_at=row.get("created_at"),
+    )
+
+
+def _verdict_row_to_record(row: dict) -> "PatternLedgerRecord":
+    """Reconstruct PatternLedgerRecord from ledger_verdicts row."""
+    return PatternLedgerRecord(
+        id=row["id"],
+        pattern_slug=row.get("pattern_slug", ""),
+        record_type="verdict",
+        capture_id=row.get("capture_id"),
+        outcome_id=row.get("outcome_id"),
+        symbol=None,
+        user_id=row.get("user_id"),
+        payload={
+            "user_verdict": row.get("verdict"),
+            "user_note": row.get("note"),
+        },
+        created_at=row.get("created_at"),
+    )
+
+
+def _entry_row_to_record(row: dict) -> "PatternLedgerRecord":
+    """Reconstruct PatternLedgerRecord from ledger_entries row."""
+    return PatternLedgerRecord(
+        id=row["id"],
+        pattern_slug=row.get("pattern_slug", ""),
+        record_type="entry",
+        capture_id=row.get("capture_id"),
+        outcome_id=None,
+        symbol=None,
+        user_id=None,
+        payload={
+            "entry_price": row.get("entry_price"),
+            "btc_trend_at_entry": row.get("btc_trend"),
+        },
+        created_at=row.get("created_at"),
+    )
+
+
+def _score_row_to_record(row: dict) -> "PatternLedgerRecord":
+    """Reconstruct PatternLedgerRecord from ledger_scores row."""
+    return PatternLedgerRecord(
+        id=row["id"],
+        pattern_slug=row.get("pattern_slug", ""),
+        record_type="score",
+        capture_id=row.get("capture_id"),
+        outcome_id=None,
+        symbol=None,
+        user_id=None,
+        payload={
+            "entry_p_win": row.get("p_win"),
+            "entry_model_key": row.get("model_key"),
+            "entry_threshold": row.get("threshold"),
+            "entry_threshold_passed": row.get("threshold_passed"),
+        },
+        created_at=row.get("created_at"),
+    )
+
+
+_TYPED_ROW_CONVERTERS = {
+    "outcome": _outcome_row_to_record,
+    "verdict": _verdict_row_to_record,
+    "entry": _entry_row_to_record,
+    "score": _score_row_to_record,
+}
+
+
 def _row_to_record(row: dict) -> PatternLedgerRecord:
     d = dict(row)
     v = d.get("created_at")
@@ -144,6 +236,14 @@ class SupabaseLedgerRecordStore:
         definition_id: str | None = None,
         limit: int | None = None,
     ) -> list[PatternLedgerRecord]:
+        # Phase 4: route typed record types to dedicated tables
+        if record_type in _TYPED_TABLE_MAP and definition_id is None:
+            return self._list_from_typed_table(
+                record_type, pattern_slug, symbol=symbol,
+                outcome_id=outcome_id, limit=limit,
+            )
+
+        # Legacy path: pattern_ledger_records
         q = (
             _sb()
             .table("pattern_ledger_records")
@@ -170,6 +270,32 @@ class SupabaseLedgerRecordStore:
                 or (_record_definition_id(record) is None and current_id == definition_id)
             ]
         return records[:limit] if limit is not None else records
+
+    def _list_from_typed_table(
+        self,
+        record_type: str,
+        pattern_slug: str,
+        *,
+        symbol: str | None = None,
+        outcome_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[PatternLedgerRecord]:
+        """Read from a typed table (ledger_outcomes etc.) instead of pattern_ledger_records."""
+        table_name = _TYPED_TABLE_MAP[record_type]
+        converter = _TYPED_ROW_CONVERTERS[record_type]
+        q = (
+            _sb()
+            .table(table_name)
+            .select("*")
+            .eq("pattern_slug", pattern_slug)
+            .order("created_at", desc=True)
+        )
+        if outcome_id and record_type == "verdict":
+            q = q.eq("outcome_id", outcome_id)
+        if limit is not None:
+            q = q.limit(limit)
+        result = q.execute()
+        return [converter(r) for r in (result.data or [])]
 
     def list_pattern_slugs(self) -> list[str]:
         result = (
