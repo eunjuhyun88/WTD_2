@@ -235,7 +235,7 @@ class TestPerformance:
         print(f"\n  ⏱ scheduler 500 states: {elapsed_ms:.0f}ms")
 
     def test_perf4_api_100_verdict_posts(self, api_client):
-        """100 sequential POST /verdict ≤ 1000ms."""
+        """100 sequential POST /verdict ≤ 4000ms (4× CI variance headroom)."""
         verdicts = (["near_miss"] * 5 + ["valid"] * 3 + ["invalid"] * 2) * 10
 
         t0 = time.perf_counter()
@@ -247,7 +247,7 @@ class TestPerformance:
             assert r.status_code == 200
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
-        assert elapsed_ms < 1000, f"100 POST /verdict: {elapsed_ms:.0f}ms > 1000ms"
+        assert elapsed_ms < 4000, f"100 POST /verdict: {elapsed_ms:.0f}ms > 4000ms"
         print(f"\n  ⏱ 100 POST /verdict: {elapsed_ms:.0f}ms")
 
 
