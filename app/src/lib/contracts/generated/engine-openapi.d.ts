@@ -102,6 +102,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ctx/kimchi-premium": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ctx Kimchi Premium
+         * @description Return current Kimchi Premium % (Upbit BTC/KRW vs Binance BTC/USDT × USD/KRW).
+         *
+         *     30s server-side cache (function-level). Returns zeros on fetch failure.
+         *     Response: { premium_pct, source, usd_krw, ts }
+         */
+        get: operations["ctx_kimchi_premium_ctx_kimchi_premium_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ctx/fact": {
         parameters: {
             query?: never;
@@ -1070,6 +1093,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lifecycle Statuses
+         * @description Return lifecycle status for all known PatternObjects.
+         *
+         *     File-backed lifecycle records are sparse. Existing library patterns are
+         *     production objects by default; explicit draft/candidate/archive records
+         *     override that default.
+         */
+        get: operations["get_lifecycle_statuses_patterns_lifecycle_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/candidates": {
         parameters: {
             query?: never;
@@ -1203,6 +1250,50 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/lifecycle-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Lifecycle Status
+         * @description Return current lifecycle status for a pattern (draft/candidate/object/archived).
+         */
+        get: operations["get_lifecycle_status_patterns__slug__lifecycle_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Pattern Status
+         * @description Transition pattern lifecycle status.
+         *
+         *     Allowed: draft→candidate|archived, candidate→object|archived, object→archived.
+         *     Returns { ok, slug, from_status, to_status, updated_at }.
+         *     Raises 422 on invalid transition, 404 if pattern not in library.
+         */
+        patch: operations["patch_pattern_status_patterns__slug__status_patch"];
         trace?: never;
     };
     "/patterns/{slug}/model-registry": {
@@ -1428,6 +1519,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Pattern Objects
+         * @description List all seeded PatternObjects from Supabase.
+         *
+         *     ?phase=FAKE_DUMP  — filter by phase_id
+         *     ?tag=oi_reversal  — filter by tag
+         */
+        get: operations["list_pattern_objects_patterns_objects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/objects/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Object
+         * @description Get one PatternObject by slug.
+         */
+        get: operations["get_pattern_object_patterns_objects__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/verify-paper": {
         parameters: {
             query?: never;
@@ -1442,6 +1576,30 @@ export interface paths {
          * @description Run paper-trading verification for a pattern using recorded outcome ledger.
          */
         post: operations["verify_paper_patterns__slug__verify_paper_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/backtest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Backtest
+         * @description Historical backtest stats for a pattern (W-0369 Phase 1).
+         *
+         *     ?tf=1h            — kline timeframe
+         *     ?universe=default — comma-separated symbols, or "default" for DEFAULT_UNIVERSE
+         *     ?since_days=365   — lookback window in days
+         */
+        get: operations["get_pattern_backtest_patterns__slug__backtest_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2485,6 +2643,297 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/personalization/verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Verdict
+         * @description Record a verdict and return updated affinity score + threshold delta.
+         *
+         *     Cold-start users (n < 10) get mode="cold_start" with delta=null.
+         *     Warm users (n ≥ 10) get mode="personalized" with computed delta.
+         */
+        post: operations["post_verdict_personalization_verdict_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/personalization/user/{user_id}/variant/{pattern_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Variant
+         * @description Resolve personalized (or global fallback) variant for user × pattern.
+         */
+        get: operations["get_variant_personalization_user__user_id__variant__pattern_slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/personalization/user/{user_id}/affinity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Affinity
+         * @description Return top-k affinity scores for a user across all patterns.
+         */
+        get: operations["get_affinity_personalization_user__user_id__affinity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/personalization/user/{user_id}/rescue/{pattern_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Rescue
+         * @description Manually trigger rescue for always-invalid patterns.
+         *
+         *     Returns rescued=False if needs_rescue check fails (valid_rate > 5% or n < 30).
+         */
+        post: operations["post_rescue_personalization_user__user_id__rescue__pattern_slug__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Pattern
+         * @description Run validate_and_gate() for a pattern slug.
+         *
+         *     Rate limit: 20/day per IP.
+         *     503 if VALIDATION_PIPELINE_ENABLED=false.
+         */
+        post: operations["validate_pattern_research_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover
+         * @description Trigger autonomous pattern discovery agent (W-0316).
+         *
+         *     Internal-only: requires x-engine-internal-secret header.
+         *     Rate limit: 5/day. Discovery runs cost up to $0.50/cycle.
+         *     503 if DISCOVERY_AGENT_ENABLED=false.
+         */
+        post: operations["discover_research_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/autoresearch/trigger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Autoresearch
+         * @description Manually trigger one autoresearch cycle (admin-only).
+         *
+         *     Requires X-API-Key header matching ENGINE_API_KEY env var.
+         *     Returns immediately with run summary (runs synchronously in thread).
+         */
+        post: operations["trigger_autoresearch_research_autoresearch_trigger_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/signals/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Signals
+         * @description Return active promoted signals for a symbol.
+         *
+         *     Filters to signals with expires_at > now AND promoted_at > now - lookback.
+         */
+        get: operations["get_signals_research_signals__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run
+         * @description Return status of a specific autoresearch run.
+         */
+        get: operations["get_run_research_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Findings
+         * @description List inbox findings. date format: YYYY-MM-DD.
+         */
+        get: operations["list_findings_research_findings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/alpha-quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alpha Quality
+         * @description GET /research/alpha-quality — Welch+BH-FDR+Spearman alpha quality report.
+         */
+        get: operations["get_alpha_quality_research_alpha_quality_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/signals/{signal_id}/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Signal Components
+         * @description GET /research/signals/{signal_id}/components — component_scores for a signal event.
+         */
+        get: operations["get_signal_components_research_signals__signal_id__components_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/propfirm/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Summary */
+        get: operations["get_summary_propfirm_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/propfirm/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Account */
+        post: operations["create_account_propfirm_accounts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -2753,6 +3202,49 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AffinityEntry */
+        AffinityEntry: {
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** Alpha Valid */
+            alpha_valid: number;
+            /** Beta Valid */
+            beta_valid: number;
+            /** N Total */
+            n_total: number;
+            /** Score */
+            score: number;
+            /** Is Cold */
+            is_cold: boolean;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** AffinityListResponse */
+        AffinityListResponse: {
+            /** User Id */
+            user_id: string;
+            /** Patterns */
+            patterns: components["schemas"]["AffinityEntry"][];
+        };
+        /** AutoresearchTriggerResponse */
+        AutoresearchTriggerResponse: {
+            /** Status */
+            status: string;
+            /** Run Id */
+            run_id?: string | null;
+            /** N Symbols */
+            n_symbols?: number | null;
+            /** N Promoted */
+            n_promoted?: number | null;
+            /** N Written */
+            n_written?: number | null;
+            /** Elapsed S */
+            elapsed_s?: number | null;
+            /** Reason */
+            reason?: string | null;
+            /** Error */
+            error?: string | null;
+        };
         /** BacktestConfig */
         BacktestConfig: {
             /**
@@ -3001,6 +3493,21 @@ export interface components {
             /** Matches */
             matches: components["schemas"]["ScanMatch"][];
         };
+        /** CreateAccountBody */
+        CreateAccountBody: {
+            /** User Id */
+            user_id: string;
+            /** Action */
+            action: string;
+            /** Exit Policy */
+            exit_policy?: {
+                [key: string]: unknown;
+            } | null;
+            /** Strategy Id */
+            strategy_id?: string | null;
+            /** Symbols */
+            symbols?: string[] | null;
+        };
         /** DebugHypothesis */
         DebugHypothesis: {
             /** Id */
@@ -3047,6 +3554,8 @@ export interface components {
              * @default 0
              */
             long_liq_usd: number;
+            /** Spot Price */
+            spot_price?: number | null;
         };
         /** DeepRequest */
         DeepRequest: {
@@ -3079,6 +3588,21 @@ export interface components {
             /** Hunt Score */
             hunt_score?: number | null;
         };
+        /** DiscoverResponse */
+        DiscoverResponse: {
+            /** Cycle Id */
+            cycle_id: string;
+            /** Proposals */
+            proposals: number;
+            /** Turns Used */
+            turns_used: number;
+            /** Stop Reason */
+            stop_reason: string | null;
+            /** Error */
+            error: string | null;
+            /** Proposal Paths */
+            proposal_paths: string[];
+        };
         /** EnsembleSignal */
         EnsembleSignal: {
             /** Direction */
@@ -3099,6 +3623,15 @@ export interface components {
             block_analysis: {
                 [key: string]: unknown;
             };
+        };
+        /** FindingsResponse */
+        FindingsResponse: {
+            /** Date */
+            date: string;
+            /** Findings */
+            findings: string[];
+            /** Count */
+            count: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3469,6 +4002,8 @@ export interface components {
              * @default 15
              */
             limit: number;
+            /** User Id */
+            user_id?: string | null;
         };
         /** OpportunityRunResponse */
         OpportunityRunResponse: {
@@ -3526,6 +4061,8 @@ export interface components {
             galaxyScore?: number | null;
             /** Alerts */
             alerts: string[];
+            /** Compositescore */
+            compositeScore?: number | null;
         };
         /** ParseRequest */
         ParseRequest: {
@@ -3680,6 +4217,31 @@ export interface components {
             parser_meta?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** PatternObjectResponse */
+        PatternObjectResponse: {
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Direction */
+            direction: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Version */
+            version: number;
+            /** Entry Phase */
+            entry_phase: string;
+            /** Target Phase */
+            target_phase: string;
+            /** Phase Ids */
+            phase_ids: string[];
+            /** Tags */
+            tags: string[];
+            /** Universe Scope */
+            universe_scope: string;
         };
         /**
          * PerpSnapshot
@@ -3883,6 +4445,13 @@ export interface components {
              */
             timeframe: string;
         };
+        /** RescueResponse */
+        RescueResponse: {
+            /** Rescued */
+            rescued: boolean;
+            /** New Score */
+            new_score: number;
+        };
         /** ResearchContextBody */
         ResearchContextBody: {
             source?: components["schemas"]["ResearchSourceBody"] | null;
@@ -3955,6 +4524,27 @@ export interface components {
             text?: string | null;
             /** Image Refs */
             image_refs?: string[];
+        };
+        /** RunOut */
+        RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Status */
+            status: string;
+            /** N Symbols */
+            n_symbols: number;
+            /** N Patterns */
+            n_patterns: number;
+            /** N Promoted */
+            n_promoted: number;
+            /** Elapsed S */
+            elapsed_s: number | null;
+            /** Error Msg */
+            error_msg: string | null;
         };
         /** RuntimeCaptureListResponse */
         RuntimeCaptureListResponse: {
@@ -4471,6 +5061,34 @@ export interface components {
             /** Candidates */
             candidates?: components["schemas"]["SearchCandidate"][];
         };
+        /** SignalOut */
+        SignalOut: {
+            /** Symbol */
+            symbol: string;
+            /** Pattern */
+            pattern: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Sharpe */
+            sharpe: number | null;
+            /** Hit Rate */
+            hit_rate: number | null;
+            /** N Trades */
+            n_trades: number | null;
+            /** Promoted At */
+            promoted_at: string;
+            /** Expires At */
+            expires_at: string;
+        };
+        /** SignalsResponse */
+        SignalsResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Signals */
+            signals: components["schemas"]["SignalOut"][];
+            /** Count */
+            count: number;
+        };
         /** SimilarCandidate */
         SimilarCandidate: {
             /** Candidate Id */
@@ -4635,6 +5253,21 @@ export interface components {
             /** Expectancy */
             expectancy: number;
         };
+        /** ThresholdDeltaOut */
+        ThresholdDeltaOut: {
+            /** Stop Mul Delta */
+            stop_mul_delta: number;
+            /** Entry Strict Delta */
+            entry_strict_delta: number;
+            /** Target Mul Delta */
+            target_mul_delta: number;
+            /** N Used */
+            n_used: number;
+            /** Shrinkage Factor */
+            shrinkage_factor: number;
+            /** Clamped */
+            clamped: boolean;
+        };
         /** TokenInfo */
         TokenInfo: {
             /** Rank */
@@ -4694,6 +5327,45 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /** ValidateRequest */
+        ValidateRequest: {
+            /** Slug */
+            slug: string;
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Family */
+            family?: string | null;
+            /**
+             * Existing Promotion Pass
+             * @default false
+             */
+            existing_promotion_pass: boolean;
+        };
+        /** ValidateResponse */
+        ValidateResponse: {
+            /** Slug */
+            slug: string;
+            /** Overall Pass */
+            overall_pass: boolean;
+            /** Stage */
+            stage: string;
+            /** Hypothesis Id */
+            hypothesis_id: string | null;
+            /** Dsr N Trials */
+            dsr_n_trials: number;
+            /** Family */
+            family: string;
+            /** Computed At */
+            computed_at: string;
+            /** Error */
+            error: string | null;
+            /** Gate */
+            gate: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -4707,6 +5379,22 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** VariantOut */
+        VariantOut: {
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** Variant Slug */
+            variant_slug: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Mode */
+            mode: string;
+            delta: components["schemas"]["ThresholdDeltaOut"] | null;
+            /** Base Variant Slug */
+            base_variant_slug: string;
+            /** Resolved At */
+            resolved_at: string;
+        };
         /**
          * VerdictBar
          * @description One bar after the signal bar.
@@ -4718,50 +5406,6 @@ export interface components {
             l: number;
             /** C */
             c: number;
-        };
-        /** VerdictRequest */
-        VerdictRequest: {
-            /** Entry Price */
-            entry_price: number;
-            /**
-             * Direction
-             * @default long
-             */
-            direction: string;
-            /** Bars After */
-            bars_after: components["schemas"]["VerdictBar"][];
-            /**
-             * Target Pct
-             * @default 0.01
-             */
-            target_pct: number;
-            /**
-             * Stop Pct
-             * @default 0.01
-             */
-            stop_pct: number;
-            /**
-             * Max Bars
-             * @default 24
-             */
-            max_bars: number;
-        };
-        /** VerdictResponse */
-        VerdictResponse: {
-            /** Outcome */
-            outcome: string;
-            /** Pnl Pct */
-            pnl_pct: number;
-            /** Bars Held */
-            bars_held: number;
-            /** Exit Price */
-            exit_price: number;
-            /** Max Favorable */
-            max_favorable: number;
-            /** Max Adverse */
-            max_adverse: number;
-            /** Direction */
-            direction: string;
         };
         /** _BenchmarkPackDraftBody */
         _BenchmarkPackDraftBody: {
@@ -4863,6 +5507,16 @@ export interface components {
         _PatternAlertPolicyBody: {
             /** Mode */
             mode: string;
+        };
+        /** _PatternStatusBody */
+        _PatternStatusBody: {
+            /** Status */
+            status: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
         };
         /** _PatternTrainBody */
         _PatternTrainBody: {
@@ -5019,6 +5673,50 @@ export interface components {
             /** Duration Sec */
             duration_sec: number;
         };
+        /** VerdictRequest */
+        api__routes__verdict__VerdictRequest: {
+            /** Entry Price */
+            entry_price: number;
+            /**
+             * Direction
+             * @default long
+             */
+            direction: string;
+            /** Bars After */
+            bars_after: components["schemas"]["VerdictBar"][];
+            /**
+             * Target Pct
+             * @default 0.01
+             */
+            target_pct: number;
+            /**
+             * Stop Pct
+             * @default 0.01
+             */
+            stop_pct: number;
+            /**
+             * Max Bars
+             * @default 24
+             */
+            max_bars: number;
+        };
+        /** VerdictResponse */
+        api__routes__verdict__VerdictResponse: {
+            /** Outcome */
+            outcome: string;
+            /** Pnl Pct */
+            pnl_pct: number;
+            /** Bars Held */
+            bars_held: number;
+            /** Exit Price */
+            exit_price: number;
+            /** Max Favorable */
+            max_favorable: number;
+            /** Max Adverse */
+            max_adverse: number;
+            /** Direction */
+            direction: string;
+        };
         /** ScanRequest */
         api__schemas_search__ScanRequest: {
             /** Definition Id */
@@ -5064,6 +5762,28 @@ export interface components {
             };
             /** Candidates */
             candidates?: components["schemas"]["SearchCandidate"][];
+        };
+        /** VerdictRequest */
+        personalization__api__VerdictRequest: {
+            /** User Id */
+            user_id: string;
+            /** Pattern Slug */
+            pattern_slug: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "valid" | "invalid" | "near_miss" | "too_early" | "too_late";
+            /** Captured At */
+            captured_at: string;
+        };
+        /** VerdictResponse */
+        personalization__api__VerdictResponse: {
+            /** Mode */
+            mode: string;
+            delta: components["schemas"]["ThresholdDeltaOut"] | null;
+            /** Affinity Score */
+            affinity_score: number;
         };
     };
     responses: never;
@@ -5201,6 +5921,28 @@ export interface operations {
         };
     };
     ctx_refresh_ctx_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    ctx_kimchi_premium_ctx_kimchi_premium_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -6523,7 +7265,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerdictRequest"];
+                "application/json": components["schemas"]["api__routes__verdict__VerdictRequest"];
             };
         };
         responses: {
@@ -6533,7 +7275,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["VerdictResponse"];
+                    "application/json": components["schemas"]["api__routes__verdict__VerdictResponse"];
                 };
             };
             /** @description Validation Error */
@@ -6846,6 +7588,28 @@ export interface operations {
             };
         };
     };
+    get_lifecycle_statuses_patterns_lifecycle_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_candidates_patterns__slug__candidates_get: {
         parameters: {
             query?: never;
@@ -7070,6 +7834,76 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_PatternAlertPolicyBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lifecycle_status_patterns__slug__lifecycle_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_pattern_status_patterns__slug__status_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PatternStatusBody"];
             };
         };
         responses: {
@@ -7490,9 +8324,110 @@ export interface operations {
             };
         };
     };
+    list_pattern_objects_patterns_objects_get: {
+        parameters: {
+            query?: {
+                phase?: string | null;
+                tag?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternObjectResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_object_patterns_objects__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternObjectResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     verify_paper_patterns__slug__verify_paper_post: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_backtest_patterns__slug__backtest_get: {
+        parameters: {
+            query?: {
+                tf?: string;
+                universe?: string;
+                since_days?: number;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -9148,6 +10083,438 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_VizRouteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_verdict_personalization_verdict_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["personalization__api__VerdictRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["personalization__api__VerdictResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_variant_personalization_user__user_id__variant__pattern_slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+                pattern_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_affinity_personalization_user__user_id__affinity_get: {
+        parameters: {
+            query?: {
+                top_k?: number;
+            };
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffinityListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_rescue_personalization_user__user_id__rescue__pattern_slug__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+                pattern_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RescueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_pattern_research_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_research_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverResponse"];
+                };
+            };
+        };
+    };
+    trigger_autoresearch_research_autoresearch_trigger_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoresearchTriggerResponse"];
+                };
+            };
+        };
+    };
+    get_signals_research_signals__symbol__get: {
+        parameters: {
+            query?: {
+                /** @description e.g. 1h, 6h, 24h, 7d */
+                lookback?: string;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_research_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_findings_research_findings_get: {
+        parameters: {
+            query?: {
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alpha_quality_research_alpha_quality_get: {
+        parameters: {
+            query?: {
+                lookback?: string;
+                pattern_slug?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_signal_components_research_signals__signal_id__components_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_summary_propfirm_summary_get: {
+        parameters: {
+            query: {
+                user_id: string;
+                account_id?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_account_propfirm_accounts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAccountBody"];
             };
         };
         responses: {
