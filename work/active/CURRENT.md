@@ -1,4 +1,4 @@
-# CURRENT — 2026-04-30
+# CURRENT — 2026-05-01
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -14,9 +14,12 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
+| `W-PF-100-propfirm-master-epic` | P0 | 🟢 W-PF-101~106 Merged — PR #783 |
+| `W-0351-personalization-wiring` | P1 | 🟡 Design Draft |
+| `W-0352-pattern-variant-scoring` | P1 | 🟡 Design Draft |
+| `W-0353-composite-score-render` | P1 | 🟡 Design Draft |
+| `W-0355-extreme-event-surface` | P1 | 🟡 Design Draft |
 
 ---
 
