@@ -57,7 +57,7 @@
 
 ## 2. 하드코딩 제거 계획
 
-### 2.1 Research Scanner (W-0357)
+### 2.1 Research Scanner (W-0358)
 
 ```python
 # BEFORE: scanner.py:392
@@ -92,7 +92,7 @@ else:
     model_source = "fallback"
 ```
 
-### 2.2 Live Scanner (alerts_pattern.py:43) — W-0357 포함
+### 2.2 Live Scanner (alerts_pattern.py:43) — W-0358 포함
 
 ```python
 # BEFORE:
@@ -173,8 +173,8 @@ context_tag = f"{symbol}_{timeframe}_{intent}"
 |---|---|---|
 | `engine/api/routes/research.py` | GET /research/top-patterns 추가 | W-0352 |
 | `engine/pipeline.py` | `latest_top_patterns_path()` helper | W-0352 |
-| `engine/research/pattern_scan/scanner.py` | predicted_prob, threshold 동적화 | W-0357 |
-| `engine/patterns/model_registry.py` | `resolve_threshold()` 추가 | W-0357 |
+| `engine/research/pattern_scan/scanner.py` | predicted_prob, threshold 동적화 | W-0358 |
+| `engine/patterns/model_registry.py` | `resolve_threshold()` 추가 | W-0358 |
 | `engine/memory/rerank.py` | `apply_verdict_feedback()` 추가 | W-0346 |
 | `engine/memory/state_store.py` | per-user weight 저장 | W-0346 |
 | `app/src/lib/components/intel/TopPatternsPanel.svelte` | 신규 | W-0353 |
@@ -191,8 +191,8 @@ W-0348 (✅ 완료) ──→ W-0352 (API 노출) ──→ W-0353 (frontend)
                                    ↑
 W-0314 (✅ 완료) ─────────────────┘
 
-MODEL_REGISTRY (기존) ──→ W-0357 (research scanner inference)
-                  └──→ alerts_pattern.py threshold 동적화 (W-0357 포함)
+MODEL_REGISTRY (기존) ──→ W-0358 (research scanner inference)
+                  └──→ alerts_pattern.py threshold 동적화 (W-0358 포함)
 
 W-0341 (배포) ──→ W-0346 (verdict feedback) ──→ W-0347 (sector surface)
 ```

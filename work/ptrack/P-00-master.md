@@ -48,7 +48,7 @@
 | W-0353 | composite_score → IntelPanel + VerdictInbox | Ph-1 | TBD | 🟡 설계 |
 | W-0354 | CaptureReviewDrawer 5-verdict 정렬 | Infra | TBD | 🟡 설계 |
 | W-0355 | Extreme events 카드 (funding/OI/price) | Infra | TBD | 🟡 설계 |
-| W-0357 | Research scanner ML model inference | Ph-2 | TBD | 🟡 설계 |
+| W-0358 | Research scanner ML model inference | Ph-2 | TBD | 🟡 설계 |
 
 ---
 
@@ -56,10 +56,10 @@
 
 | 위치 | 현재값 | 목표 | W-# |
 |---|---|---|---|
-| `scanner.py:392` | `predicted_prob=0.6` | `MODEL_REGISTRY_STORE.get_active(slug).predict_one()` | W-0357 |
-| `scanner.py:418` | `threshold=0.55` | `resolve_threshold(registry_entry)` | W-0357 |
-| `alerts_pattern.py:43` | `P_WIN_GATE=0.55` | registry threshold_policy | W-0357 |
-| `training_service.py` | `_AUTO_PROMOTE_MIN_AUC=0.60` | 0.65로 강화 | W-0357 |
+| `scanner.py:392` | `predicted_prob=0.6` | `MODEL_REGISTRY_STORE.get_active(slug).predict_one()` | W-0358 |
+| `scanner.py:418` | `threshold=0.55` | `resolve_threshold(registry_entry)` | W-0358 |
+| `alerts_pattern.py:43` | `P_WIN_GATE=0.55` | registry threshold_policy | W-0358 |
+| `training_service.py` | `_AUTO_PROMOTE_MIN_AUC=0.60` | 0.65로 강화 | W-0358 |
 
 ---
 

@@ -70,7 +70,7 @@ research scanner가 학습된 모델을 실제로 사용하고, live scanner thr
 
 ## Work Items
 
-### W-0357 — Research Scanner ML Model Inference
+### W-0358 — Research Scanner ML Model Inference
 > Priority: P1 | Effort: M | 선행: MODEL_REGISTRY 기존 존재
 
 **Scope**:
@@ -176,11 +176,11 @@ research scanner가 학습된 모델을 실제로 사용하고, live scanner thr
 |---|---|---|---|---|
 | Ph-1 | W-0352 | Pipeline top-patterns REST API | S | W-0348 ✅ |
 | Ph-1 | W-0353 | composite_score → IntelPanel | M | W-0352 |
-| Ph-2 | W-0357 | Research scanner ML inference | M | MODEL_REGISTRY |
+| Ph-2 | W-0358 | Research scanner ML inference | M | MODEL_REGISTRY |
 | Ph-3 | W-0346 | Verdict → reranker feedback | M | W-0341 |
 | Ph-3 | W-0347 | Sector/MTF surface | S | W-0324 ✅ |
 | Infra | W-0341 | Hypothesis Registry 배포 | S | — |
 | Infra | W-0354 | CaptureReviewDrawer 5-verdict | S | — |
 | Infra | W-0355 | Extreme events 카드 | S | — |
 
-**권장 실행 순서**: W-0341 + W-0357 병렬 → W-0352 → W-0353 → W-0346 + W-0347 병렬 → W-0354 + W-0355
+**권장 실행 순서**: W-0341 + W-0358 병렬 → W-0352 → W-0353 → W-0346 + W-0347 병렬 → W-0354 + W-0355

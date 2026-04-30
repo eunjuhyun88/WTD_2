@@ -1,4 +1,4 @@
-# W-0357 — Research Scanner ML Model Inference (하드코딩 제거)
+# W-0358 — Research Scanner ML Model Inference (하드코딩 제거)
 
 > Wave: 5 | Priority: P1 | Effort: M
 > Charter: In-Scope (기존 MODEL_REGISTRY_STORE 활용 — 신규 ML 시스템 아님)
@@ -108,7 +108,7 @@ walk-forward CV `n_splits=5`, replacement gate `new_AUC > current_AUC - 0.02`.
 Prediction is `predict_proba(X)[:, 1]` (P(win), NOT class label) — see
 `engine/scoring/lightgbm_engine.py:84`.
 
-**Distribution shift (pre/post W-0357):**
+**Distribution shift (pre/post W-0358):**
 - 현행: 모든 scanner 행에 `predicted_prob ≡ 0.6` → 분산 0, 정렬 정보 없음.
 - 사후: `predicted_prob ∈ [0, 1]`, 패턴별 모델 출력. 두 분포의 KL-divergence는 사실상 무한
   (degenerate → continuous). 통계적 의미는 모델 학습 후 처음 발생.
@@ -178,7 +178,7 @@ Prediction is `predict_proba(X)[:, 1]` (P(win), NOT class label) — see
   scanner의 기존 EntrySignal feature dict가 `FEATURE_COLUMNS`와 정확히 일치하는가?
   → Implementation Step 0에서 grep 검증.
 - [ ] [Q-0357-02] `alerts_pattern.py P_WIN_GATE`는 이미 env override를 지원
-  (`PATTERN_ALERT_P_WIN_GATE`). W-0357은 `resolve_threshold(threshold_policy_version)`을
+  (`PATTERN_ALERT_P_WIN_GATE`). W-0358은 `resolve_threshold(threshold_policy_version)`을
   1차 소스로, env var를 manual override로 유지하는 2-layer 설계 확정 필요.
 - [ ] [Q-0357-03] live scanner와 research scanner가 동일 `MODEL_REGISTRY_STORE` 인스턴스를
   공유하는지 (process-singleton 가정). 현재 `MODEL_REGISTRY_STORE` import 동일 모듈이므로 ✓
