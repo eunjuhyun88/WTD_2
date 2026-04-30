@@ -15,16 +15,17 @@
 │    → MODEL_REGISTRY_STORE.register(slug, model_key, "candidate")│
 │    → 수동 promote → rollout_state = "active"                    │
 └──────────────────────┬───────────────────────────────────────────┘
-                       │ MODEL_REGISTRY_STORE.get_active(slug)
+                       │ MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
         ┌──────────────┴──────────────┐
         │                             │
-┌───────▼──────────┐        ┌────────▼─────────────────────┐
-│ RESEARCH SCANNER │        │ LIVE SCANNER                  │
-│ scanner.py       │        │ alerts_pattern.py             │
-│ predicted_prob=  │        │ ✅ 이미 registry 사용          │
-│  MODEL.predict() │        │ P_WIN_GATE → threshold_policy │
-│  fallback: 0.6   │        └──────────────────────────────┘
-└───────┬──────────┘
+┌───────▼──────────────┐    ┌────────▼─────────────────────┐
+│ RESEARCH SCANNER     │    │ LIVE SCANNER                  │
+│ scanner.py           │    │ alerts_pattern.py             │
+│ predicted_prob =     │    │ ✅ 이미 registry 사용          │
+│  engine.predict_     │    │ P_WIN_GATE → threshold_policy │
+│   feature_row(snap)  │    └──────────────────────────────┘
+│ fallback: 0.6        │
+└───────┬──────────────┘
         │ EntrySignal(predicted_prob=실제값)
 ┌───────▼──────────────────────────┐
 │ PIPELINE (pipeline.py)           │
@@ -63,13 +64,30 @@
 predicted_prob=0.6
 
 # AFTER:
-entry = MODEL_REGISTRY_STORE.get_active(combo.name)
-if entry:
-    predicted_prob = entry.model.predict_one(features)
-    threshold = resolve_threshold(entry.threshold_policy_version)
-    model_source = "registry"
+from engine.patterns.model_registry import (
+    MODEL_REGISTRY_STORE,
+    current_definition_id,
+    resolve_threshold,
+)
+from engine.scoring.lightgbm_engine import get_engine
+
+model_ref = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+    combo.name,
+    definition_id=current_definition_id(combo.name),
+)
+if model_ref is not None:
+    engine = get_engine(model_ref.model_key)
+    p_win = engine.predict_feature_row(feature_snapshot)  # dict → float | None
+    if p_win is not None:
+        predicted_prob = p_win
+        threshold = resolve_threshold(model_ref.threshold_policy_version)
+        model_source = "registry"
+    else:
+        predicted_prob = 0.6   # model not yet trained
+        threshold = 0.55
+        model_source = "fallback"
 else:
-    predicted_prob = 0.6   # fallback
+    predicted_prob = 0.6   # no registry entry
     threshold = 0.55
     model_source = "fallback"
 ```
