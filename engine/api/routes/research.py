@@ -348,6 +348,29 @@ async def market_search(req: MarketSearchRequest) -> MarketSearchResponse:
     )
 
 
+# ---------------------------------------------------------------------------
+# W-0366 T5: GET /research/indicator-features
+# ---------------------------------------------------------------------------
+
+@router.get("/indicator-features")
+async def get_indicator_features():
+    """W-0366: Return user-facing indicator feature catalog for UI."""
+    from research.feature_catalog import USER_FACING_FEATURES
+    return {
+        name: {
+            "label": meta.label,
+            "unit": meta.unit,
+            "operators": list(meta.operators),
+            "value_type": meta.value_type,
+            "category": meta.category,
+            "range": list(meta.range) if meta.range else None,
+            "enum_values": list(meta.enum_values) if meta.enum_values else None,
+            "description": meta.description,
+        }
+        for name, meta in USER_FACING_FEATURES.items()
+    }
+
+
 @router.get("/signals/{signal_id}/components")
 async def get_signal_components(signal_id: str):
     """GET /research/signals/{signal_id}/components — component_scores for a signal event."""
