@@ -87,12 +87,12 @@ FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION
 }
 FEATURE_MATERIALIZATION_INTERVAL = int(os.environ.get("FEATURE_MATERIALIZATION_INTERVAL_SECONDS", "900"))
 
-# A8: Beta job gates — non-core jobs disabled by default for beta deployments.
-# Set ENABLE_<JOB>=true to re-enable after beta.
+# A8: Beta job gates — flywheel jobs (outcome/refinement/okx) now default ON (W-0336).
+# Heavy infra jobs remain off until explicitly enabled.
 _BETA_JOB_FLAGS = {
-    "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "false"),
-    "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "false"),
-    "fetch_okx_signals": os.environ.get("ENABLE_FETCH_OKX_SIGNALS_JOB", "false"),
+    "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "true"),
+    "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "true"),
+    "fetch_okx_signals": os.environ.get("ENABLE_FETCH_OKX_SIGNALS_JOB", "true"),
     "corpus_bridge_sync": os.environ.get("ENABLE_CORPUS_BRIDGE_SYNC_JOB", "false"),
     "feature_windows_prefetch": os.environ.get("ENABLE_FEATURE_WINDOWS_PREFETCH_JOB", "false"),
     "alpha_observer_cold": os.environ.get("ENABLE_ALPHA_OBSERVER_COLD_JOB", "false"),
