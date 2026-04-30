@@ -27,7 +27,10 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
 	try {
 		const { payload, cacheStatus } = await loadRvCone(symbol);
 		return json(payload, {
-			headers: { 'X-Cache': cacheStatus.toUpperCase() },
+			headers: {
+				'X-Cache': cacheStatus.toUpperCase(),
+				'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
+			},
 		});
 	} catch {
 		return json({ error: 'upstream_unavailable' }, { status: 503 });

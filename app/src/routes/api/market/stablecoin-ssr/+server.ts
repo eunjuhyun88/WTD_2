@@ -20,7 +20,10 @@ export const GET: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
 		const { payload, cacheStatus } = await loadStablecoinSsr();
 		return json(payload, {
-			headers: { 'X-Cache': cacheStatus.toUpperCase() },
+			headers: {
+				'X-Cache': cacheStatus.toUpperCase(),
+				'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=300',
+			},
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'upstream_unavailable';

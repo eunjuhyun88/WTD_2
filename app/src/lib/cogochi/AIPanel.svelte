@@ -1,23 +1,21 @@
 <script lang="ts">
   /**
-   * AIPanel — right side AI setup assist panel.
-   * Natural language → setup tokens → scan trigger.
+   * AIPanel — right column AI assist surface.
    *
-   * Indicator intent detection runs BEFORE the setup-token parser.
-   * If the query matches an indicator (via search.ts), the AI responds
-   * with indicator info and dispatches cogochi:cmd { id: 'focus_indicator', def }.
+   * Replaces the old chat-bubble UX with structured cards driven by
+   * client-side intent classification:
+   *
+   *   ANALYZE   → /api/cogochi/analyze         → analyze card (+ chart overlay)
+   *   SCAN      → /api/terminal/scan           → scan card (clickable rows)
+   *   JUDGE     → /api/captures (POST)         → saved card
+   *   INDICATOR → indicator search             → focus_indicator dispatch
+   *
+   * The legacy `messages` / `onSend` / `onApplySetup` props are still accepted
+   * for backward compatibility with the parent shell, but the panel no longer
+   * renders a chat thread.
    */
   import { findIndicatorByQuery } from '$lib/indicators/search';
-  import { onMount } from 'svelte';
-
-  // Live scan candidate count — populated on mount from world model.
-  let _liveMatchCount = $state(0);
-  onMount(() => {
-    fetch('/api/cogochi/alpha/world-model')
-      .then(r => r.json())
-      .then((d: { phases?: unknown[] }) => { _liveMatchCount = (d.phases ?? []).length; })
-      .catch(() => {});
-  });
+  import { setAIOverlay, type AIPriceLine } from '$lib/stores/chartAIOverlay';
 
   interface SetupToken {
     kind: 'asset' | 'trigger' | 'filter';
@@ -37,168 +35,373 @@
     setup?: SetupResult;
   }
 
+  type AICard =
+    | {
+        type: 'analyze';
+        symbol: string;
+        tf: string;
+        direction: string;
+        pWin: number | null;
+        evidence: string[];
+        entry: number | null;
+        stop: number | null;
+        ts: number;
+      }
+    | {
+        type: 'scan';
+        candidates: Array<{ symbol: string; signal: string; conf: number | null }>;
+        ts: number;
+      }
+    | { type: 'saved'; symbol: string; verdict: string; ts: number }
+    | { type: 'info'; text: string; ts: number };
+
   interface Props {
     messages?: Message[];
     onSend?: (text: string, newMessages: Message[]) => void;
     onApplySetup?: (setup: SetupResult) => void;
     onClose?: () => void;
+    symbol?: string;
+    timeframe?: string;
+    onSelectSymbol?: (symbol: string) => void;
   }
 
+  // `messages` and `onApplySetup` accepted for backward compatibility but unused —
+  // the panel now renders structured cards instead of a chat thread.
   let {
-    messages = [],
+    messages: _messages = [],
     onSend,
-    onApplySetup,
+    onApplySetup: _onApplySetup,
     onClose,
+    symbol = 'BTCUSDT',
+    timeframe = '4h',
+    onSelectSymbol,
   }: Props = $props();
 
-  // Local copy — keeps optimistic AI replies visible until parent sync lands.
-  let localMessages = $state<Message[]>([]);
-  $effect(() => {
-    localMessages = [...messages];
-  });
+  import { shellStore } from '$lib/cogochi/shell.store';
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { onDestroy } from 'svelte';
 
+  let cards = $state<AICard[]>([]);
   let inputValue = $state('');
+  let loading = $state(false);
   let scrollEl: HTMLDivElement | undefined = $state();
-  const canSend = $derived(inputValue.trim().length > 0);
+  let textareaEl: HTMLTextAreaElement | undefined = $state();
+  const canSend = $derived(inputValue.trim().length > 0 && !loading);
 
-  const quicks = [
-    'OI 급증 후 번지대 3시간 accumulation',
-    'VWAP reclaim + CVD 양전환',
-    'real_dump 후 higher-lows + funding 플립',
-    'BB squeeze 해제, 15분',
+  function selectSymbol(sym: string): void {
+    shellStore.setSymbol(sym);
+    onSelectSymbol?.(sym);
+  }
+
+  const quicks: readonly string[] = [
+    'BTC 분석',
+    'OI 급증 스캔',
+    'ETH long 판정',
+    'VWAP reclaim 스캔',
   ];
 
-  function send() {
-    const t = inputValue.trim();
-    if (!t) return;
+  // ── Intent classifier ────────────────────────────────────────────────────
+  function classifyIntent(text: string): 'ANALYZE' | 'SCAN' | 'JUDGE' | 'INDICATOR' {
+    const t = text.toLowerCase();
+    if (/스캔|scan|찾아|screener/.test(t)) return 'SCAN';
+    if (/판정|long|short|롱|숏|매수|매도|judge/.test(t)) return 'JUDGE';
+    if (/분석|analyze|어때|봐줘|show me|what/.test(t)) return 'ANALYZE';
+    return 'INDICATOR';
+  }
 
-    // ── Indicator intent detection (runs before setup-token parser) ──────────
-    const indicatorDef = findIndicatorByQuery(t);
-    if (indicatorDef) {
-      const isShowIntent = /보여|show|확인|뭐야|어때|what|check/i.test(t);
-      const aiText = isShowIntent
-        ? `**${indicatorDef.label ?? indicatorDef.id}** 지표를 찾았습니다 — ${indicatorDef.description ?? ''}. 아래 분석 패널에서 강조 표시합니다.`
-        : `**${indicatorDef.label ?? indicatorDef.id}** (${indicatorDef.family}) — ${indicatorDef.description ?? '해당 지표입니다.'} 패널로 이동합니다.`;
+  function extractSymbol(text: string, fallback: string): string {
+    const m =
+      text.match(/([A-Z]{2,10})\s*(분석|analyze|long|short|롱|숏|판정)/i) ??
+      text.match(/(BTC|ETH|SOL|BNB|XRP|AVAX|DOGE)/i);
+    if (!m) return fallback;
+    const base = m[1].toUpperCase();
+    return base.endsWith('USDT') ? base : `${base}USDT`;
+  }
 
-      // Dispatch focus command so TradeMode can scroll/highlight the pane
-      window.dispatchEvent(new CustomEvent('cogochi:cmd', {
-        detail: { id: 'focus_indicator', indicatorId: indicatorDef.id, def: indicatorDef },
-      }));
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  async function handleAnalyze(text: string): Promise<void> {
+    const targetSymbol = extractSymbol(text, symbol);
+    loading = true;
+    try {
+      const r = await fetch(`/api/cogochi/analyze?symbol=${targetSymbol}&tf=${timeframe}`);
+      if (!r.ok) {
+        cards = [{ type: 'info', text: `analyze 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        return;
+      }
+      const d = (await r.json()) as Record<string, any>;
+      const analyze = (d.analyze ?? d) as Record<string, any>;
+      const card: AICard = {
+        type: 'analyze',
+        symbol: targetSymbol,
+        tf: timeframe,
+        direction: String(analyze.direction ?? analyze.bias ?? '—'),
+        pWin: typeof analyze.p_win === 'number'
+          ? analyze.p_win
+          : typeof analyze.confidence === 'number'
+            ? analyze.confidence
+            : null,
+        evidence: Array.isArray(analyze.evidence) ? analyze.evidence.map(String) : [],
+        entry:
+          analyze.entryPlan && typeof analyze.entryPlan.entry === 'number'
+            ? analyze.entryPlan.entry
+            : null,
+        stop:
+          analyze.entryPlan && typeof analyze.entryPlan.stop === 'number'
+            ? analyze.entryPlan.stop
+            : null,
+        ts: Date.now(),
+      };
+      cards = [card, ...cards];
 
-      const newMessages: Message[] = [
-        ...localMessages,
-        { role: 'user', text: t },
-        { role: 'assistant', text: aiText },
+      if (card.entry != null || card.stop != null) {
+        const lines: AIPriceLine[] = [];
+        if (card.entry != null) {
+          lines.push({ price: card.entry, color: '#22AB94', label: 'Entry', style: 'solid' });
+        }
+        if (card.stop != null) {
+          lines.push({ price: card.stop, color: '#F23645', label: 'Stop', style: 'dashed' });
+        }
+        setAIOverlay(targetSymbol, lines);
+      }
+    } catch (err) {
+      cards = [
+        { type: 'info', text: `analyze 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        ...cards,
       ];
-      localMessages = newMessages;
-      onSend?.(t, newMessages);
-      inputValue = '';
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleScan(_text: string): Promise<void> {
+    loading = true;
+    try {
+      const r = await fetch('/api/terminal/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeframe }),
+      });
+      if (!r.ok) {
+        cards = [{ type: 'info', text: `scan 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        return;
+      }
+      const d = (await r.json()) as Record<string, any>;
+      const raw: any[] = (d.candidates ?? d.highlights ?? []) as any[];
+      const candidates = raw.slice(0, 8).map((c) => ({
+        symbol: String(c.symbol ?? c.pair ?? '—'),
+        signal: String(c.signal ?? c.label ?? '—'),
+        conf:
+          typeof c.confidence === 'number'
+            ? c.confidence
+            : typeof c.conf === 'number'
+              ? c.conf
+              : null,
+      }));
+      cards = [{ type: 'scan', candidates, ts: Date.now() }, ...cards];
+    } catch (err) {
+      cards = [
+        { type: 'info', text: `scan 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        ...cards,
+      ];
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleJudge(text: string): Promise<void> {
+    const targetSymbol = extractSymbol(text, symbol);
+    const isLong = /long|롱|매수/.test(text.toLowerCase());
+    const verdict = isLong ? 'long' : 'short';
+    loading = true;
+    try {
+      const r = await fetch('/api/captures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: targetSymbol,
+          timeframe,
+          verdict,
+          source: 'ai_panel',
+        }),
+      });
+      if (r.ok) {
+        cards = [{ type: 'saved', symbol: targetSymbol, verdict, ts: Date.now() }, ...cards];
+      } else {
+        cards = [{ type: 'info', text: `저장 실패 (${r.status})`, ts: Date.now() }, ...cards];
+      }
+    } catch (err) {
+      cards = [
+        { type: 'info', text: `judge 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        ...cards,
+      ];
+    } finally {
+      loading = false;
+    }
+  }
+
+  function handleIndicator(text: string): void {
+    const indicatorDef = findIndicatorByQuery(text);
+    if (!indicatorDef) {
+      cards = [
+        { type: 'info', text: `해석할 수 없는 명령입니다: "${text}"`, ts: Date.now() },
+        ...cards,
+      ];
       return;
     }
-
-    // ── Fallthrough: setup-token parser ─────────────────────────────────────
-    const setup = convertPromptToSetup(t);
-    const aiText = generateAIReply(t, setup);
-    const newMessages: Message[] = [
-      ...localMessages,
-      { role: 'user', text: t },
-      { role: 'assistant', text: aiText, setup },
+    window.dispatchEvent(
+      new CustomEvent('cogochi:cmd', {
+        detail: { id: 'focus_indicator', indicatorId: indicatorDef.id, def: indicatorDef },
+      }),
+    );
+    cards = [
+      {
+        type: 'info',
+        text: `${indicatorDef.label ?? indicatorDef.id} 지표로 이동했습니다.`,
+        ts: Date.now(),
+      },
+      ...cards,
     ];
-    localMessages = newMessages;
-    onSend?.(t, newMessages);
+  }
+
+  async function send(): Promise<void> {
+    const t = inputValue.trim();
+    if (!t || loading) return;
     inputValue = '';
+    const intent = classifyIntent(t);
+
+    // Notify parent for backward compat (chat persistence in tabState).
+    onSend?.(t, [{ role: 'user', text: t }]);
+
+    if (intent === 'ANALYZE') await handleAnalyze(t);
+    else if (intent === 'SCAN') await handleScan(t);
+    else if (intent === 'JUDGE') await handleJudge(t);
+    else handleIndicator(t);
   }
 
-  function quickPick(q: string) {
+  function quickPick(q: string): void {
     inputValue = q;
-    send();
+    void send();
   }
 
-  function handleInput(event: Event) {
+  function handleInput(event: Event): void {
     inputValue = (event.currentTarget as HTMLTextAreaElement).value;
   }
 
-  function convertPromptToSetup(text: string): SetupResult {
-    const lower = text.toLowerCase();
-    const tokens: SetupToken[] = [];
-
-    const assetM = lower.match(/btc|eth|sol|arb|link|avax|jup|doge|ondo|wif/);
-    tokens.push({ kind: 'asset', label: assetM ? `@${assetM[0]}` : '@any' });
-
-    if (/3\s*(시간|h)/.test(lower)) tokens.push({ kind: 'asset', label: '@3시간' });
-    else if (/4\s*(시간|h)/.test(lower)) tokens.push({ kind: 'asset', label: '@4h' });
-    else if (/15\s*(분|m)/.test(lower)) tokens.push({ kind: 'asset', label: '@15m' });
-
-    if (/oi|open.?interest|급증/.test(lower)) tokens.push({ kind: 'trigger', label: 'oi_spike' });
-    if (/real.?dump|덤프/.test(lower))        tokens.push({ kind: 'trigger', label: 'real_dump' });
-    if (/accumulation|번지|accum/.test(lower)) tokens.push({ kind: 'trigger', label: 'accumulation' });
-    if (/vwap|reclaim/.test(lower))            tokens.push({ kind: 'trigger', label: 'vwap_reclaim' });
-    if (/bb|bollinger|squeeze/.test(lower))    tokens.push({ kind: 'trigger', label: 'bb_expansion' });
-    if (/higher.?low|hl/.test(lower))          tokens.push({ kind: 'trigger', label: 'higher_lows' });
-    if (/funding|펀딩|플립/.test(lower))       tokens.push({ kind: 'filter', label: 'funding_flip' });
-    if (/cvd|양전환/.test(lower))              tokens.push({ kind: 'filter', label: 'cvd_positive' });
-    if (/3\s*(시간|h)/.test(lower))            tokens.push({ kind: 'filter', label: 'duration>3h' });
-
-    if (tokens.filter(t => t.kind === 'trigger' || t.kind === 'filter').length === 0) {
-      tokens.push({ kind: 'trigger', label: 'tradoor_v2' });
-    }
-
-    // Filter matches: if a specific asset is queried, count is a fraction of the universe.
-    const hasAsset = tokens.some(t => t.kind === 'asset' && t.label !== '@any');
-    const matchCount = _liveMatchCount > 0
-      ? (hasAsset ? Math.max(1, Math.round(_liveMatchCount * 0.12)) : _liveMatchCount)
-      : 0;
-    return {
-      tokens,
-      matches: matchCount,
-      past: 0, // real history available from /api/captures — no random stub
-      text,
-    };
-  }
-
-  function generateAIReply(text: string, setup: SetupResult): string {
-    const triggers = setup.tokens.filter(t => t.kind === 'trigger' || t.kind === 'filter').map(t => t.label);
-    const matchStr = setup.matches > 0 ? `현재 **${setup.matches}개** 종목이 같은 모양입니다.` : '스캔 결과를 불러오는 중입니다.';
-    return `"${text}" 를 **${triggers.join(' + ') || 'tradoor_v2'}** 셋업으로 해석했습니다. ${matchStr}`;
-  }
-
   $effect(() => {
-    localMessages; // track changes
-    if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+    cards; // track changes
+    if (scrollEl) scrollEl.scrollTop = 0;
   });
 
-  function tokenStyle(kind: string): { bg: string; color: string; border: string } {
-    if (kind === 'asset')   return { bg: 'var(--g3)',     color: 'var(--g9)',  border: 'var(--g4)' };
-    if (kind === 'trigger') return { bg: 'var(--pos-dd)', color: 'var(--pos)', border: 'var(--pos-d)' };
-    return                         { bg: 'var(--amb-dd)', color: 'var(--amb)', border: 'var(--amb-d)' };
+  // ── B,B range auto-analyze ────────────────────────────────────────────────
+  async function handleAnalyzeRange(from: number, to: number): Promise<void> {
+    loading = true;
+    const fromDate = new Date(from * 1000).toISOString().slice(0, 10);
+    const toDate = new Date(to * 1000).toISOString().slice(0, 10);
+    try {
+      const r = await fetch(
+        `/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}&from=${from}&to=${to}`,
+      );
+      if (!r.ok) {
+        cards = [{ type: 'info', text: `구간 analyze 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        return;
+      }
+      const d = (await r.json()) as Record<string, any>;
+      const analyze = (d.analyze ?? d) as Record<string, any>;
+      const card: AICard = {
+        type: 'analyze',
+        symbol,
+        tf: `${timeframe} · ${fromDate}~${toDate}`,
+        direction: String(analyze.direction ?? analyze.bias ?? '—'),
+        pWin: typeof analyze.p_win === 'number'
+          ? analyze.p_win
+          : typeof analyze.confidence === 'number'
+            ? analyze.confidence
+            : null,
+        evidence: Array.isArray(analyze.evidence) ? analyze.evidence.map(String) : [],
+        entry:
+          analyze.entryPlan && typeof analyze.entryPlan.entry === 'number'
+            ? analyze.entryPlan.entry
+            : null,
+        stop:
+          analyze.entryPlan && typeof analyze.entryPlan.stop === 'number'
+            ? analyze.entryPlan.stop
+            : null,
+        ts: Date.now(),
+      };
+      cards = [card, ...cards];
+      if (card.entry != null || card.stop != null) {
+        const lines: AIPriceLine[] = [];
+        if (card.entry != null) {
+          lines.push({ price: card.entry, color: '#22AB94', label: 'Entry', style: 'solid' });
+        }
+        if (card.stop != null) {
+          lines.push({ price: card.stop, color: '#F23645', label: 'Stop', style: 'dashed' });
+        }
+        setAIOverlay(symbol, lines);
+      }
+    } catch (err) {
+      cards = [
+        { type: 'info', text: `구간 analyze 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        ...cards,
+      ];
+    } finally {
+      loading = false;
+    }
   }
+
+  let _rangeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  $effect(() => {
+    const anchorA = $chartSaveMode.anchorA;
+    const anchorB = $chartSaveMode.anchorB;
+    if (anchorA == null || anchorB == null) return;
+    const from = Math.min(anchorA, anchorB);
+    const to = Math.max(anchorA, anchorB);
+    if (_rangeDebounceTimer != null) clearTimeout(_rangeDebounceTimer);
+    _rangeDebounceTimer = setTimeout(() => {
+      _rangeDebounceTimer = null;
+      void handleAnalyzeRange(from, to);
+    }, 300);
+  });
+
+  // ── `/` shortcut — focus AI input ────────────────────────────────────────
+  const onFocusCmd = (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail?.id === 'focus_ai_input') {
+      textareaEl?.focus();
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('cogochi:cmd', onFocusCmd);
+  }
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('cogochi:cmd', onFocusCmd);
+    }
+  });
 </script>
 
 <div class="panel">
-  <!-- Header -->
   <div class="hdr">
     <span class="ai-dot"></span>
-    <span class="ai-title">AI · SETUP ASSIST</span>
+    <span class="ai-title">AI · {symbol} · {timeframe}</span>
     <span class="spacer"></span>
-    <span class="kbd">⌘L</span>
-    <button class="close" onclick={onClose}>×</button>
+    {#if loading}<span class="loading">…</span>{/if}
+    <button class="close" onclick={onClose} aria-label="close">×</button>
   </div>
 
-  <!-- Messages / welcome -->
-  <div class="messages" bind:this={scrollEl}>
-    {#if localMessages.length === 0}
-      <!-- Welcome -->
+  <div class="cards" bind:this={scrollEl}>
+    {#if cards.length === 0}
       <div class="welcome">
         <div class="wl-section">AI · HOW TO</div>
         <p class="wl-text">
-          찾고 싶은 셋업을 말로 설명하세요.<br/>
-          예: <em class="wl-example">"OI 급증 후 번지대 3시간"</em><br/>
-          <span class="wl-hint">→ 변환된 셋업을 <strong class="wl-run">Run</strong>하면 왼쪽 캔버스가 분석을 띄웁니다.</span>
+          분석/스캔/판정을 자연어로 요청하세요.<br />
+          <span class="wl-hint">결과는 카드로 누적됩니다 (위가 최신).</span>
         </p>
         <div class="wl-section">QUICK</div>
         <div class="wl-picks">
-          {#each quicks as q}
-            <button class="wl-pick" onclick={() => quickPick(q)}>
+          {#each quicks as q (q)}
+            <button class="wl-pick" type="button" onclick={() => quickPick(q)}>
               <span class="pick-slash">/</span>
               {q}
             </button>
@@ -206,80 +409,114 @@
         </div>
       </div>
     {:else}
-      {#each localMessages as msg}
-        {#if msg.role === 'user'}
-          <div class="msg-user">
-            <div class="msg-from">YOU</div>
-            <div class="msg-bubble user">{msg.text}</div>
-          </div>
-        {:else}
-          <div class="msg-ai">
-            <div class="msg-from ai">
-              <span class="ai-dot-sm"></span>
-              AI
+      {#each cards as card (card.ts)}
+        {#if card.type === 'analyze'}
+          <div class="card card--analyze">
+            <div class="card-header">
+              <span class="card-symbol">{card.symbol} · {card.tf}</span>
+              <span
+                class="card-badge"
+                class:up={card.direction.toUpperCase() === 'LONG'}
+                class:dn={card.direction.toUpperCase() === 'SHORT'}
+              >
+                {card.direction}
+                {card.pWin != null ? `${Math.round(card.pWin * 100)}%` : ''}
+              </span>
             </div>
-            <div class="msg-text">{msg.text}</div>
-            {#if msg.setup}
-              <div class="setup-card">
-                <div class="setup-title">CONVERTED SETUP</div>
-                <div class="setup-tokens">
-                  {#each msg.setup.tokens as t}
-                    {@const s = tokenStyle(t.kind)}
-                    <span class="token" style:background={s.bg} style:color={s.color} style:border-color={s.border}>
-                      {t.label}
-                    </span>
-                  {/each}
-                </div>
-                <div class="setup-meta">
-                  <span>matches <strong>{msg.setup.matches}</strong> now</span>
-                  <span class="setup-div">·</span>
-                  <span>past <strong>{msg.setup.past}</strong></span>
-                  <span class="spacer"></span>
-                  <button class="run-btn" onclick={() => onApplySetup?.(msg.setup!)}>RUN →</button>
-                </div>
+            {#if card.evidence.length > 0}
+              <ul class="card-evidence">
+                {#each card.evidence.slice(0, 4) as e, i (i)}
+                  <li>{e}</li>
+                {/each}
+              </ul>
+            {/if}
+            {#if card.entry != null || card.stop != null}
+              <div class="card-levels">
+                {#if card.entry != null}
+                  <span class="level-entry">Entry {card.entry}</span>
+                {/if}
+                {#if card.stop != null}
+                  <span class="level-stop">Stop {card.stop}</span>
+                {/if}
               </div>
             {/if}
           </div>
+        {:else if card.type === 'scan'}
+          <div class="card card--scan">
+            <div class="card-header">
+              <span class="card-label">SCAN · {card.candidates.length} candidates</span>
+            </div>
+            <ul class="scan-list">
+              {#each card.candidates as c, i (i)}
+                <li>
+                  <button
+                    type="button"
+                    class="scan-row"
+                    class:active={c.symbol === symbol}
+                    onclick={() => selectSymbol(c.symbol)}
+                  >
+                    <span class="scan-sym">{c.symbol.replace(/USDT$/, '')}</span>
+                    <span class="scan-sig">{c.signal}</span>
+                    {#if c.conf != null}
+                      <span class="scan-conf">{Math.round(c.conf * 100)}%</span>
+                    {/if}
+                    {#if c.symbol === symbol}
+                      <span class="scan-active">◀</span>
+                    {/if}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {:else if card.type === 'saved'}
+          <div class="card card--saved">
+            <span class="saved-icon">✓</span>
+            <span>{card.symbol} {card.verdict.toUpperCase()} 저장됨</span>
+          </div>
+        {:else if card.type === 'info'}
+          <div class="card card--info">{card.text}</div>
         {/if}
       {/each}
     {/if}
   </div>
 
-  <!-- Input -->
   <div class="input-area">
     <div class="input-box">
       <textarea
+        bind:this={textareaEl}
         value={inputValue}
-        placeholder="셋업을 말로 — 'OI 급증 후 번지대 3시간' ↵"
+        placeholder="분석 / 스캔 / 판정 — 'BTC 분석' ↵"
         rows={2}
         oninput={handleInput}
         onkeydown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            send();
+            void send();
           }
         }}
       ></textarea>
       <div class="input-footer">
-        <span class="context-hint">@btc @4h</span>
+        <span class="context-hint">{symbol} · {timeframe}</span>
         <span class="spacer"></span>
         <span class="enter-hint">↵ send</span>
-        <button class="send-btn" class:active={canSend} onclick={send} disabled={!canSend}>
+        <button
+          type="button"
+          class="send-btn"
+          class:active={canSend}
+          onclick={() => void send()}
+          disabled={!canSend}
+        >
           SEND
         </button>
       </div>
-    </div>
-    <div class="context-chips">
-      {#each ['@btc', '@4h', '@tradoor_v2', '#accumulation'] as c}
-        <button type="button" class="ctx-chip" onclick={() => inputValue = inputValue + ' ' + c}>{c}</button>
-      {/each}
     </div>
   </div>
 </div>
 
 <style>
   .panel {
-    width: 300px;
+    width: 100%;
+    height: 100%;
     flex-shrink: 0;
     background: var(--g1);
     border-left: 1px solid var(--g5);
@@ -310,16 +547,12 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
-  .ai-title { font-size: 9px; color: var(--g7); letter-spacing: 0.16em; }
+  .ai-title { font-size: 9px; color: var(--g7); letter-spacing: 0.12em; }
   .spacer { flex: 1; }
-  .kbd {
-    font-size: 7px;
-    padding: 2px 5px;
-    background: var(--g2);
-    border: 0.5px solid var(--g4);
-    border-radius: 2px;
-    color: var(--g5);
-    letter-spacing: 0.1em;
+  .loading {
+    font-size: 12px;
+    color: var(--brand);
+    letter-spacing: 0.2em;
   }
   .close {
     color: var(--g5);
@@ -331,14 +564,14 @@
   }
   .close:hover { color: var(--g7); }
 
-  /* Messages */
-  .messages {
+  /* Cards container */
+  .cards {
     flex: 1;
     overflow-y: auto;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
   }
 
   /* Welcome */
@@ -356,17 +589,7 @@
     margin: 0;
     font-family: 'Geist', sans-serif;
   }
-  .wl-example {
-    color: var(--g9);
-    font-style: normal;
-    background: var(--g2);
-    padding: 1px 4px;
-    border-radius: 2px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-  }
   .wl-hint { color: var(--g6); }
-  .wl-run { color: var(--brand); font-style: normal; }
   .wl-picks { display: flex; flex-direction: column; gap: 3px; }
   .wl-pick {
     text-align: left;
@@ -384,80 +607,140 @@
   .wl-pick:hover { background: var(--g3); }
   .pick-slash { color: var(--brand); margin-right: 5px; font-family: 'JetBrains Mono', monospace; }
 
-  /* Messages */
-  .msg-user, .msg-ai { margin-bottom: 12px; }
-  .msg-from {
-    font-size: 7px;
-    color: var(--g5);
-    letter-spacing: 0.16em;
-    margin-bottom: 3px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .msg-from.ai { color: var(--brand); }
-  .ai-dot-sm { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
-  .msg-bubble {
-    font-size: 11px;
-    color: var(--g8);
-    line-height: 1.55;
-    padding: 6px 9px;
-    border-radius: 4px;
+  /* Cards */
+  .card {
+    background: var(--g2);
     border: 1px solid var(--g5);
-    font-family: 'Geist', sans-serif;
-  }
-  .msg-bubble.user { background: var(--g2); }
-  .msg-text {
-    font-size: 11px;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 0;
     color: var(--g8);
-    line-height: 1.6;
-    margin-bottom: 6px;
-    font-family: 'Geist', sans-serif;
   }
 
-  /* Setup card */
-  .setup-card {
-    padding: 8px 10px;
-    background: var(--g0);
-    border: 0.5px solid var(--pos-d);
-    border-radius: 4px;
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--g6);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
   }
-  .setup-title {
-    font-size: 7px;
-    color: var(--g5);
-    letter-spacing: 0.14em;
-    margin-bottom: 5px;
+
+  .card-symbol {
+    font-weight: 600;
+    color: var(--g9);
   }
-  .setup-tokens { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
-  .token {
+
+  .card-label {
+    font-weight: 600;
+    color: var(--g8);
+  }
+
+  .card-badge {
     font-size: 9px;
     padding: 2px 6px;
     border-radius: 2px;
-    border: 0.5px solid;
+    background: var(--g3);
+    color: var(--g8);
+    border: 0.5px solid var(--g5);
+  }
+  .card-badge.up {
+    color: #22AB94;
+    border-color: #22AB9466;
+    background: #22AB9410;
+  }
+  .card-badge.dn {
+    color: #F23645;
+    border-color: #F2364566;
+    background: #F2364510;
+  }
+
+  .card-evidence {
+    list-style: disc;
+    margin: 0 0 6px;
+    padding-left: 16px;
+    font-size: 10px;
+    color: var(--g7);
+    font-family: 'Geist', sans-serif;
+    line-height: 1.5;
+  }
+
+  .card-levels {
+    display: flex;
+    gap: 8px;
+    font-size: 9px;
     letter-spacing: 0.04em;
   }
-  .setup-meta {
-    display: flex;
+  .level-entry { color: #22AB94; }
+  .level-stop { color: #F23645; }
+
+  .scan-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .scan-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 6px;
     align-items: center;
-    gap: 5px;
+    padding: 5px 4px;
+    background: transparent;
+    border: none;
+    border-bottom: 0.5px solid var(--g4);
+    color: var(--g8);
+    font-family: inherit;
+    font-size: 10px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .scan-row:hover {
+    background: var(--g3);
+  }
+  .scan-row.active {
+    background: var(--brand-dd);
+    border-left: 2px solid var(--brand);
+  }
+  .scan-active {
     font-size: 8px;
+    color: var(--brand);
+  }
+  .scan-sym {
+    font-weight: 600;
+    color: var(--g9);
+  }
+  .scan-sig {
+    font-size: 9px;
     color: var(--g6);
   }
-  .setup-meta strong { color: var(--g8); }
-  .setup-div { color: var(--g4); }
-  .run-btn {
-    padding: 3px 10px;
-    background: var(--brand-dd);
-    color: var(--brand);
-    border: 0.5px solid var(--brand-d);
-    border-radius: 3px;
+  .scan-conf {
     font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-    font-family: 'JetBrains Mono', monospace;
+    color: var(--brand);
   }
-  .run-btn:hover { background: var(--pos-d); }
+
+  .card--saved {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: #22AB94;
+    border-color: #22AB9466;
+    background: #22AB9408;
+  }
+  .saved-icon {
+    font-weight: 700;
+  }
+
+  .card--info {
+    font-size: 10px;
+    color: var(--g7);
+    font-family: 'Geist', sans-serif;
+  }
 
   /* Input */
   .input-area {
@@ -516,22 +799,5 @@
     border-color: var(--brand-d);
   }
   .send-btn.active:hover { background: var(--brand-d); }
-
-  .context-chips {
-    display: flex;
-    gap: 3px;
-    flex-wrap: wrap;
-  }
-  .ctx-chip {
-    font-size: 8px;
-    padding: 2px 6px;
-    background: var(--g2);
-    color: var(--g6);
-    border: 1px solid var(--g5);
-    border-radius: 10px;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background 0.1s;
-  }
-  .ctx-chip:hover { background: var(--g3); color: var(--g8); }
+  .send-btn:disabled { cursor: not-allowed; opacity: 0.7; }
 </style>

@@ -28,6 +28,26 @@ const KlineSchema = z.object({
 const OiBarSchema = z.object({ time: z.number(), value: z.number() });
 const FundingBarSchema = z.object({ time: z.number(), rate: z.number() });
 
+const IndicatorContextSchema = z.object({
+  rsi14: z.number().optional(),
+  fundingRate: z.number().optional(),
+  oiChange1h: z.number().optional(),
+  emaAlignment: z.string().optional(),
+  htfStructure: z.string().optional(),
+  volRatio3: z.number().optional(),
+  cvdState: z.string().optional(),
+  wyckoffScore: z.number().optional(),
+  momentumScore: z.number().optional(),
+  bbScore: z.number().optional(),
+  mtfScore: z.number().optional(),
+  lsRatio: z.number().optional(),
+  takerBuyRatio: z.number().optional(),
+  kimchiScore: z.number().optional(),
+  fgScore: z.number().optional(),
+  pWin: z.number().optional(),
+  direction: z.string().optional(),
+}).optional();
+
 const AutoAnalyzeRequestSchema = z.object({
   symbol: z.string().min(1).max(24),
   timeframe: z.string().min(1).max(8),
@@ -37,6 +57,7 @@ const AutoAnalyzeRequestSchema = z.object({
   cvdLatest: z.number().optional(),
   liqPressure: z.number().optional(),
   noteDraft: z.string().max(2000).default(''),
+  indicatorContext: IndicatorContextSchema,
 });
 
 type AutoAnalyzeRequest = z.infer<typeof AutoAnalyzeRequestSchema>;
@@ -77,7 +98,7 @@ function stddev(values: number[]): number {
 }
 
 function detectPhase(req: AutoAnalyzeRequest): AnalysisResult {
-  const { klines, oiBars, fundingBars, cvdLatest, liqPressure } = req;
+  const { klines, oiBars, fundingBars, cvdLatest, liqPressure, indicatorContext: ic } = req;
 
   const first = klines[0]!;
   const last = klines[klines.length - 1]!;
@@ -245,6 +266,49 @@ function detectPhase(req: AutoAnalyzeRequest): AnalysisResult {
   if (volSpike && totalReturn > 0.03) scores.BREAKOUT += 0.3;
   if (higherLows && totalReturn > 0.02) scores.BREAKOUT += 0.2;
 
+  // Engine indicator context — adjusts scoring beyond kline heuristics
+  if (ic) {
+    const rsi = ic.rsi14;
+    if (rsi != null) {
+      if (rsi < 30) { scores.ACCUMULATION += 0.4; scores.FAKE_DUMP += 0.2; }
+      else if (rsi < 40) scores.ACCUMULATION += 0.15;
+      else if (rsi > 70) { scores.REAL_DUMP += 0.25; scores.ARCH_ZONE += 0.1; }
+      else if (rsi > 60) scores.BREAKOUT += 0.15;
+    }
+    if (ic.wyckoffScore != null) {
+      if (ic.wyckoffScore >= 5)  scores.ACCUMULATION += 0.35;
+      if (ic.wyckoffScore <= -5) scores.REAL_DUMP += 0.35;
+    }
+    if (ic.momentumScore != null) {
+      if (ic.momentumScore >= 5)  scores.BREAKOUT += 0.25;
+      if (ic.momentumScore <= -5) scores.REAL_DUMP += 0.25;
+    }
+    if (ic.mtfScore != null) {
+      if (ic.mtfScore >= 5)  scores.BREAKOUT += 0.2;
+      if (ic.mtfScore <= -5) scores.REAL_DUMP += 0.2;
+    }
+    if (ic.bbScore != null && Math.abs(ic.bbScore) >= 5) scores.ARCH_ZONE += 0.2;
+    if (ic.lsRatio != null) {
+      if (ic.lsRatio < 0.85) scores.ACCUMULATION += 0.2;
+      if (ic.lsRatio > 1.15) scores.REAL_DUMP += 0.15;
+    }
+    if (ic.takerBuyRatio != null) {
+      if (ic.takerBuyRatio > 1.15) scores.BREAKOUT += 0.15;
+      if (ic.takerBuyRatio < 0.85) scores.REAL_DUMP += 0.15;
+    }
+    if (ic.direction === 'bullish') { scores.ACCUMULATION += 0.2; scores.BREAKOUT += 0.2; }
+    else if (ic.direction === 'bearish') { scores.REAL_DUMP += 0.2; scores.FAKE_DUMP += 0.1; }
+    if (ic.emaAlignment) {
+      const ema = ic.emaAlignment.toLowerCase();
+      if (ema.includes('bullish') || ema.includes('bull')) scores.BREAKOUT += 0.15;
+      if (ema.includes('bearish') || ema.includes('bear')) scores.REAL_DUMP += 0.15;
+    }
+    if (ic.kimchiScore != null) {
+      if (ic.kimchiScore >= 5)  scores.REAL_DUMP += 0.1;
+      if (ic.kimchiScore <= -5) scores.ACCUMULATION += 0.1;
+    }
+  }
+
   const entries = Object.entries(scores) as [Phase, number][];
   const topPhase = entries.sort(([, a], [, b]) => b - a)[0]!;
   const phase = topPhase[0];
@@ -271,6 +335,20 @@ function detectPhase(req: AutoAnalyzeRequest): AnalysisResult {
   if (fundingFlip) thesis.push('펀딩 플립 — 포지션 구조 전환');
   if (volSpike) thesis.push(`거래량 폭발 (${(maxVol / avgVol).toFixed(1)}× 평균)`);
   if (longSqueezeActive) thesis.push('롱 청산 압력 활성 — 세력 숏 누르기');
+  if (ic) {
+    if (ic.rsi14 != null) thesis.push(`RSI ${ic.rsi14.toFixed(1)} (${ic.rsi14 < 30 ? '과매도' : ic.rsi14 > 70 ? '과매수' : '중립'})`);
+    if (ic.wyckoffScore != null && Math.abs(ic.wyckoffScore) >= 3)
+      thesis.push(`Wyckoff ${ic.wyckoffScore >= 0 ? '+' : ''}${ic.wyckoffScore} — ${ic.wyckoffScore >= 5 ? '축적 신호' : ic.wyckoffScore <= -5 ? '분산 신호' : '전환 구간'}`);
+    if (ic.fundingRate != null && Math.abs(ic.fundingRate) > 0.0005)
+      thesis.push(`펀딩 ${(ic.fundingRate * 100).toFixed(3)}% — ${ic.fundingRate > 0.01 ? '롱 과열' : ic.fundingRate < -0.005 ? '숏 치우침' : '중립'}`);
+    if (ic.lsRatio != null)
+      thesis.push(`L/S ${ic.lsRatio.toFixed(2)} — ${ic.lsRatio < 0.85 ? '숏 도미넌트 (역발상 롱)' : ic.lsRatio > 1.15 ? '롱 도미넌트' : '균형'}`);
+    if (ic.takerBuyRatio != null)
+      thesis.push(`Taker ${ic.takerBuyRatio.toFixed(2)}× — ${ic.takerBuyRatio > 1.1 ? '공격적 매수' : ic.takerBuyRatio < 0.9 ? '공격적 매도' : '균형'}`);
+    if (ic.mtfScore != null && Math.abs(ic.mtfScore) >= 3)
+      thesis.push(`MTF 정렬 ${ic.mtfScore >= 0 ? '+' : ''}${ic.mtfScore}`);
+    if (ic.pWin != null) thesis.push(`엔진 P(win) ${Math.round(ic.pWin * 100)}%`);
+  }
   if (req.noteDraft.trim()) thesis.push(req.noteDraft.trim().slice(0, 120));
 
   const summary = thesis.slice(0, 2).join(' / ');
@@ -283,8 +361,9 @@ function detectPhase(req: AutoAnalyzeRequest): AnalysisResult {
 // ---------------------------------------------------------------------------
 
 export const POST: RequestHandler = async ({ cookies, request }) => {
+  // detectPhase is pure computation — no auth required
+  // canSave flag controls whether the client can save the result (requires auth)
   const user = await getAuthUserFromCookies(cookies);
-  if (!user) return json({ error: 'Authentication required' }, { status: 401 });
 
   let body: AutoAnalyzeRequest;
   try {
@@ -305,5 +384,6 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
     thesis: result.thesis,
     summary: result.summary,
     analyzedAt: Date.now(),
+    canSave: !!user,
   });
 };

@@ -2,6 +2,7 @@
   import LibrarySection from './sections/LibrarySection.svelte';
   import VerdictsSection from './sections/VerdictsSection.svelte';
   import RulesSection from './sections/RulesSection.svelte';
+  import DogeOSWalletButton from '$lib/components/wallet/DogeOSWalletButton.svelte';
 
   interface Props {
     visible: boolean;
@@ -49,7 +50,7 @@
       <span class="dot"></span>
       <span>scanner live</span>
       <span class="spacer"></span>
-      <span>300 sym</span>
+      <DogeOSWalletButton />
     </div>
   </div>
 {/if}

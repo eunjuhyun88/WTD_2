@@ -46,6 +46,7 @@
   let detectedSignals = $state<Array<{ id: string; label: string; detected: boolean; value: string }>>([]);
   let thesisBullets = $state<string[]>([]);
   let analysisError = $state<string | null>(null);
+  let canSave = $state(false);
 
   // Indicator injection
   let oiBars = $state<Array<{ time: number; value: number }>>([]);
@@ -95,6 +96,7 @@
     detectedSignals = [];
     thesisBullets = [];
     analysisError = null;
+    canSave = false;
     candidates = [];
     searchError = null;
     indicatorsLoaded = false;
@@ -174,8 +176,11 @@
           phaseConfidence = data.phaseConfidence ?? 0;
           detectedSignals = data.signals ?? [];
           thesisBullets = data.thesis ?? [];
+          canSave = data.canSave === true;
+        } else if (res.status === 401) {
+          canSave = false;
         } else {
-          analysisError = 'AI 분석 실패 — 직접 입력해주세요';
+          analysisError = 'AI 분석 오류 — 다시 시도해주세요';
         }
       } catch {
         if (!signal.aborted) analysisError = 'AI 분석 오류';
@@ -509,13 +514,19 @@
         </div>
       {:else}
         <button class="cancel-btn" onclick={onClose} disabled={step === 'saving'}>취소</button>
-        <button
-          class="save-btn"
-          onclick={handleSave}
-          disabled={step === 'analyzing' || step === 'saving' || !viewport}
-        >
-          {step === 'saving' ? '저장 중…' : '패턴 저장 →'}
-        </button>
+        {#if !canSave && step !== 'analyzing'}
+          <a href="/auth/login" class="login-save-btn" title="로그인 후 저장 가능">
+            🔒 로그인 후 저장
+          </a>
+        {:else}
+          <button
+            class="save-btn"
+            onclick={handleSave}
+            disabled={step === 'analyzing' || step === 'saving' || !viewport || !canSave}
+          >
+            {step === 'saving' ? '저장 중…' : '패턴 저장 →'}
+          </button>
+        {/if}
       {/if}
     </div>
 
@@ -1002,6 +1013,27 @@
   .save-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+
+  .login-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .login-save-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
   }
 
   @media (max-width: 600px) {

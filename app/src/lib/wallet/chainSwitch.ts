@@ -144,3 +144,55 @@ export async function isOnArbitrum(providerKey: WalletProviderKey): Promise<bool
   const chainId = await getCurrentChainId(providerKey);
   return chainId === 42161;
 }
+
+// ═══ Base (primary chain) ════════════════════════════════════
+
+const BASE_CHAIN_ID = '0x2105'; // 8453 in hex
+const BASE_CHAIN_CONFIG = {
+  chainId: BASE_CHAIN_ID,
+  chainName: 'Base',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: ['https://mainnet.base.org', 'https://base-mainnet.g.alchemy.com/v2/'],
+  blockExplorerUrls: ['https://basescan.org'],
+};
+
+export async function ensureBaseChain(providerKey: WalletProviderKey): Promise<boolean> {
+  const provider = await resolveEvmProvider(providerKey);
+  if (!provider) return false;
+  try {
+    const currentChainId = await provider.request({ method: 'eth_chainId' }) as string;
+    if (currentChainId?.toLowerCase() === BASE_CHAIN_ID) return true;
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: BASE_CHAIN_ID }],
+    });
+    return true;
+  } catch (switchError: any) {
+    if (switchError?.code === 4902) {
+      try {
+        await provider.request({
+          method: 'wallet_addEthereumChain',
+          params: [BASE_CHAIN_CONFIG],
+        });
+        return true;
+      } catch { return false; }
+    }
+    if (switchError?.code === 4001) return false;
+    return false;
+  }
+}
+
+export async function tryGetCurrentChainCode(providerKey: WalletProviderKey): Promise<string> {
+  const provider = await resolveEvmProvider(providerKey);
+  if (!provider) return 'BASE';
+  try {
+    const chainId = await provider.request({ method: 'eth_chainId' }) as string;
+    const num = parseInt(chainId, 16);
+    if (num === 1) return 'ETH';
+    if (num === 10) return 'OP';
+    if (num === 137) return 'POL';
+    if (num === 8453) return 'BASE';
+    if (num === 42161) return 'ARB';
+    return `EVM:${num}`;
+  } catch { return 'BASE'; }
+}
