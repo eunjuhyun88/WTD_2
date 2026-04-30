@@ -94,6 +94,7 @@ from social.blocks import (
 from building_blocks.confirmations.cot_large_spec_short import cot_large_spec_short
 from building_blocks.confirmations.cot_commercial_net_long import cot_commercial_net_long
 from building_blocks.confirmations.cot_positioning_flip import cot_positioning_flip
+from building_blocks.confirmations.macro_regime_extreme import macro_regime_extreme
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -203,6 +204,11 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("cot_large_spec_short",    cot_large_spec_short),
     ("cot_commercial_net_long", cot_commercial_net_long),
     ("cot_positioning_flip",    cot_positioning_flip),
+    # W-0338: Macro regime extremes (fear_greed, vix, btc_dominance)
+    ("macro_fear_extreme",      lambda ctx: macro_regime_extreme(ctx, mode="fear")),
+    ("macro_greed_extreme",     lambda ctx: macro_regime_extreme(ctx, mode="greed")),
+    ("macro_vix_spike",         lambda ctx: macro_regime_extreme(ctx, mode="vix_spike")),
+    ("macro_btc_dom_high",      lambda ctx: macro_regime_extreme(ctx, mode="btc_dom_high")),
     # W-0115 Alpha pipeline blocks
     ("spot_futures_cvd_divergence",     spot_futures_cvd_divergence),
     ("dex_buy_pressure",                dex_buy_pressure),

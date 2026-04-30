@@ -62,6 +62,20 @@ from data_cache.fetch_social import (
 from data_cache.fetch_dexscreener import fetch_dex_token_data
 from data_cache.fetch_bscscan import fetch_holder_concentration
 from data_cache.fetch_venue_funding import fetch_venue_funding
+from data_cache.fetch_coinalyze_liquidations import (
+    fetch_coinalyze_liquidation_history,
+    empty_liquidation_history_frame,
+)
+
+
+def _fetch_liquidations_registry(symbol: str, days: int) -> "pd.DataFrame | None":
+    """Registry adapter: converts (symbol, days) → fetch_coinalyze_liquidation_history."""
+    try:
+        limit = max(1, days * 24)  # hourly bars for N days
+        df = fetch_coinalyze_liquidation_history(symbol, timeframe="1h", limit=limit)
+        return df if not df.empty else None
+    except Exception:
+        return None
 
 
 # ─── Global macro sources (symbol-independent) ──────────────────────────────
@@ -169,6 +183,15 @@ ONCHAIN_SOURCES: list[DataSource] = [
         },
         scope="per_symbol",
         cache_file="src_{symbol}_exchange_oi.csv",
+    ),
+    # ── W-0338: Liquidation history (Coinalyze, graceful no-op without API key) ──
+    DataSource(
+        name="coinalyze_liquidations",
+        fetcher=_fetch_liquidations_registry,
+        columns=["long_liq_usd", "short_liq_usd"],
+        defaults={"long_liq_usd": 0.0, "short_liq_usd": 0.0},
+        scope="per_symbol",
+        cache_file="src_{symbol}_liq_history.csv",
     ),
     # ── W-0114 딸깍 전략: 소셜 신호 ─────────────────────────────────────────
     DataSource(
