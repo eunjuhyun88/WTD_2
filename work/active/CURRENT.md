@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`51b10032` — origin/main (2026-04-30) — PR #754 W-0340 Wallet 실연결화 merged
+`d6f47ee1` — origin/main (2026-04-30) — PR #778 W-0356 Cogochi 3-column redesign merged
 
 ---
 
@@ -14,6 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0356-cogochi-3column-redesign` | P0 | ✅ Merged PR #778 |
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
