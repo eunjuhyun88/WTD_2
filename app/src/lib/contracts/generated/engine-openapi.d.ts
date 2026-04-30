@@ -2661,6 +2661,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Pattern
+         * @description Run validate_and_gate() for a pattern slug.
+         *
+         *     Rate limit: 20/day per IP.
+         *     503 if VALIDATION_PIPELINE_ENABLED=false.
+         */
+        post: operations["validate_pattern_research_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover
+         * @description Trigger autonomous pattern discovery agent (W-0316).
+         *
+         *     Internal-only: requires x-engine-internal-secret header.
+         *     Rate limit: 5/day. Discovery runs cost up to $0.50/cycle.
+         *     503 if DISCOVERY_AGENT_ENABLED=false.
+         */
+        post: operations["discover_research_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Findings
+         * @description List inbox findings. date format: YYYY-MM-DD.
+         */
+        get: operations["list_findings_research_findings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -3279,6 +3346,21 @@ export interface components {
             /** Hunt Score */
             hunt_score?: number | null;
         };
+        /** DiscoverResponse */
+        DiscoverResponse: {
+            /** Cycle Id */
+            cycle_id: string;
+            /** Proposals */
+            proposals: number;
+            /** Turns Used */
+            turns_used: number;
+            /** Stop Reason */
+            stop_reason: string | null;
+            /** Error */
+            error: string | null;
+            /** Proposal Paths */
+            proposal_paths: string[];
+        };
         /** EnsembleSignal */
         EnsembleSignal: {
             /** Direction */
@@ -3299,6 +3381,15 @@ export interface components {
             block_analysis: {
                 [key: string]: unknown;
             };
+        };
+        /** FindingsResponse */
+        FindingsResponse: {
+            /** Date */
+            date: string;
+            /** Findings */
+            findings: string[];
+            /** Count */
+            count: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4915,6 +5006,45 @@ export interface components {
             tokens: components["schemas"]["TokenInfo"][];
             /** Updated At */
             updated_at: string;
+        };
+        /** ValidateRequest */
+        ValidateRequest: {
+            /** Slug */
+            slug: string;
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Family */
+            family?: string | null;
+            /**
+             * Existing Promotion Pass
+             * @default false
+             */
+            existing_promotion_pass: boolean;
+        };
+        /** ValidateResponse */
+        ValidateResponse: {
+            /** Slug */
+            slug: string;
+            /** Overall Pass */
+            overall_pass: boolean;
+            /** Stage */
+            stage: string;
+            /** Hypothesis Id */
+            hypothesis_id: string | null;
+            /** Dsr N Trials */
+            dsr_n_trials: number;
+            /** Family */
+            family: string;
+            /** Computed At */
+            computed_at: string;
+            /** Error */
+            error: string | null;
+            /** Gate */
+            gate: {
+                [key: string]: unknown;
+            } | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -9674,6 +9804,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RescueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_pattern_research_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_research_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverResponse"];
+                };
+            };
+        };
+    };
+    list_findings_research_findings_get: {
+        parameters: {
+            query?: {
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingsResponse"];
                 };
             };
             /** @description Validation Error */
