@@ -6,6 +6,7 @@ still live in app-web local mode.
 """
 from __future__ import annotations
 
+import logging
 import re
 import time
 
@@ -13,6 +14,9 @@ from fastapi import APIRouter
 
 from api.schemas import OpportunityMacroBackdrop, OpportunityRunRequest, OpportunityRunResponse, OpportunityScore
 from data_cache.token_universe import get_universe
+from memory.state_store import USER_VERDICT_WEIGHT_STORE
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -134,8 +138,10 @@ async def run(req: OpportunityRunRequest) -> OpportunityRunResponse:
     )
 
     coins: list[OpportunityScore] = []
+    raw_symbol_map: dict[str, str] = {}  # base_symbol -> full pair (e.g. BTC -> BTCUSDT)
     for row in ranked:
-        symbol = str(row.get("base") or row.get("symbol", "")).upper()
+        raw_sym = str(row.get("symbol") or row.get("base", "")).upper()  # BTCUSDT
+        symbol = str(row.get("base") or row.get("symbol", "")).upper()   # BTC
         name = str(row.get("name") or symbol)
         price = float(row.get("price", 0.0))
         change_24h = float(row.get("pct_24h", 0.0))
@@ -159,6 +165,7 @@ async def run(req: OpportunityRunRequest) -> OpportunityRunResponse:
 
         alerts = momentum_alerts + volume_alerts
 
+        raw_symbol_map[symbol] = raw_sym
         coins.append(
             OpportunityScore(
                 symbol=symbol,
@@ -186,7 +193,28 @@ async def run(req: OpportunityRunRequest) -> OpportunityRunResponse:
             )
         )
 
-    coins.sort(key=lambda coin: coin.totalScore, reverse=True)
+    # Personalization: apply per-user verdict weights to sort order (W-0351).
+    # Adjustments are keyed by "symbol:BTCUSDT"; scale ×10 to be meaningful
+    # in the 0-100 totalScore space. user_id=None → base sort unchanged.
+    user_adjustments: dict[str, float] = {}
+    if req.user_id:
+        try:
+            user_adjustments = USER_VERDICT_WEIGHT_STORE.get_adjustments(req.user_id)
+            if user_adjustments:
+                log.debug("personalization: %d tags for user %s", len(user_adjustments), req.user_id)
+        except Exception:
+            log.warning("personalization weight fetch failed; falling back to base sort", exc_info=True)
+
+    def _sort_key(coin: OpportunityScore) -> float:
+        if not user_adjustments:
+            return float(coin.totalScore)
+        full_pair = raw_symbol_map.get(coin.symbol, coin.symbol)
+        delta = user_adjustments.get(f"symbol:{full_pair}", 0.0)
+        if delta == 0.0:
+            delta = user_adjustments.get(f"symbol:{coin.symbol}", 0.0)
+        return float(coin.totalScore) + delta * 10.0
+
+    coins.sort(key=_sort_key, reverse=True)
 
     return OpportunityRunResponse(
         coins=coins,

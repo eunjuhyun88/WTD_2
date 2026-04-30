@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class OpportunityRunRequest(BaseModel):
     limit: int = Field(default=15, ge=1, le=100)
+    user_id: str | None = None
 
 
 class OpportunityScore(BaseModel):
