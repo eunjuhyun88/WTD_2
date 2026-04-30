@@ -44,10 +44,10 @@
 | W-0346 | Verdict → reranker weight feedback | Ph-3 | #737 | 🟡 설계 |
 | W-0347 | Sector/MTF Surface (opportunity scan) | Ph-3 | #738 | 🟡 설계 |
 | W-0348 | Pipeline E2E (Stage 6+7 composite) | Ph-1 | #750 | ✅ 머지 |
+| W-0352 | Pipeline top-patterns → REST API | Ph-1 | TBD | 🟡 설계 |
 | W-0353 | composite_score → IntelPanel + VerdictInbox | Ph-1 | TBD | 🟡 설계 |
 | W-0354 | CaptureReviewDrawer 5-verdict 정렬 | Infra | TBD | 🟡 설계 |
 | W-0355 | Extreme events 카드 (funding/OI/price) | Infra | TBD | 🟡 설계 |
-| W-0356 | Pipeline top-patterns → REST API | Ph-1 | TBD | 🟡 설계 |
 | W-0357 | Research scanner ML model inference | Ph-2 | TBD | 🟡 설계 |
 
 ---
@@ -59,7 +59,7 @@
 | `scanner.py:392` | `predicted_prob=0.6` | `MODEL_REGISTRY_STORE.get_active(slug).predict_one()` | W-0357 |
 | `scanner.py:418` | `threshold=0.55` | `resolve_threshold(registry_entry)` | W-0357 |
 | `alerts_pattern.py:43` | `P_WIN_GATE=0.55` | registry threshold_policy | W-0357 |
-| `training_service.py` | `_AUTO_PROMOTE_MIN_AUC=0.60` | 명시적 AUC 기준 강화 | W-0357 |
+| `training_service.py` | `_AUTO_PROMOTE_MIN_AUC=0.60` | 0.65로 강화 | W-0357 |
 
 ---
 

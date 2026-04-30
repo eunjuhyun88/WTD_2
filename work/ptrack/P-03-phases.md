@@ -24,7 +24,7 @@
 
 ## Work Items
 
-### W-0356 — Pipeline top-patterns REST API
+### W-0352 — Pipeline top-patterns REST API
 > Priority: P1 | Effort: S | 선행: W-0348 ✅
 
 **Scope**:
@@ -45,7 +45,7 @@
 ---
 
 ### W-0353 — composite_score → IntelPanel + VerdictInbox 렌더
-> Priority: P1 | Effort: M | 선행: W-0356
+> Priority: P1 | Effort: M | 선행: W-0352
 
 **Scope**:
 - `TopPatternsPanel.svelte` 신규 — composite_score DESC 정렬 테이블
@@ -174,8 +174,8 @@ research scanner가 학습된 모델을 실제로 사용하고, live scanner thr
 
 | Phase | W-# | 제목 | Effort | 선행 |
 |---|---|---|---|---|
-| Ph-1 | W-0356 | Pipeline top-patterns REST API | S | W-0348 ✅ |
-| Ph-1 | W-0353 | composite_score → IntelPanel | M | W-0356 |
+| Ph-1 | W-0352 | Pipeline top-patterns REST API | S | W-0348 ✅ |
+| Ph-1 | W-0353 | composite_score → IntelPanel | M | W-0352 |
 | Ph-2 | W-0357 | Research scanner ML inference | M | MODEL_REGISTRY |
 | Ph-3 | W-0346 | Verdict → reranker feedback | M | W-0341 |
 | Ph-3 | W-0347 | Sector/MTF surface | S | W-0324 ✅ |
@@ -183,4 +183,4 @@ research scanner가 학습된 모델을 실제로 사용하고, live scanner thr
 | Infra | W-0354 | CaptureReviewDrawer 5-verdict | S | — |
 | Infra | W-0355 | Extreme events 카드 | S | — |
 
-**권장 실행 순서**: W-0341 + W-0357 병렬 → W-0356 → W-0353 → W-0346 + W-0347 병렬 → W-0354 + W-0355
+**권장 실행 순서**: W-0341 + W-0357 병렬 → W-0352 → W-0353 → W-0346 + W-0347 병렬 → W-0354 + W-0355

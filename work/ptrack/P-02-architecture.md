@@ -37,7 +37,7 @@
 └───────┬──────────────────────────┘
         │ parquet + PipelineResult
 ┌───────▼──────────────────────────┐
-│ API (engine/api/routes/research) │  ← W-0356 NEW
+│ API (engine/api/routes/research) │  ← W-0352 NEW
 │ GET /research/top-patterns       │
 │   ?limit=20&min_grade=B          │
 │ → TopPatternResponse[]           │
@@ -153,8 +153,8 @@ context_tag = f"{symbol}_{timeframe}_{intent}"
 
 | 파일 | 변경 | W-# |
 |---|---|---|
-| `engine/api/routes/research.py` | GET /research/top-patterns 추가 | W-0356 |
-| `engine/pipeline.py` | `latest_top_patterns_path()` helper | W-0356 |
+| `engine/api/routes/research.py` | GET /research/top-patterns 추가 | W-0352 |
+| `engine/pipeline.py` | `latest_top_patterns_path()` helper | W-0352 |
 | `engine/research/pattern_scan/scanner.py` | predicted_prob, threshold 동적화 | W-0357 |
 | `engine/patterns/model_registry.py` | `resolve_threshold()` 추가 | W-0357 |
 | `engine/memory/rerank.py` | `apply_verdict_feedback()` 추가 | W-0346 |
@@ -169,7 +169,7 @@ context_tag = f"{symbol}_{timeframe}_{intent}"
 ## 7. 의존 관계
 
 ```
-W-0348 (✅ 완료) ──→ W-0356 (API 노출) ──→ W-0353 (frontend)
+W-0348 (✅ 완료) ──→ W-0352 (API 노출) ──→ W-0353 (frontend)
                                    ↑
 W-0314 (✅ 완료) ─────────────────┘
 
