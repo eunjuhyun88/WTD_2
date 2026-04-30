@@ -520,6 +520,11 @@ def start_scheduler() -> None:
             misfire_grace_time=600,
         )
 
+    # W-0367: Signal outcome resolver — hourly, only when ENABLE_SIGNAL_EVENTS=true
+    if os.environ.get("ENABLE_SIGNAL_EVENTS", "false").lower() == "true":
+        from research.verification_loop import register_scheduler as _reg_vloop
+        _reg_vloop(_scheduler)
+
     _scheduler.start()
     log.info(
         "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s search_index=%ds refinement=%s universe=%s",

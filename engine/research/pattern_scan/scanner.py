@@ -62,6 +62,9 @@ _OOS_WIRING = os.getenv("RESEARCH_OOS_WIRING", "off").lower() == "on"
 # Set LIVE_SIGNALS_MODE=on only for real-time signal generation.
 _LIVE_SIGNALS_MODE = os.getenv("LIVE_SIGNALS_MODE", "off").lower() == "on"
 
+# W-0367: persist signal events to Supabase for alpha verification loop.
+_SIGNAL_EVENTS_ENABLED = os.getenv("ENABLE_SIGNAL_EVENTS", "false").lower() == "true"
+
 _OOS_HOLDOUT_FRAC = 0.30
 _MIN_HOLDOUT_TRADES = 10
 
@@ -334,6 +337,77 @@ def _inject_sector_scores(
         log.debug("[%s] Sector score injection failed: %s", symbol, exc)
 
 
+# W-0367: indicator columns captured in indicator_snapshot (feature_calc actual column names)
+_SNAPSHOT_COLS = [
+    "cvd_change_zscore",
+    "oi_change_1h_zscore",
+    "oi_change_24h_zscore",
+    "bb_squeeze",
+    "oi_change_1h",
+    "oi_change_24h",
+    "vol_zscore",
+]
+
+
+def _record_latest_signal(
+    symbol: str,
+    pattern: str,
+    direction: str,
+    signal: "EntrySignal",
+    features: pd.DataFrame,
+    klines: pd.DataFrame,
+) -> None:
+    """Fire-and-forget: persist latest signal with indicator_snapshot to Supabase."""
+    import threading
+
+    def _write() -> None:
+        try:
+            from research.signal_event_store import insert_signal_event, init_outcomes
+
+            ts = signal.timestamp
+            # Locate feature row at signal timestamp (fall back to second-to-last)
+            if ts in features.index:
+                row = features.loc[ts]
+            else:
+                row = features.iloc[-2]
+
+            indicator_snapshot = {
+                col: float(row[col]) if col in row.index and not pd.isna(row[col]) else None
+                for col in _SNAPSHOT_COLS
+            }
+            component_scores = {
+                "phase_scores": [],
+                "indicator_snapshot": indicator_snapshot,
+                "overall_score": 0.6,
+                "schema_version": 1,
+            }
+
+            # entry_price: close of bar at signal timestamp + 1 (from klines)
+            entry_price: float | None = None
+            if "close" in klines.columns and ts in klines.index:
+                idx = klines.index.get_loc(ts)
+                if isinstance(idx, slice):
+                    idx = idx.start
+                if idx is not None and idx + 1 < len(klines):
+                    entry_price = float(klines["close"].iloc[idx + 1])
+
+            fired_at = ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+
+            signal_id = insert_signal_event(
+                fired_at=fired_at,
+                symbol=symbol,
+                pattern=pattern,
+                direction=direction,
+                entry_price=entry_price,
+                component_scores=component_scores,
+            )
+            init_outcomes(signal_id, fired_at)
+        except Exception as exc:
+            log.debug("signal_event write failed (non-fatal): %s", exc)
+
+    threading.Thread(target=_write, daemon=True).start()
+
+
 def _scan_one_symbol(
     symbol: str,
     store: ParquetStore,
@@ -430,6 +504,10 @@ def _scan_one_symbol(
                 max_drawdown_pct=m.max_drawdown_pct,
                 final_equity=m.final_equity, scan_ts=scan_ts,
             ))
+
+            # W-0367: persist most recent signal event for alpha verification loop
+            if _SIGNAL_EVENTS_ENABLED and signals:
+                _record_latest_signal(symbol, combo.name, combo.direction, signals[-1], features, klines)
 
         except Exception as exc:
             log.warning("[%s/%s] backtest failed: %s", symbol, combo.name, exc)
