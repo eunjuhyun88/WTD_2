@@ -5,21 +5,8 @@
     fetchAnalyze,
     fetchAnalyzeAndChart,
     fetchAlphaWorldModel,
-    fetchConfluenceCurrent,
-    fetchConfluenceHistory,
-    fetchFundingFlip,
-    fetchFundingHistory,
-    fetchIndicatorContext,
-    fetchLiqClusters,
     fetchMarketMicrostructure,
-    fetchOptionsSnapshot,
-    fetchRecentCaptures,
-    fetchRvCone,
-    fetchSsr,
-    fetchVenueDivergence,
     submitTradeOutcome,
-    type ConfluenceHistoryEntry,
-    type RecentCaptureSummary,
     type TradeOutcomeResult,
   } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
@@ -33,23 +20,14 @@
   import ConfluenceBanner from '$lib/components/confluence/ConfluenceBanner.svelte';
   import ConfluencePeekChip from '$lib/components/confluence/ConfluencePeekChip.svelte';
   import DivergenceAlertToast from '$lib/components/confluence/DivergenceAlertToast.svelte';
-  import type { ConfluenceResult } from '$lib/confluence/types';
   import type { GammaPinData } from '../../../components/terminal/chart/primitives/GammaPinPrimitive';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
-  import {
-    buildIndicatorValues,
-    type VenueDivergencePayload,
-    type LiqClusterPayload,
-    type IndicatorContextPayload,
-    type SsrPayload,
-    type RvConePayload,
-    type FundingFlipPayload,
-    type OptionsSnapshotPayload,
-    type FundingHistoryPayload,
-  } from '$lib/indicators/adapter';
+  import { buildIndicatorValues } from '$lib/indicators/adapter';
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
+  import { useMicrostructureSocket } from '$lib/trade/useMicrostructureSocket.svelte';
+  import { useTradeData } from '$lib/trade/useTradeData.svelte';
 
   type ChartBar = ChartSeriesPayload['klines'][number];
   type MicroOrderbook = MarketMicrostructurePayload['orderbook'];
@@ -89,11 +67,16 @@
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
   let microstructureLoading = $state(false);
-  let microWsState = $state<'idle' | 'connecting' | 'live' | 'error' | 'closed'>('idle');
-  let microWsUpdatedAt = $state<number | null>(null);
-  let liveOrderbook = $state<MicroOrderbook | null>(null);
-  let liveTrades = $state<MarketTradePrint[]>([]);
   let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
+
+  const microSocket = useMicrostructureSocket(
+    () => symbol,
+    () => microstructurePayload?.currentPrice ?? null
+  );
+  let microWsState = $derived(microSocket.microWsState);
+  let microWsUpdatedAt = $derived(microSocket.microWsUpdatedAt);
+  let liveOrderbook = $derived(microSocket.liveOrderbook);
+  let liveTrades = $derived(microSocket.liveTrades);
 
   // Fetch initial bundle (one-shot per symbol/tf)
   $effect(() => {
@@ -139,235 +122,34 @@
     };
   });
 
-  // Browser live layer: REST snapshot is the boot/fallback, WS is the live surface.
-  $effect(() => {
-    const sym = toBinanceFuturesStreamSymbol(symbol);
-    if (typeof WebSocket === 'undefined' || !sym) return;
 
-    let closed = false;
-    let ws: WebSocket | null = null;
-    let reconnectTimer: number | null = null;
-
-    const connect = () => {
-      if (closed) return;
-      microWsState = 'connecting';
-      ws = new WebSocket(`wss://fstream.binance.com/stream?streams=${sym}@aggTrade/${sym}@depth20@100ms`);
-
-      ws.onopen = () => {
-        if (!closed) microWsState = 'live';
-      };
-
-      ws.onmessage = (event) => {
-        if (closed) return;
-        try {
-          const message = JSON.parse(String(event.data));
-          const data = message?.data ?? message;
-          if (data?.e === 'aggTrade') {
-            const trade = toLiveTrade(data);
-            if (!trade) return;
-            liveTrades = [trade, ...liveTrades.filter((row) => row.id !== trade.id)].slice(0, 120);
-            microWsUpdatedAt = Date.now();
-            microWsState = 'live';
-          } else if (data?.e === 'depthUpdate' && Array.isArray(data.b) && Array.isArray(data.a)) {
-            liveOrderbook = buildLiveOrderbook(data.b, data.a, liveTrades[0]?.price ?? microstructurePayload?.currentPrice ?? null);
-            microWsUpdatedAt = Date.now();
-            microWsState = 'live';
-          }
-        } catch {
-          // Keep REST snapshot active; malformed stream packets should not blank the UI.
-        }
-      };
-
-      ws.onerror = () => {
-        if (!closed) microWsState = 'error';
-      };
-
-      ws.onclose = () => {
-        if (closed) return;
-        microWsState = liveTrades.length > 0 || liveOrderbook ? 'closed' : 'error';
-        reconnectTimer = window.setTimeout(connect, 3_000);
-      };
-    };
-
-    liveTrades = [];
-    liveOrderbook = null;
-    microWsUpdatedAt = null;
-    connect();
-
-    return () => {
-      closed = true;
-      if (reconnectTimer) window.clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  });
-
-  function toBinanceFuturesStreamSymbol(rawSymbol: string): string {
-    const compact = rawSymbol.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!compact) return '';
-    return compact.endsWith('usdt') ? compact : `${compact}usdt`;
-  }
+  // ── Pillar data (venue divergence, liq clusters, context, options, confluence …)
+  const tradeData = useTradeData(() => symbol, () => timeframe);
 
   // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
   // On candle close, refresh analyze only — chart live updates are handled inside ChartBoard.
   async function handleCandleClose(bar: { time: number }) {
-    if (lastCandleTime === bar.time) return; // dedup duplicate fires
+    if (lastCandleTime === bar.time) return;
     lastCandleTime = bar.time;
     try {
       const nextAnalyze = await fetchAnalyze(symbol, timeframe);
       if (nextAnalyze) analyzeData = nextAnalyze;
     } catch { /* retry on next candle */ }
-    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
-    // in lock-step with analyze on candle close.
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
-    void refreshConfluence();
+    void tradeData.refreshVenueDivergence();
+    void tradeData.refreshLiqClusters();
+    void tradeData.refreshConfluence();
   }
-
-  // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
-  let venueDivergence = $state<VenueDivergencePayload | null>(null);
-
-  async function refreshVenueDivergence() {
-    try {
-      venueDivergence = await fetchVenueDivergence(symbol);
-    } catch { /* tolerate: next refresh will retry */ }
-  }
-
-  // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
-  let liqClusters = $state<LiqClusterPayload | null>(null);
-
-  async function refreshLiqClusters() {
-    try {
-      liqClusters = await fetchLiqClusters(symbol, '4h');
-    } catch { /* tolerate */ }
-  }
-
-  // ── Rolling Percentile Context (W-0122 rolling percentile) ───────────
-  // 30d distribution data: OI deltas + funding history → real percentiles.
-  // 10-min cache on the server so polling is cheap.
-  let indicatorContext = $state<IndicatorContextPayload | null>(null);
-
-  async function refreshIndicatorContext() {
-    try {
-      indicatorContext = await fetchIndicatorContext(symbol);
-    } catch { /* tolerate */ }
-  }
-
-  // ── W-0122-F Free Wins — SSR, RV Cone, Funding Flip ─────────────────
-  let ssr = $state<SsrPayload | null>(null);
-  let rvCone = $state<RvConePayload | null>(null);
-  let fundingFlip = $state<FundingFlipPayload | null>(null);
-
-  async function refreshSsr() {
-    try {
-      ssr = await fetchSsr();
-    } catch { /* tolerate */ }
-  }
-
-  async function refreshRvCone() {
-    try {
-      rvCone = await fetchRvCone(symbol);
-    } catch { /* tolerate */ }
-  }
-
-  async function refreshFundingFlip() {
-    try {
-      fundingFlip = await fetchFundingFlip(symbol);
-    } catch { /* tolerate */ }
-  }
-
-  // ── Funding history (270 bars = ~90d of 8h intervals) → real G curve ──
-  let fundingHistory = $state<FundingHistoryPayload | null>(null);
-
-  async function refreshFundingHistory() {
-    try {
-      fundingHistory = await fetchFundingHistory(symbol, 270);
-    } catch { /* tolerate */ }
-  }
-
-  // ── Past captures (real historical setups for PAST strip) ─────────────
-  let pastCaptures = $state<RecentCaptureSummary[]>([]);
-
-  async function refreshPastCaptures() {
-    try {
-      pastCaptures = await fetchRecentCaptures(8);
-    } catch { /* tolerate */ }
-  }
-
-  // ── Pillar 2: Options snapshot (W-0122-C1) ───────────────────────────
-  let optionsSnapshot = $state<OptionsSnapshotPayload | null>(null);
-
-  async function refreshOptionsSnapshot() {
-    // Deribit supports BTC and ETH currencies.
-    const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
-    if (!currency) { optionsSnapshot = null; return; }
-    try {
-      optionsSnapshot = await fetchOptionsSnapshot(currency);
-    } catch { /* tolerate */ }
-  }
-
-  // ── Confluence Engine (W-0122 master score) ──────────────────────────
-  let confluence = $state<ConfluenceResult | null>(null);
-  let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
-
-  async function refreshConfluence() {
-    try {
-      confluence = await fetchConfluenceCurrent(symbol, timeframe);
-    } catch { /* tolerate */ }
-  }
-
-  async function refreshConfluenceHistory() {
-    try {
-      confluenceHistory = await fetchConfluenceHistory(symbol, 96);
-    } catch { /* tolerate */ }
-  }
-
-  // Trigger on symbol change + initial mount. Polling every 60s as a safety net
-  // (candle close also triggers refresh above). Indicator context polls only
-  // every 5m since its server cache TTL is 10m. SSR/RV/flip are slower still.
-  $effect(() => {
-    void symbol;
-    venueDivergence = null;
-    liqClusters = null;
-    indicatorContext = null;
-    ssr = null;
-    rvCone = null;
-    fundingFlip = null;
-    fundingHistory = null;
-    optionsSnapshot = null;
-    confluence = null;
-    confluenceHistory = [];
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
-    void refreshIndicatorContext();
-    void refreshSsr();
-    void refreshRvCone();
-    void refreshFundingFlip();
-    void refreshFundingHistory();
-    void refreshOptionsSnapshot();
-    void refreshConfluence();
-    void refreshConfluenceHistory();
-    void refreshPastCaptures();
-    const fastIv = setInterval(() => {
-      void refreshVenueDivergence();
-      void refreshLiqClusters();
-      void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
-      void refreshConfluenceHistory(); // pull updated sparkline entries
-    }, 60_000);
-    const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
-    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
-    const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
-    const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
-    const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
-    const optIv = setInterval(() => void refreshOptionsSnapshot(), 5 * 60_000);
-    return () => {
-      clearInterval(fastIv);
-      clearInterval(slowIv);
-      clearInterval(flipIv);
-      clearInterval(ssrIv);
-      clearInterval(rvIv);
-      clearInterval(optIv);
-    };
-  });
+  let venueDivergence = $derived(tradeData.venueDivergence);
+  let liqClusters = $derived(tradeData.liqClusters);
+  let indicatorContext = $derived(tradeData.indicatorContext);
+  let ssr = $derived(tradeData.ssr);
+  let rvCone = $derived(tradeData.rvCone);
+  let fundingFlip = $derived(tradeData.fundingFlip);
+  let fundingHistory = $derived(tradeData.fundingHistory);
+  let pastCaptures = $derived(tradeData.pastCaptures);
+  let optionsSnapshot = $derived(tradeData.optionsSnapshot);
+  let confluence = $derived(tradeData.confluence);
+  let confluenceHistory = $derived(tradeData.confluenceHistory);
 
   // ── Indicator pipeline: analyze + side fetches → registry-keyed values ─
   const indicatorValues = $derived(buildIndicatorValues({
@@ -701,77 +483,6 @@
     return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v.toFixed(4);
   }
 
-  function toLiveTrade(data: any): MarketTradePrint | null {
-    const price = Number.parseFloat(data?.p);
-    const qty = Number.parseFloat(data?.q);
-    const id = Number(data?.a);
-    const time = Number(data?.T);
-    if (!Number.isFinite(price) || !Number.isFinite(qty) || !Number.isFinite(id) || !Number.isFinite(time)) return null;
-    const isBuyerMaker = Boolean(data?.m);
-    return {
-      id,
-      time,
-      price,
-      qty,
-      notional: price * qty,
-      side: isBuyerMaker ? 'SELL' : 'BUY',
-      isBuyerMaker,
-    };
-  }
-
-  function normalizeDepthLevels(rawLevels: any[], maxNotional: number): MarketDepthLevel[] {
-    return rawLevels
-      .slice(0, 20)
-      .map((row) => {
-        const price = Number.parseFloat(row?.[0]);
-        const qty = Number.parseFloat(row?.[1]);
-        return { price, qty, notional: price * qty };
-      })
-      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0)
-      .slice(0, 12)
-      .map((level) => ({
-        ...level,
-        weight: level.notional / Math.max(1, maxNotional),
-      }));
-  }
-
-  function buildLiveOrderbook(bidsRaw: any[], asksRaw: any[], current: number | null): MicroOrderbook {
-    const parsedBids = bidsRaw
-      .slice(0, 20)
-      .map((row) => {
-        const price = Number.parseFloat(row?.[0]);
-        const qty = Number.parseFloat(row?.[1]);
-        return { price, qty, notional: price * qty };
-      })
-      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
-    const parsedAsks = asksRaw
-      .slice(0, 20)
-      .map((row) => {
-        const price = Number.parseFloat(row?.[0]);
-        const qty = Number.parseFloat(row?.[1]);
-        return { price, qty, notional: price * qty };
-      })
-      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
-    const maxNotional = Math.max(1, ...parsedBids.map((level) => level.notional), ...parsedAsks.map((level) => level.notional));
-    const bids = normalizeDepthLevels(bidsRaw, maxNotional);
-    const asks = normalizeDepthLevels(asksRaw, maxNotional);
-    const bidNotional = bids.reduce((sum, level) => sum + level.notional, 0);
-    const askNotional = asks.reduce((sum, level) => sum + level.notional, 0);
-    const bestBid = bids[0]?.price ?? null;
-    const bestAsk = asks[0]?.price ?? null;
-    const refPrice = current ?? (bestBid != null && bestAsk != null ? (bestBid + bestAsk) / 2 : null);
-
-    return {
-      bestBid,
-      bestAsk,
-      spreadBps: bestBid != null && bestAsk != null && refPrice != null && refPrice > 0 ? ((bestAsk - bestBid) / refPrice) * 10_000 : null,
-      imbalanceRatio: askNotional > 0 ? bidNotional / askNotional : null,
-      bidNotional,
-      askNotional,
-      bids,
-      asks,
-    };
-  }
 
   function buildFootprintBucketsFromTrades(trades: MarketTradePrint[], current: number | null): FootprintBucket[] {
     if (trades.length === 0) return [];
@@ -2637,116 +2348,6 @@
     min-height: 0;
     overflow: hidden;
   }
-  .indicator-lane-stack {
-    min-height: 66px;
-    flex-shrink: 0;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    border-top: 0.5px solid rgba(255,255,255,0.055);
-    border-bottom: 0.5px solid rgba(255,255,255,0.05);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.018), rgba(0,0,0,0.12)),
-      repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 48px),
-      #0b0f17;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .indicator-lane {
-    min-width: 0;
-    display: grid;
-    grid-template-columns: 94px minmax(0, 1fr);
-    gap: 8px;
-    align-items: stretch;
-    padding: 7px 10px 6px;
-    border-right: 0.5px solid rgba(255,255,255,0.07);
-    position: relative;
-    overflow: hidden;
-  }
-  .indicator-lane::before {
-    content: '';
-    position: absolute;
-    inset: auto 10px 50% 112px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
-    opacity: 0.42;
-    pointer-events: none;
-  }
-  .indicator-lane[data-mode='heatmap']::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 86% 45%, rgba(232,184,106,0.13), transparent 48%);
-    pointer-events: none;
-  }
-  .indicator-lane-meta {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-    position: relative;
-    z-index: 1;
-  }
-  .indicator-lane-meta span {
-    color: var(--g5);
-    font-size: 8px;
-    font-weight: 900;
-    letter-spacing: 0.16em;
-  }
-  .indicator-lane-meta strong {
-    color: var(--g9);
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: -0.02em;
-    white-space: nowrap;
-  }
-  .indicator-lane-meta em {
-    color: var(--g5);
-    font-size: 7px;
-    font-style: normal;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .indicator-lane[data-tone='buy'] .indicator-lane-meta strong { color: #5bd2aa; }
-  .indicator-lane[data-tone='sell'] .indicator-lane-meta strong { color: #ff7373; }
-  .indicator-lane[data-tone='warn'] .indicator-lane-meta strong { color: #e8b86a; }
-  .indicator-lane[data-tone='info'] .indicator-lane-meta strong { color: #7aa2e0; }
-  .indicator-lane-plot {
-    min-width: 0;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(2px, 1fr);
-    gap: 2px;
-    align-items: end;
-    position: relative;
-    z-index: 1;
-  }
-  .indicator-cell {
-    width: 100%;
-    min-height: 2px;
-    align-self: end;
-    border-radius: 2px 2px 0 0;
-    background: rgba(166,176,196,0.42);
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.025) inset;
-  }
-  .indicator-cell[data-tone='buy'] {
-    background: linear-gradient(180deg, rgba(91,210,170,0.94), rgba(91,210,170,0.2));
-  }
-  .indicator-cell[data-tone='sell'] {
-    background: linear-gradient(180deg, rgba(255,115,115,0.94), rgba(255,115,115,0.18));
-  }
-  .indicator-cell[data-tone='warn'] {
-    background: linear-gradient(180deg, rgba(232,184,106,0.96), rgba(232,184,106,0.16));
-  }
-  .indicator-cell[data-tone='info'] {
-    background: linear-gradient(180deg, rgba(122,162,224,0.94), rgba(122,162,224,0.16));
-  }
-  .indicator-cell.active {
-    filter: saturate(1.25);
-    box-shadow: 0 0 10px rgba(255,255,255,0.14);
-  }
   .microstructure-belt {
     min-height: 54px;
     flex-shrink: 0;
@@ -4542,36 +4143,6 @@
     background: #0f131d !important;
   }
 
-  .observe-mode .indicator-lane-stack {
-    min-height: 52px;
-  }
-
-  .observe-mode .indicator-lane {
-    grid-template-columns: 78px minmax(0, 1fr);
-    gap: 6px;
-    padding: 5px 8px;
-  }
-
-  .observe-mode .indicator-lane::before {
-    left: 94px;
-  }
-
-  .observe-mode .indicator-lane-meta span {
-    font-size: 7px;
-  }
-
-  .observe-mode .indicator-lane-meta strong {
-    font-size: 10px;
-  }
-
-  .observe-mode .indicator-lane-meta em {
-    display: none;
-  }
-
-  .observe-mode .indicator-lane-plot {
-    gap: 1.5px;
-  }
-
   .observe-mode .microstructure-belt {
     min-height: 32px;
     grid-template-columns: 126px minmax(300px, 0.72fr) minmax(360px, 1fr);
@@ -4617,13 +4188,6 @@
     font-size: 9px;
   }
   @media (max-width: 1120px) {
-    .indicator-lane-stack {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      min-height: 112px;
-    }
-    .indicator-lane:nth-child(2n) {
-      border-right: none;
-    }
     .microstructure-belt {
       grid-template-columns: 1fr;
       min-height: auto;
