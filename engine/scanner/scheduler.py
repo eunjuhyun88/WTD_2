@@ -59,6 +59,35 @@ from universe.loader import load_universe_async
 
 log = logging.getLogger("engine.scanner")
 
+
+def _watched_symbols() -> set[str]:
+    """Return symbols from all is_watching=True captures (W-0335 PR-1).
+
+    Gracefully returns empty set if CaptureStore is unavailable.
+    """
+    try:
+        from capture.store import CaptureStore
+        store = CaptureStore()
+        captures = store.list(is_watching=True, limit=200)
+        return {c.symbol for c in captures if c.symbol}
+    except Exception as exc:
+        log.debug("_watched_symbols: failed to read CaptureStore: %s", exc)
+        return set()
+
+
+async def _load_universe_with_watches(universe_name: str) -> list[str]:
+    """Union default universe with watched-capture symbols (W-0335 PR-1).
+
+    Watched symbols are always included even when absent from the
+    dynamic universe — ensures captures users are monitoring get scanned.
+    """
+    base = set(await load_universe_async(universe_name))
+    watches = _watched_symbols()
+    if watches - base:
+        log.info("W-0335: adding %d watched symbols to scan universe: %s",
+                 len(watches - base), sorted(watches - base)[:10])
+    return sorted(base | watches)
+
 _scheduler: AsyncIOScheduler | None = None
 _last_pattern_entry_keys: set[str] = set()
 
@@ -215,7 +244,7 @@ async def _scan_universe() -> None:
         universe_name=UNIVERSE_NAME,
         min_blocks=MIN_BLOCKS,
         scan_telegram_enabled=SCAN_TELEGRAM_ENABLED,
-        load_universe_async=load_universe_async,
+        load_universe_async=_load_universe_with_watches,
         load_macro_bundle=load_macro_bundle,
         load_klines=load_klines,
         load_perp=load_perp,
