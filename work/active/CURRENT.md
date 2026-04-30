@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`eb415ccf` — origin/main (2026-04-30) — PR #708 W-0316/0317 자율 탐색 에이전트 + Validation 연결 merged
+`1adc3fca` — origin/main (2026-04-30) — PR #740 W-0345 Watch UI Surface merged
 
 ---
 
@@ -14,8 +14,20 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0249-f19-sentry-observability` | P2 | 🔴 구현 시작 |
-| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
+| `W-0314-marketplace-composite-score` | P2 | 🔴 PR #744 OPEN |
+| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
+
+## Wave 5 최근 완료 (2026-04-30)
+
+| Work Item | PR | 상태 |
+|---|---|---|
+| W-0341 Dual Opportunity Scan | #721 | ✅ merged |
+| W-0342 OB Injection | #723 | ✅ merged |
+| W-0343 Quant Validation Wiring | #731 | ✅ merged |
+| W-0344 Event Tracker Wiring | #743 | ✅ merged |
+| W-0345 Watch UI Surface | #740 | ✅ merged |
+| W-0346 Verdict→Personalization Loop | #741 | ✅ merged |
+| W-0347 Sector MTF Surface | #742 | ✅ merged |
 
 ---
 
