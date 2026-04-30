@@ -1,4 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+const PANEL_SRC = readFileSync(
+  resolve(__dirname, '../VerdictInboxPanel.svelte'),
+  'utf-8',
+);
 
 /**
  * F-02-app: Verdict 5-button UI tests.
@@ -68,5 +75,60 @@ describe('VerdictInboxPanel — F-02-app verdict 5-cat', () => {
       expect(res.status).toBe(200);
     }
     expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+});
+
+// W-0345 AC3: 3-section layout structural tests
+describe('VerdictInboxPanel — W-0345 3-section layout', () => {
+  it('Section 1: watch-hits section marker present', () => {
+    expect(PANEL_SRC).toContain('data-section="watch-hits"');
+  });
+
+  it('Section 2: review section marker present', () => {
+    expect(PANEL_SRC).toContain('data-section="review"');
+  });
+
+  it('Section 3: recent section marker present', () => {
+    expect(PANEL_SRC).toContain('data-section="recent"');
+  });
+
+  it('section ordering: watch-hits before review before recent', () => {
+    const watchPos = PANEL_SRC.indexOf('data-section="watch-hits"');
+    const reviewPos = PANEL_SRC.indexOf('data-section="review"');
+    const recentPos = PANEL_SRC.indexOf('data-section="recent"');
+    expect(watchPos).toBeGreaterThan(-1);
+    expect(reviewPos).toBeGreaterThan(watchPos);
+    expect(recentPos).toBeGreaterThan(reviewPos);
+  });
+
+  it('watch-hits section uses watchHits state array', () => {
+    expect(PANEL_SRC).toContain('watchHits = $state');
+    expect(PANEL_SRC).toContain('{#each watchHits as hit');
+  });
+
+  it('review section has verdict action buttons', () => {
+    expect(PANEL_SRC).toContain('verdict-valid');
+    expect(PANEL_SRC).toContain('verdict-invalid');
+    expect(PANEL_SRC).toContain('verdict-near-miss');
+  });
+
+  it('recent section uses recentVerdicts state array', () => {
+    expect(PANEL_SRC).toContain('recentVerdicts = $state');
+    expect(PANEL_SRC).toContain('{#each recentVerdicts as item');
+  });
+
+  it('load() fetches all 3 endpoints in parallel via Promise.all', () => {
+    expect(PANEL_SRC).toContain('Promise.all');
+    expect(PANEL_SRC).toContain('/api/captures/watch-hits');
+    expect(PANEL_SRC).toContain('status=verdict_ready');
+  });
+
+  it('no duplicate load() function declarations', () => {
+    const matches = PANEL_SRC.match(/async function load\(\)/g) ?? [];
+    expect(matches).toHaveLength(1);
+  });
+
+  it('WatchHitItem interface is defined', () => {
+    expect(PANEL_SRC).toContain('interface WatchHitItem');
   });
 });
