@@ -46,6 +46,10 @@ from scanner.jobs.alpha_observer import scan_alpha_observer_job
 from scanner.jobs.alpha_warm import scan_alpha_warm_job
 from scanner.jobs.pattern_scan import pattern_scan_job
 from scanner.jobs.search_corpus import search_corpus_refresh_job
+from scanner.jobs.extreme_event_tracker import (
+    extreme_event_detector_job,
+    extreme_event_outcome_job,
+)
 from workers.feature_windows_prefetcher import prefetch_feature_windows as _fw_prefetch
 from scanner.jobs.universe_scan import (
     push_alert,
@@ -126,6 +130,8 @@ _BETA_JOB_FLAGS = {
     "feature_windows_prefetch": os.environ.get("ENABLE_FEATURE_WINDOWS_PREFETCH_JOB", "false"),
     "alpha_observer_cold": os.environ.get("ENABLE_ALPHA_OBSERVER_COLD_JOB", "false"),
     "alpha_observer_warm": os.environ.get("ENABLE_ALPHA_OBSERVER_WARM_JOB", "false"),
+    "extreme_event_detector": os.environ.get("EXTREME_EVENT_TRACKER_JOB", "false"),
+    "extreme_event_outcome": os.environ.get("EXTREME_EVENT_OUTCOME_JOB", "false"),
 }
 
 
@@ -484,6 +490,34 @@ def start_scheduler() -> None:
             max_instances=1,
             coalesce=True,
             misfire_grace_time=120,
+        )
+
+    # Job: Extreme event detector — every 30 min (funding_extreme / OI_spike)
+    if _job_enabled("extreme_event_detector"):
+        _scheduler.add_job(
+            lambda: extreme_event_detector_job(UNIVERSE_NAME),
+            trigger="interval",
+            seconds=1800,
+            jitter=60,
+            id="extreme_event_detector",
+            name="Extreme event detector (30min)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
+
+    # Job: Extreme event outcome resolver — every 1 hour
+    if _job_enabled("extreme_event_outcome"):
+        _scheduler.add_job(
+            extreme_event_outcome_job,
+            trigger="interval",
+            seconds=3600,
+            jitter=120,
+            id="extreme_event_outcome",
+            name="Extreme event outcome resolver (1h)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
         )
 
     _scheduler.start()
