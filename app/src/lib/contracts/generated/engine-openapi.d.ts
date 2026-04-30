@@ -1519,6 +1519,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Pattern Objects
+         * @description List all seeded PatternObjects from Supabase.
+         *
+         *     ?phase=FAKE_DUMP  — filter by phase_id
+         *     ?tag=oi_reversal  — filter by tag
+         */
+        get: operations["list_pattern_objects_patterns_objects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/objects/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Object
+         * @description Get one PatternObject by slug.
+         */
+        get: operations["get_pattern_object_patterns_objects__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/verify-paper": {
         parameters: {
             query?: never;
@@ -4020,6 +4063,31 @@ export interface components {
             parser_meta?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** PatternObjectResponse */
+        PatternObjectResponse: {
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Direction */
+            direction: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Version */
+            version: number;
+            /** Entry Phase */
+            entry_phase: string;
+            /** Target Phase */
+            target_phase: string;
+            /** Phase Ids */
+            phase_ids: string[];
+            /** Tags */
+            tags: string[];
+            /** Universe Scope */
+            universe_scope: string;
         };
         /**
          * PerpSnapshot
@@ -8040,6 +8108,70 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pattern_objects_patterns_objects_get: {
+        parameters: {
+            query?: {
+                phase?: string | null;
+                tag?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternObjectResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_object_patterns_objects__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatternObjectResponse"];
                 };
             };
             /** @description Validation Error */

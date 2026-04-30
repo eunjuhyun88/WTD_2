@@ -1094,6 +1094,51 @@ async def run_benchmark_search_from_capture(slug: str, body: _BenchmarkSearchBod
     }
 
 
+# ---------------------------------------------------------------------------
+# W-0350: Pattern Object Store endpoints
+# ---------------------------------------------------------------------------
+
+class PatternObjectResponse(BaseModel):
+    slug: str
+    name: str
+    description: str
+    direction: str
+    timeframe: str
+    version: int
+    entry_phase: str
+    target_phase: str
+    phase_ids: list[str]
+    tags: list[str]
+    universe_scope: str
+
+
+@router.get("/objects", response_model=list[PatternObjectResponse])
+async def list_pattern_objects(
+    phase: str | None = None,
+    tag: str | None = None,
+    limit: int = 50,
+) -> list[PatternObjectResponse]:
+    """List all seeded PatternObjects from Supabase.
+
+    ?phase=FAKE_DUMP  — filter by phase_id
+    ?tag=oi_reversal  — filter by tag
+    """
+    from patterns.store import PatternStore
+    rows = await asyncio.to_thread(PatternStore().list, phase, tag, limit)
+    return [PatternObjectResponse(**r) for r in rows]
+
+
+@router.get("/objects/{slug}", response_model=PatternObjectResponse)
+async def get_pattern_object(slug: str) -> PatternObjectResponse:
+    """Get one PatternObject by slug."""
+    from patterns.store import PatternStore
+    row = await asyncio.to_thread(PatternStore().get, slug)
+    if row is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Pattern {slug!r} not found")
+    return PatternObjectResponse(**row)
+
+
 @router.post("/{slug}/verify-paper")
 async def verify_paper(slug: str) -> dict:
     """Run paper-trading verification for a pattern using recorded outcome ledger."""
