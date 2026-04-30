@@ -33,7 +33,6 @@
     connected: 'WALLET READY',
     signup: 'CREATE ACCOUNT',
     login: 'LOG IN',
-    profile: 'MY PROFILE'
   };
 
   const WALLET_SIGNATURE_RE = /^0x[0-9a-f]{130}$/i;
@@ -315,6 +314,11 @@
         }
       } else {
         const walletAddress = await requestInjectedEvmAccount(provider);
+        // Switch to Base chain before proceeding (EVM providers only, not WalletConnect — WC handles internally)
+        if (provider !== 'walletconnect') {
+          const { ensureBaseChain } = await import('$lib/wallet/chainSwitch');
+          await ensureBaseChain(provider as import('$lib/wallet/providers').WalletProviderKey);
+        }
         connectWallet(provider, walletAddress, preferredEvmChain);
       }
       trackWalletFunnel('connect', 'success', {
@@ -322,11 +326,17 @@
         chain: preferredEvmChain,
       });
     } catch (error) {
-      actionError = error instanceof Error ? error.message : 'Failed to connect wallet';
-      trackWalletFunnel('connect', 'error', {
-        provider,
-        reason: toErrorReason(error),
-      });
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('denied') || (error as any)?.code === 4001) {
+        actionError = 'Connection cancelled.';
+      } else if (msg.toLowerCase().includes('not detected') || msg.toLowerCase().includes('install')) {
+        actionError = msg;
+      } else if (msg.toLowerCase().includes('invalid options')) {
+        actionError = 'Wallet SDK initialization failed. Try refreshing.';
+      } else {
+        actionError = msg || 'Failed to connect wallet. Check extension and try again.';
+      }
+      trackWalletFunnel('connect', 'error', { provider, reason: toErrorReason(error) });
       setWalletModalStep('wallet-select');
     } finally {
       connectingProvider = '';
@@ -389,10 +399,10 @@
             action: authResult.action === 'register' ? 'auto_register' : 'auto_login',
           });
         }
-        setWalletModalStep('profile');
+        closeWalletModal();
       } catch (walletAuthError) {
         console.warn('[WalletModal] wallet-auth error', walletAuthError);
-        setWalletModalStep('profile');
+        closeWalletModal();
       }
     } catch (error) {
       clearWalletProof();
@@ -575,8 +585,8 @@
             <span class="info-v">{state.chain}</span>
           </div>
           <div class="info-row">
-            <span class="info-k">BALANCE</span>
-            <span class="info-v">{state.balance.toLocaleString()} USDT</span>
+            <span class="info-k">ADDRESS</span>
+            <span class="info-v">{state.shortAddr}</span>
           </div>
         </div>
 
@@ -649,45 +659,6 @@
         <button class="btn-ghost" type="button" onclick={() => setWalletModalStep('sign-message')}>BACK TO SIGN</button>
       </div>
 
-    {:else}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">ACCOUNT</span>
-          <h3 class="hero-title">{state.nickname || 'TRADER'}</h3>
-          <p class="hero-sub">Core profile information only.</p>
-        </div>
-
-        <div class="info-box">
-          <div class="info-row">
-            <span class="info-k">EMAIL</span>
-            <span class="info-v">{state.email || '-'}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">NICKNAME</span>
-            <span class="info-v">{state.nickname || '-'}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">TIER</span>
-            <span class="info-v">{state.tier.toUpperCase()}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">PHASE</span>
-            <span class="info-v">P{state.phase}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-k">WALLET</span>
-            <span class="info-v">{state.connected ? state.shortAddr : 'NOT CONNECTED'}</span>
-          </div>
-        </div>
-
-        {#if state.connected}
-          <a class="btn-primary passport-link" href="/passport" onclick={handleClose}>VIEW PASSPORT</a>
-          <button class="btn-ghost" type="button" onclick={handleDisconnect}>LOG OUT & DISCONNECT</button>
-        {:else}
-          <button class="btn-primary" type="button" onclick={() => setWalletModalStep('wallet-select')}>CONNECT WALLET</button>
-          <a class="btn-ghost passport-link" href="/passport" onclick={handleClose}>OPEN PASSPORT</a>
-        {/if}
-      </div>
     {/if}
   </div>
 </div>

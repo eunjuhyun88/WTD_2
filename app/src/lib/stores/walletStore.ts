@@ -6,10 +6,6 @@
 import { writable, derived } from 'svelte/store';
 import { STORAGE_KEYS } from './storageKeys';
 import { loadFromStorage, autoSave } from '$lib/utils/storage';
-import {
-  createSimulatedSignature,
-  createSimulatedWalletConnection
-} from '$lib/wallet/simulatedWallet';
 import { resolveLifecyclePhase } from './progressionRules';
 import { fetchAuthSession, type AuthUserPayload } from '$lib/api/auth';
 
@@ -38,7 +34,7 @@ export interface WalletState {
 
   // UI state
   showWalletModal: boolean;
-  walletModalStep: 'wallet-select' | 'connecting' | 'sign-message' | 'connected' | 'signup' | 'login' | 'profile';
+  walletModalStep: 'wallet-select' | 'connecting' | 'sign-message' | 'connected' | 'signup' | 'login';
   signature: string | null;
 }
 
@@ -137,7 +133,7 @@ export function applyAuthenticatedUser(user: AuthUserPayload) {
       phase,
       hasCompletedOnboarding: true,
       showWalletModal: false,
-      walletModalStep: 'profile',
+      walletModalStep: 'connected',
       address,
       shortAddr,
     };
@@ -151,7 +147,7 @@ export function clearAuthenticatedUser() {
     nickname: null,
     tier: w.connected ? 'connected' : 'guest',
     showWalletModal: false,
-    walletModalStep: w.connected ? 'connected' : 'wallet-select',
+    walletModalStep: 'wallet-select',
   }));
 }
 
@@ -185,13 +181,7 @@ export async function hydrateAuthSession(force = false) {
 
 export function openWalletModal() {
   walletStore.update(w => {
-    // Wallet-first flow:
-    // connected + account => profile
-    // connected only => choose login/signup from connected step
-    // account only (session restored) but no wallet => reconnect wallet first
-    const step = w.connected
-      ? ((w.email || w.nickname) ? 'profile' : 'connected')
-      : 'wallet-select';
+    const step = w.connected ? 'connected' : 'wallet-select';
     return { ...w, showWalletModal: true, walletModalStep: step };
   });
 }
@@ -213,7 +203,7 @@ export function registerUser(email: string, nickname: string) {
     nickname,
     phase: Math.max(resolveLifecyclePhase(w.matchesPlayed, w.totalLP), 1),
     hasCompletedOnboarding: true,
-    walletModalStep: 'profile'
+    walletModalStep: 'connected'
   }));
 }
 
@@ -227,27 +217,23 @@ export function completeDemoView() {
   }));
 }
 
-// Wallet connection (now first step before email)
-export function connectWallet(provider: string = 'metamask', addressOverride?: string, chain: string = 'ARB') {
-  const connection = createSimulatedWalletConnection(provider, addressOverride, chain);
-
+// Wallet connection — called from WalletModal with real address from EIP-1193 provider
+export function connectWallet(provider: string = 'metamask', address?: string, chain: string = 'ARB') {
+  const resolvedAddr = address && address.trim() ? address.trim() : null;
   walletStore.update(w => ({
     ...w,
     connected: true,
-    address: connection.address,
-    shortAddr: connection.shortAddr,
-    balance: connection.balance,
-    chain: connection.chain,
-    provider: connection.provider,
+    address: resolvedAddr,
+    shortAddr: toShortAddr(resolvedAddr),
+    chain: chain.toUpperCase(),
+    provider,
     signature: null,
-    walletModalStep: 'sign-message' // New: go to sign step
+    walletModalStep: 'sign-message'
   }));
 }
 
-// Sign message to verify ownership
-export function signMessage(signatureOverride?: string) {
-  const signature = createSimulatedSignature(signatureOverride);
-
+// Sign message — called from WalletModal with real signature from EIP-1193 provider
+export function signMessage(signature: string) {
   walletStore.update(w => ({
     ...w,
     tier: w.email ? 'connected' : 'guest',
@@ -287,5 +273,57 @@ export function recordMatch(_won: boolean, lpDelta: number) {
     const lp = w.totalLP + lpDelta;
     const phase = resolveLifecyclePhase(matches, lp);
     return { ...w, matchesPlayed: matches, totalLP: lp, phase };
+  });
+}
+
+let _walletListenerCleanup: (() => void) | null = null;
+
+/** Call on app mount — registers MetaMask event listeners */
+export function initWalletListeners(): () => void {
+  import('$lib/wallet/providers').then(({ setupMetaMaskListeners }) => {
+    _walletListenerCleanup?.();
+    _walletListenerCleanup = setupMetaMaskListeners({
+      onAccountsChanged: (accounts) => {
+        const address = accounts[0] ?? null;
+        if (!address) {
+          // User disconnected all accounts
+          disconnectWallet();
+        } else {
+          walletStore.update(w => ({
+            ...w,
+            address,
+            shortAddr: toShortAddr(address),
+          }));
+        }
+      },
+      onChainChanged: (chainId) => {
+        const num = parseInt(chainId, 16);
+        const chainMap: Record<number, string> = { 1: 'ETH', 10: 'OP', 137: 'POL', 8453: 'BASE', 42161: 'ARB' };
+        const chain = chainMap[num] ?? `EVM:${num}`;
+        walletStore.update(w => ({ ...w, chain }));
+      },
+      onDisconnect: () => { disconnectWallet(); },
+    });
+  });
+  return () => { _walletListenerCleanup?.(); _walletListenerCleanup = null; };
+}
+
+/** Silently reconnect MetaMask if user previously authorized — no popup */
+export async function trySilentReconnect(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const { tryGetConnectedAccount, getPreferredEvmChainCode } = await import('$lib/wallet/providers');
+  const address = await tryGetConnectedAccount('metamask');
+  if (!address) return;
+  walletStore.update(w => {
+    if (w.connected && w.address) return w; // already connected
+    return {
+      ...w,
+      connected: true,
+      address,
+      shortAddr: toShortAddr(address),
+      chain: getPreferredEvmChainCode(),
+      provider: 'metamask',
+      signature: null,
+    };
   });
 }

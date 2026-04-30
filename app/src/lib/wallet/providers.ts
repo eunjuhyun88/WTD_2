@@ -195,34 +195,31 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
     throw new Error('Coinbase Wallet SDK is not installed. Add @coinbase/wallet-sdk.');
   }
 
-  const chainId = getPreferredChainId();
-  const rpcUrl = getPreferredRpcUrl(chainId);
-
   let provider: unknown;
-  const CoinbaseWalletSDK = mod?.default ?? mod?.CoinbaseWalletSDK;
 
-  if (typeof CoinbaseWalletSDK === 'function') {
+  // SDK v4 preferred API: createCoinbaseWalletSDK({ preference: { options } })
+  if (typeof mod?.createCoinbaseWalletSDK === 'function') {
+    const sdk = mod.createCoinbaseWalletSDK({
+      appName: 'wtd',
+      appChainIds: [getPreferredChainId()],
+      preference: { options: 'all' },
+    });
+    provider = typeof sdk?.getProvider === 'function' ? sdk.getProvider() : null;
+  } else {
+    // SDK v4 class API fallback: makeWeb3Provider({ options }) — NOT (rpcUrl, chainId)
+    const CoinbaseWalletSDK = mod?.default ?? mod?.CoinbaseWalletSDK;
+    if (typeof CoinbaseWalletSDK !== 'function') {
+      throw new Error('Coinbase Wallet SDK initialization failed.');
+    }
     const sdk = new CoinbaseWalletSDK({
       appName: 'wtd',
       appChainIds: [getPreferredChainId()],
     });
     provider = typeof sdk?.makeWeb3Provider === 'function'
-      ? sdk.makeWeb3Provider(rpcUrl, chainId)
+      ? sdk.makeWeb3Provider({ options: 'all' })
       : typeof sdk?.getProvider === 'function'
         ? sdk.getProvider()
         : null;
-  } else if (typeof mod?.createCoinbaseWalletSDK === 'function') {
-    const sdk = mod.createCoinbaseWalletSDK({
-      appName: 'wtd',
-      appChainIds: [getPreferredChainId()],
-    });
-    provider = typeof sdk?.makeWeb3Provider === 'function'
-      ? sdk.makeWeb3Provider(rpcUrl, chainId)
-      : typeof sdk?.getProvider === 'function'
-        ? sdk.getProvider()
-        : null;
-  } else {
-    throw new Error('Coinbase Wallet SDK initialization failed.');
   }
 
   if (!provider || typeof (provider as Record<string, unknown>).request !== 'function') {
@@ -484,4 +481,46 @@ export async function signPhantomSolanaUtf8Message(message: string): Promise<str
   }
 
   return `0x${bytesToHex(signed.signature)}`;
+}
+
+/**
+ * Silently check if user already authorized this dapp (no popup).
+ * Returns address string if connected, null if not.
+ */
+export async function tryGetConnectedAccount(key: WalletProviderKey): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const provider = await resolveEvmProvider(key);
+    if (!provider) return null;
+    const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
+    const addr = Array.isArray(accounts) ? accounts.find(a => typeof a === 'string' && a.startsWith('0x')) : null;
+    return addr ?? null;
+  } catch { return null; }
+}
+
+/**
+ * Setup accountsChanged + chainChanged + disconnect listeners on window.ethereum.
+ * Returns a cleanup function. Safe to call on non-MetaMask providers (no-op).
+ */
+export function setupMetaMaskListeners(handlers: {
+  onAccountsChanged: (accounts: string[]) => void;
+  onChainChanged: (chainId: string) => void;
+  onDisconnect: () => void;
+}): () => void {
+  const w = getWalletWindow();
+  const eth = w?.ethereum;
+  if (!eth || typeof eth.request !== 'function') return () => {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const provider = eth as any;
+  if (typeof provider.on !== 'function') return () => {};
+  provider.on('accountsChanged', handlers.onAccountsChanged);
+  provider.on('chainChanged', handlers.onChainChanged);
+  provider.on('disconnect', handlers.onDisconnect);
+  return () => {
+    if (typeof provider.removeListener === 'function') {
+      provider.removeListener('accountsChanged', handlers.onAccountsChanged);
+      provider.removeListener('chainChanged', handlers.onChainChanged);
+      provider.removeListener('disconnect', handlers.onDisconnect);
+    }
+  };
 }
