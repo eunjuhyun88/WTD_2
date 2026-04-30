@@ -142,9 +142,10 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '60' } });
   }
 
+  const CDN = 'public, s-maxage=600, stale-while-revalidate=120';
   const cached = cache.get(symbol);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return json(cached.payload, { headers: { 'X-Cache': 'HIT' } });
+    return json(cached.payload, { headers: { 'X-Cache': 'HIT', 'Cache-Control': CDN } });
   }
 
   const b = await fetchBinance30d(symbol);
@@ -174,5 +175,5 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
   }
 
   cache.set(symbol, { at: Date.now(), payload });
-  return json(payload, { headers: { 'X-Cache': 'MISS' } });
+  return json(payload, { headers: { 'X-Cache': 'MISS', 'Cache-Control': CDN } });
 };

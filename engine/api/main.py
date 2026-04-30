@@ -156,6 +156,19 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
             replace_existing=True,
             max_instances=1,
         )
+        # W-0361: AutoResearch 4h batch scanner (Cloud Run only)
+        if os.environ.get("AUTORESEARCH_ENABLED", "false").lower() == "true":
+            import asyncio as _asyncio
+            from research.autoresearch_runner import run_once as _ar_run_once
+            _kline_scheduler.add_job(
+                lambda: _asyncio.get_event_loop().run_in_executor(None, _ar_run_once),
+                "interval",
+                hours=4,
+                id="autoresearch_4h",
+                replace_existing=True,
+                max_instances=1,
+            )
+            log.info("AutoResearch 4h scheduler registered")
         _kline_scheduler.start()
         start_scheduler()
         log.info("Engine started — Redis warm, GlobalCtx warm, background scanner active")

@@ -21,9 +21,10 @@ from scoring.feature_matrix import encode_features_df
 from scoring.lightgbm_engine import MIN_TRAIN_RECORDS, get_engine
 
 # Auto-promote a new candidate to active when it clears both gates.
-# AUC 0.60 = better than random with meaningful signal margin.
+# AUC 0.65 = raise bar from v1 0.60 baseline; provides stronger signal margin
+# before models affect live alert gating (W-0358).
 # MIN_RECORDS ensures we have enough evidence before gating live alerts.
-_AUTO_PROMOTE_MIN_AUC = 0.60
+_AUTO_PROMOTE_MIN_AUC = 0.65
 _AUTO_PROMOTE_MIN_RECORDS = 30
 
 

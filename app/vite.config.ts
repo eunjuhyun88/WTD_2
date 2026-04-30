@@ -3,7 +3,9 @@ import { defineConfig } from 'vite';
 import path from 'path';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [
+		sveltekit(),
+	],
 	server: {
 		host: '0.0.0.0',
 		allowedHosts: ['localhost', '127.0.0.1', '.ngrok-free.app', '.ngrok.app'],
@@ -14,7 +16,7 @@ export default defineConfig({
 		}
 	},
 	ssr: {
-		external: ['pg-native', 'cloudflare:sockets', 'lightweight-charts'],
+		external: ['pg-native', 'cloudflare:sockets', 'lightweight-charts', 'viem', 'viem/chains'],
 	},
 	build: {
 		rollupOptions: {

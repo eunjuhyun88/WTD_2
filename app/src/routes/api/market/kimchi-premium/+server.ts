@@ -26,14 +26,16 @@ const FALLBACK: KimchiPremiumPayload = {
   ts: 0,
 };
 
+const CDN_HEADERS = { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' };
+
 export const GET: RequestHandler = async () => {
   try {
     const res = await engineFetch('/ctx/kimchi-premium', {
       signal: AbortSignal.timeout(6000),
     });
-    if (!res.ok) return json({ ok: true, data: FALLBACK, stale: true });
+    if (!res.ok) return json({ ok: true, data: FALLBACK, stale: true }, { headers: CDN_HEADERS });
     const body = await res.json() as KimchiPremiumPayload;
-    return json({ ok: true, data: body });
+    return json({ ok: true, data: body }, { headers: CDN_HEADERS });
   } catch {
     return json({ ok: true, data: FALLBACK, stale: true });
   }
