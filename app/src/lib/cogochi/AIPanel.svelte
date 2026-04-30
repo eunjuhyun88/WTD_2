@@ -78,6 +78,7 @@
   }: Props = $props();
 
   import { shellStore } from '$lib/cogochi/shell.store';
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
   let cards = $state<AICard[]>([]);
   let inputValue = $state('');
@@ -287,6 +288,78 @@
   $effect(() => {
     cards; // track changes
     if (scrollEl) scrollEl.scrollTop = 0;
+  });
+
+  // ── B,B range auto-analyze ────────────────────────────────────────────────
+  async function handleAnalyzeRange(from: number, to: number): Promise<void> {
+    loading = true;
+    const fromDate = new Date(from * 1000).toISOString().slice(0, 10);
+    const toDate = new Date(to * 1000).toISOString().slice(0, 10);
+    try {
+      const r = await fetch(
+        `/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}&from=${from}&to=${to}`,
+      );
+      if (!r.ok) {
+        cards = [{ type: 'info', text: `구간 analyze 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        return;
+      }
+      const d = (await r.json()) as Record<string, any>;
+      const analyze = (d.analyze ?? d) as Record<string, any>;
+      const card: AICard = {
+        type: 'analyze',
+        symbol,
+        tf: `${timeframe} · ${fromDate}~${toDate}`,
+        direction: String(analyze.direction ?? analyze.bias ?? '—'),
+        pWin: typeof analyze.p_win === 'number'
+          ? analyze.p_win
+          : typeof analyze.confidence === 'number'
+            ? analyze.confidence
+            : null,
+        evidence: Array.isArray(analyze.evidence) ? analyze.evidence.map(String) : [],
+        entry:
+          analyze.entryPlan && typeof analyze.entryPlan.entry === 'number'
+            ? analyze.entryPlan.entry
+            : null,
+        stop:
+          analyze.entryPlan && typeof analyze.entryPlan.stop === 'number'
+            ? analyze.entryPlan.stop
+            : null,
+        ts: Date.now(),
+      };
+      cards = [card, ...cards];
+      if (card.entry != null || card.stop != null) {
+        const lines: AIPriceLine[] = [];
+        if (card.entry != null) {
+          lines.push({ price: card.entry, color: '#22AB94', label: 'Entry', style: 'solid' });
+        }
+        if (card.stop != null) {
+          lines.push({ price: card.stop, color: '#F23645', label: 'Stop', style: 'dashed' });
+        }
+        setAIOverlay(symbol, lines);
+      }
+    } catch (err) {
+      cards = [
+        { type: 'info', text: `구간 analyze 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        ...cards,
+      ];
+    } finally {
+      loading = false;
+    }
+  }
+
+  let _rangeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  $effect(() => {
+    const anchorA = $chartSaveMode.anchorA;
+    const anchorB = $chartSaveMode.anchorB;
+    if (anchorA == null || anchorB == null) return;
+    const from = Math.min(anchorA, anchorB);
+    const to = Math.max(anchorA, anchorB);
+    if (_rangeDebounceTimer != null) clearTimeout(_rangeDebounceTimer);
+    _rangeDebounceTimer = setTimeout(() => {
+      _rangeDebounceTimer = null;
+      void handleAnalyzeRange(from, to);
+    }, 300);
   });
 </script>
 

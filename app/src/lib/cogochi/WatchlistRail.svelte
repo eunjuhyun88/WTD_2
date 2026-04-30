@@ -13,6 +13,7 @@
   interface PatternRow {
     slug: string;
     label: string;
+    symbol?: string;
   }
 
   interface Props {
@@ -34,6 +35,8 @@
 
   // Live tick state per symbol: price + 24h change %
   let ticks = $state<Record<string, MiniTickerUpdate>>({});
+  // 7-bar sparkline: circular buffer of close prices per symbol
+  let sparkData = $state<Record<string, number[]>>({});
 
   let myPatterns = $state<PatternRow[]>([]);
   let patternsLoading = $state(true);
@@ -47,6 +50,13 @@
       () => {},
       (updates) => {
         ticks = { ...ticks, ...updates };
+        // Update sparkline buffers
+        const next: Record<string, number[]> = { ...sparkData };
+        for (const [sym, tick] of Object.entries(updates)) {
+          const prev = next[sym] ?? [];
+          next[sym] = [...prev.slice(-6), tick.price];
+        }
+        sparkData = next;
       },
     );
 
@@ -54,10 +64,10 @@
     try {
       const r = await fetch('/api/patterns/terminal');
       if (r.ok) {
-        const d = (await r.json()) as { patterns?: Array<{ slug?: string; label?: string }> };
+        const d = (await r.json()) as { patterns?: Array<{ slug?: string; label?: string; symbol?: string }> };
         myPatterns = (d.patterns ?? [])
           .slice(0, 10)
-          .map((p) => ({ slug: p.slug ?? '', label: p.label ?? p.slug ?? '' }))
+          .map((p) => ({ slug: p.slug ?? '', label: p.label ?? p.slug ?? '', symbol: p.symbol }))
           .filter((p) => p.slug.length > 0);
       }
     } catch {
@@ -89,6 +99,20 @@
   function fmtChange(c: number): string {
     return (c >= 0 ? '+' : '') + c.toFixed(2) + '%';
   }
+
+  function sparkPolyline(prices: number[]): string {
+    const W = 30, H = 14;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min || 1;
+    return prices
+      .map((p, i) => {
+        const x = (i / (prices.length - 1)) * W;
+        const y = H - ((p - min) / range) * H;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  }
 </script>
 
 <div class="rail">
@@ -99,6 +123,7 @@
   <ul class="symbol-list">
     {#each SYMBOLS as sym (sym)}
       {@const tick = ticks[sym]}
+      {@const spark = sparkData[sym] ?? []}
       <li>
         <button
           type="button"
@@ -110,11 +135,25 @@
           <span class="sym-right">
             {#if tick}
               <span class="sym-price">{fmtPrice(tick.price)}</span>
-              <span
-                class="sym-change"
-                class:up={tick.change24h >= 0}
-                class:dn={tick.change24h < 0}
-              >{fmtChange(tick.change24h)}</span>
+              <span class="sym-bottom">
+                <span
+                  class="sym-change"
+                  class:up={tick.change24h >= 0}
+                  class:dn={tick.change24h < 0}
+                >{fmtChange(tick.change24h)}</span>
+                {#if spark.length >= 3}
+                  <svg class="sparkline" viewBox="0 0 30 14" width="30" height="14">
+                    <polyline
+                      points={sparkPolyline(spark)}
+                      fill="none"
+                      stroke={tick.change24h >= 0 ? '#22AB94' : '#F23645'}
+                      stroke-width="1.2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                {/if}
+              </span>
             {:else}
               <span class="sym-loading">…</span>
             {/if}
@@ -138,10 +177,15 @@
     <ul class="pattern-list">
       {#each myPatterns as p (p.slug)}
         <li>
-          <div class="pattern-row" title={p.slug}>
+          <button
+            type="button"
+            class="pattern-row"
+            title={p.slug}
+            onclick={() => onSelectSymbol?.(p.symbol ?? activeSymbol)}
+          >
             <span class="pattern-dot"></span>
             <span class="pattern-label">{p.label}</span>
-          </div>
+          </button>
         </li>
       {/each}
     </ul>
@@ -233,6 +277,12 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .sym-bottom {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   .sym-change {
     font-size: 8px;
     letter-spacing: 0.04em;
@@ -240,6 +290,11 @@
   }
   .sym-change.up { color: #22AB94; }
   .sym-change.dn { color: #F23645; }
+
+  .sparkline {
+    display: block;
+    flex-shrink: 0;
+  }
 
   .sym-loading {
     font-size: 9px;
@@ -256,10 +311,19 @@
     align-items: center;
     gap: 6px;
     padding: 4px 10px;
-    font-size: 10px;
-    color: var(--g7);
+    width: 100%;
+    background: transparent;
+    border: none;
     border-bottom: 0.5px solid var(--g3);
+    font-size: 10px;
+    font-family: inherit;
+    color: var(--g7);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
   }
+
+  .pattern-row:hover { background: var(--g2); }
 
   .pattern-dot {
     width: 4px;
