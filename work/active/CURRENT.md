@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`88cdbdb5` — origin/main (2026-05-01) — PR #783 W-PF-101~106 PropFirm P1 merged
+`51af3d7f` — origin/main (2026-05-01) — PR #756 W-0350 Pattern Object Store merged
 
 ---
 
