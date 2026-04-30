@@ -148,6 +148,7 @@
   "dependencies": {
     "@base-org/account": "^2.5.3",
     "@coinbase/wallet-sdk": "^4.3.7",
+    "@dogeos/dogeos-sdk": "^3.0.18",
     "@metamask/sdk": "^0.34.0",
     "@phantom/browser-sdk": "^2.0.0",
     "@sentry/sveltekit": "^8.55.2",
@@ -157,8 +158,11 @@
     "lightweight-charts": "^5.1.0",
     "pg": "^8.18.0",
     "pixi.js": "^8.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "stripe": "^22.1.0",
     "viem": "^2.46.2",
+    "wagmi": "^2.19.5",
     "zod": "3.25.76"
   }
 }
