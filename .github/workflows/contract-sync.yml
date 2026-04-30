@@ -1,0 +1,43 @@
+name: Contract Sync
+
+on:
+  pull_request:
+    paths:
+      - 'engine/api/**/*.py'
+      - 'engine/scripts/export_openapi.py'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          working-directory: engine
+
+      - name: Install app deps
+        working-directory: app
+        run: npm ci --ignore-scripts
+
+      - name: Sync OpenAPI types
+        working-directory: app
+        run: node scripts/contracts/sync-engine-types.mjs
+
+      - name: Commit if changed
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions [contract-sync]"
+          git add app/src/lib/contracts/generated/
+          if git diff --staged --quiet; then
+            echo "No contract changes"
+          else
+            git commit -m "chore(auto): sync engine-openapi.d.ts [skip ci]"
+            git push origin ${{ github.head_ref }}
+          fi

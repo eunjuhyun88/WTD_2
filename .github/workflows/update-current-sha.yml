@@ -1,34 +1,36 @@
-name: Update CURRENT.md SHA
+name: Update main pointer (state branch)
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
 
 jobs:
-  update-sha:
-    if: github.event.pull_request.merged == true
+  update-state:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: state
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update CURRENT.md SHA
+      - name: Write main_pointer.json
         run: |
-          SHA=$(git rev-parse HEAD)
-          DATE=$(date -u +%Y-%m-%d)
-          # Update backtick-wrapped 8-char hex SHA on the "main SHA" line
-          sed -i "s/\`[a-f0-9]\{8\}\` — origin\/main/\`${SHA:0:8}\` — origin\/main/" work/active/CURRENT.md
-          # Update date in parentheses on the same line
-          sed -i "s/(${DATE%%-*}-[0-9][0-9]-[0-9][0-9])/(${DATE})/" work/active/CURRENT.md || true
+          SHA="${{ github.sha }}"
+          PR_NUM="${{ github.event.head_commit.message }}"
+          cat > main_pointer.json <<EOF
+          {
+            "sha": "${SHA:0:8}",
+            "full_sha": "$SHA",
+            "message": "${{ github.event.head_commit.message }}",
+            "updated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "source": "github-actions"
+          }
+          EOF
 
-      - name: Commit SHA update
+      - name: Push to state branch
         run: |
-          SHA=$(git rev-parse HEAD)
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
-          git add work/active/CURRENT.md
-          git diff --staged --quiet || git commit -m "chore(auto): CURRENT.md SHA → ${SHA:0:8} [skip ci]"
-          git push
+          git add main_pointer.json
+          git diff --staged --quiet || git commit -m "state: main → ${{ github.sha && github.sha[:8] || 'update' }}"
+          git push origin state
