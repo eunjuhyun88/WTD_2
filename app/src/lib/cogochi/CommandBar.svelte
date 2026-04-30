@@ -5,14 +5,15 @@
     sessionName: string;
     onRangeSelect: () => void;
     hasRange: boolean;
-    aiVisible: boolean;
-    toggleAI: () => void;
+    aiVisible?: boolean;
+    toggleAI?: () => void;
     paletteOpen: boolean;
     setPaletteOpen: (open: boolean) => void;
     onIndicators?: () => void;
   }
 
-  const { sessionName, onRangeSelect, hasRange, aiVisible, toggleAI, paletteOpen, setPaletteOpen, onIndicators }: Props = $props();
+  // `onIndicators` reserved for future use (currently the indicator sheet is opened via cogochi:cmd).
+  const { sessionName, onRangeSelect, hasRange, aiVisible, toggleAI, paletteOpen, setPaletteOpen, onIndicators: _onIndicators }: Props = $props();
   let q = $state('');
 
   $effect(() => {
@@ -46,18 +47,19 @@
     ◈ {hasRange ? 'RANGE 12 bars' : 'SELECT RANGE'}
   </button>
 
-  <span class="divider"></span>
+  {#if toggleAI}
+    <span class="divider"></span>
 
-  <button
-    class="ai-btn"
-    class:active={aiVisible}
-    title="Toggle AI panel (⌘L)"
-    onclick={toggleAI}
-  >
-    <span class="dot" class:active={aiVisible}></span>
-    AI
-    <span class="kbd">⌘L</span>
-  </button>
+    <button
+      class="ai-btn"
+      class:active={aiVisible}
+      title="Toggle AI panel"
+      onclick={toggleAI}
+    >
+      <span class="dot" class:active={aiVisible}></span>
+      AI
+    </button>
+  {/if}
 
   {#if paletteOpen}
     <CommandPalette
