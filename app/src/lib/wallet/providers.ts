@@ -482,3 +482,45 @@ export async function signPhantomSolanaUtf8Message(message: string): Promise<str
 
   return `0x${bytesToHex(signed.signature)}`;
 }
+
+/**
+ * Silently check if user already authorized this dapp (no popup).
+ * Returns address string if connected, null if not.
+ */
+export async function tryGetConnectedAccount(key: WalletProviderKey): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const provider = await resolveEvmProvider(key);
+    if (!provider) return null;
+    const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
+    const addr = Array.isArray(accounts) ? accounts.find(a => typeof a === 'string' && a.startsWith('0x')) : null;
+    return addr ?? null;
+  } catch { return null; }
+}
+
+/**
+ * Setup accountsChanged + chainChanged + disconnect listeners on window.ethereum.
+ * Returns a cleanup function. Safe to call on non-MetaMask providers (no-op).
+ */
+export function setupMetaMaskListeners(handlers: {
+  onAccountsChanged: (accounts: string[]) => void;
+  onChainChanged: (chainId: string) => void;
+  onDisconnect: () => void;
+}): () => void {
+  const w = getWalletWindow();
+  const eth = w?.ethereum;
+  if (!eth || typeof eth.request !== 'function') return () => {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const provider = eth as any;
+  if (typeof provider.on !== 'function') return () => {};
+  provider.on('accountsChanged', handlers.onAccountsChanged);
+  provider.on('chainChanged', handlers.onChainChanged);
+  provider.on('disconnect', handlers.onDisconnect);
+  return () => {
+    if (typeof provider.removeListener === 'function') {
+      provider.removeListener('accountsChanged', handlers.onAccountsChanged);
+      provider.removeListener('chainChanged', handlers.onChainChanged);
+      provider.removeListener('disconnect', handlers.onDisconnect);
+    }
+  };
+}

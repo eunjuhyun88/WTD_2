@@ -313,6 +313,11 @@
         }
       } else {
         const walletAddress = await requestInjectedEvmAccount(provider);
+        // Switch to Base chain before proceeding (EVM providers only, not WalletConnect — WC handles internally)
+        if (provider !== 'walletconnect') {
+          const { ensureBaseChain } = await import('$lib/wallet/chainSwitch');
+          await ensureBaseChain(provider as import('$lib/wallet/providers').WalletProviderKey);
+        }
         connectWallet(provider, walletAddress, preferredEvmChain);
       }
       trackWalletFunnel('connect', 'success', {
@@ -320,11 +325,17 @@
         chain: preferredEvmChain,
       });
     } catch (error) {
-      actionError = error instanceof Error ? error.message : 'Failed to connect wallet';
-      trackWalletFunnel('connect', 'error', {
-        provider,
-        reason: toErrorReason(error),
-      });
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.toLowerCase().includes('reject') || msg.toLowerCase().includes('denied') || (error as any)?.code === 4001) {
+        actionError = 'Connection cancelled.';
+      } else if (msg.toLowerCase().includes('not detected') || msg.toLowerCase().includes('install')) {
+        actionError = msg;
+      } else if (msg.toLowerCase().includes('invalid options')) {
+        actionError = 'Wallet SDK initialization failed. Try refreshing.';
+      } else {
+        actionError = msg || 'Failed to connect wallet. Check extension and try again.';
+      }
+      trackWalletFunnel('connect', 'error', { provider, reason: toErrorReason(error) });
       setWalletModalStep('wallet-select');
     } finally {
       connectingProvider = '';
@@ -566,8 +577,8 @@
             <span class="info-v">{state.chain}</span>
           </div>
           <div class="info-row">
-            <span class="info-k">BALANCE</span>
-            <span class="info-v">{state.balance.toLocaleString()} USDT</span>
+            <span class="info-k">ADDRESS</span>
+            <span class="info-v">{state.shortAddr}</span>
           </div>
         </div>
 
