@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`eb415ccf` — origin/main (2026-04-30) — PR #708 W-0316/0317 자율 탐색 에이전트 + Validation 연결 merged
+`bdfdc998` — origin/main (2026-04-30) — PR #748 W-0341 TradeMode/ChartBoard pipeline decomposition merged
 
 ---
 
