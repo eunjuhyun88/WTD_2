@@ -2728,6 +2728,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/propfirm/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Summary */
+        get: operations["get_summary_propfirm_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/propfirm/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Account */
+        post: operations["create_account_propfirm_accounts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -3267,6 +3301,21 @@ export interface components {
             scanned_at: string;
             /** Matches */
             matches: components["schemas"]["ScanMatch"][];
+        };
+        /** CreateAccountBody */
+        CreateAccountBody: {
+            /** User Id */
+            user_id: string;
+            /** Action */
+            action: string;
+            /** Exit Policy */
+            exit_policy?: {
+                [key: string]: unknown;
+            } | null;
+            /** Strategy Id */
+            strategy_id?: string | null;
+            /** Symbols */
+            symbols?: string[] | null;
         };
         /** DebugHypothesis */
         DebugHypothesis: {
@@ -9888,6 +9937,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FindingsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_summary_propfirm_summary_get: {
+        parameters: {
+            query: {
+                user_id: string;
+                account_id?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_account_propfirm_accounts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAccountBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

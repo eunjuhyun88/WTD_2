@@ -220,6 +220,17 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
         capture.capture_id,
     )
 
+    # PropFirm P1 hook — fan out to matching INTERNAL_RUN/AUTO accounts
+    try:
+        from propfirm.router import get_router  # type: ignore[import]
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(get_router().on_entry_signal(transition))
+        else:
+            loop.run_until_complete(get_router().on_entry_signal(transition))
+    except Exception as _pf_exc:
+        log.debug("propfirm router skipped: %s", _pf_exc)
+
 
 def _on_success(transition: PhaseTransition) -> None:
     """Called when a symbol reaches the target phase (BREAKOUT).

@@ -16,6 +16,7 @@
 |---|---|---|
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
+| `W-PF-100-propfirm-master-epic` | P1 | 🟡 W-PF-101 schema PR #783 (CI) |
 
 ### 최근 완료
 - PR #778 W-0356 Cogochi 3-column redesign ✅
@@ -27,8 +28,8 @@
 
 ```
 완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅ | W-0247 F-16 recall ✅
-즉시:  W-0317 SplitPane wire-up (Codex) + W-0304 per-pane indicator (Codex)
-Week3: F-19 Sentry + F-20 infra cleanup
+즉시:  W-PF-101 schema (PR #783) → W-PF-102~105 engine → W-PF-106 UI
+Week2: W-0317 SplitPane wire-up + W-0304 per-pane indicator
 Week3: F-19 Sentry + F-20 infra cleanup
 Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 ```
@@ -58,7 +59,7 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 ## A086 세션 핵심 lesson
 
 - **PR close 전 내용 비교 필수**: `gh pr diff` 읽고 아키텍처/성능/UX 3축 비교 후 close. 내용 확인 없이 "이미 됐다"로 close 금지 [A086]
-- **병렬 작업 도메인 분리**: `+page.svelte` 공유 파일은 같은 에이전트에서 순차 처리. Claude(engine+새 UI) / Codex(terminal layout+chart) 분리 [A086]
+- **병렬 작업 도메인 분리**: `+page.svelte` 공유 파일은 같은 에이전트에서 순차 처리 [A086]
 
 ---
 
@@ -66,6 +67,7 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ```bash
 ./tools/start.sh
-# Codex: W-0317 SplitPane wire-up + W-0304 per-pane indicator
-# 중복 이슈 정리: gh issue close 631 617 441
+# W-PF-102~106 PropFirm P1 engine + UI
+gh pr checks 783
+cat work/active/W-PF-100-propfirm-master-epic.md
 ```

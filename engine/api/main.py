@@ -24,7 +24,7 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
-from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user, research
+from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user, research, propfirm as propfirm_routes
 from personalization.api import router as personalization_router
 from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
@@ -297,6 +297,7 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(viz.router, prefix="/viz", tags=["viz"])
     target.include_router(personalization_router, prefix="/personalization", tags=["personalization"])
     target.include_router(research.router, prefix="/research", tags=["research"])
+    target.include_router(propfirm_routes.router)
 
 
 def _include_worker_control_routes(target: FastAPI) -> None:
