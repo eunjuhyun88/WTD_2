@@ -182,6 +182,46 @@ function createToastStore() {
 export const toasts = createToastStore();
 
 // ═══════════════════════════════════════════════════════════════
+// SYSTEM TOAST STORE (auth / wallet connection feedback)
+// ═══════════════════════════════════════════════════════════════
+
+export type SystemToastType = 'success' | 'info' | 'error';
+
+export interface SystemToast {
+  id: string;
+  type: SystemToastType;
+  message: string;
+  action?: { label: string; href: string };
+}
+
+function createSystemToastStore() {
+  const { subscribe, update, set } = writable<SystemToast[]>([]);
+
+  return {
+    subscribe,
+    add(t: Omit<SystemToast, 'id'>, durationMs = 4000) {
+      const id = crypto.randomUUID ? crypto.randomUUID() : `st-${Date.now()}`;
+      const toast: SystemToast = { ...t, id };
+      update(list => [...list, toast].slice(-3));
+      if (durationMs > 0) {
+        setTimeout(() => {
+          update(list => list.filter(item => item.id !== id));
+        }, durationMs);
+      }
+      return id;
+    },
+    dismiss(id: string) {
+      update(list => list.filter(t => t.id !== id));
+    },
+    clear() {
+      set([]);
+    },
+  };
+}
+
+export const systemToasts = createSystemToastStore();
+
+// ═══════════════════════════════════════════════════════════════
 // P0 OVERRIDE STORE
 // ═══════════════════════════════════════════════════════════════
 
