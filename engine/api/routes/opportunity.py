@@ -6,6 +6,7 @@ still live in app-web local mode.
 """
 from __future__ import annotations
 
+import logging
 import re
 import time
 
@@ -13,6 +14,57 @@ from fastapi import APIRouter
 
 from api.schemas import OpportunityMacroBackdrop, OpportunityRunRequest, OpportunityRunResponse, OpportunityScore
 from data_cache.token_universe import get_universe
+from memory.state_store import USER_VERDICT_WEIGHT_STORE
+
+log = logging.getLogger(__name__)
+
+# Lazy-loaded perp signal cache {raw_symbol (BTCUSDT): composite_score float | None}
+_PERP_CACHE: dict[str, float | None] = {}
+_PERP_CACHE_TS: float = 0.0
+_PERP_CACHE_TTL = 3600.0  # 1h
+
+
+def _load_perp_signals(symbols: list[str]) -> dict[str, float | None]:
+    """Batch-load latest funding + LS ratio from ParquetStore for a list of symbols.
+
+    composite_score = mean(funding_score, ls_score)
+      funding_score: neutral funding (|rate| < 0.0001) → 1.0; extreme (|rate| > 0.0003) → 0.0
+      ls_score: LS ratio ~1.0 neutral (0.5); >1.5 overbought (0.0); <0.7 oversold (1.0)
+    Returns None if no data available for a symbol.
+    """
+    try:
+        from data_cache.parquet_store import ParquetStore
+        store = ParquetStore()
+        result: dict[str, float | None] = {}
+        for sym in symbols:
+            try:
+                parts: list[float] = []
+                # Funding signal
+                df_f = store.read_funding(sym)
+                if len(df_f) > 0:
+                    fr = float(df_f.iloc[-1]["funding_rate"])
+                    funding_score = max(0.0, 1.0 - abs(fr) / 0.0003)
+                    parts.append(round(funding_score, 3))
+                # Long/Short ratio signal
+                df_ls = store.read_longshort(sym)
+                if len(df_ls) > 0:
+                    ls = float(df_ls.iloc[-1]["long_short_ratio"])
+                    if ls > 1.5:
+                        ls_score = 0.0
+                    elif ls < 0.7:
+                        ls_score = 1.0
+                    else:
+                        # 0.7-1.5 range → 0-1 inverted from overbought
+                        ls_score = max(0.0, min(1.0, (1.5 - ls) / 0.8))
+                    parts.append(round(ls_score, 3))
+                result[sym] = round(sum(parts) / len(parts), 2) if parts else None
+            except Exception:
+                result[sym] = None
+        return result
+    except Exception:
+        log.warning("perp signal load failed; composite_score will be null", exc_info=True)
+        return {s: None for s in symbols}
+
 
 router = APIRouter()
 
@@ -121,9 +173,30 @@ def _compute_direction(total_score: int, change_24h: float) -> tuple[str, int]:
 
 @router.post("/run", response_model=OpportunityRunResponse)
 async def run(req: OpportunityRunRequest) -> OpportunityRunResponse:
+    global _PERP_CACHE, _PERP_CACHE_TS
+
     started_at = time.time()
     rows = await get_universe()
     ranked = sorted(rows, key=lambda row: row.get("trending_score", 0.0), reverse=True)[: req.limit]
+
+    # Build raw_symbol_map: base (BTC) → full pair (BTCUSDT) for perp and personalization lookup
+    raw_symbol_map: dict[str, str] = {
+        str(row.get("base") or row.get("symbol", "")).upper(): str(row.get("symbol") or row.get("base", "")).upper()
+        for row in ranked
+    }
+
+    # Refresh perp signal cache if stale (TTL = 1h)
+    if time.time() - _PERP_CACHE_TS > _PERP_CACHE_TTL:
+        _PERP_CACHE = _load_perp_signals(list(raw_symbol_map.values()))
+        _PERP_CACHE_TS = time.time()
+
+    # Personalization weights (W-0351) — 1 DB fetch per request
+    user_adjustments: dict[str, float] = {}
+    if req.user_id:
+        try:
+            user_adjustments = USER_VERDICT_WEIGHT_STORE.get_adjustments(req.user_id)
+        except Exception:
+            log.warning("personalization weight fetch failed; using base sort", exc_info=True)
 
     macro_backdrop = OpportunityMacroBackdrop(
         fedFundsRate=None,
@@ -135,6 +208,7 @@ async def run(req: OpportunityRunRequest) -> OpportunityRunResponse:
 
     coins: list[OpportunityScore] = []
     for row in ranked:
+        raw_sym = str(row.get("symbol") or row.get("base", "")).upper()
         symbol = str(row.get("base") or row.get("symbol", "")).upper()
         name = str(row.get("name") or symbol)
         price = float(row.get("price", 0.0))
@@ -158,6 +232,7 @@ async def run(req: OpportunityRunRequest) -> OpportunityRunResponse:
             reasons = ["steady trend proxy"]
 
         alerts = momentum_alerts + volume_alerts
+        composite_score = _PERP_CACHE.get(raw_sym)
 
         coins.append(
             OpportunityScore(
@@ -183,10 +258,20 @@ async def run(req: OpportunityRunRequest) -> OpportunityRunResponse:
                 socialVolume=None,
                 galaxyScore=round(trending_score * 100, 2),
                 alerts=alerts,
+                compositeScore=composite_score,
             )
         )
 
-    coins.sort(key=lambda coin: coin.totalScore, reverse=True)
+    def _sort_key(coin: OpportunityScore) -> float:
+        if not user_adjustments:
+            return float(coin.totalScore)
+        full_pair = raw_symbol_map.get(coin.symbol, coin.symbol)
+        delta = user_adjustments.get(f"symbol:{full_pair}", 0.0)
+        if delta == 0.0:
+            delta = user_adjustments.get(f"symbol:{coin.symbol}", 0.0)
+        return float(coin.totalScore) + delta * 10.0
+
+    coins.sort(key=_sort_key, reverse=True)
 
     return OpportunityRunResponse(
         coins=coins,

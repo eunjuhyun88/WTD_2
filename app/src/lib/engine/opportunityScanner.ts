@@ -47,6 +47,8 @@ export interface OpportunityScore {
   engineSignal?: boolean;    // true if engine scanner fired ≥1 block for this symbol
   engineBlocks?: string[];   // engine block names triggered
   enginePWin?: number | null; // engine p_win estimate
+  // Perp market composite (W-0353): funding + LS ratio normalized 0-1, null if no data
+  compositeScore?: number | null;
 }
 
 export interface OpportunityScanResult {
