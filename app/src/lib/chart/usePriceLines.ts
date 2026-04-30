@@ -5,6 +5,7 @@
  * W-0287 Phase 4c.
  */
 import type { ISeriesApi, SeriesType } from 'lightweight-charts';
+import type { AIPriceLine } from '$lib/stores/chartAIOverlay';
 
 type PriceLine = ReturnType<ISeriesApi<SeriesType>['createPriceLine']>;
 
@@ -34,6 +35,7 @@ export class PriceLineManager {
   private stopLine: PriceLine | null = null;
   private liqLines: PriceLine[] = [];
   private whaleLines: PriceLine[] = [];
+  private aiLines: PriceLine[] = [];
 
   setSeries(series: ISeriesApi<SeriesType> | null) {
     this.series = series;
@@ -136,6 +138,29 @@ export class PriceLineManager {
         }),
       );
     }
+  }
+
+  /** Apply AI analysis price lines (entry / stop / target from AIPanel ANALYZE). */
+  setAILines(lines: AIPriceLine[]) {
+    this.clearAILines();
+    if (!this.series) return;
+    for (const l of lines) {
+      this.aiLines.push(
+        this.series.createPriceLine({
+          price: l.price,
+          color: l.color,
+          lineWidth: 1,
+          lineStyle: l.style === 'solid' ? 0 : 2,
+          axisLabelVisible: true,
+          title: l.label,
+        }),
+      );
+    }
+  }
+
+  clearAILines() {
+    for (const pl of this.aiLines) this._removeLine(pl);
+    this.aiLines = [];
   }
 
   clearLiqLines() {

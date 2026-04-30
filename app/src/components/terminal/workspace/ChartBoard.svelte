@@ -62,6 +62,7 @@
   import type { PanelAnalyzeData } from '$lib/terminal/panelAdapter';
   import { comparisonStore } from '$lib/stores/comparisonStore';
   import { whaleStore } from '$lib/stores/whaleStore';
+  import { chartAIOverlay, clearAIOverlay } from '$lib/stores/chartAIOverlay';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -1402,6 +1403,7 @@
 
   function destroyCharts() {
     priceLineMgr.clearAll();
+    clearAIOverlay();
     priceLineMgr = new PriceLineManager(); // reset for next chart instance
     // W-0210: destroy alpha overlay before removing series
     _alphaOverlay?.destroy();
@@ -1616,6 +1618,25 @@
     if (priceSeries && !loading) {
       applyWhalePriceLines();
     }
+  });
+
+  // W-0357: Apply AI analysis price lines (entry/stop) from AIPanel ANALYZE results.
+  // Lines are cleared automatically when the symbol changes.
+  $effect(() => {
+    const state = $chartAIOverlay;
+    if (!priceSeries) return;
+    if (state.symbol === symbol && state.lines.length > 0) {
+      priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+      priceLineMgr.setAILines(state.lines);
+    } else {
+      priceLineMgr.clearAILines();
+    }
+  });
+
+  // W-0357: Clear AI overlay when symbol changes so stale lines don't persist.
+  $effect(() => {
+    void symbol;
+    clearAIOverlay();
   });
 
   // W-0210 Layer 3: Fetch comparison data when comparison is toggled or TF changes

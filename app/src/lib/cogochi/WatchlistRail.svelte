@@ -1,13 +1,14 @@
 <script lang="ts">
   /**
    * WatchlistRail — TV-style left rail
-   * - Top: hard-coded major pairs (clickable → switch chart symbol)
+   * - Top: major pairs with live price + 24h% (Binance miniTicker WebSocket ~1s)
    * - Bottom: "내 패턴" section sourced from /api/patterns/terminal
    *
-   * Data is intentionally minimal: this component does NOT own state for ticks
-   * or quotes. It only emits a symbol-pick event upward via `onSelectSymbol`.
+   * Real-time feed: subscribeMiniTicker opens a single multi-stream WS for all
+   * SYMBOLS. Updates arrive ~1s apart (Binance push cadence).
    */
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { subscribeMiniTicker, type MiniTickerUpdate } from '$lib/api/binance';
 
   interface PatternRow {
     slug: string;
@@ -31,10 +32,25 @@
     'DOGEUSDT',
   ];
 
+  // Live tick state per symbol: price + 24h change %
+  let ticks = $state<Record<string, MiniTickerUpdate>>({});
+
   let myPatterns = $state<PatternRow[]>([]);
   let patternsLoading = $state(true);
 
+  let unsubscribe: (() => void) | null = null;
+
   onMount(async () => {
+    // Real-time price feed
+    unsubscribe = subscribeMiniTicker(
+      [...SYMBOLS],
+      () => {},
+      (updates) => {
+        ticks = { ...ticks, ...updates };
+      },
+    );
+
+    // My patterns (one-shot)
     try {
       const r = await fetch('/api/patterns/terminal');
       if (r.ok) {
@@ -51,12 +67,27 @@
     }
   });
 
+  onDestroy(() => {
+    unsubscribe?.();
+  });
+
   function pick(symbol: string): void {
     onSelectSymbol?.(symbol);
   }
 
   function shortName(symbol: string): string {
     return symbol.replace(/USDT$/, '');
+  }
+
+  function fmtPrice(p: number): string {
+    if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (p >= 1) return p.toFixed(3);
+    return p.toPrecision(4);
+  }
+
+  function fmtChange(c: number): string {
+    return (c >= 0 ? '+' : '') + c.toFixed(2) + '%';
   }
 </script>
 
@@ -67,6 +98,7 @@
   </div>
   <ul class="symbol-list">
     {#each SYMBOLS as sym (sym)}
+      {@const tick = ticks[sym]}
       <li>
         <button
           type="button"
@@ -74,8 +106,19 @@
           class:active={sym === activeSymbol}
           onclick={() => pick(sym)}
         >
-          <span class="sym-short">{shortName(sym)}</span>
-          <span class="sym-quote">USDT</span>
+          <span class="sym-name">{shortName(sym)}</span>
+          <span class="sym-right">
+            {#if tick}
+              <span class="sym-price">{fmtPrice(tick.price)}</span>
+              <span
+                class="sym-change"
+                class:up={tick.change24h >= 0}
+                class:dn={tick.change24h < 0}
+              >{fmtChange(tick.change24h)}</span>
+            {:else}
+              <span class="sym-loading">…</span>
+            {/if}
+          </span>
         </button>
       </li>
     {/each}
@@ -134,14 +177,8 @@
     z-index: 1;
   }
 
-  .section-label {
-    font-weight: 600;
-  }
-
-  .section-count {
-    font-size: 8px;
-    color: var(--g6);
-  }
+  .section-label { font-weight: 600; }
+  .section-count { font-size: 8px; color: var(--g6); }
 
   .symbol-list,
   .pattern-list {
@@ -153,9 +190,9 @@
   .symbol-row {
     width: 100%;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    padding: 5px 10px;
+    padding: 6px 10px;
     background: transparent;
     border: none;
     border-bottom: 0.5px solid var(--g3);
@@ -167,9 +204,7 @@
     transition: background 0.1s;
   }
 
-  .symbol-row:hover {
-    background: var(--g2);
-  }
+  .symbol-row:hover { background: var(--g2); }
 
   .symbol-row.active {
     background: var(--g3);
@@ -178,15 +213,42 @@
     padding-left: 8px;
   }
 
-  .sym-short {
+  .sym-name {
     font-weight: 600;
     letter-spacing: 0.02em;
+    font-size: 11px;
   }
 
-  .sym-quote {
+  .sym-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+  }
+
+  .sym-price {
+    font-size: 10px;
+    color: var(--g9);
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sym-change {
     font-size: 8px;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .sym-change.up { color: #22AB94; }
+  .sym-change.dn { color: #F23645; }
+
+  .sym-loading {
+    font-size: 9px;
     color: var(--g5);
-    letter-spacing: 0.08em;
+    animation: blink 1.2s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
   }
 
   .pattern-row {

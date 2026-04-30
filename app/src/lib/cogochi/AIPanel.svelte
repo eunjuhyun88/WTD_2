@@ -77,11 +77,18 @@
     onSelectSymbol,
   }: Props = $props();
 
+  import { shellStore } from '$lib/cogochi/shell.store';
+
   let cards = $state<AICard[]>([]);
   let inputValue = $state('');
   let loading = $state(false);
   let scrollEl: HTMLDivElement | undefined = $state();
   const canSend = $derived(inputValue.trim().length > 0 && !loading);
+
+  function selectSymbol(sym: string): void {
+    shellStore.setSymbol(sym);
+    onSelectSymbol?.(sym);
+  }
 
   const quicks: readonly string[] = [
     'BTC 분석',
@@ -354,12 +361,16 @@
                   <button
                     type="button"
                     class="scan-row"
-                    onclick={() => onSelectSymbol?.(c.symbol)}
+                    class:active={c.symbol === symbol}
+                    onclick={() => selectSymbol(c.symbol)}
                   >
                     <span class="scan-sym">{c.symbol.replace(/USDT$/, '')}</span>
                     <span class="scan-sig">{c.signal}</span>
                     {#if c.conf != null}
                       <span class="scan-conf">{Math.round(c.conf * 100)}%</span>
+                    {/if}
+                    {#if c.symbol === symbol}
+                      <span class="scan-active">◀</span>
                     {/if}
                   </button>
                 </li>
@@ -598,6 +609,14 @@
   }
   .scan-row:hover {
     background: var(--g3);
+  }
+  .scan-row.active {
+    background: var(--brand-dd);
+    border-left: 2px solid var(--brand);
+  }
+  .scan-active {
+    font-size: 8px;
+    color: var(--brand);
   }
   .scan-sym {
     font-weight: 600;
