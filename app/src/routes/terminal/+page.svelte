@@ -121,6 +121,8 @@
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
   import { terminalMode as terminalModeStore } from '$lib/stores/terminalMode';
   import { applyModePreset, type TerminalMode } from '../../components/terminal/terminalLayoutController';
+  import type { AiTokenSuggestion } from '$lib/contracts/aiScan';
+  import { isScanQuery } from '$lib/contracts/aiScan';
 
   // ─── State ──────────────────────────────────────────────────
 
@@ -204,6 +206,10 @@
   const isDesktop = $derived($viewportTier.tier === 'DESKTOP');
   let showLeftRail = $state(true);
   let activeAnalysisTab = $state<'summary' | 'entry' | 'risk' | 'catalysts' | 'metrics'>('summary');
+
+  // W-0333: AI scan result — symbols suggested by AI during scan-type queries
+  let aiScanResult = $state<AiTokenSuggestion[]>([]);
+  let _streamScanSymbols: string[] = []; // collected during SSE stream
 
   // ── Terminal mode ──────────────────────────────────────────
   // OBSERVE: chart-focused (right rail + workspace hidden)
@@ -960,6 +966,15 @@
     } finally {
       isStreaming = false;
       streamText = '';
+      // W-0333: if AI suggested multiple symbols (or single in scan context), show in left rail
+      if (_streamScanSymbols.length >= 2 || (_streamScanSymbols.length >= 1 && isScanQuery(text))) {
+        aiScanResult = _streamScanSymbols.map(sym => ({
+          symbol: sym,
+          changePct4h: boardAssets.find(a => a.symbol === sym)?.changePct4h,
+          fundingRate: boardAssets.find(a => a.symbol === sym)?.fundingRate,
+        }));
+      }
+      _streamScanSymbols = [];
     }
   }
 
@@ -994,7 +1009,11 @@
       if (action === 'change_symbol' && typeof payload.symbol === 'string') {
         const raw = payload.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
         const sym = raw.endsWith('USDT') ? raw : `${raw}USDT`;
-        if (sym.length > 4) selectAsset(sym);
+        if (sym.length > 4) {
+          selectAsset(sym);
+          // W-0333: collect for left rail AI scan list
+          if (!_streamScanSymbols.includes(sym)) _streamScanSymbols.push(sym);
+        }
       } else if (action === 'change_timeframe' && typeof payload.timeframe === 'string') {
         try {
           setActiveTimeframe(normalizeTimeframe(payload.timeframe));
@@ -1614,8 +1633,10 @@
         {marketEvents}
         queryPresets={terminalQueryPresets}
         anomalies={terminalAnomalies}
+        {aiScanResult}
         onQuery={handleQueryChip}
         onDeleteSavedAlert={handleDeleteSavedAlert}
+        onDismissAiScan={() => { aiScanResult = []; }}
       />
     </aside>
     {/if}

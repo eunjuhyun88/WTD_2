@@ -3,6 +3,8 @@
   import { priceStore } from '$lib/stores/priceStore';
   import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
   import { createSymbolSelection, createTerminalSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
+  import type { AiTokenSuggestion } from '$lib/contracts/aiScan';
+  import AiScanSection from '$lib/components/terminal/AiScanSection.svelte';
   import type { MacroCalendarItem, TerminalAlertRule, TerminalWatchlistItem } from '$lib/contracts/terminalPersistence';
 
   interface AlertRow {
@@ -37,9 +39,11 @@
     marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
+    aiScanResult?: AiTokenSuggestion[];
     onSelect?: (selection: TerminalSelectionState) => void;
     onQuery?: (q: string) => void;
     onDeleteSavedAlert?: (id: string) => void;
+    onDismissAiScan?: () => void;
   }
   let {
     trendingData,
@@ -52,9 +56,11 @@
     marketEvents = [],
     queryPresets = [],
     anomalies = [],
+    aiScanResult = [],
     onSelect,
     onQuery,
     onDeleteSavedAlert,
+    onDismissAiScan,
   }: Props = $props();
 
   const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [
@@ -188,6 +194,16 @@
 </script>
 
 <aside class="left-rail">
+
+  <!-- W-0333: AI scan results — shown at very top when AI suggests multiple symbols -->
+  {#if aiScanResult.length > 0}
+    <AiScanSection
+      suggestions={aiScanResult}
+      {activeSymbol}
+      {onSelect}
+      onDismiss={onDismissAiScan}
+    />
+  {/if}
 
   <!-- Watchlist — first, most prominent -->
   <section class="rail-section">
