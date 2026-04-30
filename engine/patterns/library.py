@@ -309,24 +309,24 @@ WHALE_ACCUMULATION_REVERSAL = PatternObject(
         ),
         PhaseCondition(
             phase_id="BOTTOM_CONFIRM",
-            label="저점 확인 — 구조 반전 + 숏 축소",
-            # 하락 멈춤 + 저점 상승 구조 + long-short ratio 회복.
-            # higher_lows_sequence: 저점이 올라가는 구조
+            label="저점 확인 — 흡수 + 숏 축소 (W-0322: look-ahead 제거)",
+            # cvd_absorption: taker-buy 비율 지속 + 가격 flat = 세력 매집 중 (forward-looking)
             # ls_ratio_recovery: long-short ratio 회복 (숏 축소 신호)
+            # higher_lows_sequence 제거 → "이미 오름" 확인이었음, cvd_absorption으로 대체
             # oi_spike_with_dump 은 disqualifier — 신규 덤프 발생 시 매집 무효화.
-            required_blocks=["higher_lows_sequence", "ls_ratio_recovery"],
+            required_blocks=["cvd_absorption", "ls_ratio_recovery"],
             soft_blocks=[
                 "smart_money_accumulation",
                 "volume_dryup",
-                "bollinger_squeeze",
+                "oi_hold_after_spike",
             ],
             disqualifier_blocks=["oi_spike_with_dump"],
             score_weights={
-                "higher_lows_sequence": 0.40,
+                "cvd_absorption": 0.45,
                 "ls_ratio_recovery": 0.30,
-                "smart_money_accumulation": 0.20,
-                "volume_dryup": 0.10,
-                "bollinger_squeeze": 0.05,
+                "smart_money_accumulation": 0.15,
+                "volume_dryup": 0.05,
+                "oi_hold_after_spike": 0.05,
             },
             phase_score_threshold=0.70,
             anchor_from_previous_phase=True,
@@ -360,70 +360,84 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
     slug="wyckoff-spring-reversal-v1",
     name="Wyckoff 스프링 반전 패턴 (지지선 압축형)",
     description=(
-        "지지선 근처 횡보 압축 → 거짓 하방 이탈(Spring, 약손 청산) → 즉각 회복 + 거래량 폭발(SoS)"
-        " → Spring 저점 위 풀백(LPS) → 축적 레인지 완전 이탈(Markup). "
-        "순수 가격 구조 + 거래량 패턴 기반. 퍼프 데이터 불필요. "
-        "TRADOOR(OI기반)/FFR(펀딩기반)와 구별되는 price-action-driven 패턴. "
-        "실증: ENA +20.3%, FARTCOIN +14.2%, STRK +13.7%, KAITO +11.8% (2026-04-19)."
+        "횡보 압축(sideways ≥16 bars, range ≤6%) → Spring(지지선 하방 sweep 후 즉각 회복) → "
+        "SoS(거래량 폭발 + reclaim) → LPS(저거래량 풀백 + cvd_absorption = 진입). "
+        "순수 OHLCV 기반. W-0322: look-ahead bias 제거 — higher_lows 제거, "
+        "구조 조건으로 교체. entry = LPS (Pruden 2007 §3). "
+        "Academic basis: Wyckoff (1930), Murphy (1999) §6."
     ),
     phases=[
         PhaseCondition(
             phase_id="COMPRESSION_ZONE",
-            label="지지선 압축 (매집 준비)",
-            required_blocks=[],
-            required_any_groups=[
-                ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
-            ],
-            optional_blocks=["volume_dryup"],
-            soft_blocks=["absorption_signal"],
-            disqualifier_blocks=[],
+            label="Trading Range — lookback=36 bars, range ≤4%, 거래량 수렴",
+            # sideways_compression_wyckoff: 36-bar range ≤4% (tighter than default)
+            # Fire rate ~39% (vs 87% with defaults). state machine min_bars=36 further
+            # restricts: machine must stay in this phase for ≥36 bars.
+            # volume_dryup: 거래량 수렴 — energy coiling before release
+            required_blocks=["sideways_compression_wyckoff"],
+            required_any_groups=[],
+            optional_blocks=["volume_dryup", "bollinger_squeeze"],
+            soft_blocks=["absorption_signal", "cvd_absorption"],
+            disqualifier_blocks=["extreme_volatility"],
             score_weights={
-                "sideways_compression": 0.50,
-                "bollinger_squeeze": 0.30,
+                "sideways_compression_wyckoff": 0.60,
                 "volume_dryup": 0.20,
-                "absorption_signal": 0.15,
+                "bollinger_squeeze": 0.10,
+                "cvd_absorption": 0.05,
+                "absorption_signal": 0.05,
             },
-            min_bars=6, max_bars=48,
+            phase_score_threshold=0.60,
+            min_bars=36, max_bars=240,
             timeframe="1h",
         ),
         PhaseCondition(
             phase_id="SPRING",
-            label="스프링 — 거짓 하방 이탈",
-            required_blocks=["post_dump_compression"],
-            optional_blocks=["reclaim_after_dump"],
-            disqualifier_blocks=[],
-            min_bars=1, max_bars=8,
+            label="Spring — 지지선 하방 sweep + 즉각 회복",
+            # sweep_below_low: 3-day prior low 이탈 후 close > prior_low (intrabar recovery)
+            # 이것이 Wyckoff Spring의 정의: false downside breakout
+            # post_dump_compression은 제거 (24-29% fire rate, 너무 광범위)
+            required_blocks=["sweep_below_low"],
+            optional_blocks=["volume_spike"],
+            disqualifier_blocks=["extreme_volatility"],
+            score_weights={
+                "sweep_below_low": 0.80,
+                "volume_spike": 0.20,
+            },
+            min_bars=1, max_bars=6,
             timeframe="1h",
         ),
         PhaseCondition(
             phase_id="SIGN_OF_STRENGTH",
-            label="강도 신호 — 거래량 폭발 돌파",
-            required_blocks=["higher_lows_sequence"],
-            optional_blocks=[
-                "breakout_volume_confirm",
-                "cvd_buying",
-                "absorption_signal",
-            ],
+            label="SoS — 거래량 폭발 + close 65% 이상 회복",
+            # volume_surge_bull: volume ≥ 150% avg = institutional demand
+            # reclaim_after_dump(threshold=0.65): close 65% of range = strong close
+            # Combined fire rate BTC: ~5% (both required)
+            # "이미 오름" 이 아닌 "강한 수요 신호" 감지
+            required_blocks=["volume_surge_bull", "reclaim_after_dump_strong"],
+            optional_blocks=["breakout_volume_confirm"],
             disqualifier_blocks=[],
             score_weights={
-                "higher_lows_sequence": 0.55,
-                "breakout_volume_confirm": 0.25,
-                "cvd_buying": 0.15,
-                "absorption_signal": 0.10,
+                "volume_surge_bull": 0.55,
+                "reclaim_after_dump": 0.35,
+                "breakout_volume_confirm": 0.10,
             },
-            phase_score_threshold=0.55,
-            min_bars=2, max_bars=24,
+            phase_score_threshold=0.65,
+            min_bars=1, max_bars=8,
             timeframe="1h",
         ),
         PhaseCondition(
             phase_id="LAST_POINT_OF_SUPPORT",
-            label="최후 지지점 — 진입 구간",
-            required_blocks=["reclaim_after_dump", "higher_lows_sequence"],
-            optional_blocks=[],
-            disqualifier_blocks=[],
+            label="LPS — 저거래량 풀백 + 흡수 = 진입",
+            # volume_dryup: 풀백 시 거래량 감소 = weak-hand selling exhausted
+            # cvd_absorption: taker-buy 비율 유지 = smart money still buying
+            # 이것이 Wyckoff LPS의 핵심: 조용한 풀백 + 내부 매수세 유지
+            required_blocks=["volume_dryup"],
+            optional_blocks=["cvd_absorption", "absorption_signal"],
+            disqualifier_blocks=["extreme_volatility"],
             score_weights={
-                "reclaim_after_dump": 0.55,
-                "higher_lows_sequence": 0.45,
+                "volume_dryup": 0.65,
+                "cvd_absorption": 0.25,
+                "absorption_signal": 0.10,
             },
             phase_score_threshold=0.60,
             transition_window_bars=24,
@@ -434,7 +448,7 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
         ),
         PhaseCondition(
             phase_id="MARKUP",
-            label="마크업 — 축적 레인지 완전 이탈",
+            label="Markup — 축적 레인지 완전 이탈",
             required_blocks=["breakout_above_high"],
             optional_blocks=["breakout_volume_confirm"],
             disqualifier_blocks=[],
@@ -442,7 +456,7 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
             timeframe="1h",
         ),
     ],
-    entry_phase="SIGN_OF_STRENGTH",
+    entry_phase="LAST_POINT_OF_SUPPORT",
     target_phase="MARKUP",
     timeframe="1h",
     universe_scope="binance_dynamic",
@@ -582,7 +596,7 @@ COMPRESSION_BREAKOUT_REVERSAL = PatternObject(
             timeframe="1h",
         ),
     ],
-    entry_phase="COILING",
+    entry_phase="BREAKOUT",
     target_phase="BREAKOUT",
     timeframe="1h",
     universe_scope="binance_dynamic",
