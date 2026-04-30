@@ -117,10 +117,10 @@ Jin이 52개 PatternObject를 Supabase에서 직접 조회/검색하고, verdict
 8. **smoke** — `curl /api/patterns | jq 'length'` ≥ 50
 
 ## Exit Criteria
-- [ ] AC1: `pattern_objects` 테이블에 **≥50개** row upsert 성공 (52개 중 ≤2 허용 실패)
+- [x] AC1: `pattern_objects` 테이블에 **≥50개** row upsert 성공 (52개)
 - [ ] AC2: `GET /api/patterns/{slug}` 200 + pydantic validate pass
 - [ ] AC3: `GET /api/patterns?phase=oi_spike` 결과 — oi_spike phase 포함 패턴만
-- [ ] AC4: pytest 5개 테스트 green, 전체 suite 회귀 0 (기준: 1955개)
-- [ ] AC5: `seed.py` 2회 실행 → row count 변화 0 (idempotent upsert)
+- [x] AC4: pytest 8개 테스트 green (test_store.py), 전체 suite 2040 passed
+- [x] AC5: `seed.py` 2회 실행 → row count 변화 0 (idempotent upsert 확인)
 - [ ] AC6: CI green (typecheck, lint, contract, engine tests)
 - [ ] AC7: PR merged to main + CURRENT.md SHA 갱신
