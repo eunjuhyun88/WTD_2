@@ -7,6 +7,8 @@
   import AppTopBar from '../components/layout/AppTopBar.svelte';
   import MobileBottomNav from '../components/layout/MobileBottomNav.svelte';
   import WalletModal from '../components/modals/WalletModal.svelte';
+  import ProfileDrawer from '../components/layout/ProfileDrawer.svelte';
+  import { profileDrawerOpen } from '$lib/stores/profileDrawerStore';
   import NotificationTray from '../components/shared/NotificationTray.svelte';
   import ToastStack from '../components/shared/ToastStack.svelte';
   import CookieConsent from '../components/shared/CookieConsent.svelte';
@@ -90,6 +92,7 @@
 </div>
 
 <WalletModal />
+<ProfileDrawer open={$profileDrawerOpen} onClose={() => profileDrawerOpen.set(false)} />
 {#if !$isTerminal}<NotificationTray />{/if}
 {#if !$isTerminal}<ToastStack />{/if}
 <CookieConsent />
