@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`e8f25075` — origin/main (2026-04-30) — PR #697 W-0249 F-19 Sentry observability merged
+`5ba00aaa` — origin/main (2026-04-30) — PR #705 W-0324~0330 7-indicator pipeline merged
 
 ---
 
