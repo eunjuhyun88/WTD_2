@@ -16,7 +16,7 @@ export default defineConfig({
 		}
 	},
 	ssr: {
-		external: ['pg-native', 'cloudflare:sockets', 'lightweight-charts'],
+		external: ['pg-native', 'cloudflare:sockets', 'lightweight-charts', 'viem', 'viem/chains'],
 	},
 	build: {
 		rollupOptions: {
