@@ -1,5 +1,6 @@
 <script lang="ts">
   import { canonicalChange24h, canonicalSymbol, terminalState } from '$lib/stores/terminalState';
+  import { page } from '$app/stores';
   import SymbolPicker from './SymbolPicker.svelte';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
 
@@ -92,6 +93,12 @@
     </svg>
     <span>Indicators</span>
   </button>
+
+  <!-- View tabs: Terminal / Peek -->
+  <div class="view-tabs">
+    <a href="/terminal" class="view-tab" class:view-tab--active={$page.url.pathname === '/terminal'}>CHART</a>
+    <a href="/terminal/peek" class="view-tab" class:view-tab--active={$page.url.pathname === '/terminal/peek'}>PEEK</a>
+  </div>
 
   <!-- Markets toggle -->
   <button
@@ -199,6 +206,31 @@
 
   /* Spacer */
   .cmd-spacer { flex: 1 1 auto; min-width: 8px; }
+
+  /* View tabs */
+  .view-tabs {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    border-radius: 5px;
+    overflow: hidden;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .view-tab {
+    padding: 4px 9px;
+    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(209,212,220,0.38);
+    text-decoration: none;
+    border-right: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    transition: color 100ms, background 100ms;
+  }
+  .view-tab:last-child { border-right: none; }
+  .view-tab:hover { color: rgba(209,212,220,0.75); }
+  .view-tab--active { color: #D1D4DC; background: rgba(255,255,255,0.06); }
 
   /* Mode pill */
   .mode-pill {
