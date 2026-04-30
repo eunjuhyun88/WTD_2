@@ -1,7 +1,7 @@
 # W-0314 — 마켓플레이스 패턴 품질 점수 (Composite Score)
 
 > Wave: 4 | Priority: P2 | Effort: S  (F-60 선행 조건)
-> Status: 🟡 Design Draft
+> Status: ✅ Implemented — composite_score.py + 18 tests PASS
 > Created: 2026-04-29
 
 ## Goal
