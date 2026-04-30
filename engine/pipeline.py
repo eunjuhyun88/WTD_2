@@ -19,6 +19,7 @@ import argparse
 import asyncio
 import logging
 import math
+import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -154,12 +155,14 @@ class ResearchPipeline:
         store=None,
         out_dir: Path | None = None,
         scan_workers: int = 4,
+        ledger_store=None,
     ):
         self.out_dir = Path(out_dir) if out_dir else _OUT_DIR
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.scan_workers = scan_workers
         self._last_m_total: int = 0
         self._store = store
+        self._ledger_store = ledger_store
 
     @property
     def store(self):
@@ -167,6 +170,13 @@ class ResearchPipeline:
             from data_cache.parquet_store import ParquetStore
             self._store = ParquetStore()
         return self._store
+
+    @property
+    def ledger_store(self):
+        if self._ledger_store is None:
+            from ledger.store import LedgerRecordStore
+            self._ledger_store = LedgerRecordStore()
+        return self._ledger_store
 
     # ── Stage 2: Scan ─────────────────────────────────────────────────────────
 
@@ -255,6 +265,89 @@ class ResearchPipeline:
         df["confidence_tier"] = df.apply(_tier, axis=1)
         return df
 
+    # ── Stage 6: Paper verification ───────────────────────────────────────────
+
+    def _verify(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Stage 6: paper-trade verification via ledger outcomes."""
+        if df.empty:
+            return df
+        log.info("Stage 6: PAPER VERIFICATION (%d patterns)", len(df))
+        from verification.executor import run_paper_verification
+
+        result_df = df.copy()
+        cols = ["n_trades_paper", "win_rate_paper", "sharpe_paper",
+                "expectancy_pct_paper", "dd_pct_paper", "pass_gate_paper"]
+        for c in cols:
+            result_df[c] = float("nan")
+        result_df["pass_gate_paper"] = False
+
+        for idx, row in result_df.iterrows():
+            slug = str(row.get("pattern", ""))
+            if not slug:
+                continue
+            try:
+                vr = run_paper_verification(slug, self.ledger_store)
+                result_df.at[idx, "n_trades_paper"] = vr.n_trades
+                result_df.at[idx, "win_rate_paper"] = vr.win_rate
+                result_df.at[idx, "sharpe_paper"] = vr.sharpe
+                result_df.at[idx, "expectancy_pct_paper"] = vr.expectancy_pct
+                result_df.at[idx, "dd_pct_paper"] = vr.max_drawdown_pct
+                result_df.at[idx, "pass_gate_paper"] = vr.pass_gate
+            except Exception as exc:
+                log.warning("Stage 6: verification failed for %s (%s) — skipping", slug, exc)
+
+        n_verified = int((result_df["n_trades_paper"] > 0).sum())
+        log.info("  Verified %d / %d patterns with ledger data", n_verified, len(df))
+        return result_df
+
+    # ── Stage 7: Composite scoring ────────────────────────────────────────────
+
+    def _score(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Stage 7: composite score (0–100) + quality grade (S/A/B/C)."""
+        if df.empty:
+            return df
+        log.info("Stage 7: COMPOSITE SCORING (%d patterns)", len(df))
+        from verification.composite_score import compute_composite_score
+        from verification.types import PaperVerificationResult
+
+        result_df = df.copy()
+        result_df["composite_score"] = float("nan")
+        result_df["quality_grade"] = None
+
+        for idx, row in result_df.iterrows():
+            n_trades = row.get("n_trades_paper", float("nan"))
+            if not isinstance(n_trades, (int, float)) or n_trades != n_trades:  # nan check
+                continue
+            n_trades_int = int(n_trades)
+            if n_trades_int < 10:
+                continue  # leave NaN — not enough data
+            try:
+                win_rate = float(row.get("win_rate_paper", 0))
+                n_hit = int(round(n_trades_int * win_rate))
+                pvr = PaperVerificationResult(
+                    pattern_slug=str(row.get("pattern", "")),
+                    n_trades=n_trades_int,
+                    n_hit=n_hit,
+                    n_miss=n_trades_int - n_hit,
+                    n_expired=0,
+                    win_rate=win_rate,
+                    avg_return_pct=float(row.get("expectancy_pct_paper", 0)),
+                    sharpe=float(row.get("sharpe_paper", float("nan"))),
+                    max_drawdown_pct=float(row.get("dd_pct_paper", 0)),
+                    expectancy_pct=float(row.get("expectancy_pct_paper", 0)),
+                    avg_duration_hours=4.0,
+                    pass_gate=bool(row.get("pass_gate_paper", False)),
+                )
+                cs = compute_composite_score(pvr)
+                result_df.at[idx, "composite_score"] = cs.composite
+                result_df.at[idx, "quality_grade"] = cs.quality_grade
+            except Exception as exc:
+                log.warning("Stage 7: scoring failed for %s (%s)", row.get("pattern"), exc)
+
+        n_scored = int(result_df["composite_score"].notna().sum())
+        log.info("  Scored %d / %d patterns", n_scored, len(df))
+        return result_df
+
     # ── Stage 4: Save ─────────────────────────────────────────────────────────
 
     def _save(self, df: pd.DataFrame, run_ts: str) -> Path:
@@ -290,6 +383,14 @@ class ResearchPipeline:
 
         if not bh_passed.empty:
             bh_passed = bh_passed.sort_values("sharpe", ascending=False).reset_index(drop=True)
+
+        # Stage 6+7: verification + composite scoring
+        skip_verification = (
+            os.environ.get("PIPELINE_SKIP_VERIFICATION", "").lower() in ("1", "true", "yes")
+        )
+        if not bh_passed.empty and not skip_verification:
+            bh_passed = self._verify(bh_passed)
+            bh_passed = self._score(bh_passed)
 
         # Stage 4: save
         if not validated.empty:
@@ -345,6 +446,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--workers", type=int, default=4, help="Parallel scan workers")
     p.add_argument("--out", help="Output directory (default: experiments/pipeline/)")
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--skip-verification", action="store_true",
+                   help="Skip paper verification and composite scoring (Stage 6+7)")
     return p.parse_args(argv)
 
 
@@ -356,6 +459,9 @@ def main(argv: list[str] | None = None) -> int:
         datefmt="%H:%M:%S",
         stream=sys.stderr,
     )
+
+    if args.skip_verification:
+        os.environ["PIPELINE_SKIP_VERIFICATION"] = "1"
 
     symbols: list[str] | None = None
     if args.symbols_file:
