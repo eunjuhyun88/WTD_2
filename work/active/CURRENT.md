@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`bdfdc998` — origin/main (2026-04-30) — PR #748 W-0341 TradeMode/ChartBoard pipeline decomposition merged
+`1aae0b09` — origin/main (2026-04-30) — PR #752 W-0348 pipeline Stage 6+7 (paper verification + composite score) merged
 
 ---
 
