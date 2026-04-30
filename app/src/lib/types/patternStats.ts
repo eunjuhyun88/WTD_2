@@ -17,7 +17,7 @@ export interface PatternStats {
   avg_gain_pct: number | null;
   avg_loss_pct: number | null;
   expected_value: number | null;
-  btc_conditional: number | null;
+  btc_conditional: { bullish: number | null; bearish: number | null; sideways: number | null } | number | null;
   decay_direction: string | null;
   recent_30d_count: number;
   recent_30d_success_rate: number | null;
@@ -44,7 +44,7 @@ export function adaptEngineStats(raw: Record<string, unknown>, slug: string): Pa
     avg_gain_pct:            raw.avg_gain_pct  != null ? Number(raw.avg_gain_pct)  : null,
     avg_loss_pct:            raw.avg_loss_pct  != null ? Number(raw.avg_loss_pct)  : null,
     expected_value:          raw.expected_value != null ? Number(raw.expected_value) : null,
-    btc_conditional:         raw.btc_conditional != null ? Number(raw.btc_conditional) : null,
+    btc_conditional:         (raw.btc_conditional ?? null) as PatternStats['btc_conditional'],
     decay_direction:         raw.decay_direction != null ? String(raw.decay_direction) : null,
     recent_30d_count:        Number(raw.recent_30d_count ?? 0),
     recent_30d_success_rate: raw.recent_30d_success_rate != null ? Number(raw.recent_30d_success_rate) : null,
