@@ -93,6 +93,10 @@ engine
 2. 미배포 시 `apply_migration` 호출
 3. integration test 파일 작성 후 pytest -m e2e 실행
 
+## Canonical Files
+- `app/supabase/migrations/027_hypothesis_registry.sql`
+- `engine/tests/test_hypothesis_registry_integration.py`
+
 ## Handoff Checklist
 - [ ] Q-0341-1 해소: prod migration 상태 확인
 - [ ] integration test 4개 작성 + CI pass
