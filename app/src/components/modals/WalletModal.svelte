@@ -21,8 +21,10 @@
     type WalletProviderKey,
   } from '$lib/wallet/providers';
   import { detectInjectedWallets, RDNS_TO_PROVIDER, type DetectedWallet } from '$lib/wallet/eip6963';
+  import { isPrivyConfigured, privySendCode, privyLoginWithCode } from '$lib/wallet/privyClient';
 
   const WALLET_SIGNATURE_RE = /^0x[0-9a-f]{130}$/i;
+  const privyReady = isPrivyConfigured();
   const preferredEvmChain = getPreferredEvmChainCode();
   const walletConnectReady = isWalletConnectConfigured();
 
@@ -40,6 +42,13 @@
   let signedWalletSignature = '';
   let trackedModalOpen = false;
   let panelEl: HTMLDivElement | null = null;
+
+  // Privy email flow
+  let privyStep: 'hidden' | 'email' | 'otp' = 'hidden';
+  let privyEmail = '';
+  let privyCode = '';
+  let privySending = false;
+  let privyVerifying = false;
 
   // ── GTM ───────────────────────────────────────────────────────
   interface GTMWindow extends Window { dataLayer?: Array<Record<string, unknown>>; }
@@ -113,6 +122,9 @@
     signingMessage = false;
     connectingProvider = '';
     trackedModalOpen = false;
+    privyStep = 'hidden';
+    privyEmail = '';
+    privyCode = '';
   }
 
   // ── Connect ───────────────────────────────────────────────────
@@ -234,6 +246,59 @@
     }
   }
 
+  // ── Privy Email ───────────────────────────────────────────────
+  async function handlePrivySendCode() {
+    privySending = true;
+    actionError = '';
+    try {
+      await privySendCode(privyEmail.trim());
+      privyStep = 'otp';
+    } catch (err) {
+      actionError = err instanceof Error ? err.message : 'Failed to send code.';
+    } finally {
+      privySending = false;
+    }
+  }
+
+  async function handlePrivyVerify() {
+    privyVerifying = true;
+    actionError = '';
+    try {
+      const { address, accessToken } = await privyLoginWithCode(privyEmail.trim(), privyCode.trim());
+      const res = await fetch('/api/auth/privy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Authentication failed');
+      if (data.user) {
+        applyAuthenticatedUser(data.user);
+        const nickname = data.user.nickname ?? `Trader_${(address || '').slice(-6).toUpperCase()}`;
+        gtmEvent('auth_success', { method: 'privy_email', is_new_user: false });
+        closeWalletModal();
+        systemToasts.add({
+          type: 'success',
+          message: `Connected as ${nickname}`,
+          action: { label: 'Settings →', href: '/settings' },
+        });
+      }
+    } catch (err) {
+      actionError = err instanceof Error ? err.message : 'Verification failed.';
+      privyCode = '';
+    } finally {
+      privyVerifying = false;
+    }
+  }
+
+  function resetPrivy() {
+    privyStep = 'hidden';
+    privyEmail = '';
+    privyCode = '';
+    actionError = '';
+  }
+
   // ── Disconnect ────────────────────────────────────────────────
   async function handleDisconnect() {
     try { await logoutAuth(); } catch { /* ignore */ }
@@ -282,7 +347,7 @@
         <div class="wh-left">
           <span class="wh-tag">//WALLET AUTH</span>
           <span class="wht">
-            {step === 'connecting' ? 'CONNECTING' : step === 'sign-message' ? 'VERIFY OWNERSHIP' : 'CONNECT WALLET'}
+            {step === 'connecting' ? 'CONNECTING' : step === 'sign-message' ? 'VERIFY OWNERSHIP' : privyStep === 'otp' ? 'VERIFY EMAIL' : 'CONNECT WALLET'}
           </span>
         </div>
         <button class="whc" type="button" aria-label="Close" onclick={handleClose}>✕</button>
@@ -302,115 +367,174 @@
       <!-- ── Step: wallet-select ── -->
       {#if step === 'wallet-select'}
         <div class="wb">
-          <div class="step-hero">
-            <span class="hero-kicker">STEP 1</span>
-            <h3 class="hero-title">Connect your wallet</h3>
-            <p class="hero-sub">Sign in instantly — no email required.</p>
-          </div>
 
-          <div class="wallet-list">
-
-            <!-- Base Smart Wallet — passkey-first, always top -->
-            <button class="wopt wopt-featured" type="button" onclick={() => handleConnect('base')}>
-              <span class="wo-icon">
-                <!-- Base logo: blue square -->
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect width="20" height="20" rx="6" fill="#0052FF"/>
-                  <path d="M10 4.5a5.5 5.5 0 1 1 0 11A5.5 5.5 0 0 1 10 4.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" fill="white" fill-rule="evenodd" clip-rule="evenodd"/>
-                </svg>
-              </span>
-              <span class="wo-name">Base Smart Wallet</span>
-              <span class="wo-badge">PASSKEY</span>
+          {#if privyStep === 'email'}
+            <!-- Privy: email input -->
+            <div class="step-hero">
+              <span class="hero-kicker">EMAIL LOGIN</span>
+              <h3 class="hero-title">Enter your email</h3>
+              <p class="hero-sub">We'll send a one-time code to verify it's you.</p>
+            </div>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+              class="privy-input"
+              type="email"
+              placeholder="you@example.com"
+              bind:value={privyEmail}
+              autofocus
+              onkeydown={(e) => e.key === 'Enter' && privyEmail.trim() && handlePrivySendCode()}
+            />
+            <button class="btn-primary" type="button" onclick={handlePrivySendCode} disabled={privySending || !privyEmail.trim()}>
+              {privySending ? 'SENDING...' : 'SEND CODE'}
             </button>
+            <button class="btn-ghost" type="button" onclick={resetPrivy}>BACK</button>
 
-            <!-- EIP-6963 detected wallets -->
-            {#each detectedWallets as wallet (wallet.rdns)}
-              <button class="wopt" type="button" onclick={() => handleConnect(wallet.rdns, wallet.provider)}>
-                {#if wallet.icon}
-                  <img class="wo-img" src={wallet.icon} alt={wallet.name} width="20" height="20" />
-                {:else}
+          {:else if privyStep === 'otp'}
+            <!-- Privy: OTP input -->
+            <div class="step-hero">
+              <span class="hero-kicker">EMAIL LOGIN</span>
+              <h3 class="hero-title">Check your inbox</h3>
+              <p class="hero-sub">Enter the 6-digit code sent to <strong>{privyEmail}</strong>.</p>
+            </div>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input
+              class="privy-input privy-otp"
+              type="text"
+              inputmode="numeric"
+              placeholder="000000"
+              maxlength="6"
+              bind:value={privyCode}
+              autofocus
+              onkeydown={(e) => e.key === 'Enter' && privyCode.trim().length >= 6 && handlePrivyVerify()}
+            />
+            <button class="btn-primary" type="button" onclick={handlePrivyVerify} disabled={privyVerifying || privyCode.trim().length < 6}>
+              {privyVerifying ? 'VERIFYING...' : 'VERIFY'}
+            </button>
+            <button class="btn-ghost" type="button" onclick={() => { privyStep = 'email'; privyCode = ''; actionError = ''; }}>RESEND CODE</button>
+
+          {:else}
+            <!-- Wallet list -->
+            <div class="step-hero">
+              <span class="hero-kicker">STEP 1</span>
+              <h3 class="hero-title">Connect your wallet</h3>
+              <p class="hero-sub">Sign in instantly — no email required.</p>
+            </div>
+
+            <div class="wallet-list">
+
+              <!-- Base Smart Wallet — passkey-first, always top -->
+              <button class="wopt wopt-featured" type="button" onclick={() => handleConnect('base')}>
+                <span class="wo-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect width="20" height="20" rx="6" fill="#0052FF"/>
+                    <path d="M10 4.5a5.5 5.5 0 1 1 0 11A5.5 5.5 0 0 1 10 4.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" fill="white" fill-rule="evenodd" clip-rule="evenodd"/>
+                  </svg>
+                </span>
+                <span class="wo-name">Base Smart Wallet</span>
+                <span class="wo-badge">PASSKEY</span>
+              </button>
+
+              <!-- EIP-6963 detected wallets -->
+              {#each detectedWallets as wallet (wallet.rdns)}
+                <button class="wopt" type="button" onclick={() => handleConnect(wallet.rdns, wallet.provider)}>
+                  {#if wallet.icon}
+                    <img class="wo-img" src={wallet.icon} alt={wallet.name} width="20" height="20" />
+                  {:else}
+                    <span class="wo-icon">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect width="20" height="20" rx="6" fill="rgba(255,255,255,0.1)"/>
+                        <circle cx="10" cy="10" r="5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+                      </svg>
+                    </span>
+                  {/if}
+                  <span class="wo-name">{wallet.name}</span>
+                  <span class="wo-chain wo-detected">DETECTED</span>
+                </button>
+              {/each}
+
+              <!-- Static: MetaMask -->
+              {#if !isStaticHidden('metamask')}
+                <button class="wopt" type="button" onclick={() => handleConnect('metamask')}>
                   <span class="wo-icon">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                      <rect width="20" height="20" rx="6" fill="rgba(255,255,255,0.1)"/>
-                      <circle cx="10" cy="10" r="5" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+                      <rect width="20" height="20" rx="6" fill="#F6851B"/>
+                      <path d="M14.5 5L10.9 7.9l.65-1.54L14.5 5Z" fill="#E17726"/>
+                      <path d="M5.5 5l3.56 2.93-.62-1.56L5.5 5Z" fill="#E27625"/>
+                      <path d="M13.2 13.2l-.96 1.47 2.06.57.59-2L13.2 13.2ZM5.1 13.24l.58 2 2.06-.57-.96-1.47-1.68.04Z" fill="#E27625"/>
+                      <path d="M7.6 9.97l-.56 1.56 2 .09-.07-2.16-1.37.51Z" fill="#E27625"/>
+                      <path d="M12.4 9.97l-1.38-.53-.07 2.18 2-.09-.55-1.56Z" fill="#E27625"/>
+                      <path d="M7.74 14.67l1.22-.57-.5-.45-1.22.57.5.45Z" fill="#D5BFB2"/>
+                      <path d="M11.04 14.1l1.22.57.5-.45-1.22-.57-.5.45Z" fill="#D5BFB2"/>
                     </svg>
                   </span>
-                {/if}
-                <span class="wo-name">{wallet.name}</span>
-                <span class="wo-chain wo-detected">DETECTED</span>
-              </button>
-            {/each}
+                  <span class="wo-name">MetaMask</span>
+                  <span class="wo-chain">EVM</span>
+                </button>
+              {/if}
 
-            <!-- Static: MetaMask (hide if EIP-6963 detected) -->
-            {#if !isStaticHidden('metamask')}
-              <button class="wopt" type="button" onclick={() => handleConnect('metamask')}>
+              <!-- Static: Coinbase Wallet -->
+              {#if !isStaticHidden('coinbase')}
+                <button class="wopt" type="button" onclick={() => handleConnect('coinbase')}>
+                  <span class="wo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect width="20" height="20" rx="6" fill="#1652F0"/>
+                      <rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="white"/>
+                    </svg>
+                  </span>
+                  <span class="wo-name">Coinbase Wallet</span>
+                  <span class="wo-chain">EVM</span>
+                </button>
+              {/if}
+
+              <!-- Static: Phantom -->
+              {#if !isStaticHidden('phantom')}
+                <button class="wopt" type="button" onclick={() => handleConnect('phantom')}>
+                  <span class="wo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect width="20" height="20" rx="6" fill="#AB9FF2"/>
+                      <path d="M10 5a4 4 0 0 1 4 4c0 1.5-.4 3.1-1.2 4.2-.6.8-1.2 1.4-1.8 1.4-.5 0-.8-.3-1-.7-.2.4-.5.7-1 .7-.6 0-1.2-.6-1.8-1.4C6.4 12.1 6 10.5 6 9a4 4 0 0 1 4-4Z" fill="white"/>
+                      <circle cx="8.5" cy="9" r="1" fill="#AB9FF2"/>
+                      <circle cx="11.5" cy="9" r="1" fill="#AB9FF2"/>
+                    </svg>
+                  </span>
+                  <span class="wo-name">Phantom</span>
+                  <span class="wo-chain">EVM</span>
+                </button>
+              {/if}
+
+              <!-- WalletConnect -->
+              {#if walletConnectReady}
+                <button class="wopt" type="button" onclick={() => handleConnect('walletconnect')}>
+                  <span class="wo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                      <rect width="20" height="20" rx="6" fill="#3B99FC"/>
+                      <path d="M6.8 8.6a4.6 4.6 0 0 1 6.4 0l.2.2-.8.8-.2-.2a3.4 3.4 0 0 0-4.8 0l-.2.2-.8-.8.2-.2Z" fill="white"/>
+                      <path d="M14 9.8l.8.8-4.8 4.8L5.2 10.6l.8-.8 4 4 4-4Z" fill="white"/>
+                    </svg>
+                  </span>
+                  <span class="wo-name">WalletConnect</span>
+                  <span class="wo-chain">QR</span>
+                </button>
+              {/if}
+
+            </div>
+
+            <!-- Privy email login divider -->
+            {#if privyReady}
+              <div class="privy-divider"><span>or</span></div>
+              <button class="wopt wopt-email" type="button" onclick={() => { privyStep = 'email'; actionError = ''; }}>
                 <span class="wo-icon">
-                  <!-- MetaMask fox simplified -->
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect width="20" height="20" rx="6" fill="#F6851B"/>
-                    <path d="M14.5 5L10.9 7.9l.65-1.54L14.5 5Z" fill="#E17726"/>
-                    <path d="M5.5 5l3.56 2.93-.62-1.56L5.5 5Z" fill="#E27625"/>
-                    <path d="M13.2 13.2l-.96 1.47 2.06.57.59-2L13.2 13.2ZM5.1 13.24l.58 2 2.06-.57-.96-1.47-1.68.04Z" fill="#E27625"/>
-                    <path d="M7.6 9.97l-.56 1.56 2 .09-.07-2.16-1.37.51Z" fill="#E27625"/>
-                    <path d="M12.4 9.97l-1.38-.53-.07 2.18 2-.09-.55-1.56Z" fill="#E27625"/>
-                    <path d="M7.74 14.67l1.22-.57-.5-.45-1.22.57.5.45Z" fill="#D5BFB2"/>
-                    <path d="M11.04 14.1l1.22.57.5-.45-1.22-.57-.5.45Z" fill="#D5BFB2"/>
+                    <rect width="20" height="20" rx="6" fill="rgba(255,255,255,0.08)"/>
+                    <path d="M5 7.5A1.5 1.5 0 0 1 6.5 6h7A1.5 1.5 0 0 1 15 7.5v5A1.5 1.5 0 0 1 13.5 14h-7A1.5 1.5 0 0 1 5 12.5v-5Z" stroke="rgba(250,247,235,0.5)" stroke-width="1"/>
+                    <path d="M5.5 7.5l4.5 3 4.5-3" stroke="rgba(250,247,235,0.5)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
                 </span>
-                <span class="wo-name">MetaMask</span>
-                <span class="wo-chain">EVM</span>
+                <span class="wo-name">Continue with Email</span>
               </button>
             {/if}
 
-            <!-- Static: Coinbase Wallet (always shown; deduped if EIP-6963 found) -->
-            {#if !isStaticHidden('coinbase')}
-              <button class="wopt" type="button" onclick={() => handleConnect('coinbase')}>
-                <span class="wo-icon">
-                  <!-- Coinbase: blue circle with C -->
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect width="20" height="20" rx="6" fill="#1652F0"/>
-                    <rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="white"/>
-                  </svg>
-                </span>
-                <span class="wo-name">Coinbase Wallet</span>
-                <span class="wo-chain">EVM</span>
-              </button>
-            {/if}
-
-            <!-- Static: Phantom (hide if EIP-6963 detected) -->
-            {#if !isStaticHidden('phantom')}
-              <button class="wopt" type="button" onclick={() => handleConnect('phantom')}>
-                <span class="wo-icon">
-                  <!-- Phantom: purple ghost -->
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect width="20" height="20" rx="6" fill="#AB9FF2"/>
-                    <path d="M10 5a4 4 0 0 1 4 4c0 1.5-.4 3.1-1.2 4.2-.6.8-1.2 1.4-1.8 1.4-.5 0-.8-.3-1-.7-.2.4-.5.7-1 .7-.6 0-1.2-.6-1.8-1.4C6.4 12.1 6 10.5 6 9a4 4 0 0 1 4-4Z" fill="white"/>
-                    <circle cx="8.5" cy="9" r="1" fill="#AB9FF2"/>
-                    <circle cx="11.5" cy="9" r="1" fill="#AB9FF2"/>
-                  </svg>
-                </span>
-                <span class="wo-name">Phantom</span>
-                <span class="wo-chain">EVM</span>
-              </button>
-            {/if}
-
-            <!-- WalletConnect (always shown — project ID confirmed set) -->
-            {#if walletConnectReady}
-              <button class="wopt" type="button" onclick={() => handleConnect('walletconnect')}>
-                <span class="wo-icon">
-                  <!-- WalletConnect: blue diamond -->
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect width="20" height="20" rx="6" fill="#3B99FC"/>
-                    <path d="M6.8 8.6a4.6 4.6 0 0 1 6.4 0l.2.2-.8.8-.2-.2a3.4 3.4 0 0 0-4.8 0l-.2.2-.8-.8.2-.2Z" fill="white"/>
-                    <path d="M14 9.8l.8.8-4.8 4.8L5.2 10.6l.8-.8 4 4 4-4Z" fill="white"/>
-                  </svg>
-                </span>
-                <span class="wo-name">WalletConnect</span>
-                <span class="wo-chain">QR</span>
-              </button>
-            {/if}
-
-          </div>
+          {/if}
         </div>
 
       <!-- ── Step: connecting ── -->
@@ -847,4 +971,61 @@
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Privy ── */
+  .privy-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(250, 247, 235, 0.28);
+    font-family: var(--sc-font-body);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+
+  .privy-divider::before,
+  .privy-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(249, 216, 194, 0.08);
+  }
+
+  .wopt-email {
+    border-color: rgba(249, 216, 194, 0.06);
+    color: rgba(250, 247, 235, 0.7);
+  }
+
+  .wopt-email .wo-name {
+    font-weight: 500;
+    color: rgba(250, 247, 235, 0.7);
+  }
+
+  .privy-input {
+    width: 100%;
+    padding: 13px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(249, 216, 194, 0.12);
+    border-radius: 14px;
+    color: var(--wm-text);
+    font-family: var(--sc-font-body);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+
+  .privy-input:focus {
+    border-color: rgba(219, 154, 159, 0.4);
+  }
+
+  .privy-input::placeholder {
+    color: rgba(250, 247, 235, 0.28);
+  }
+
+  .privy-otp {
+    font-size: 22px;
+    letter-spacing: 0.3em;
+    text-align: center;
+  }
 </style>
