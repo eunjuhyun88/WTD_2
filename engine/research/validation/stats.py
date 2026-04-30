@@ -146,6 +146,7 @@ def bh_correct(
     p_values: Sequence[float],
     *,
     alpha: float = 0.05,
+    m_total: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Benjamini-Hochberg (1995) FDR-controlling step-up procedure.
 
@@ -165,6 +166,12 @@ def bh_correct(
     Args:
         p_values: array of raw p-values (one per test).
         alpha: family-wise FDR target. Default 0.05.
+        m_total: total number of hypotheses in the full family (Benjamini &
+            Hochberg 1995). When provided and ``>= len(p_values)``, BH
+            thresholds use ``m_total`` instead of ``len(p_values)``, which
+            correctly accounts for hypotheses not present in ``p_values``
+            (e.g. pre-filtered by a gate). ``None`` (default) uses the
+            subset size.
 
     Returns:
         ``(rejected, corrected_p)`` -- two parallel ``np.ndarray`` of the
@@ -173,15 +180,20 @@ def bh_correct(
         ``alpha``. ``corrected_p[i]`` is the BH-adjusted p-value.
     """
     p_arr = np.asarray(p_values, dtype=float)
-    m = len(p_arr)
-    if m == 0:
+    k = len(p_arr)
+    if k == 0:
         return np.array([], dtype=bool), np.array([], dtype=float)
+
+    # m is the full family size (for threshold denominator).
+    # k is the subset size (for rank range).
+    m = m_total if (m_total is not None and m_total >= k) else k
 
     order = np.argsort(p_arr)              # ascending
     sorted_p = p_arr[order]
-    ranks = np.arange(1, m + 1)            # 1..m
+    ranks = np.arange(1, k + 1)            # 1..k (subset ranks)
 
     # Adjusted p-value: monotone enforcement (textbook BH-adjusted).
+    # Threshold denominator is m (full family), not k.
     adjusted_sorted = sorted_p * m / ranks
     # Enforce monotone non-decreasing from the right tail.
     adjusted_sorted = np.minimum.accumulate(adjusted_sorted[::-1])[::-1]

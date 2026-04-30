@@ -126,29 +126,33 @@ def test_walkforward_legacy_low_n_fail(monkeypatch):
 
 
 # ── AC4: BH m_total assert and larger-m produces fewer rejections ─────────────
+# These tests use research.validation.stats.bh_correct (canonical implementation).
+# pipeline._bh_correct() was removed in CTO pass1 — callers now use stats directly.
 
 def test_bh_correct_m_total_assert():
-    from pipeline import _bh_correct
+    from research.validation.stats import bh_correct
     p = [0.01, 0.03, 0.5]
     # m_total < len(p_values) should fallback gracefully (not raise)
-    result = _bh_correct(p, m_total=1)  # 1 < 3 → fallback to m=3
-    assert len(result) == 3
+    rejected, corrected_p = bh_correct(p, m_total=1)  # 1 < 3 → fallback to m=3
+    assert len(rejected) == 3
+    assert len(corrected_p) == 3
 
 
 def test_bh_correct_m_total_reduces_rejections():
-    from pipeline import _bh_correct
+    from research.validation.stats import bh_correct
     # With m=3 (old), all 3 might pass; with m=1000, fewer or none
     p = [0.01, 0.03, 0.04]
-    reject_small_m = _bh_correct(p)              # m = 3
-    reject_large_m = _bh_correct(p, m_total=1000)  # m = 1000
+    reject_small_m, _ = bh_correct(p)              # m = 3
+    reject_large_m, _ = bh_correct(p, m_total=1000)  # m = 1000
     # Larger family → stricter threshold → ≤ rejections
     assert reject_large_m.sum() <= reject_small_m.sum()
 
 
 def test_bh_correct_empty():
-    from pipeline import _bh_correct
-    result = _bh_correct([], m_total=100)
-    assert len(result) == 0
+    from research.validation.stats import bh_correct
+    rejected, corrected_p = bh_correct([], m_total=100)
+    assert len(rejected) == 0
+    assert len(corrected_p) == 0
 
 
 # ── AC1: oos_split module importable ─────────────────────────────────────────

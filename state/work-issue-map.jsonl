@@ -22,3 +22,10 @@
 {"ts": "2026-04-30T08:26:50Z", "w_id": "W-0343", "issue": 727, "pr": [731], "status": "in_progress", "agent": "unknown"}
 {"ts": "2026-04-30T08:50:47Z", "w_id": "W-0339", "issue": 715, "pr": [], "status": "completed", "agent": "unknown"}
 {"ts":"2026-04-30T11:23:19Z","w_id":"W-0349","issue":751,"pr":[],"status":"design","agent":"unknown"}
+{"ts":"2026-04-30T12:59:15Z","w_id":"W-0350","issue":758,"pr":[],"status":"design","agent":"A095"}
+{"ts":"2026-04-30T13:00:04Z","w_id":"W-0351","issue":760,"pr":[],"status":"design","agent":"A095"}
+{"ts":"2026-04-30T13:00:46Z","w_id":"W-0233","issue":761,"pr":[],"status":"implementing","agent":"unknown"}
+{"ts":"2026-04-30T13:00:58Z","w_id":"W-0352","issue":762,"pr":[],"status":"design","agent":"A095"}
+{"ts":"2026-04-30T13:01:45Z","w_id":"W-0353","issue":763,"pr":[],"status":"design","agent":"A095"}
+{"ts":"2026-04-30T13:02:33Z","w_id":"W-0354","issue":764,"pr":[],"status":"design","agent":"A095"}
+{"ts":"2026-04-30T13:03:23Z","w_id":"W-0355","issue":765,"pr":[],"status":"design","agent":"A095"}
