@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`bdfdc998` — origin/main (2026-04-30) — PR #748 W-0341 TradeMode/ChartBoard pipeline decomposition merged
+`40e7d26b` — origin/main (2026-04-30) — PR #753 W-0349 liveTickState + TradeMode CSS BEM migration merged
 
 ---
 
