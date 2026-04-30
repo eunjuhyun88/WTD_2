@@ -13,6 +13,7 @@
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { href: '/lab', label: 'Lab', icon: 'lab' },
     { href: '/patterns', label: 'Patterns', icon: 'patterns' },
+    { href: '/strategies', label: 'Strategies', icon: 'strategies' },
     { href: '/agent', label: 'Agent', icon: 'agent' },
     { href: '/market', label: 'Market', icon: 'market' },
   ];
@@ -62,6 +63,11 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <polygon points="8,2 14,8 8,14 2,8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
               <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+          {:else if item.icon === 'strategies'}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <polyline points="2,11 5,7 8,9 11,4 14,6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="14" cy="6" r="1.2" fill="currentColor"/>
             </svg>
           {:else if item.icon === 'agent'}
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
