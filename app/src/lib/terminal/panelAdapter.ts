@@ -529,3 +529,27 @@ export function buildPatternRecallMatches(
 
   return scored.sort((a, b) => b.score - a.score).slice(0, 5);
 }
+
+// ── HUD display helpers ──────────────────────────────────────────────────────
+
+export function fmtLevel(n: number | undefined): string {
+  if (n == null) return '—';
+  if (n >= 10000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (n >= 1000)  return n.toLocaleString('en-US', { maximumFractionDigits: 1 });
+  if (n >= 1)     return n.toFixed(3);
+  return n.toPrecision(4);
+}
+
+export function stateIcon(state: string): string {
+  if (state === 'bullish') return '✔';
+  if (state === 'bearish') return '✖';
+  if (state === 'warning') return '⚠';
+  return '·';
+}
+
+export function stateTone(state: string): string {
+  if (state === 'bullish') return 'good';
+  if (state === 'bearish') return 'bad';
+  if (state === 'warning') return 'warn';
+  return 'dim';
+}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
-  import DecisionHUD from '../workspace/DecisionHUD.svelte';
+  import DecisionHUD from '$lib/components/terminal/hud/LiveDecisionHUD.svelte';
   import WhaleWatchCard from '../workspace/WhaleWatchCard.svelte';
   import type { TerminalAnalyzeData } from '$lib/terminal/terminalDataOrchestrator';
   import type { LiveSignal } from '$lib/terminal/terminalDataOrchestrator';

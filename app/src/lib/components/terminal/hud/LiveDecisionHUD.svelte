@@ -2,6 +2,9 @@
   import {
     buildVerdictFromAnalysis,
     buildEvidenceFromAnalysis,
+    fmtLevel,
+    stateIcon,
+    stateTone,
     type PanelAnalyzeData,
   } from '$lib/terminal/panelAdapter';
 
@@ -82,14 +85,6 @@
     return (reward / risk).toFixed(2);
   });
 
-  function fmtLevel(n: number | undefined): string {
-    if (n == null) return '—';
-    if (n >= 10000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
-    if (n >= 1000)  return n.toLocaleString('en-US', { maximumFractionDigits: 1 });
-    if (n >= 1)     return n.toFixed(3);
-    return n.toPrecision(4);
-  }
-
   // Card 2: top 3 evidence rows
   const topEvidence = $derived(evidence.slice(0, 3));
 
@@ -98,19 +93,6 @@
     ...(verdict?.invalidation ? [verdict.invalidation] : []),
     ...(verdict?.against ?? []),
   ].slice(0, 3));
-
-  function stateIcon(state: string) {
-    if (state === 'bullish') return '✔';
-    if (state === 'bearish') return '✖';
-    if (state === 'warning') return '⚠';
-    return '·';
-  }
-  function stateTone(state: string) {
-    if (state === 'bullish') return 'good';
-    if (state === 'bearish') return 'bad';
-    if (state === 'warning') return 'warn';
-    return 'dim';
-  }
 </script>
 
 <div class="hud">
@@ -239,7 +221,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 10px;
+    padding: 5px 8px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     flex-shrink: 0;
     background: rgba(255,255,255,0.015);
@@ -312,35 +294,42 @@
 
   /* ── Cards ── */
   .hud-card {
-    margin: 6px 8px 0;
-    border-radius: 5px;
-    border: 1px solid rgba(255,255,255,0.07);
-    background: rgba(255,255,255,0.022);
-    padding: 8px 10px;
+    margin: 2px 6px 0;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.016);
+    padding: 6px 8px;
     flex-shrink: 0;
   }
 
   /* last card no bottom margin gap */
-  .card-actions { margin-bottom: 8px; }
+  .card-actions { margin-bottom: 6px; }
 
   .card-eyebrow {
     font-family: var(--sc-font-mono, monospace);
     font-size: 8px;
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.28);
-    margin-bottom: 7px;
+    color: rgba(255,255,255,0.42);
+    margin-bottom: 4px;
   }
 
-  /* Card 1: State */
+  /* Card 1: State — hero card, visually dominant */
+  .card-state {
+    margin-top: 5px;
+    border-left-width: 3px;
+    padding-left: 7px;
+  }
   .card-state[data-bias='bull'] {
-    border-color: rgba(34,171,148,0.22);
-    background: rgba(34,171,148,0.06);
+    border: 1px solid rgba(34,171,148,0.32);
+    border-left: 3px solid #22ab94;
+    background: rgba(34,171,148,0.07);
   }
   .card-state[data-bias='bear'] {
-    border-color: rgba(242,54,69,0.22);
-    background: rgba(242,54,69,0.06);
+    border: 1px solid rgba(242,54,69,0.32);
+    border-left: 3px solid #f23645;
+    background: rgba(242,54,69,0.07);
   }
 
   .state-bias {
@@ -350,21 +339,21 @@
     letter-spacing: 0.04em;
     color: rgba(255,255,255,0.92);
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
   .state-bias[data-bias='bull'] { color: #22ab94; }
   .state-bias[data-bias='bear'] { color: #f23645; }
 
   .state-action {
-    font-size: 11px;
-    color: rgba(255,255,255,0.62);
-    line-height: 1.35;
-    margin-bottom: 6px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.3;
+    margin-bottom: 4px;
   }
   .state-conf-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
   }
   .state-conf-label {
     font-family: var(--sc-font-mono, monospace);
@@ -376,9 +365,9 @@
   }
   .state-conf-val {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 700;
-    color: rgba(255,255,255,0.72);
+    color: rgba(255,255,255,0.88);
   }
   .state-rr {
     font-family: var(--sc-font-mono, monospace);
@@ -393,34 +382,40 @@
     padding: 1px 5px;
   }
 
-  /* Levels grid (entry / target / stop) */
+  /* Levels grid (entry / target / stop) — Bloomberg table row style */
   .levels-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 3px;
-    margin-top: 8px;
-    padding-top: 7px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 5px;
+    padding-top: 5px;
     border-top: 1px solid rgba(255,255,255,0.07);
   }
   .lv-row {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1px 0;
+  }
+  .lv-row + .lv-row {
+    border-top: 1px solid rgba(255,255,255,0.04);
   }
   .lv-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 7px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.30);
+    color: rgba(255,255,255,0.38);
+    min-width: 32px;
   }
   .lv-val {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    color: rgba(255,255,255,0.82);
+    color: rgba(255,255,255,0.88);
     letter-spacing: 0.02em;
+    text-align: right;
   }
   .lv-target .lv-val { color: #22ab94; }
   .lv-stop   .lv-val { color: #f23645; }
@@ -433,13 +428,13 @@
   }
   .ev-row {
     display: grid;
-    grid-template-columns: 14px 1fr auto;
-    gap: 5px;
+    grid-template-columns: 12px 1fr auto;
+    gap: 4px;
     align-items: center;
-    padding: 3px 0;
+    padding: 2px 0;
   }
   .ev-row + .ev-row {
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255,255,255,0.04);
   }
   .ev-icon {
     font-size: 9px;
@@ -469,38 +464,38 @@
   /* Card 3: Risk */
   .risk-row {
     display: grid;
-    grid-template-columns: 14px 1fr;
-    gap: 5px;
-    padding: 3px 0;
+    grid-template-columns: 12px 1fr;
+    gap: 4px;
+    padding: 2px 0;
     align-items: start;
   }
   .risk-row + .risk-row {
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255,255,255,0.04);
   }
   .risk-icon {
-    font-size: 9px;
+    font-size: 8px;
     color: #efc050;
     font-family: var(--sc-font-mono, monospace);
     margin-top: 1px;
   }
   .risk-text {
-    font-size: 10px;
+    font-size: 9px;
     color: rgba(255,255,255,0.55);
-    line-height: 1.35;
+    line-height: 1.3;
   }
 
   /* Card 4: Actions */
   .card-actions {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 3px;
     background: transparent;
     border-color: rgba(255,255,255,0.05);
   }
   .action-btn {
     width: 100%;
-    padding: 7px 10px;
-    border-radius: 4px;
+    padding: 5px 8px;
+    border-radius: 3px;
     border: 1px solid rgba(255,255,255,0.10);
     background: rgba(255,255,255,0.03);
     color: rgba(255,255,255,0.62);
@@ -522,12 +517,15 @@
     cursor: not-allowed;
   }
   .action-btn.primary {
-    border-color: rgba(34,171,148,0.28);
-    background: rgba(34,171,148,0.08);
-    color: #22ab94;
+    border-color: rgba(34,171,148,0.50);
+    background: rgba(34,171,148,0.16);
+    color: #4ecdc4;
+    font-size: 11px;
+    padding: 8px 10px;
   }
   .action-btn.primary:hover:not(:disabled) {
-    background: rgba(34,171,148,0.14);
+    background: rgba(34,171,148,0.26);
+    color: #6ee6de;
   }
   .action-btn.workspace-toggle {
     border-style: dashed;
