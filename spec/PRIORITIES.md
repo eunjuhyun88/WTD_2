@@ -207,7 +207,7 @@ CSS Grid, resizable, min-width per pane
 | ~~H-08 per-user verdict accuracy~~ | W-0239 | — | — | ✅ **완료 (PR #437)** IN clause 배치 포함 |
 | ~~F-18 Stripe $29/mo + tier enforcement~~ | W-0248 | — | — | ✅ **완료 (2026-04-29 PR #653)** Stripe SDK + webhook + quota gate |
 | ↳ tier enforcement (Free/Pro) + rate limit + migration 030 | | | | |
-| F-19 Sentry + observability | W-0249 | M | — | H-04/H-05 flywheel 체크 BUILT |
+| ~~F-19 Sentry + observability~~ | W-0249 | — | — | ✅ **완료 (2026-04-30 PR #697/#706)** sentry.py + hooks + unit tests |
 | ↳ p95 latency / error rate / cost-per-WAA 대시보드 | | | | |
 | F-20~22 Infra cleanup | W-0250 | S | — | Vercel guardrail + GCP Cloud Build |
 
