@@ -1,5 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { walletStore, openWalletModal } from '$lib/stores/walletStore';
+  import { profileDrawerOpen } from '$lib/stores/profileDrawerStore';
 
   const activePath = $derived($page.url.pathname);
 
@@ -100,6 +102,36 @@
         <span class="rail-label">{item.label}</span>
       </a>
     {/each}
+
+    <div class="rail-wallet-sep"></div>
+
+    {#if $walletStore.connected}
+      <button
+        class="rail-item rail-wallet-btn connected"
+        title="Profile ({$walletStore.shortAddr})"
+        aria-label="Open profile"
+        onclick={() => profileDrawerOpen.set(true)}
+      >
+        <span class="wallet-avatar" aria-hidden="true">
+          {($walletStore.shortAddr ?? '0x?')[2] ?? '?'}
+        </span>
+      </button>
+    {:else}
+      <button
+        class="rail-item rail-wallet-btn"
+        title="Connect Wallet"
+        aria-label="Connect wallet"
+        onclick={openWalletModal}
+      >
+        <span class="rail-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1.5" y="4" width="13" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M1.5 7h13" stroke="currentColor" stroke-width="1.3"/>
+            <circle cx="11.5" cy="10" r="1.2" fill="currentColor" opacity="0.7"/>
+          </svg>
+        </span>
+      </button>
+    {/if}
   </div>
 </nav>
 
@@ -227,6 +259,39 @@
 
   .rail-label {
     display: none;
+  }
+
+  .rail-wallet-sep {
+    width: 20px;
+    height: 1px;
+    background: rgba(249, 216, 194, 0.06);
+    margin: 4px 0 2px;
+    flex-shrink: 0;
+  }
+
+  .rail-wallet-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .rail-wallet-btn.connected {
+    border: 1px solid rgba(130, 180, 255, 0.3);
+    background: rgba(130, 180, 255, 0.08);
+  }
+
+  .rail-wallet-btn.connected:hover {
+    background: rgba(130, 180, 255, 0.14);
+    color: rgba(250, 247, 235, 0.9);
+  }
+
+  .wallet-avatar {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(130, 180, 255, 0.85);
+    text-transform: uppercase;
   }
 
   @media (max-width: 768px) {
