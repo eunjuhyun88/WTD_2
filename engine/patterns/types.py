@@ -35,6 +35,7 @@ class PhaseCondition:
     min_bars: int = 1                    # must persist this many bars before advancing
     max_bars: int = 48                   # timeout bars
     timeframe: str = "1h"
+    co_occurrence_window_bars: int = 1   # W-0340: window for required_blocks co-occurrence (1=same-bar)
 
 @dataclass
 class PatternObject:

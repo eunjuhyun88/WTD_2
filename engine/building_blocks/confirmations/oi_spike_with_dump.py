@@ -58,7 +58,7 @@ def oi_spike_with_dump(
         price_drop_threshold: Minimum absolute 1h price drop (e.g. 0.05 = 5%).
             Must be > 0.
         oi_spike_threshold: Minimum 1h OI increase fraction (e.g. 0.12 = 12%).
-            Must be > 0.
+            Must be > 0. (abs fallback; primary uses z-score ≥ 2.5 when available)
         vol_zscore_threshold: Minimum volume z-score required. Must be > 0.
 
     Returns:
@@ -78,8 +78,16 @@ def oi_spike_with_dump(
         )
 
     price_drop = ctx.features["price_change_1h"] <= -price_drop_threshold
-    oi_spike = ctx.features["oi_change_1h"] >= oi_spike_threshold
     vol_explode = ctx.features["vol_zscore"] >= vol_zscore_threshold
+
+    # z-score primary (W-0340): graceful fallback to abs if column absent
+    if "oi_change_1h_zscore" in ctx.features.columns:
+        oi_spike = (
+            (ctx.features["oi_change_1h_zscore"] >= 2.5)
+            | (ctx.features["oi_change_1h"] >= oi_spike_threshold)
+        )
+    else:
+        oi_spike = ctx.features["oi_change_1h"] >= oi_spike_threshold
 
     mask = price_drop & oi_spike & vol_explode
     return mask.fillna(False).reindex(ctx.features.index, fill_value=False).astype(bool)

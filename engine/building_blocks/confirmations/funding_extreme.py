@@ -45,8 +45,18 @@ def funding_extreme(
         )
 
     fr = ctx.features["funding_rate"]
-    if direction == "long_overheat":
-        mask = fr >= threshold
+
+    # z-score primary (W-0340): use funding_rate_zscore when available
+    if "funding_rate_zscore" in ctx.features.columns:
+        fz = ctx.features["funding_rate_zscore"]
+        if direction == "long_overheat":
+            mask = (fz >= 2.0) | (fr >= threshold)
+        else:
+            mask = (fz <= -2.0) | (fr <= -threshold)
     else:
-        mask = fr <= -threshold
+        if direction == "long_overheat":
+            mask = fr >= threshold
+        else:
+            mask = fr <= -threshold
+
     return mask.astype(bool)

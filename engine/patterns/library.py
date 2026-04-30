@@ -22,6 +22,7 @@ TRADOOR_OI_REVERSAL = PatternObject(
             disqualifier_blocks=["oi_spike_with_dump"],  # real dump disqualifies fake
             min_bars=1, max_bars=6,
             timeframe="1h",
+            co_occurrence_window_bars=6,
         ),
         PhaseCondition(
             phase_id="ARCH_ZONE",
@@ -1126,8 +1127,8 @@ OI_PRESURGE_LONG = PatternObject(
             # Twitter 토큰 복구 후: kol_mention_detect(Twitter) 추가 예정
             required_blocks=[],
             required_any_groups=[
-                ["kol_signal", "social_sentiment_spike", "social_composite"],
-                ["oi_price_lag_detect_strong", "relative_velocity_bull"],  # fallback
+                ["cvd_surge_long", "whale_tick_buy", "orderbook_imbalance_ratio"],  # OFI proxy (Cont-Kukanov-Stoikov 2014)
+                ["oi_price_lag_detect_strong", "relative_velocity_bull"],
             ],
             optional_blocks=["fear_greed_rising", "alt_btc_accel_ratio", "coinbase_premium_positive"],
             disqualifier_blocks=["cvd_spot_price_divergence_bear"],
