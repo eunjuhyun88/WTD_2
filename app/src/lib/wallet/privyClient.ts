@@ -18,7 +18,7 @@ async function getPrivy(): Promise<any> {
 
 export async function privySendCode(email: string): Promise<void> {
   const privy = await getPrivy();
-  await privy.email.sendCode(email);
+  await privy.auth.email.sendCode(email);
 }
 
 export async function privyLoginWithCode(
@@ -26,7 +26,7 @@ export async function privyLoginWithCode(
   code: string
 ): Promise<{ address: string; accessToken: string }> {
   const privy = await getPrivy();
-  const result = await privy.email.loginWithCode(email, code, 'login-or-sign-up');
+  const result = await privy.auth.email.loginWithCode(email, code, 'login-or-sign-up');
   const wallets: any[] = result.user?.linked_accounts?.filter(
     (a: any) => a.type === 'wallet' && /^0x[0-9a-fA-F]{40}$/.test(a.address)
   ) ?? [];
