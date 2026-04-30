@@ -63,6 +63,9 @@
   import { comparisonStore } from '$lib/stores/comparisonStore';
   import { whaleStore } from '$lib/stores/whaleStore';
   import { chartAIOverlay, clearAIOverlay } from '$lib/stores/chartAIOverlay';
+  // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
+  import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
+  import FloatingNoteButton from '../../chart/FloatingNoteButton.svelte';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -166,6 +169,16 @@
   let drawingToolsVisible = $state(false);
   let drawingActiveTool   = $state<DrawingToolType>('cursor');
   let drawingMgr: DrawingManager | null = null;
+
+  // ── W-0358: Chart Notes ───────────────────────────────────────────────────
+  $effect(() => { chartNotesStore.loadNotes(symbol, tf); });
+
+  function getLastClosedBarTime(): number {
+    const ks = chartData?.klines;
+    if (!ks || ks.length < 2) return Math.floor(Date.now() / 1000);
+    // slice(-2,-1) avoids the forming (last) bar
+    return (ks[ks.length - 2] as { time: number }).time;
+  }
 
   // ── Live tick scalars (price / time / changePct / oiDelta) ───────────────
   // Owned by liveTickState; callbacks (DataFeed.onBar, renderCharts, crosshair)
@@ -1097,7 +1110,10 @@
           });
         }
       }
-      candleMarkerApi?.setMarkers(markers);
+      // W-0358: note markers concat (sorted by time)
+      const allMarkers = [...markers, ...chartNotesStore.markers]
+        .sort((a, b) => (a.time as number) - (b.time as number));
+      candleMarkerApi?.setMarkers(allMarkers);
     }
 
     // W-0210 Layer 1: Alpha overlay — ATR levels + phase markers from analysisData
@@ -1112,6 +1128,18 @@
           price: d?.close ?? d?.value ?? liveTick.price,
         });
       }
+    });
+
+    // W-0358: note marker click — open NotePanel view for matching note
+    mainChart.subscribeClick((param) => {
+      if (!param.time || !chartNotesStore.showNotes || chartNotesStore.notes.length === 0) return;
+      const clickTs = typeof param.time === 'number'
+        ? param.time
+        : Math.floor(new Date(param.time as string).getTime() / 1000);
+      const barSec = _tfToSec(tf);
+      const tolerance = barSec * 0.6;
+      const hit = chartNotesStore.notes.find(n => Math.abs(n.bar_time - clickTs) <= tolerance);
+      if (hit) chartNotesStore.openView(hit);
     });
 
     // Capture annotation click: open drawer for nearest marker within ±2 bars (W-0124)
@@ -1725,6 +1753,13 @@
         <PhaseBadge phase={null} />
       </div>
     </div>
+    <!-- W-0358: Floating note button (bottom-right of chart) -->
+    <FloatingNoteButton
+      {symbol}
+      timeframe={tf}
+      getCapturePrice={() => liveTick.price ?? 0}
+      getLastClosedBarTime={getLastClosedBarTime}
+    />
     <!--
       Native multi-pane: a single lightweight-charts instance owns the price
       pane plus N indicator panes (CVD / OI / Funding / Liq / RSI or MACD).
