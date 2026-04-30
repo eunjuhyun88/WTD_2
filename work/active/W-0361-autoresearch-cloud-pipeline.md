@@ -18,7 +18,7 @@
   - `engine/persistence/hypothesis_store.py` (upsert to Supabase hypothesis_registry)
   - API: `POST /research/autoresearch/trigger`, `GET /research/signals/{symbol}`, `GET /research/runs/{run_id}`
   - OOS wiring: Cloud Run env에서 `RESEARCH_OOS_WIRING=on` 강제
-  - Supabase migration 034 `autoresearch_runs` + 035 `pattern_signals`
+  - Supabase migration 035 `autoresearch_runs` + 036 `pattern_signals`
   - GCS sync script `tools/sync_market_data_to_gcs.py`
 - 파일:
   - `engine/research/autoresearch_loop.py` (진입점 분리만)
@@ -27,8 +27,8 @@
   - `engine/persistence/hypothesis_store.py` (신규)
   - `engine/api/main.py` (lifespan APScheduler 추가)
   - `engine/api/routes/research.py` (3 엔드포인트 추가)
-  - `app/supabase/migrations/034_autoresearch_runs.sql` (신규)
-  - `app/supabase/migrations/035_pattern_signals.sql` (신규)
+  - `app/supabase/migrations/035_autoresearch_runs.sql` (신규)
+  - `app/supabase/migrations/036_pattern_signals.sql` (신규)
   - `tools/sync_market_data_to_gcs.py` (신규)
 - API:
   - `POST /research/autoresearch/trigger` → run_id (admin, X-API-Key)
@@ -60,7 +60,7 @@
 
 ### Rollback
 - Env flag `AUTORESEARCH_ENABLED=false` → scheduler skip
-- 마이그레이션 034/035 rollback SQL 동봉
+- 마이그레이션 035/036 rollback SQL 동봉
 - API 엔드포인트는 feature gate로 410 반환
 
 ### Canonical Files
@@ -104,7 +104,7 @@
 2. (1d) `tools/sync_market_data_to_gcs.py` GCS sync script + cron 등록
 3. (2d) `engine/research/autoresearch_runner.py` — lock + idempotent + Sentry
 4. (1d) `engine/persistence/hypothesis_store.py` — upsert + cap=50
-5. (1d) Migrations 034 `autoresearch_runs` + 035 `pattern_signals`
+5. (1d) Migrations 035 `autoresearch_runs` + 036 `pattern_signals`
 6. (1d) `engine/api/routes/research.py` — 3 endpoints + X-API-Key auth
 7. (1d) `engine/api/main.py` lifespan APScheduler hook
 8. (1d) E2E test: trigger → run → promote → GET /signals/BTCUSDT 응답
@@ -131,4 +131,4 @@ engine
 - `app/supabase/migrations/031_hypothesis_registry.sql` — 스키마 존재 (실측)
 - `RESEARCH_OOS_WIRING=off` 기본값 (실측)
 - `engine/api/main.py` — APScheduler 미통합 (실측)
-- 다음 migration 번호: 034 (033_propfirm_p1_core.sql 최신)
+- 다음 migration 번호: 035 (034_chart_notes.sql 최신, W-0358 선점)
