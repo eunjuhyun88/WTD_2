@@ -48,17 +48,6 @@
 
   <span class="divider"></span>
 
-  {#if onIndicators}
-    <button
-      class="ind-btn"
-      onclick={onIndicators}
-      title="Manage indicators"
-    >
-      ⚙ INDICATORS
-    </button>
-    <span class="divider"></span>
-  {/if}
-
   <button
     class="ai-btn"
     class:active={aiVisible}
@@ -188,25 +177,6 @@
     color: var(--amb);
     background: var(--amb-dd);
     border-color: var(--amb-d);
-  }
-
-  .ind-btn {
-    height: 22px;
-    padding: 0 8px;
-    background: transparent;
-    color: var(--g6);
-    border: 0.5px solid var(--g4);
-    border-radius: 3px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.1em;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .ind-btn:hover {
-    background: var(--g2);
-    color: var(--g8);
-    border-color: var(--g5);
   }
 
   .ai-btn {
