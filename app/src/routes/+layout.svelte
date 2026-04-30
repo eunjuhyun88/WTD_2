@@ -48,6 +48,13 @@
     window.addEventListener('resize', handleResize);
     stopResizeTracking = () => window.removeEventListener('resize', handleResize);
     stopGlobalPriceFeed = startGlobalPriceFeed();
+
+    const { initWalletListeners, trySilentReconnect } = await import('$lib/stores/walletStore');
+    const stopWalletListeners = initWalletListeners();
+    trySilentReconnect();
+
+    const originalStopTracking = stopResizeTracking;
+    stopResizeTracking = () => { originalStopTracking?.(); stopWalletListeners(); };
   });
 
   onDestroy(() => {

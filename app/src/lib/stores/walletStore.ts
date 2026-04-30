@@ -275,3 +275,55 @@ export function recordMatch(_won: boolean, lpDelta: number) {
     return { ...w, matchesPlayed: matches, totalLP: lp, phase };
   });
 }
+
+let _walletListenerCleanup: (() => void) | null = null;
+
+/** Call on app mount — registers MetaMask event listeners */
+export function initWalletListeners(): () => void {
+  import('$lib/wallet/providers').then(({ setupMetaMaskListeners }) => {
+    _walletListenerCleanup?.();
+    _walletListenerCleanup = setupMetaMaskListeners({
+      onAccountsChanged: (accounts) => {
+        const address = accounts[0] ?? null;
+        if (!address) {
+          // User disconnected all accounts
+          disconnectWallet();
+        } else {
+          walletStore.update(w => ({
+            ...w,
+            address,
+            shortAddr: toShortAddr(address),
+          }));
+        }
+      },
+      onChainChanged: (chainId) => {
+        const num = parseInt(chainId, 16);
+        const chainMap: Record<number, string> = { 1: 'ETH', 10: 'OP', 137: 'POL', 8453: 'BASE', 42161: 'ARB' };
+        const chain = chainMap[num] ?? `EVM:${num}`;
+        walletStore.update(w => ({ ...w, chain }));
+      },
+      onDisconnect: () => { disconnectWallet(); },
+    });
+  });
+  return () => { _walletListenerCleanup?.(); _walletListenerCleanup = null; };
+}
+
+/** Silently reconnect MetaMask if user previously authorized — no popup */
+export async function trySilentReconnect(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const { tryGetConnectedAccount, getPreferredEvmChainCode } = await import('$lib/wallet/providers');
+  const address = await tryGetConnectedAccount('metamask');
+  if (!address) return;
+  walletStore.update(w => {
+    if (w.connected && w.address) return w; // already connected
+    return {
+      ...w,
+      connected: true,
+      address,
+      shortAddr: toShortAddr(address),
+      chain: getPreferredEvmChainCode(),
+      provider: 'metamask',
+      signature: null,
+    };
+  });
+}
