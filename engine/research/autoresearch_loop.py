@@ -55,7 +55,7 @@ GATE_MIN_SHARPE = 0.3          # Sharpe ≥ 0.3 (W-0313 tightened)
 GATE_MAX_DRAWDOWN = 0.30       # max drawdown ≤ 30%
 PROMOTE_SHARPE = 0.7           # promote threshold (W-0313 tightened)
 
-_OOS_WIRING = os.getenv("RESEARCH_OOS_WIRING", "off").lower() == "on"
+_OOS_WIRING = os.getenv("RESEARCH_OOS_WIRING", "on").lower() == "on"
 _WF_FOLDS = 3
 _MIN_FOLD_TRADES = 3  # minimum trades per fold for fold to count
 

@@ -29,6 +29,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from research.validation.stats import bh_correct as _bh_correct_stats
+
 try:
     import env_bootstrap  # noqa: F401
 except ModuleNotFoundError:
@@ -59,39 +61,6 @@ def _t_to_p(t: float, n: int) -> float:
         import math
         return 1.0 - 0.5 * (1 + math.erf(t / math.sqrt(2)))
 
-
-def _bh_correct(
-    p_values: list[float],
-    alpha: float = BH_ALPHA,
-    m_total: int | None = None,
-) -> np.ndarray:
-    """Benjamini-Hochberg FDR correction. Returns boolean reject mask.
-
-    Args:
-        p_values: p-values for the subset being tested.
-        alpha: FDR target level.
-        m_total: Total number of hypotheses in the family (Benjamini-Hochberg 1995).
-            When provided, BH thresholds use m_total instead of len(p_values),
-            which correctly accounts for hypotheses not in p_values (e.g. pre-filtered).
-    """
-    k = len(p_values)
-    if k == 0:
-        return np.array([], dtype=bool)
-    m = m_total if (m_total is not None and m_total >= k) else k
-    arr = np.asarray(p_values)
-    order = np.argsort(arr)
-    sorted_p = arr[order]
-    # BH threshold: p_(i) <= (i/m) * alpha where i is rank in full family
-    # For subset, adjust rank: rank of i-th sorted p in the full family of m
-    ranks = np.arange(1, k + 1)  # positions 1..k
-    threshold = (ranks / m) * alpha
-    below = sorted_p <= threshold
-    if not below.any():
-        return np.zeros(k, dtype=bool)
-    max_k = int(np.where(below)[0].max())
-    reject = np.zeros(k, dtype=bool)
-    reject[order[: max_k + 1]] = True
-    return reject
 
 
 # ── Data refresh ──────────────────────────────────────────────────────────────
@@ -229,22 +198,12 @@ class ResearchPipeline:
             assert m_total >= len(p_vals), (
                 f"m_total={m_total} must be >= eligible count={len(p_vals)}"
             )
-        reject = _bh_correct(p_vals, m_total=m_total)
-
-        df["bh_reject"] = False
-        df.loc[eligible[eligible].index, "bh_reject"] = reject
-
-        # BH q-value (adjusted p): p * m / rank
-        m = len(p_vals)
-        if m > 0:
-            order = np.argsort(p_vals)
-            q_vals = np.ones(m)
-            for rank_i, orig_i in enumerate(order):
-                q_vals[orig_i] = min(
-                    p_vals[orig_i] * m / (rank_i + 1), 1.0
-                )
-            df.loc[eligible[eligible].index, "bh_q"] = q_vals
+        if p_vals:
+            reject, corrected_p = _bh_correct_stats(p_vals, alpha=BH_ALPHA, m_total=m_total)
+            df.loc[eligible[eligible].index, "bh_reject"] = reject
+            df.loc[eligible[eligible].index, "bh_q"] = corrected_p
         else:
+            df["bh_reject"] = False
             df["bh_q"] = 1.0
 
         n_passed = df["bh_reject"].sum()
