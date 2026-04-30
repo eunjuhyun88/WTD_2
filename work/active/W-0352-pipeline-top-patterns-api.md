@@ -14,10 +14,13 @@ date-stamped parquet을 REST API로 노출해 프런트엔드(`TopPatternsPanel`
 ## Scope
 - 포함:
   - `GET /research/top-patterns?limit=20&min_grade=B`
-  - **Parquet path pattern (코드 검증 기반)**:
-    `engine/experiments/pipeline_results/results_{YYYY-MM-DD}.parquet`
-    - pipeline.py 가 `out_dir / f"results_{run_ts[:10]}.parquet"`로 저장 (date-stamped).
-    - 최신 파일은 `glob("results_*.parquet")` + `max(mtime)`으로 결정.
+  - **Parquet path pattern (코드 검증 완료)**:
+    `engine/experiments/pipeline/results_{YYYY-MM-DD}.parquet`
+    - `pipeline.py:39` `_OUT_DIR = Path(__file__).parent / "experiments" / "pipeline"`
+    - `pipeline.py:354` `out_path = self.out_dir / f"results_{run_ts[:10]}.parquet"`
+    - 최신 파일: `glob("results_*.parquet")` + `max(mtime)` 로 결정.
+    - **주의**: pipeline.py는 `df.to_parquet(out_path)` 직접 호출 — atomic rename 없음.
+      동시 write/read race 가능 (F3 참조). W-0352 내에서 읽기 측 guard 추가 필요.
   - **Parquet schema (검증 필요 컬럼 집합 = `REQUIRED_COLUMNS`)**:
     `pattern`, `symbol`, `direction`, `n_signals`, `n_executed`, `win_rate`,
     `expectancy_pct`, `sharpe`, `calmar`, `max_drawdown_pct`, `final_equity`, `scan_ts`,
@@ -125,11 +128,13 @@ backtest 분포 기준). `min_grade=A`는 상위 ~15%, `S`는 ~3%.
   `min_grade` 필터가 NaN을 제외하면 `patterns:[]`만 반환되어 "데이터 없음"처럼 보임.
   완화: 응답에 별도 `unscored_count` 필드 추가. 또는 응답 본문 + 404 대신 200 with
   `warning="all_unscored"` 메타를 포함.
-- **F3 — 동시 parquet write/read race**:
-  pipeline.py 가 `to_parquet` 중간 상태를 노출하면 부분 read → corrupt error.
-  완화: pipeline.py가 `tempfile.NamedTemporaryFile(...) → os.replace(tmp, final)` 같은
-  atomic rename을 사용하는지 검증. 만약 사용하지 않으면 W-0352와 별도로 pipeline 측에서
-  보강 필요 (Open Question).
+- **F3 — 동시 parquet write/read race (실제 위험)**:
+  `pipeline.py:355` `df.to_parquet(out_path)` — `tempfile` 없이 직접 쓰기. 즉 write 도중
+  read API가 불완전한 parquet을 읽으면 `ArrowInvalid` 또는 truncated DataFrame 발생.
+  완화 (API 측): read 전 `os.path.getsize(path) == prev_size` 2회 확인 (crude stable check),
+  또는 `try: pd.read_parquet(); except: return 빈 리스트` + log.warn.
+  근본 해결: pipeline.py 측 `tempfile.NamedTemporaryFile → os.replace()` atomic rename
+  추가 — W-0352 scope에 포함할지, 별도 W-item으로 분리할지 Q-0352-01에 연결.
 - **F4 — `limit` cap silent truncation**:
   사용자가 `limit=500` 요청 시 100으로 자르고 침묵 truncation은 디버깅 어렵게 함.
   완화: 응답에 `total_available: int`, `limit_applied: int` 필드 추가.
@@ -151,8 +156,9 @@ backtest 분포 기준). `min_grade=A`는 상위 ~15%, `S`는 ~3%.
 
 ## Open Questions
 
-- [ ] [Q-0352-01] pipeline.py의 parquet write가 atomic rename을 사용하는지 검증 필요
-  (F3 대응). 미사용 시 W-0352 안에서 보강할지, 별도 W-item으로 분리할지 결정.
+- [ ] [Q-0352-01] ~~pipeline.py atomic rename 검증~~ **RESOLVED: 미사용** (`pipeline.py:355`
+  `df.to_parquet()` 직접 호출). W-0352 내 read-side guard + pipeline atomic rename 추가를
+  같은 PR에 포함할지, pipeline 보강을 별도 W-item으로 분리할지 결정 필요.
 - [ ] [Q-0352-02] `min_grade` 기본값 "B"가 적절한지 (베타 사용자에게 더 많은 surface 위해
   "C"가 나을 수도). 초기 데이터 분포 확인 후 결정.
 - [ ] [Q-0352-03] `model_source` 컬럼은 W-0357 머지 후에야 parquet에 채워짐. 그 이전 응답은
