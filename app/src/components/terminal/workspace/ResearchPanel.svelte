@@ -320,7 +320,6 @@
   role="dialog"
   aria-modal="true"
   tabindex="-1"
-  onclick={(e) => { if ((e.target as HTMLElement).classList.contains('panel-backdrop')) onClose(); }}
   onkeydown={handleKeydown}
 >
   <div class="panel">
@@ -527,17 +526,22 @@
   .panel-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    /* Transparent — chart stays fully visible and interactive */
+    background: transparent;
     z-index: 1000;
     display: flex;
     align-items: stretch;
     justify-content: flex-end;
+    pointer-events: none;
   }
 
   .panel {
+    pointer-events: auto;
     background: #0d0d0d;
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
-    width: min(780px, 95vw);
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: -24px 0 64px rgba(0, 0, 0, 0.75);
+    /* Fits within right-rail column — chart stays visible */
+    width: min(420px, 95vw);
     display: flex;
     flex-direction: column;
     height: 100dvh;
@@ -598,24 +602,24 @@
     color: rgba(255, 255, 255, 0.7);
   }
 
-  /* Body: two-column */
+  /* Body: single column stacked (panel is 420px — 2-col would be too cramped) */
   .panel-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
+    display: flex;
+    flex-direction: column;
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .col {
-    padding: 16px 18px;
-    overflow-y: auto;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex-shrink: 0;
   }
   .col-analysis {
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .col-label {
@@ -1004,16 +1008,9 @@
     cursor: not-allowed;
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 480px) {
     .panel {
       width: 100vw;
-    }
-    .panel-body {
-      grid-template-columns: 1fr;
-    }
-    .col-analysis {
-      border-right: none;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
   }
 </style>
