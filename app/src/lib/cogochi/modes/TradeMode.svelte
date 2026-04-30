@@ -50,6 +50,7 @@
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
+  import { useMicrostructureSocket } from '$lib/trade/useMicrostructureSocket.svelte';
 
   type ChartBar = ChartSeriesPayload['klines'][number];
   type MicroOrderbook = MarketMicrostructurePayload['orderbook'];
@@ -89,11 +90,16 @@
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
   let microstructureLoading = $state(false);
-  let microWsState = $state<'idle' | 'connecting' | 'live' | 'error' | 'closed'>('idle');
-  let microWsUpdatedAt = $state<number | null>(null);
-  let liveOrderbook = $state<MicroOrderbook | null>(null);
-  let liveTrades = $state<MarketTradePrint[]>([]);
   let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
+
+  const microSocket = useMicrostructureSocket(
+    () => symbol,
+    () => microstructurePayload?.currentPrice ?? null
+  );
+  let microWsState = $derived(microSocket.microWsState);
+  let microWsUpdatedAt = $derived(microSocket.microWsUpdatedAt);
+  let liveOrderbook = $derived(microSocket.liveOrderbook);
+  let liveTrades = $derived(microSocket.liveTrades);
 
   // Fetch initial bundle (one-shot per symbol/tf)
   $effect(() => {
@@ -139,73 +145,6 @@
     };
   });
 
-  // Browser live layer: REST snapshot is the boot/fallback, WS is the live surface.
-  $effect(() => {
-    const sym = toBinanceFuturesStreamSymbol(symbol);
-    if (typeof WebSocket === 'undefined' || !sym) return;
-
-    let closed = false;
-    let ws: WebSocket | null = null;
-    let reconnectTimer: number | null = null;
-
-    const connect = () => {
-      if (closed) return;
-      microWsState = 'connecting';
-      ws = new WebSocket(`wss://fstream.binance.com/stream?streams=${sym}@aggTrade/${sym}@depth20@100ms`);
-
-      ws.onopen = () => {
-        if (!closed) microWsState = 'live';
-      };
-
-      ws.onmessage = (event) => {
-        if (closed) return;
-        try {
-          const message = JSON.parse(String(event.data));
-          const data = message?.data ?? message;
-          if (data?.e === 'aggTrade') {
-            const trade = toLiveTrade(data);
-            if (!trade) return;
-            liveTrades = [trade, ...liveTrades.filter((row) => row.id !== trade.id)].slice(0, 120);
-            microWsUpdatedAt = Date.now();
-            microWsState = 'live';
-          } else if (data?.e === 'depthUpdate' && Array.isArray(data.b) && Array.isArray(data.a)) {
-            liveOrderbook = buildLiveOrderbook(data.b, data.a, liveTrades[0]?.price ?? microstructurePayload?.currentPrice ?? null);
-            microWsUpdatedAt = Date.now();
-            microWsState = 'live';
-          }
-        } catch {
-          // Keep REST snapshot active; malformed stream packets should not blank the UI.
-        }
-      };
-
-      ws.onerror = () => {
-        if (!closed) microWsState = 'error';
-      };
-
-      ws.onclose = () => {
-        if (closed) return;
-        microWsState = liveTrades.length > 0 || liveOrderbook ? 'closed' : 'error';
-        reconnectTimer = window.setTimeout(connect, 3_000);
-      };
-    };
-
-    liveTrades = [];
-    liveOrderbook = null;
-    microWsUpdatedAt = null;
-    connect();
-
-    return () => {
-      closed = true;
-      if (reconnectTimer) window.clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  });
-
-  function toBinanceFuturesStreamSymbol(rawSymbol: string): string {
-    const compact = rawSymbol.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (!compact) return '';
-    return compact.endsWith('usdt') ? compact : `${compact}usdt`;
-  }
 
   // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
   // On candle close, refresh analyze only — chart live updates are handled inside ChartBoard.
@@ -701,77 +640,6 @@
     return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v.toFixed(4);
   }
 
-  function toLiveTrade(data: any): MarketTradePrint | null {
-    const price = Number.parseFloat(data?.p);
-    const qty = Number.parseFloat(data?.q);
-    const id = Number(data?.a);
-    const time = Number(data?.T);
-    if (!Number.isFinite(price) || !Number.isFinite(qty) || !Number.isFinite(id) || !Number.isFinite(time)) return null;
-    const isBuyerMaker = Boolean(data?.m);
-    return {
-      id,
-      time,
-      price,
-      qty,
-      notional: price * qty,
-      side: isBuyerMaker ? 'SELL' : 'BUY',
-      isBuyerMaker,
-    };
-  }
-
-  function normalizeDepthLevels(rawLevels: any[], maxNotional: number): MarketDepthLevel[] {
-    return rawLevels
-      .slice(0, 20)
-      .map((row) => {
-        const price = Number.parseFloat(row?.[0]);
-        const qty = Number.parseFloat(row?.[1]);
-        return { price, qty, notional: price * qty };
-      })
-      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0)
-      .slice(0, 12)
-      .map((level) => ({
-        ...level,
-        weight: level.notional / Math.max(1, maxNotional),
-      }));
-  }
-
-  function buildLiveOrderbook(bidsRaw: any[], asksRaw: any[], current: number | null): MicroOrderbook {
-    const parsedBids = bidsRaw
-      .slice(0, 20)
-      .map((row) => {
-        const price = Number.parseFloat(row?.[0]);
-        const qty = Number.parseFloat(row?.[1]);
-        return { price, qty, notional: price * qty };
-      })
-      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
-    const parsedAsks = asksRaw
-      .slice(0, 20)
-      .map((row) => {
-        const price = Number.parseFloat(row?.[0]);
-        const qty = Number.parseFloat(row?.[1]);
-        return { price, qty, notional: price * qty };
-      })
-      .filter((level) => Number.isFinite(level.price) && Number.isFinite(level.qty) && level.price > 0 && level.qty > 0);
-    const maxNotional = Math.max(1, ...parsedBids.map((level) => level.notional), ...parsedAsks.map((level) => level.notional));
-    const bids = normalizeDepthLevels(bidsRaw, maxNotional);
-    const asks = normalizeDepthLevels(asksRaw, maxNotional);
-    const bidNotional = bids.reduce((sum, level) => sum + level.notional, 0);
-    const askNotional = asks.reduce((sum, level) => sum + level.notional, 0);
-    const bestBid = bids[0]?.price ?? null;
-    const bestAsk = asks[0]?.price ?? null;
-    const refPrice = current ?? (bestBid != null && bestAsk != null ? (bestBid + bestAsk) / 2 : null);
-
-    return {
-      bestBid,
-      bestAsk,
-      spreadBps: bestBid != null && bestAsk != null && refPrice != null && refPrice > 0 ? ((bestAsk - bestBid) / refPrice) * 10_000 : null,
-      imbalanceRatio: askNotional > 0 ? bidNotional / askNotional : null,
-      bidNotional,
-      askNotional,
-      bids,
-      asks,
-    };
-  }
 
   function buildFootprintBucketsFromTrades(trades: MarketTradePrint[], current: number | null): FootprintBucket[] {
     if (trades.length === 0) return [];
