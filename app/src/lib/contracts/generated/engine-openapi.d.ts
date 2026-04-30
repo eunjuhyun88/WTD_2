@@ -1582,6 +1582,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/backtest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Backtest
+         * @description Historical backtest stats for a pattern (W-0369 Phase 1).
+         *
+         *     ?tf=1h            — kline timeframe
+         *     ?universe=default — comma-separated symbols, or "default" for DEFAULT_UNIVERSE
+         *     ?since_days=365   — lookback window in days
+         */
+        get: operations["get_pattern_backtest_patterns__slug__backtest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/captures": {
         parameters: {
             query?: never;
@@ -8367,6 +8391,43 @@ export interface operations {
     verify_paper_patterns__slug__verify_paper_post: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_backtest_patterns__slug__backtest_get: {
+        parameters: {
+            query?: {
+                tf?: string;
+                universe?: string;
+                since_days?: number;
+            };
             header?: never;
             path: {
                 slug: string;
