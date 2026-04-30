@@ -424,3 +424,35 @@ market-search 흐름:
 - `engine/features/compute.py` — feature 계산 (lookahead-safe shift(1))
 - `engine/research/pattern_search.py:PatternVariantSpec` — 확장 대상
 - mihara Edit Indicators 화면 — UI 방향 참조 (Cogochi는 ~20개로 축소)
+
+## Non-Goals
+- indicator 계산 로직 변경 (feature_calc.py는 그대로)
+- 백테스트 결과 재산출 — 필터는 scanner 단계에서만 적용
+- ML 모델 재학습 — 기존 LightGBM 그대로
+
+## Owner
+engine+app
+
+## Canonical Files
+- `engine/research/pattern_search.py`
+- `engine/features/columns.py`
+- `app/src/components/research/IndicatorFilterPanel.svelte`
+
+## Facts
+- `engine/features/columns.py:FEATURE_COLUMNS` 132개 feature 확인
+- W-0350 Pattern Object Store (PR #756) 머지됨 — PatternVariantSpec 직렬화 포맷 존재
+- 12 benchmark pack JSON 현재 `indicator_filters` 필드 없음
+
+## Assumptions
+- `PatternVariantSpec` dataclass 확장 가능 (backward-compat: 기본값 `()`)
+- UI 1초 이내 갱신 = REST polling 방식 (WebSocket 불필요)
+
+## Next Steps
+1. `IndicatorFilter` dataclass + `PatternVariantSpec.indicator_filters` 추가
+2. scanner filter 로직 구현
+3. UI IndicatorFilterPanel 구현
+4. AC1~AC6 pytest + Playwright 검증
+
+## Handoff Checklist
+- [ ] AC1~AC6 구현 + CI green
+- [ ] PR merged + CURRENT.md 갱신

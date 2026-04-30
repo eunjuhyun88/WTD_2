@@ -354,3 +354,30 @@ CREATE INDEX idx_ledger_outcome_pattern_verdict ON ledger_outcome(pattern_slug, 
 - W-0358 (#785) — Multi-exchange (Non-Goal)
 - W-0364 (#800) — 500 CCU (무관)
 - W-0281 — Paper trading (별도 epic)
+
+## Owner
+engine+app
+
+## Canonical Files
+- `engine/pnl/cost_model.py`
+- `engine/pnl/pnl_compute.py`
+- `engine/tests/pnl/`
+- `app/src/components/research/`
+
+## Facts
+- W-0233 Phase 3+4 (PR #767) ledger 4-table 머지됨
+- W-0247 F-16 `_W_ABC_DEFAULT` 머지됨
+- W-0361 AutoResearch run_type='auto' 머지됨 (#795)
+
+## Assumptions
+- 알파 1주 후 N≥30 패턴 도달 가능
+- ledger outcome row ≥ 50개 1주 내 누적 가능
+
+## Next Steps
+1. cost_model.py + pnl_compute.py 구현
+2. T9 benchmark packs 12개 historical P&L 산출
+3. AC1~AC13 pytest 검증
+
+## Handoff Checklist
+- [ ] AC1~AC13 구현 + CI green
+- [ ] PR merged + CURRENT.md 갱신
