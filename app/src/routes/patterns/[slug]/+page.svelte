@@ -1,19 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { flattenPatternStates } from '$lib/contracts';
+  import type { PatternStateView } from '$lib/contracts';
+  import type { PatternStats } from '$lib/types/patternStats';
+  import PatternLifecycleCard from '$lib/components/patterns/PatternLifecycleCard.svelte';
 
   const slug = $derived($page.params.slug ?? '');
 
-  interface StateEntry {
-    symbol: string;
-    phase_id: string;
-    phase_idx: number;
-    phase_label: string;
-    entered_at: string | null;
-    bars_in_phase: number;
-    max_bars: number;
-    progress_pct: number;
-  }
   interface Transition {
     transition_id: string;
     symbol: string;
@@ -25,23 +19,16 @@
     transitioned_at: string | null;
     confidence: number;
   }
-  interface Stats {
-    total_instances: number;
-    hit_rate: number | null;
-    avg_gain_pct: number | null;
-    recent_30d_count: number;
-  }
-
-  let states = $state<StateEntry[]>([]);
+  let states = $state<PatternStateView[]>([]);
   let transitions = $state<Transition[]>([]);
-  let stats = $state<Stats | null>(null);
+  let stats = $state<PatternStats | null>(null);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
   // Phase distribution: count symbols per phase_id
   let phaseCounts = $derived(
     states.reduce((acc: Record<string, number>, s) => {
-      acc[s.phase_id] = (acc[s.phase_id] ?? 0) + 1;
+      acc[s.phaseId] = (acc[s.phaseId] ?? 0) + 1;
       return acc;
     }, {})
   );
@@ -58,20 +45,9 @@
 
       if (statesRes.status === 'fulfilled' && statesRes.value.ok) {
         const d = await statesRes.value.json();
-        const symbolMap: Record<string, any> = (d.patterns ?? {})[slug] ?? {};
-        states = Object.entries(symbolMap)
-          .filter(([, st]: [string, any]) => st.phase_idx >= 0)
-          .map(([sym, st]: [string, any]) => ({
-            symbol: sym,
-            phase_id: st.phase_id ?? 'UNKNOWN',
-            phase_idx: st.phase_idx ?? 0,
-            phase_label: st.phase_label ?? st.phase_id ?? 'UNKNOWN',
-            entered_at: st.entered_at ?? null,
-            bars_in_phase: st.bars_in_phase ?? 0,
-            max_bars: st.max_bars ?? 0,
-            progress_pct: st.progress_pct ?? 0,
-          }))
-          .sort((a, b) => b.phase_idx - a.phase_idx);
+        states = flattenPatternStates(d)
+          .filter((state) => state.patternSlug === slug)
+          .sort((a, b) => b.phaseIdx - a.phaseIdx);
       }
 
       if (transRes.status === 'fulfilled' && transRes.value.ok) {
@@ -119,6 +95,9 @@
   {:else if error}
     <p class="error">{error}</p>
   {:else}
+    <section class="section">
+      <PatternLifecycleCard slug={slug} ontransition={loadAll} />
+    </section>
 
     <!-- Stats strip -->
     {#if stats}
@@ -167,16 +146,16 @@
           {#each states as s}
             <div class="state-card">
               <div class="state-symbol">{s.symbol}</div>
-              <div class="state-phase">{s.phase_id}</div>
+              <div class="state-phase">{s.phaseLabel}</div>
               <div class="state-meta">
-                <span>{s.bars_in_phase} / {s.max_bars} bars</span>
-                <span>{s.progress_pct}%</span>
+                <span>{s.barsInPhase} / {s.maxBars} bars</span>
+                <span>{s.progressPct}%</span>
               </div>
               <div class="progress-bar">
-                <div class="progress-fill" style="width:{Math.min(s.progress_pct, 100)}%"></div>
+                <div class="progress-fill" style="width:{Math.min(s.progressPct, 100)}%"></div>
               </div>
-              {#if s.entered_at}
-                <div class="state-entered">{fmt(s.entered_at)}</div>
+              {#if s.enteredAt}
+                <div class="state-entered">{fmt(s.enteredAt)}</div>
               {/if}
             </div>
           {/each}

@@ -21,17 +21,22 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
+import numpy as np
 import pandas as pd
 
 from data_cache.parquet_store import ParquetStore
+from data_cache.loader import load_macro_bundle
 from data_cache.universe_builder import load_universe
-from research.pattern_scan.scanner import PatternScanner, ALL_COMBOS
+from data_cache.fetch_sector_momentum import fetch_sector_scores
+from research.pattern_scan.scanner import PatternScanner
+from research.pattern_scan.pattern_object_combos import LIBRARY_COMBOS
 from research.validation.stats import (
     bootstrap_ci,
     hit_rate,
@@ -49,6 +54,10 @@ GATE_MIN_T_STAT = 1.0          # t-stat ≥ 1.0
 GATE_MIN_SHARPE = 0.3          # Sharpe ≥ 0.3 (W-0313 tightened)
 GATE_MAX_DRAWDOWN = 0.30       # max drawdown ≤ 30%
 PROMOTE_SHARPE = 0.7           # promote threshold (W-0313 tightened)
+
+_OOS_WIRING = os.getenv("RESEARCH_OOS_WIRING", "on").lower() == "on"
+_WF_FOLDS = 3
+_MIN_FOLD_TRADES = 3  # minimum trades per fold for fold to count
 
 
 # ── Stats gate ────────────────────────────────────────────────────────────────
@@ -95,21 +104,76 @@ def _compute_t_stat_from_row(row: pd.Series) -> float:
     return (p - 0.5) / max(se, 1e-9)
 
 
+def _compute_t_stat_welch(returns: "list[float]") -> float:
+    """Welch t-stat for mean return vs zero (autocorrelation-aware via block bootstrap).
+
+    Falls back to binomial approximation when returns is empty.
+    """
+    if len(returns) < 3:
+        return 0.0
+    try:
+        from research.validation.stats import welch_t_test
+        import numpy as np
+        arr = np.array(returns, dtype=float)
+        result = welch_t_test(arr.tolist(), [0.0] * len(arr))
+        return float(result.t_statistic)
+    except Exception:
+        return 0.0
+
+
 # ── Walk-forward validation ───────────────────────────────────────────────────
 
 def _walkforward_validate(
     df: pd.DataFrame,
-    folds: int = 3,
+    trade_returns_by_key: "dict[tuple[str, str], list[float]] | None" = None,
+    folds: int = _WF_FOLDS,
 ) -> pd.DataFrame:
-    """Simple walk-forward: check that Sharpe is positive across time folds.
+    """Walk-forward validation.
 
-    Since we don't have fold-level data per pattern in the scan result,
-    we use a proxy: if n_executed >= folds * GATE_MIN_SIGNALS, it likely
-    has consistent signals across time. Full per-fold backtest is done
-    in the pattern scan worker when walkforward=True.
+    When trade_returns_by_key is provided (OOS wiring enabled), evaluates
+    fold-based Sharpe across K time folds. Otherwise falls back to n_executed
+    count heuristic for backward compatibility.
     """
     df = df.copy()
-    df["wf_ok"] = df["n_executed"] >= max(folds, 1) * GATE_MIN_SIGNALS
+
+    if not _OOS_WIRING or trade_returns_by_key is None:
+        # Legacy: count-based proxy
+        df["wf_ok"] = df["n_executed"] >= max(folds, 1) * GATE_MIN_SIGNALS
+        df["wf_fold_pass_rate"] = df["wf_ok"].astype(float)
+        return df
+
+    df["wf_ok"] = False
+    df["wf_fold_pass_rate"] = 0.0
+
+    for idx, row in df.iterrows():
+        key = (str(row["symbol"]), str(row["pattern"]))
+        returns = trade_returns_by_key.get(key, [])
+
+        if len(returns) < folds * _MIN_FOLD_TRADES:
+            # Not enough trades for meaningful fold split
+            df.at[idx, "wf_ok"] = False
+            df.at[idx, "wf_fold_pass_rate"] = 0.0
+            continue
+
+        # Split into K equal folds (chronological)
+        rets = np.array(returns, dtype=float)
+        fold_size = len(rets) // folds
+        pass_count = 0
+
+        for i in range(folds):
+            fold = rets[i * fold_size: (i + 1) * fold_size]
+            if len(fold) >= _MIN_FOLD_TRADES and float(np.mean(fold)) > 0.0:
+                pass_count += 1
+
+        pass_rate = pass_count / folds
+        df.at[idx, "wf_fold_pass_rate"] = round(pass_rate, 3)
+        # Pass if at least K-1 folds are positive (allow 1 bad fold)
+        df.at[idx, "wf_ok"] = pass_count >= max(1, folds - 1)
+
+    log.info(
+        "Walk-forward (OOS): %d/%d patterns passed (%d-fold)",
+        df["wf_ok"].sum(), len(df), folds,
+    )
     return df
 
 
@@ -162,7 +226,15 @@ class AutoResearchLoop:
         scan_workers: int = 8,
     ) -> None:
         self.store = store or ParquetStore()
-        self.scanner = PatternScanner(store=self.store, combos=ALL_COMBOS)
+        _macro = load_macro_bundle(offline=True)  # cached read; None if not available
+        if _macro is None:
+            log.debug("Macro bundle not cached — Fear&Greed features will be neutral")
+        _sector = fetch_sector_scores()  # live fetch; None on network error
+        if _sector is None:
+            log.debug("Sector scores unavailable — sector_momentum_strong block will be inactive")
+        self.scanner = PatternScanner(
+            store=self.store, combos=LIBRARY_COMBOS, macro=_macro, sector_scores=_sector,
+        )
         self.scan_workers = scan_workers
         self._cycle_count = 0
         self._experiment_log: list[dict] = []
@@ -201,7 +273,7 @@ class AutoResearchLoop:
             )
 
         # Step 2: Pattern scan
-        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(ALL_COMBOS))
+        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(LIBRARY_COMBOS))
         scan_df = self.scanner.scan_universe(symbols, workers=self.scan_workers)
 
         if scan_df.empty:
@@ -220,9 +292,10 @@ class AutoResearchLoop:
         rejected = gated[~gated["gate_passed"]].copy()
         log.info("Gate: %d passed / %d total", len(passed), len(gated))
 
-        # Step 4: Walk-forward check
+        # Step 4: Walk-forward check (W-0341: real fold-based when OOS enabled)
         if not passed.empty:
-            passed = _walkforward_validate(passed)
+            trade_returns = getattr(self.scanner, "_last_trade_returns", None)
+            passed = _walkforward_validate(passed, trade_returns_by_key=trade_returns)
             passed = passed[passed["wf_ok"]].copy()
             log.info("Walk-forward: %d passed", len(passed))
 

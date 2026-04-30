@@ -1138,6 +1138,11 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "funding_rate",
     "oi_change_1h",
     "oi_change_24h",
+    "oi_change_1h_zscore",
+    "oi_change_24h_zscore",
+    "vol_velocity_zscore",
+    "funding_change_zscore",
+    "cvd_change_zscore",
     "long_short_ratio",
     "cvd_state",
     "taker_buy_ratio_1h",
@@ -1384,6 +1389,19 @@ def compute_features_table(
         except Exception:
             perp = None
 
+    # Columns passed through from perp to features without transformation.
+    # W-0316: building blocks read these directly from ctx.features.
+    _PERP_PASSTHROUGH_COLS = {
+        "oi_exchange_conc":      1.0,   # default: one exchange dominates
+        "total_oi_change_1h":    0.0,
+        "total_oi_change_24h":   0.0,
+        "total_perp_oi":         0.0,
+        "coinbase_premium":      0.0,
+        "coinbase_premium_norm": 0.0,
+        "dex_buy_pct":           0.5,   # default: balanced buy/sell
+    }
+    _perp_extra: dict[str, np.ndarray] = {}
+
     if perp is not None and len(perp) > 0:
         perp_aligned = perp.reindex(index, method="ffill")
         funding_rate = (
@@ -1403,6 +1421,9 @@ def compute_features_table(
         long_short_ratio = (
             perp_aligned["long_short_ratio"].fillna(1.0).to_numpy(dtype=np.float64)
         )
+        for col, default in _PERP_PASSTHROUGH_COLS.items():
+            if col in perp_aligned.columns:
+                _perp_extra[col] = perp_aligned[col].fillna(default).to_numpy(dtype=np.float64)
     else:
         funding_rate = np.zeros(len(index), dtype=np.float64)
         oi_raw = np.zeros(len(index), dtype=np.float64)
@@ -1420,6 +1441,33 @@ def compute_features_table(
     # cvd_cumulative: running net buy volume (taker_buy - taker_sell = 2*tbv - vol)
     cvd_net_per_bar = (2.0 * taker_buy - volume).fillna(0.0)
     cvd_cumulative = cvd_net_per_bar.cumsum()
+
+    # --- Z-score derivatives (W-0340 Phase 1 — lookahead-free, López de Prado 2018) ---
+    _zp = max(8, _b7d * 4)  # ~28d rolling window
+
+    def _rzs(s: pd.Series) -> np.ndarray:
+        """Rolling z-score using only past bars (.shift(1) enforced)."""
+        s_f = s.astype(float)
+        mu = s_f.shift(1).rolling(_zp, min_periods=max(8, _zp // 4)).mean()
+        sigma = s_f.shift(1).rolling(_zp, min_periods=max(8, _zp // 4)).std()
+        return ((s_f - mu) / sigma.replace(0.0, np.nan)).fillna(0.0).clip(-10.0, 10.0).to_numpy()
+
+    oi_change_1h_s = pd.Series(
+        oi_change_1h if not isinstance(oi_change_1h, pd.Series) else oi_change_1h,
+        index=index, dtype=float,
+    )
+    oi_change_1h_zscore_arr   = _rzs(oi_change_1h_s)
+    oi_change_24h_s = pd.Series(
+        oi_change_24h if not isinstance(oi_change_24h, pd.Series) else oi_change_24h,
+        index=index, dtype=float,
+    )
+    oi_change_24h_zscore_arr  = _rzs(oi_change_24h_s)
+    vol_vel_s = (volume / volume.shift(1).replace(0, np.nan) - 1.0).fillna(0.0)
+    vol_velocity_zscore_arr   = _rzs(vol_vel_s)
+    funding_rate_s2 = pd.Series(funding_rate, index=index, dtype=float)
+    funding_change_zscore_arr = _rzs(funding_rate_s2.diff().fillna(0.0))
+    cvd_change_zscore_arr     = _rzs(cvd_net_per_bar)
+
     oi_raw_s = pd.Series(oi_raw, index=index, dtype=float)
     funding_rate_s = pd.Series(funding_rate, index=index, dtype=float)
     canonical_pattern_df = materialize_canonical_pattern_features(
@@ -1686,6 +1734,11 @@ def compute_features_table(
             "cvd_cumulative": cvd_cumulative.to_numpy(),
             "oi_zscore": canonical_pattern_df["oi_zscore"].to_numpy(),
             "funding_rate_zscore": canonical_pattern_df["funding_rate_zscore"].to_numpy(),
+            "oi_change_1h_zscore":  oi_change_1h_zscore_arr,
+            "oi_change_24h_zscore": oi_change_24h_zscore_arr,
+            "vol_velocity_zscore":  vol_velocity_zscore_arr,
+            "funding_change_zscore": funding_change_zscore_arr,
+            "cvd_change_zscore":    cvd_change_zscore_arr,
             "funding_flip_flag": canonical_pattern_df["funding_flip_flag"].to_numpy(),
             "volume_percentile": canonical_pattern_df["volume_percentile"].to_numpy(),
             "pullback_depth_pct": canonical_pattern_df["pullback_depth_pct"].to_numpy(),
@@ -1779,6 +1832,10 @@ def compute_features_table(
             **onchain_arrays,
             **dex_arrays,
             **chain_arrays,
+            # W-0316 Phase 1: perp passthrough (exchange OI, coinbase premium, dex buy pct)
+            # Only included when the ParquetStore has pre-fetched this data.
+            # Falls back to registry-driven columns when absent (no conflict).
+            **{k: v for k, v in _perp_extra.items() if k not in macro_arrays and k not in onchain_arrays and k not in dex_arrays},
             "price": close.to_numpy(),
             "symbol": symbol,
         },
@@ -1786,6 +1843,17 @@ def compute_features_table(
     )
     # Drop the warmup region — features there are biased by short EMA windows.
     df = df.iloc[MIN_HISTORY_BARS:].copy()
+
+    # --- W-0337: Per-venue OI change 1h (derived from absolute OI columns) ---
+    # binance_oi/bybit_oi/okx_oi arrive via ONCHAIN_SOURCES (forward-filled daily→hourly).
+    # pct_change(1) over the hourly index gives the 1h % change per venue.
+    for _venue in ("binance", "bybit", "okx"):
+        _oi_col = f"{_venue}_oi"
+        _change_col = f"{_venue}_oi_change_1h"
+        if _oi_col in df.columns:
+            df[_change_col] = df[_oi_col].pct_change(1).fillna(0.0)
+        else:
+            df[_change_col] = 0.0
 
     # --- W-0292 D-G: Derived DEX efficiency ratio ---
     # Computed post-alignment so NaN-safe; does not touch any existing column.

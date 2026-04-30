@@ -283,8 +283,9 @@ function detectPhase(req: AutoAnalyzeRequest): AnalysisResult {
 // ---------------------------------------------------------------------------
 
 export const POST: RequestHandler = async ({ cookies, request }) => {
+  // detectPhase is pure computation — no auth required
+  // canSave flag controls whether the client can save the result (requires auth)
   const user = await getAuthUserFromCookies(cookies);
-  if (!user) return json({ error: 'Authentication required' }, { status: 401 });
 
   let body: AutoAnalyzeRequest;
   try {
@@ -305,5 +306,6 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
     thesis: result.thesis,
     summary: result.summary,
     analyzedAt: Date.now(),
+    canSave: !!user,
   });
 };

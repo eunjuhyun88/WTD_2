@@ -27,6 +27,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -51,8 +52,18 @@ from building_blocks.entries.rsi_threshold import rsi_threshold
 from data_cache.parquet_store import ParquetStore
 from scanner.feature_calc import compute_features_table, MIN_HISTORY_BARS
 from scanner.pnl import ExecutionCosts
+from research.pattern_scan.oos_split import holdout_cutoff as _oos_cutoff
 
 log = logging.getLogger("engine.pattern_scan.scanner")
+
+_OOS_WIRING = os.getenv("RESEARCH_OOS_WIRING", "off").lower() == "on"
+
+# Disable live market data injection during historical backtests.
+# Set LIVE_SIGNALS_MODE=on only for real-time signal generation.
+_LIVE_SIGNALS_MODE = os.getenv("LIVE_SIGNALS_MODE", "off").lower() == "on"
+
+_OOS_HOLDOUT_FRAC = 0.30
+_MIN_HOLDOUT_TRADES = 10
 
 _RESULTS_PATH = Path(__file__).parent.parent / "experiments" / "pattern_scan_results.parquet"
 _COMPRESS = "zstd"
@@ -159,35 +170,214 @@ def _klines_for_context(df: pd.DataFrame) -> pd.DataFrame:
     return df[cols].astype(float)
 
 
+def _build_perp_from_store(store: ParquetStore, symbol: str) -> pd.DataFrame | None:
+    """Build a perp DataFrame for compute_features_table from ParquetStore.
+
+    Core columns (feature_calc reads these directly):
+      funding_rate, oi_raw, oi_change_1h, oi_change_24h, long_short_ratio
+
+    Phase 1 extension columns (W-0316, passed through via _PERP_PASSTHROUGH_COLS):
+      oi_exchange_conc, total_oi_change_1h, total_oi_change_24h  (from exchange_oi store)
+      coinbase_premium, coinbase_premium_norm                     (from global coinbase store)
+      dex_buy_pct                                                  (from dex store)
+
+    Returns None if no funding data available (building blocks default to neutral).
+    """
+    try:
+        funding = store.read_funding(symbol)
+        if funding.empty:
+            return None
+        funding = funding.set_index("ts").sort_index()
+        funding.index = pd.to_datetime(funding.index, utc=True)
+
+        oi = store.read_oi(symbol)
+        ls = store.read_longshort(symbol)
+
+        frames: list[pd.DataFrame] = [funding[["funding_rate"]]]
+
+        if not oi.empty:
+            oi = oi.set_index("ts").sort_index()
+            oi.index = pd.to_datetime(oi.index, utc=True)
+            oi = oi[["oi_usd"]].rename(columns={"oi_usd": "oi_raw"})
+            oi["oi_change_1h"] = oi["oi_raw"].pct_change(1).fillna(0.0)
+            oi["oi_change_24h"] = oi["oi_raw"].pct_change(24).fillna(0.0)
+            frames.append(oi)
+        else:
+            # No OI data — NaN placeholders so compute_features_table doesn't KeyError.
+            placeholder = funding[[]].copy()
+            placeholder["oi_raw"] = float("nan")
+            placeholder["oi_change_1h"] = float("nan")
+            placeholder["oi_change_24h"] = float("nan")
+            frames.append(placeholder)
+
+        if not ls.empty:
+            ls = ls.set_index("ts").sort_index()
+            ls.index = pd.to_datetime(ls.index, utc=True)
+            ls["long_short_ratio"] = ls["long_ratio"] / ls["short_ratio"].replace(0, float("nan"))
+            frames.append(ls[["long_short_ratio"]])
+
+        # Phase 1 (W-0316): multi-exchange OI → enables oi_exchange_divergence building block
+        try:
+            exc_oi = store.read_exchange_oi(symbol)
+            if not exc_oi.empty:
+                exc_oi = exc_oi.set_index("ts").sort_index()
+                exc_oi.index = pd.to_datetime(exc_oi.index, utc=True)
+                want = ["oi_exchange_conc", "total_oi_change_1h", "total_oi_change_24h", "total_perp_oi"]
+                cols = [c for c in want if c in exc_oi.columns]
+                if cols:
+                    frames.append(exc_oi[cols])
+        except Exception:
+            pass
+
+        # Phase 1 (W-0316): coinbase premium → enables coinbase_premium_positive building block
+        try:
+            cb = store.read_coinbase_premium()
+            if not cb.empty:
+                cb = cb.set_index("ts").sort_index()
+                cb.index = pd.to_datetime(cb.index, utc=True)
+                want = ["coinbase_premium", "coinbase_premium_norm"]
+                cols = [c for c in want if c in cb.columns]
+                if cols:
+                    frames.append(cb[cols])
+        except Exception:
+            pass
+
+        # Phase 1 (W-0316): DEX buy pressure → enables dex_buy_pressure building block
+        try:
+            dex = store.read_dex(symbol)
+            if not dex.empty:
+                dex = dex.set_index("ts").sort_index()
+                dex.index = pd.to_datetime(dex.index, utc=True)
+                if "dex_buy_pct" in dex.columns:
+                    frames.append(dex[["dex_buy_pct"]])
+        except Exception:
+            pass
+
+        if len(frames) == 1:
+            return frames[0]
+        return frames[0].join(frames[1:], how="outer")
+    except Exception:
+        return None
+
+
+def _inject_live_ob(features: pd.DataFrame, symbol: str) -> None:
+    """Inject live orderbook depth5 snapshot into the last row of features (in-place)."""
+    try:
+        from data_cache.fetch_orderbook_depth import fetch_orderbook_depth5
+        result = fetch_orderbook_depth5(symbol, perp=True)
+        if result is None:
+            result = fetch_orderbook_depth5(symbol, perp=False)
+        if result is not None:
+            bid_usd, ask_usd = result
+            features.loc[features.index[-1], "ob_bid_usd"] = bid_usd
+            features.loc[features.index[-1], "ob_ask_usd"] = ask_usd
+    except Exception as exc:
+        log.debug("[%s] OB depth injection failed: %s", symbol, exc)
+
+
+def _inject_live_aggtrades(features: pd.DataFrame, symbol: str) -> None:
+    """Inject live aggTrades metrics into the last row of features (in-place)."""
+    try:
+        from data_cache.fetch_aggtrades import fetch_aggtrades_snapshot
+        snap = fetch_aggtrades_snapshot(symbol, perp=True)
+        if snap is None:
+            snap = fetch_aggtrades_snapshot(symbol, perp=False)
+        if snap is not None:
+            idx = features.index[-1]
+            features.loc[idx, "cvd_1m_usd"] = snap.cvd_usd
+            features.loc[idx, "vol_velocity_1m"] = snap.vol_velocity
+            features.loc[idx, "whale_tick_count"] = float(snap.whale_tick_count)
+    except Exception as exc:
+        log.debug("[%s] AggTrades injection failed: %s", symbol, exc)
+
+
+def _inject_multi_exchange(features: pd.DataFrame, symbol: str) -> None:
+    """Inject MEXC/Bitget multi-exchange features into last row of features (in-place)."""
+    try:
+        from data_cache.fetch_multi_exchange import fetch_multi_exchange_snapshot
+        snap = fetch_multi_exchange_snapshot(symbol)
+        if snap is not None:
+            idx = features.index[-1]
+            features.loc[idx, "mexc_vol_ratio"] = snap.mexc_vol_ratio
+            features.loc[idx, "mexc_price_lead"] = snap.mexc_price_lead
+    except Exception as exc:
+        log.debug("[%s] Multi-exchange injection failed: %s", symbol, exc)
+
+
+def _inject_mtf_features(features: pd.DataFrame, klines: pd.DataFrame) -> None:
+    """Compute MTF EMA confluence and merge into features (in-place)."""
+    try:
+        from scanner.mtf_features import compute_mtf_confluence
+        mtf = compute_mtf_confluence(klines)
+        for col in ["mtf_confluence_score", "mtf_ema_bull_count", "mtf_ema_bear_count"]:
+            features[col] = mtf[col].reindex(features.index, method="ffill")
+    except Exception as exc:
+        log.debug("MTF feature injection failed: %s", exc)
+
+
+def _inject_sector_scores(
+    features: pd.DataFrame,
+    symbol: str,
+    sector_scores: dict[str, float] | None,
+) -> None:
+    """Inject sector_score_norm and sector_avg_pct into all rows (uniform value)."""
+    if not sector_scores:
+        return
+    try:
+        score_norm = sector_scores.get(symbol, 0.0)
+        sector_avg_map = sector_scores.get("__sector_avg__", {}) or {}
+        from data_cache.token_universe import get_sector
+        sector_avg_pct = sector_avg_map.get(get_sector(symbol), 0.0) if sector_avg_map else 0.0
+        features["sector_score_norm"] = float(score_norm)
+        features["sector_avg_pct"] = float(sector_avg_pct)
+    except Exception as exc:
+        log.debug("[%s] Sector score injection failed: %s", symbol, exc)
+
+
 def _scan_one_symbol(
     symbol: str,
     store: ParquetStore,
     combos: list[PatternCombo],
     risk_cfg: RiskConfig,
     costs: ExecutionCosts,
-) -> list[PatternResult]:
-    results = []
+    macro: pd.DataFrame | None = None,
+    sector_scores: dict[str, float] | None = None,
+) -> tuple[list[PatternResult], dict[str, list[float]]]:
+    results: list[PatternResult] = []
+    trade_returns_by_pattern: dict[str, list[float]] = {}
     scan_ts = datetime.now(timezone.utc).isoformat()
 
     try:
         raw = store.read_ohlcv(symbol)
         if len(raw) < MIN_HISTORY_BARS:
             log.debug("[%s] insufficient data (%d rows < %d)", symbol, len(raw), MIN_HISTORY_BARS)
-            return []
+            return [], {}
 
         klines = _klines_for_context(raw)
-        features = compute_features_table(klines, symbol=symbol)
+        perp = _build_perp_from_store(store, symbol)
+        features = compute_features_table(klines, symbol=symbol, perp=perp, macro=macro)
+        if _LIVE_SIGNALS_MODE:
+            _inject_live_ob(features, symbol)
+            _inject_live_aggtrades(features, symbol)
+            _inject_multi_exchange(features, symbol)
+        _inject_sector_scores(features, symbol, sector_scores)
+        _inject_mtf_features(features, klines)
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
-            return []
+            return [], {}
 
         ctx = Context(klines=klines, features=features, symbol=symbol)
         adv = float((klines["close"] * klines["volume"]).mean())
 
     except Exception as exc:
         log.warning("[%s] context build failed: %s", symbol, exc)
-        return []
+        return [], {}
+
+    # OOS wiring (W-0341): compute holdout cutoff when enabled
+    holdout_ts: "pd.Timestamp | None" = None
+    if _OOS_WIRING:
+        holdout_ts = _oos_cutoff(klines, _OOS_HOLDOUT_FRAC)
 
     for combo in combos:
         try:
@@ -205,6 +395,10 @@ def _scan_one_symbol(
                 for ts, val in fired.items()
                 if val and (last_valid_ts is None or ts <= last_valid_ts)
             ]
+
+            # OOS: filter signals to holdout period only
+            if _OOS_WIRING and holdout_ts is not None:
+                signals = [s for s in signals if s.timestamp >= holdout_ts]
 
             if not signals:
                 results.append(PatternResult(
@@ -225,6 +419,9 @@ def _scan_one_symbol(
                 logger=_NULL_LOGGER,
             )
             m = bt.metrics
+            trade_returns_by_pattern[combo.name] = [
+                t.realized_pnl_pct * 100.0 for t in bt.trades
+            ]
             results.append(PatternResult(
                 symbol=symbol, pattern=combo.name, direction=combo.direction,
                 n_signals=len(signals), n_executed=m.n_executed,
@@ -237,7 +434,7 @@ def _scan_one_symbol(
         except Exception as exc:
             log.warning("[%s/%s] backtest failed: %s", symbol, combo.name, exc)
 
-    return results
+    return results, trade_returns_by_pattern
 
 
 class PatternScanner:
@@ -249,14 +446,24 @@ class PatternScanner:
         combos: list[PatternCombo] | None = None,
         risk_cfg: RiskConfig | None = None,
         costs: ExecutionCosts | None = None,
+        macro: pd.DataFrame | None = None,
+        sector_scores: dict[str, float] | None = None,
     ) -> None:
         self.store = store or ParquetStore()
         self.combos = combos or ALL_COMBOS
         self.risk_cfg = risk_cfg or _DEFAULT_RISK
         self.costs = costs or _DEFAULT_COSTS
+        self._macro = macro
+        self._sector_scores = sector_scores
+        self.last_m_total: int = 0
+        self._last_trade_returns: dict[tuple[str, str], list[float]] = {}
 
     def scan_symbol(self, symbol: str) -> list[PatternResult]:
-        return _scan_one_symbol(symbol, self.store, self.combos, self.risk_cfg, self.costs)
+        results, _ = _scan_one_symbol(
+            symbol, self.store, self.combos, self.risk_cfg, self.costs,
+            macro=self._macro, sector_scores=self._sector_scores,
+        )
+        return results
 
     def scan_universe(
         self,
@@ -267,16 +474,26 @@ class PatternScanner:
         """Parallel scan across all symbols. Returns results DataFrame."""
         t0 = time.monotonic()
         all_results: list[PatternResult] = []
+        all_trade_returns: dict[tuple[str, str], list[float]] = {}
         done = 0
         fail = 0
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {pool.submit(self.scan_symbol, sym): sym for sym in symbols}
+            futures = {
+                pool.submit(
+                    _scan_one_symbol,
+                    sym, self.store, self.combos, self.risk_cfg, self.costs,
+                    self._macro, self._sector_scores,
+                ): sym
+                for sym in symbols
+            }
             for fut in as_completed(futures):
                 sym = futures[fut]
                 try:
-                    res = fut.result()
+                    res, tr = fut.result()
                     all_results.extend(res)
+                    for pat, rets in tr.items():
+                        all_trade_returns[(sym, pat)] = rets
                     done += 1
                     if done % 50 == 0:
                         log.info("Scanned %d/%d symbols...", done, len(symbols))
@@ -298,6 +515,10 @@ class PatternScanner:
         # Cap spurious Sharpe from tiny-n results (std≈0 edge case)
         df["sharpe"] = df["sharpe"].clip(-10, 10)
         df = df.sort_values("sharpe", ascending=False).reset_index(drop=True)
+
+        # Track total tests for BH family (W-0341)
+        self.last_m_total = len(symbols) * len(self.combos)
+        self._last_trade_returns = all_trade_returns
 
         self.save_results(df)
         return df

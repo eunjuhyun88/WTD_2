@@ -6,6 +6,7 @@
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
   import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
+  import KimchiPremiumBadge from '$lib/components/market/KimchiPremiumBadge.svelte';
   import type { CaptureRow, FlywheelHealth } from './+page.server';
 
   let { data } = $props();
@@ -209,6 +210,7 @@
       </article>
     </div>
     <div class="topbar-actions">
+      <KimchiPremiumBadge />
       <button class="surface-button" onclick={() => goto('/cogochi')}>Open Terminal</button>
       <button class="surface-button-secondary" onclick={() => goto('/lab')}>Open Lab</button>
     </div>

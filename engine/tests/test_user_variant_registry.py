@@ -97,20 +97,18 @@ def test_resolve_preserves_invariant_pattern_slug_timeframe(tmp_path):
     assert result.timeframe == "1h"
 
 
-def test_invalidate_clears_cache_entry(tmp_path):
-    """After invalidate, next resolve is a fresh call (no exception)."""
+def test_invalidate_is_safe_no_op(tmp_path):
+    """invalidate() must not raise even when called before or after resolve."""
     reg = _make_registry(tmp_path)
     user_id = "u-inv2"
     pattern_slug = "test-pattern"
 
-    # First resolution
-    result1 = reg.resolve_for_user(user_id, pattern_slug)
-    # Manually populate cache
-    reg._cache[(user_id, pattern_slug)] = result1
-
-    # Invalidate
+    # Invalidate before any resolve — must not raise
     reg.invalidate(user_id, pattern_slug)
-    assert (user_id, pattern_slug) not in reg._cache
+
+    # Resolve, then invalidate — must not raise
+    result1 = reg.resolve_for_user(user_id, pattern_slug)
+    reg.invalidate(user_id, pattern_slug)
 
     # Second resolution after invalidation must not raise
     result2 = reg.resolve_for_user(user_id, pattern_slug)

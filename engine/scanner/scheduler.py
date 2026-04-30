@@ -46,6 +46,10 @@ from scanner.jobs.alpha_observer import scan_alpha_observer_job
 from scanner.jobs.alpha_warm import scan_alpha_warm_job
 from scanner.jobs.pattern_scan import pattern_scan_job
 from scanner.jobs.search_corpus import search_corpus_refresh_job
+from scanner.jobs.extreme_event_tracker import (
+    extreme_event_detector_job,
+    extreme_event_outcome_job,
+)
 from workers.feature_windows_prefetcher import prefetch_feature_windows as _fw_prefetch
 from scanner.jobs.universe_scan import (
     push_alert,
@@ -58,6 +62,35 @@ from universe.config import DEFAULT_SCAN_UNIVERSE
 from universe.loader import load_universe_async
 
 log = logging.getLogger("engine.scanner")
+
+
+def _watched_symbols() -> set[str]:
+    """Return symbols from all is_watching=True captures (W-0335 PR-1).
+
+    Gracefully returns empty set if CaptureStore is unavailable.
+    """
+    try:
+        from capture.store import CaptureStore
+        store = CaptureStore()
+        captures = store.list(is_watching=True, limit=200)
+        return {c.symbol for c in captures if c.symbol}
+    except Exception as exc:
+        log.debug("_watched_symbols: failed to read CaptureStore: %s", exc)
+        return set()
+
+
+async def _load_universe_with_watches(universe_name: str) -> list[str]:
+    """Union default universe with watched-capture symbols (W-0335 PR-1).
+
+    Watched symbols are always included even when absent from the
+    dynamic universe — ensures captures users are monitoring get scanned.
+    """
+    base = set(await load_universe_async(universe_name))
+    watches = _watched_symbols()
+    if watches - base:
+        log.info("W-0335: adding %d watched symbols to scan universe: %s",
+                 len(watches - base), sorted(watches - base)[:10])
+    return sorted(base | watches)
 
 _scheduler: AsyncIOScheduler | None = None
 _last_pattern_entry_keys: set[str] = set()
@@ -87,16 +120,18 @@ FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION
 }
 FEATURE_MATERIALIZATION_INTERVAL = int(os.environ.get("FEATURE_MATERIALIZATION_INTERVAL_SECONDS", "900"))
 
-# A8: Beta job gates — non-core jobs disabled by default for beta deployments.
-# Set ENABLE_<JOB>=true to re-enable after beta.
+# A8: Beta job gates — flywheel jobs (outcome/refinement/okx) now default ON (W-0336).
+# Heavy infra jobs remain off until explicitly enabled.
 _BETA_JOB_FLAGS = {
-    "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "false"),
-    "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "false"),
-    "fetch_okx_signals": os.environ.get("ENABLE_FETCH_OKX_SIGNALS_JOB", "false"),
+    "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "true"),
+    "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "true"),
+    "fetch_okx_signals": os.environ.get("ENABLE_FETCH_OKX_SIGNALS_JOB", "true"),
     "corpus_bridge_sync": os.environ.get("ENABLE_CORPUS_BRIDGE_SYNC_JOB", "false"),
     "feature_windows_prefetch": os.environ.get("ENABLE_FEATURE_WINDOWS_PREFETCH_JOB", "false"),
     "alpha_observer_cold": os.environ.get("ENABLE_ALPHA_OBSERVER_COLD_JOB", "false"),
     "alpha_observer_warm": os.environ.get("ENABLE_ALPHA_OBSERVER_WARM_JOB", "false"),
+    "extreme_event_detector": os.environ.get("EXTREME_EVENT_TRACKER_JOB", "false"),
+    "extreme_event_outcome": os.environ.get("EXTREME_EVENT_OUTCOME_JOB", "false"),
 }
 
 
@@ -215,7 +250,7 @@ async def _scan_universe() -> None:
         universe_name=UNIVERSE_NAME,
         min_blocks=MIN_BLOCKS,
         scan_telegram_enabled=SCAN_TELEGRAM_ENABLED,
-        load_universe_async=load_universe_async,
+        load_universe_async=_load_universe_with_watches,
         load_macro_bundle=load_macro_bundle,
         load_klines=load_klines,
         load_perp=load_perp,
@@ -455,6 +490,34 @@ def start_scheduler() -> None:
             max_instances=1,
             coalesce=True,
             misfire_grace_time=120,
+        )
+
+    # Job: Extreme event detector — every 30 min (funding_extreme / OI_spike)
+    if _job_enabled("extreme_event_detector"):
+        _scheduler.add_job(
+            lambda: extreme_event_detector_job(UNIVERSE_NAME),
+            trigger="interval",
+            seconds=1800,
+            jitter=60,
+            id="extreme_event_detector",
+            name="Extreme event detector (30min)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
+
+    # Job: Extreme event outcome resolver — every 1 hour
+    if _job_enabled("extreme_event_outcome"):
+        _scheduler.add_job(
+            extreme_event_outcome_job,
+            trigger="interval",
+            seconds=3600,
+            jitter=120,
+            id="extreme_event_outcome",
+            name="Extreme event outcome resolver (1h)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
         )
 
     _scheduler.start()

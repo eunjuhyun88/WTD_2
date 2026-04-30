@@ -1,11 +1,25 @@
-# W-0299 — Cursor-style Context Manager
+# W-0300 — Cursor-style Context Manager (Superseded Draft)
 
 > Wave: 5 (Productivity) | Priority: P1 | Effort: S (0.5일)
 > Charter: In-Scope (개발 에이전트 툴링 — 기존 harness 확장, 신규 시스템 아님)
-> Status: 🟡 Design Draft
+> Status: ⚪ Superseded by W-0299
 > Created: 2026-04-29
 > Issue: TBD
 > Depends on: W-0297 Phase B (.mcp.json + LSP allow 완료 후 풀 체인 테스트 가능)
+
+---
+
+## Supersession Note — 2026-04-30
+
+이 문서는 같은 기능의 초기 draft다. 실제 구현 상태와 검증 결과는 `work/completed/W-0299-cursor-context-manager.md`를 canonical로 본다.
+
+왜 superseded인가:
+
+- 실제 구현 파일은 `.claude/commands/컨텍스트.md`와 `tools/context-pack.sh`로 이미 main에 들어갔다.
+- 이 문서는 `skills/컨텍스트.md`를 canonical 경로로 가정하지만, 실제 경로는 `.claude/commands/컨텍스트.md`다.
+- Issue/상태가 `TBD`/`Design Draft`로 남아 있어 현재 구현 상태를 반영하지 않는다.
+
+보존 이유: W-0299 설계의 배경, risk matrix, Skill vs Tool 판단 근거가 남아 있다.
 
 ---
 

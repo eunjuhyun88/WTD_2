@@ -1,140 +1,311 @@
-# W-0304 — 멀티차트 per-pane 인디케이터 스코핑
+# W-0304 — Multichart Per-Pane Indicator Scoping
 
-> Wave: MM (Maintenance) | Priority: P2 | Effort: S (2일)
-> Charter: In-Scope L5 (Chart UI surface, 기능 정합성 개선)
-> Status: 🟡 Design Draft
-> Issue: #619
-> Created: 2026-04-29
+> **Status**: REDESIGNED 2026-04-30 — SSE chart_action routing 결정 lock-in. 기존 설계는 SSE handling 미포함이었음.
+>
+> **Issue**: #619 (primary)
+> **Duplicate**: #617 (close 권고)
+> **Charter**: 베타 멀티차트 UX (W-0287/0288/0289 follow-up)
+> **Depends on**: W-0102 (SSE chart_action 공유 store 결정 — 본 W-item 이 그 결정 partial revisit)
+> **D-axis**: D-D (UX), D-A (store architecture)
+
+---
+
+## 1. 기존 설계 문제점
+
+| # | 문제 | 실측 |
+|---|---|---|
+| P1 | "global store → per-pane store" 만 적시. SSE chart_action 라우팅 미정의 | `chartIndicators` store 가 SSE `add_indicator`/`remove_indicator` action 의 sink. per-pane 분리 시 어느 pane 에 적용? — 미결 |
+| P2 | `createPaneIndicatorStore()` factory 만 명시. ChartPane 의 setContext/getContext 패턴 미설계 | `ChartPane.svelte` 가 global `chartIndicators` 직접 import 중. setContext 패턴 부재 |
+| P3 | W-0102 결정 (SSE 공유 store) 과의 정합성 unresolved | 직접 충돌 |
+| P4 | localStorage persistence 가 per-pane 인지 single 인지 미정의 | 사용자 멀티차트 토글 후 reload 시 복원 동작 모호 |
+| P5 | activePane 정의 누락 | "activePane" 용어 사용 가능, 실측 시 terminal page 에 `activePaneId` state 미존재 → 신규 도입 |
+
+---
+
+## 2. 핵심 설계 결정 (lock-in)
+
+### 2.1 SSE chart_action 라우팅 → **activePane 에만 적용**
+
+| 옵션 | 판단 |
+|---|---|
+| A. 모든 pane 에 적용 (현 동작) | ❌ 사용자 의도 위반. pane 1 에 BTC 보면서 pane 2 에 ETH 만 indicator 켜고 싶은 경우 불가 |
+| B. activePane 에만 적용 | ✅ **채택**. 자연스러운 멘탈 모델 ("선택한 차트에 적용") |
+| C. SSE payload 에 `pane_id` 추가 | ⏳ 미래 확장 옵션. 지금은 server 가 pane 인식 안 함. B 로 시작 후 필요시 C 로 진화 |
+
+→ **D-Decision**: SSE chart_action 은 `activePaneId` 의 store 에만 dispatch. server-side payload 변경 없음 (W-0102 호환).
+
+### 2.2 localStorage persistence → **per-pane**
+
+- 키: `chart_indicators::pane_${paneId}` (paneId 0~4)
+- single chart 모드는 `paneId=0` 단일.
+- 멀티차트 모드 첫 진입 시 `pane_0` 의 indicators 를 모든 신규 pane 에 복제 (UX 친화).
+
+### 2.3 W-0102 정합성
+
+W-0102 은 "SSE event chart_action 이 공유 store 를 토글한다" 까지만 결정. **어느 store 인지** 는 W-0304 에서 확정. → conflict 없음. W-0102 결정 유지, W-0304 가 routing layer 추가.
+
+---
+
+## 3. 아키텍처
+
+### 3.1 Store 계층
+
+```
+┌─────────────────────────────────────────────────┐
+│  paneIndicatorStores: Map<paneId, Writable>     │  (Map<number, Writable<IndicatorState>>)
+│    pane_0 → {vwap, sma20, ...}                  │
+│    pane_1 → {vwap, ...}                         │
+│    ...                                          │
+└─────────────────────────────────────────────────┘
+        ↑                        ↑
+        │ getIndicatorStore(0)   │ getIndicatorStore(1)
+        │                        │
+   ChartPane (paneId=0)     ChartPane (paneId=1)
+        │                        │
+        └────────── SSE handler ────┐
+                                    │
+                          activePaneId store (Writable<number>)
+                                    │
+                          chart_action SSE event → store of activePaneId
+```
+
+### 3.2 신규 파일
+
+| Path | 역할 |
+|---|---|
+| `app/src/lib/stores/paneIndicators.ts` | factory + Map registry + activePaneId |
+| (수정) `app/src/components/terminal/workspace/ChartPane.svelte` | global import 제거 → `paneId` prop + `getIndicatorStore(paneId)` |
+| (수정) `app/src/routes/terminal/+page.svelte` | SSE handler 에서 `get(activePaneId)` 로 라우팅 |
+| (deprecated, NOT delete) `app/src/lib/stores/chartIndicators.ts` | back-compat alias = `getIndicatorStore(0)`. W-0306 (다음 cleanup) 에서 제거 |
+
+### 3.3 API 설계
+
+```ts
+// app/src/lib/stores/paneIndicators.ts
+import { writable, get, type Writable } from 'svelte/store';
+
+export type IndicatorState = {
+  vwap: boolean;
+  sma20: boolean;
+  ema50: boolean;
+  // ... existing fields
+};
+
+const DEFAULT_STATE: IndicatorState = {
+  vwap: false, sma20: false, ema50: false,
+};
+
+const paneStores = new Map<number, Writable<IndicatorState>>();
+export const activePaneId = writable<number>(0);
+
+function loadFromStorage(paneId: number): IndicatorState {
+  if (typeof localStorage === 'undefined') return { ...DEFAULT_STATE };
+  const raw = localStorage.getItem(`chart_indicators::pane_${paneId}`);
+  if (!raw) return { ...DEFAULT_STATE };
+  try { return { ...DEFAULT_STATE, ...JSON.parse(raw) }; }
+  catch { return { ...DEFAULT_STATE }; }
+}
+
+export function getIndicatorStore(paneId: number): Writable<IndicatorState> {
+  if (!paneStores.has(paneId)) {
+    const store = writable<IndicatorState>(loadFromStorage(paneId));
+    store.subscribe((v) => {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`chart_indicators::pane_${paneId}`, JSON.stringify(v));
+      }
+    });
+    paneStores.set(paneId, store);
+  }
+  return paneStores.get(paneId)!;
+}
+
+export function applyChartAction(action: 'add_indicator' | 'remove_indicator', name: keyof IndicatorState) {
+  const id = get(activePaneId);
+  const store = getIndicatorStore(id);
+  store.update((s) => ({ ...s, [name]: action === 'add_indicator' }));
+}
+```
+
+### 3.4 ChartPane 수정
+
+```svelte
+<script lang="ts">
+  import { getIndicatorStore } from '$lib/stores/paneIndicators';
+  export let paneId: number = 0;
+  $: indicatorStore = getIndicatorStore(paneId);
+  $: indicators = $indicatorStore;
+</script>
+
+{#if indicators.vwap}
+  <VwapOverlay ... />
+{/if}
+```
+
+### 3.5 ActivePane 트래킹
+
+`+page.svelte` 의 멀티차트 컨테이너:
+
+```svelte
+<div role="grid">
+  {#each panes as p, i}
+    <ChartPane
+      paneId={i}
+      onfocus={() => activePaneId.set(i)}
+      onclick={() => activePaneId.set(i)}
+      class:active={$activePaneId === i}
+    />
+  {/each}
+</div>
+```
+
+### 3.6 SSE handler 수정
+
+기존 `chartIndicators.update(...)` 호출부를 `applyChartAction(...)` 호출로 교체.
+
+---
+
+## 4. Exit Criteria
+
+| # | 기준 | 측정 |
+|---|---|---|
+| E1 | `paneIndicators.ts` factory + activePaneId + applyChartAction export | grep |
+| E2 | `ChartPane.svelte` 가 global `chartIndicators` import 안 함 | grep + svelte-check |
+| E3 | 멀티차트 mode 에서 pane 0 vwap toggle → pane 1 vwap 영향 없음 | playwright/vitest jsdom |
+| E4 | activePaneId=1 일 때 SSE `add_indicator vwap` → pane 1 만 vwap=true | vitest |
+| E5 | localStorage `chart_indicators::pane_0`, `chart_indicators::pane_1` 별도 키로 저장 | vitest |
+| E6 | reload 후 per-pane state 복원 | vitest |
+| E7 | back-compat alias: `chartIndicators` 가 `getIndicatorStore(0)` 와 같은 store 반환 | vitest |
+| E8 | `chartIndicators.ts` 에 deprecation comment 추가 (W-0306 에서 제거 예정) | grep |
+| E9 | svelte-check 0 errors | CI |
+| E10 | terminal /workspace dual-pane 시각 확인 (스크린샷 1장) | manual |
+
+---
+
+## 5. Implementation Order
+
+| 단계 | 작업 | 예상 |
+|---|---|---|
+| 1 | `paneIndicators.ts` 신규 작성 + vitest 5 케이스 (E1, E5, E6) | 1h |
+| 2 | `chartIndicators.ts` deprecation alias | 15min |
+| 3 | `ChartPane.svelte` paneId prop + store wire-up | 30min |
+| 4 | 멀티차트 컨테이너 activePaneId 추적 + 시각 active 표시 | 30min |
+| 5 | SSE handler `applyChartAction()` 로 교체 + vitest (E4) | 45min |
+| 6 | E2E pane isolation 테스트 (E3) | 45min |
+| 7 | screenshot + PR | 15min |
+
+**총 예상: 4h** (factory 1h + UI 1h + SSE 45min + tests 45min + buffer 30min)
+
+---
+
+## 6. Open Questions
+
+| # | 질문 | 후보 |
+|---|---|---|
+| Q1 | 멀티차트 → single chart 전환 시 pane_1~4 storage 처리? | **유지** (다음 멀티차트 진입 시 복원). delete 안 함. |
+| Q2 | `chartIndicators` (legacy) 제거 시점? | W-0306 cleanup PR (미래) |
+| Q3 | server-side `pane_id` SSE payload? | 본 PR 범위 외. 필요시 follow-up W-item |
+
+---
+
+## 7. 거절 옵션
+
+| 거절 옵션 | 거절 이유 |
+|---|---|
+| Svelte 5 `setContext` 만 사용 (Map 없이) | localStorage persistence + 외부 SSE handler 접근 불가 |
+| SSE payload 에 즉시 `pane_id` 추가 | server 변경 필요 + W-0102 deviation. B 옵션으로 시작 |
+| 모든 pane 에 SSE 적용 (현 동작 유지) | per-pane scoping 의 핵심 가치 상실 |
+| chartIndicators.ts 즉시 삭제 | 다른 컴포넌트 (terminal toolbar 등) import 가능성. 검색 후 cleanup PR 분리 |
+
+---
+
+## 8. Issue Action
+
+- **#619 Update**: 본 설계문서 path 첨부, "SSE routing 결정 lock-in" 코멘트
+- **#617 Close**: "duplicate of #619. 통합 설계는 W-0304 / #619."
+- **PR description**: `Closes #619`, `Closes #617`
+
+---
+
+## 9. References
+
+- `app/src/components/terminal/workspace/ChartPane.svelte` (현재 global store 직접 import)
+- `app/src/lib/stores/chartIndicators.ts` (W-0102 결정 store)
+- W-0102 (SSE chart_action 결정)
+- W-0287/0288/0289 (멀티차트 base)
 
 ---
 
 ## Goal
 
-멀티차트 2x2/3+1 모드에서 pane A에서 EMA를 켜도 pane B에 영향을 주지 않도록,
-`chartIndicators` 전역 store를 Svelte Context API로 per-pane 격리한다.
+멀티차트 2x2/3+1 모드에서 pane A 인디케이터 토글이 pane B에 영향을 주지 않도록 per-pane 격리하고, SSE chart_action은 activePane에만 적용한다.
 
----
+## Owner
+
+app
 
 ## Scope
 
-- 포함:
-  - `ChartPane.svelte` — `setContext('chartIndicators', writable(DEFAULT))` 주입
-  - `ChartBoard.svelte` — `getContext('chartIndicators')` → global fallback 패턴
-  - `chartIndicators.ts` — `createPaneIndicatorStore()` factory 함수 추가
-- 파일/모듈:
-  - `app/src/lib/stores/chartIndicators.ts` (186줄)
-  - `app/src/components/terminal/workspace/ChartPane.svelte`
-  - `app/src/components/terminal/workspace/ChartBoard.svelte` (or ChartBoardHeader.svelte)
-- 테스트:
-  - `app/src/components/terminal/workspace/__tests__/W0304_per_pane_indicators.test.ts`
-
----
+- `app/src/lib/stores/paneIndicators.ts` (신규)
+- `app/src/components/terminal/workspace/ChartPane.svelte` (수정)
+- `app/src/routes/terminal/+page.svelte` (SSE handler 수정)
+- `app/src/lib/stores/chartIndicators.ts` (deprecated alias 추가)
 
 ## Non-Goals
 
-- 단일 모드(`multiChartMode=false`) 동작 변경: global store 그대로 유지
-- VWAP/ATR 등 개별 인디케이터 로직 변경: 스코핑만, 계산 로직 불변
-- SSE chart_action 이벤트 per-pane 라우팅: 별도 work item
-
----
-
-## Exit Criteria
-
-- [ ] AC1: `ChartPane.svelte`에서 `setContext('chartIndicators', createPaneIndicatorStore())` 호출
-- [ ] AC2: `ChartBoard.svelte`에서 `getContext('chartIndicators') ?? chartIndicators` (global fallback)
-- [ ] AC3: vitest — pane A store와 pane B store가 독립 인스턴스임을 확인
-- [ ] AC4: 기존 단일 모드 회귀 없음 (svelte-check 0 errors, 기존 테스트 통과)
-- [ ] AC5: `chartIndicators.ts`에 `createPaneIndicatorStore()` 함수 export
-
-**수치 기준**: 단일 모드 indicator toggle latency 영향 없음 (≤1ms, 현재와 동일)
-
----
-
-## AI Researcher 리스크
-
-**훈련 데이터 영향**: 없음. 인디케이터 UI 스코핑은 chart_action SSE 시그널과 무관.
-**통계적 유효성**: N/A (UI 격리, 모델 학습 신호 불변)
-**실데이터**: 멀티차트 모드에서 EMA 5/20/60은 항상 표시됨 — 이 변경 후 단일 모드에서 동일하게 항상 표시 유지 필요.
-
----
-
-## CTO 설계 결정
-
-**Svelte Context API 선택 이유**:
-- `setContext` / `getContext`는 컴포넌트 트리 내에서만 동작 → pane 격리 자연스럽게 달성
-- global store instance는 단일 모드에서 그대로 재사용 → 기존 코드 변경 최소화
-- 대안 (prop drilling): ChartBoard→ChartBoardHeader → 2단계 prop 추가 → 인터페이스 오염
-
-**Fallback 패턴**:
-```ts
-// ChartBoard.svelte
-import { getContext } from 'svelte';
-import { chartIndicators as globalIndicators } from '$lib/stores/chartIndicators';
-
-const indicators = getContext<Readable<ChartIndicatorState>>('chartIndicators')
-                ?? globalIndicators;
-```
-
-**Factory 함수**:
-```ts
-// chartIndicators.ts 에 추가
-export function createPaneIndicatorStore(): Writable<ChartIndicatorState> {
-  return writable(DEFAULT_INDICATOR_STATE);
-}
-```
-
----
-
-## Facts (코드 실측)
-
-```
-chartIndicators.ts:
-  - 186줄, global singleton writable
-  - export { chartIndicators, toggleIndicator, addIndicator, removeIndicator }
-  - snapshotIndicators() / resetIndicators() 유틸 존재
-
-ChartPane.svelte:
-  - W-0288에서 신규 생성
-  - ChartBoard를 wrapping, setContext 없음
-
-ChartBoard.svelte:
-  - chartIndicators store를 직접 subscribe
-  - multiChartMode 시 동일 store 공유
-```
-
----
-
-## Assumptions
-
-- Svelte 5 runes + `svelte/store` compatible: setContext/getContext는 Svelte 5에서도 동작
-- 단일 모드(`multiChartMode=false`)에서 ChartBoard는 global store 사용 (Context 없음)
-- 멀티모드에서 ChartPane이 항상 ChartBoard를 wrapping하는 구조 유지 (W-0288 구조)
-
----
+- SSE payload에 pane_id 추가 (server 변경 없음, W-0102 호환)
+- chartIndicators.ts 즉시 삭제 (W-0306 cleanup PR에서 처리)
+- 단일 모드 동작 변경
 
 ## Canonical Files
 
-| 파일 | 변경 내용 |
-|---|---|
-| `app/src/lib/stores/chartIndicators.ts` | `createPaneIndicatorStore()` export 추가 |
-| `app/src/components/terminal/workspace/ChartPane.svelte` | `setContext('chartIndicators', createPaneIndicatorStore())` 주입 |
-| `app/src/components/terminal/workspace/ChartBoard.svelte` | `getContext ?? globalIndicators` fallback 패턴 적용 |
-| `app/src/components/terminal/workspace/__tests__/W0304_per_pane_indicators.test.ts` | per-pane 격리 vitest |
+- `app/src/lib/stores/paneIndicators.ts`
+- `app/src/components/terminal/workspace/ChartPane.svelte`
+- `app/src/routes/terminal/+page.svelte`
 
----
+## Facts
 
-## Implementation Plan
+1. `ChartPane.svelte` — global `chartIndicators` 직접 import + `$derived($chartIndicators.vwap)` 사용 (setContext 없음)
+2. `chartIndicators.ts` — W-0102 결정: 5-pane budget, SSE chart_action 공유 store
+3. terminal page `+page.svelte:988` — SSE `chart_action` → `chartIndicators.update()` 호출
+4. `activePaneId` state 미존재 → 신규 도입 필요
 
-1. `chartIndicators.ts`에 `createPaneIndicatorStore()` factory 추가 (5줄)
-2. `ChartPane.svelte`에서 onMount 전 `setContext` 호출
-3. `ChartBoard.svelte`에서 `getContext ?? global` fallback 적용
-4. 테스트 작성 (AC1~AC5)
-5. `svelte-check` 0 errors 확인
+## Assumptions
 
----
+- 멀티차트 pane 수 최대 4개
+- SSE chart_action은 현재 server에 pane_id 개념 없음
+- localStorage 사용 가능 (browser 환경)
 
-## References
+## Decisions
 
-- Issue #617 (tech debt), Issue #619 (이 work item)
-- W-0288 PR #600 (ChartGridLayout + ChartPane 구현)
-- spec/PRIORITIES.md — L5 갭 (UI surface 정합성)
+- [D-0304-1] SSE chart_action → activePaneId의 store에만 dispatch (모든 pane 거절)
+- [D-0304-2] localStorage per-pane 키 (`chart_indicators::pane_${id}`)
+- [D-0304-3] chartIndicators.ts back-compat alias 유지 (즉시 삭제 거절)
+
+## Next Steps
+
+1. `paneIndicators.ts` factory + Map registry 구현
+2. `chartIndicators.ts` deprecation alias 추가
+3. `ChartPane.svelte` paneId prop + getIndicatorStore wire-up
+4. SSE handler `applyChartAction()` 교체
+5. vitest + PR
+
+## Exit Criteria
+
+- [ ] E1: `paneIndicators.ts` 구현 — createPaneIndicatorStore() 반환값이 Map에 paneId 키로 저장
+- [ ] E2: ChartPane에 global chartIndicators import 없음 (svelte-check 0 errors)
+- [ ] E3: SSE add_indicator/remove_indicator → activePaneId store에만 dispatch 확인 (vitest)
+- [ ] E4: localStorage 키 `chart_indicators::pane_${id}` 형식 저장/복원 동작
+- [ ] E5: PR merged + CI green
+
+## Open Questions
+
+- [ ] [Q-1] activePaneId가 null일 때 SSE add_indicator → 첫 번째 pane에 적용? 드롭? (현재: 드롭 결정)
+- [ ] [Q-2] W-0102 SSE 공유 store 결정과 이 변경 간 정합성 재검토 필요 (issue #617 참조)
+
+## Handoff Checklist
+
+- [ ] `paneIndicators.ts` 구현 + vitest E1/E4/E5/E6
+- [ ] `ChartPane.svelte` global import 제거 확인
+- [ ] SSE handler 교체 확인
+- [ ] svelte-check 0 errors
+- [ ] screenshot (멀티차트 pane 독립 확인)

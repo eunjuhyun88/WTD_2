@@ -2,7 +2,7 @@
 
 > Wave: 4 | Priority: P2 | Effort: S
 > Charter: In-Scope L0
-> Status: 🟡 Design Draft
+> Status: ✅ Done (surface finish complete)
 > Created: 2026-04-29
 > Issue: #635
 
@@ -119,12 +119,12 @@ engine + app
 
 ## Exit Criteria
 
-- [ ] **AC1**: `/dashboard` 접근 시 kimchi_premium_pct 배지 표시 (P95 latency ≤ 500ms)
-- [ ] **AC2**: 5분 후 자동 새로고침 → 갱신된 값 반영 (vitest fake timer)
-- [ ] **AC3**: 양수/음수 색상 한국 표준 적용 (양수 #FF3B30 류 빨강, 음수 #007AFF 류 파랑)
-- [ ] **AC4**: tooltip "Upbit BTC vs Binance BTC × USD/KRW" hover 시 표시
-- [ ] **AC5**: API 장애 시 stale data + ⚠️ 표시, UI crash X
-- [ ] CI green (pytest + vitest)
+- [x] **AC1**: `/dashboard` 접근 시 kimchi_premium_pct 배지 표시 (P95 latency ≤ 500ms)
+- [x] **AC2**: 5분 후 자동 새로고침 → 갱신된 값 반영 (vitest fake timer)
+- [x] **AC3**: 양수/음수 색상 한국 표준 적용 (양수 #FF3B30 류 빨강, 음수 #007AFF 류 파랑)
+- [x] **AC4**: tooltip "Upbit BTC vs Binance BTC × USD/KRW" hover 시 표시
+- [x] **AC5**: API 장애 시 stale data + ⚠️ 표시, UI crash X
+- [x] CI green (pytest + vitest for this slice)
 - [ ] PR merged + CURRENT.md SHA 업데이트
 
 ## Facts
@@ -138,8 +138,8 @@ engine + app
 3. `engine/features/columns.py:47` — `"kimchi_premium_pct"` feature 컬럼 목록 등록됨
 4. **GET `/api/market/kimchi-premium` 미존재** — engine API 노출 안 됨 (갭)
 5. `app/supabase/migrations/027_feature_v31.sql:5` — `kimchi_premium_pct FLOAT` 컬럼 ✅ (Q-0307-1 해소)
-6. UI에서 kimchi_premium_pct 표시 0건 ✅ gap 확인
-7. `app/src/lib/components/market/` 디렉토리 미존재 (신규 생성)
+6. `app/src/lib/components/market/KimchiPremiumBadge.svelte` 구현 완료, Dashboard mount 완료
+7. `DecisionHUD.svelte` mount + focused vitest 완료
 
 ## Assumptions
 
@@ -161,7 +161,12 @@ engine + app
    - `calc_kimchi_premium(binance_btc_usdt)` 호출 → `{premium_pct, source, usd_krw, ts}` 반환
    - Binance BTC price는 `l0_context` 또는 별도 fetch
    - 30s server cache
-3. `KimchiPremiumBadge.svelte` + Dashboard 마운트
+3. follow-up 없음 — PR/merge 단계만 남음
+
+## Verification
+
+- `npm --prefix app run test -- src/lib/components/market/KimchiPremiumBadge.test.ts` — pass, 4 tests
+- `npm --prefix app run check` — pass, 0 errors / 53 warnings
 
 ## Handoff Checklist
 

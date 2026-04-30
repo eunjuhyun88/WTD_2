@@ -150,6 +150,7 @@
     "@coinbase/wallet-sdk": "^4.3.7",
     "@metamask/sdk": "^0.34.0",
     "@phantom/browser-sdk": "^2.0.0",
+    "@sentry/sveltekit": "^8.55.2",
     "@supabase/supabase-js": "^2.97.0",
     "@vercel/analytics": "^2.0.1",
     "@walletconnect/ethereum-provider": "^2.23.6",

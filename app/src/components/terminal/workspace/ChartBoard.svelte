@@ -9,6 +9,14 @@
     type IndicatorKey,
   } from '$lib/stores/chartIndicators';
   import type { DepthLadderEnvelope, LiquidationClustersEnvelope } from '$lib/contracts/terminalBackend';
+  import {
+    computeDepthRatio,
+    computeContextSummaryItems,
+    computeMetricStripItems,
+    type MetricItem,
+    type QuantRegimeSummary,
+    type CvdDivergenceSummary,
+  } from '$lib/chart/chartMetrics';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
   import { tfMinutes } from '$lib/chart/mtfAlign';
@@ -33,6 +41,7 @@
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
   import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
+  import { createLiveTickState } from '$lib/chart/liveTickState.svelte';
   // ── W-0289: Drawing Tools ────────────────────────────────────────────────────
   import DrawingCanvas from './DrawingCanvas.svelte';
   import DrawingToolbar from './DrawingToolbar.svelte';
@@ -157,119 +166,26 @@
   let drawingActiveTool   = $state<DrawingToolType>('cursor');
   let drawingMgr: DrawingManager | null = null;
 
-  // ── Live WS reference (non-reactive) ──────────────────────────────────────
-  let _ws: WebSocket | null = null;
-  let currentPrice = $state<number | null>(null);
-  let currentTime  = $state<number | null>(null);
-  let currentChangePct = $state<number | null>(null);
-  let currentOiDelta = $state<number | null>(null);
+  // ── Live tick scalars (price / time / changePct / oiDelta) ───────────────
+  // Owned by liveTickState; callbacks (DataFeed.onBar, renderCharts, crosshair)
+  // call liveTick.update() — coupling stays here, ownership does not.
+  const liveTick = createLiveTickState();
   let captureWindowLabel = $state('Visible range capture unavailable');
   let captureBarCount = $state<number | null>(null);
   let depthData = $state<DepthLadderEnvelope['data'] | null>(null);
   let liqData = $state<LiquidationClustersEnvelope['data'] | null>(null);
-  let depthRatio = $derived.by(() => {
-    if (depthData?.imbalanceRatio != null && Number.isFinite(depthData.imbalanceRatio)) {
-      return Math.max(0.65, Math.min(1.35, depthData.imbalanceRatio));
-    }
-    const oi = currentOiDelta ?? 0;
-    const ratio = 1 + oi / 40;
-    return Math.max(0.65, Math.min(1.35, ratio));
-  });
+  let depthRatio = $derived(computeDepthRatio(depthData, liveTick.oiDelta));
   let bidPct = $derived(Math.round((depthRatio / (1 + depthRatio)) * 100));
   let askPct = $derived(100 - bidPct);
-  let liqAnchor = $derived(liqData?.currentPrice ?? currentPrice ?? verdictLevels?.entry ?? 0);
+  let liqAnchor = $derived(liqData?.currentPrice ?? liveTick.price ?? verdictLevels?.entry ?? 0);
   let liqLong = $derived(liqData?.nearestLong?.price ?? (liqAnchor ? liqAnchor * 0.985 : 0));
   let liqShort = $derived(liqData?.nearestShort?.price ?? (liqAnchor ? liqAnchor * 1.012 : 0));
-  let contextSummaryItems = $derived.by(() => {
-    const items: Array<{ label: string; value: string; tone?: 'bull' | 'bear' | 'warn' | 'neutral' }> = [];
-    if (depthData?.spreadBps != null) {
-      items.push({ label: 'Spread', value: `${depthData.spreadBps.toFixed(1)} bps` });
-    }
-    items.push({
-      label: 'Book',
-      value: `${bidPct}/${askPct}`,
-      tone: bidPct >= askPct ? 'bull' : 'bear',
-    });
-    if (liqLong && liqShort) {
-      items.push({
-        label: 'Liq',
-        value: `${liqLong.toLocaleString(undefined, { maximumFractionDigits: 0 })} · ${liqShort.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-        tone: 'warn',
-      });
-    }
-    if (quantRegime?.label) {
-      items.push({
-        label: 'Regime',
-        value: quantRegime.label,
-        tone: quantRegime.tone === 'bull' ? 'bull' : quantRegime.tone === 'bear' ? 'bear' : quantRegime.tone === 'warn' ? 'warn' : 'neutral',
-      });
-    }
-    return items;
-  });
-
-  // ── Permanent derivatives metric strip ────────────────────────────────────
-  // Always-visible bar showing funding / OI / CVD / regime — core data for crypto traders
-  let metricStripItems = $derived.by(() => {
-    const items: Array<{ label: string; value: string; tone: 'bull' | 'bear' | 'warn' | 'neutral' | 'info' }> = [];
-
-    // Funding rate — most important derivative signal
-    if (quantRegime?.fundingPct != null) {
-      const fr = quantRegime.fundingPct;
-      const sign = fr >= 0 ? '+' : '';
-      items.push({
-        label: 'Funding',
-        value: `${sign}${fr.toFixed(4)}%`,
-        tone: fr > 0.05 ? 'bear' : fr < -0.02 ? 'bull' : 'neutral',
-      });
-    }
-
-    // OI Δ% — open interest momentum
-    if (quantRegime?.oiDeltaPct != null) {
-      const oi = quantRegime.oiDeltaPct;
-      const sign = oi >= 0 ? '+' : '';
-      items.push({
-        label: 'OI Δ',
-        value: `${sign}${oi.toFixed(2)}%`,
-        tone: oi > 3 ? 'warn' : oi > 0 ? 'bull' : 'bear',
-      });
-    }
-
-    // CVD divergence
-    if (cvdDivergence?.label) {
-      items.push({
-        label: 'CVD',
-        value: cvdDivergence.label,
-        tone: cvdDivergence.state === 'bullish_divergence' ? 'bull'
-          : cvdDivergence.state === 'bearish_divergence' ? 'bear'
-          : 'neutral',
-      });
-    }
-
-    // Regime
-    if (quantRegime?.label) {
-      items.push({
-        label: 'Regime',
-        value: quantRegime.label,
-        tone: quantRegime.tone,
-      });
-    }
-
-    // Bid/Ask book pressure
-    if (bidPct && askPct) {
-      items.push({
-        label: 'Book',
-        value: `${bidPct}/${askPct}`,
-        tone: bidPct >= askPct ? 'bull' : 'bear',
-      });
-    }
-
-    // Spread
-    if (depthData?.spreadBps != null) {
-      items.push({ label: 'Spread', value: `${depthData.spreadBps.toFixed(1)} bps`, tone: 'neutral' });
-    }
-
-    return items;
-  });
+  let contextSummaryItems = $derived.by<MetricItem[]>(() =>
+    computeContextSummaryItems(depthData, bidPct, askPct, liqLong, liqShort, quantRegime as QuantRegimeSummary | undefined)
+  );
+  let metricStripItems = $derived.by<MetricItem[]>(() =>
+    computeMetricStripItems(quantRegime as QuantRegimeSummary | undefined, cvdDivergence as CvdDivergenceSummary | undefined, bidPct, askPct, depthData)
+  );
 
   // Save Setup modal (mobile legacy)
   let showSaveModal = $state(false);
@@ -810,7 +726,7 @@
         low:   bar.low,
         close: bar.close,
       });
-      currentPrice = bar.close;
+      liveTick.update({ price: bar.close });
       if (isClosed) onCandleClose?.(bar);
     };
 
@@ -904,10 +820,12 @@
 
     const lastBar = klines[klines.length - 1];
     const prevBar = klines[klines.length - 2];
-    currentPrice = lastBar?.close ?? null;
-    currentTime = lastBar?.time ?? null;
-    currentChangePct = lastBar && prevBar && prevBar.close > 0 ? ((lastBar.close - prevBar.close) / prevBar.close) * 100 : null;
-    currentOiDelta = oiBars?.length ? oiBars[oiBars.length - 1]?.value ?? null : null;
+    liveTick.update({
+      price:     lastBar?.close ?? null,
+      time:      lastBar?.time  ?? null,
+      changePct: lastBar && prevBar && prevBar.close > 0 ? ((lastBar.close - prevBar.close) / prevBar.close) * 100 : null,
+      oiDelta:   oiBars?.length ? oiBars[oiBars.length - 1]?.value ?? null : null,
+    });
 
     if (chartMode === 'line') {
       const lineSeries = mainChart.addSeries(LineSeries, {
@@ -1186,13 +1104,12 @@
 
     mainChart.subscribeCrosshairMove((param) => {
       if (param.time) {
-        currentTime = param.time as number;
         const series = priceSeries;
-        if (series) {
-          const d = param.seriesData.get(series) as { close?: number; value?: number } | undefined;
-          if (d?.close != null) currentPrice = d.close;
-          else if (d?.value != null) currentPrice = d.value;
-        }
+        const d = series ? param.seriesData.get(series) as { close?: number; value?: number } | undefined : undefined;
+        liveTick.update({
+          time:  param.time as number,
+          price: d?.close ?? d?.value ?? liveTick.price,
+        });
       }
     });
 
@@ -1534,7 +1451,7 @@
       from = data.klines[0].time;
       to = data.klines[data.klines.length - 1].time;
     }
-    return slicePayloadToViewport(data, from, to, currentTime ?? undefined);
+    return slicePayloadToViewport(data, from, to, liveTick.time ?? undefined);
   }
 
   function handleSaveSetup() {
@@ -1549,7 +1466,7 @@
     showSaveModal = false;
     savedCaptureId = captureId;
     onCaptureSaved?.(captureId);
-    onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
+    onSaveSetup?.({ symbol, timestamp: liveTick.time ?? Math.floor(Date.now() / 1000), tf });
     setTimeout(() => { savedCaptureId = null; }, 4000);
   }
 
@@ -1559,7 +1476,7 @@
     chartSaveMode.exitRangeMode();
     savedCaptureId = captureId;
     onCaptureSaved?.(captureId);
-    onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
+    onSaveSetup?.({ symbol, timestamp: liveTick.time ?? Math.floor(Date.now() / 1000), tf });
     setTimeout(() => { savedCaptureId = null; }, 4000);
   }
 
@@ -1879,7 +1796,7 @@
           <small>
             Spread {depthData?.spreadBps != null ? `${depthData.spreadBps.toFixed(1)} bps` : 'est.'}
             {' · '}
-            Mid {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}
+            Mid {liveTick.price ? liveTick.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}
           </small>
         </div>
         <div class="depth-bar">
@@ -1913,7 +1830,7 @@
         </div>
         <div class="liq-labels">
           <small class="liq-l">Long liq {liqData?.nearestLong?.usd != null ? `${(liqData.nearestLong.usd / 1000).toFixed(1)}k @ ` : ''}{liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
-          <small class="liq-c">Now {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+          <small class="liq-c">Now {liveTick.price ? liveTick.price.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
           <small class="liq-s">Short liq {liqData?.nearestShort?.usd != null ? `${(liqData.nearestShort.usd / 1000).toFixed(1)}k @ ` : ''}{liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
         </div>
       </div>
@@ -1942,7 +1859,7 @@
 <!-- Save Setup Modal (mobile / legacy path) -->
 <SaveSetupModal
   symbol={symbol}
-  timestamp={currentTime ?? Math.floor(Date.now() / 1000)}
+  timestamp={liveTick.time ?? Math.floor(Date.now() / 1000)}
   tf={tf}
   open={showSaveModal && !showResearchPanel}
   getViewportCapture={getViewportForSave}
@@ -2248,17 +2165,6 @@
     line-height: 1.2;
     color: rgba(239,242,247,0.86);
   }
-  .velo-chart-caption strong {
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-  .velo-chart-caption strong.up {
-    color: #22c55e;
-  }
-  .velo-chart-caption strong.down {
-    color: #ef5350;
-  }
   .volume-profile-overlay {
     position: absolute;
     top: 9%;
@@ -2290,12 +2196,6 @@
   }
   .vp-ask {
     background: linear-gradient(90deg, rgba(80,178,232,0.72), rgba(80,178,232,0.20));
-  }
-  .vp-row.poc .vp-bid {
-    background: linear-gradient(90deg, rgba(244,67,54,0.2), rgba(244,67,54,0.92));
-  }
-  .vp-row.poc .vp-ask {
-    background: linear-gradient(90deg, rgba(244,67,54,0.92), rgba(244,67,54,0.26));
   }
   .save-toast {
     position: fixed;
@@ -2335,11 +2235,6 @@
     align-items: center;
     gap: 8px;
     flex-wrap: nowrap;
-  }
-  .pane-label-split > span:first-child {
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: rgba(177, 181, 189, 0.82);
   }
   .pane-hint {
     font-size: 9px;

@@ -43,6 +43,10 @@ export interface OpportunityScore {
   galaxyScore?: number | null;
   // Alerts
   alerts: string[];          // Detected conditions (squeeze, divergence, spike, etc.)
+  // Engine signal overlay (W-0341)
+  engineSignal?: boolean;    // true if engine scanner fired ≥1 block for this symbol
+  engineBlocks?: string[];   // engine block names triggered
+  enginePWin?: number | null; // engine p_win estimate
 }
 
 export interface OpportunityScanResult {

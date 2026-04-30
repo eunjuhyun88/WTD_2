@@ -69,7 +69,7 @@ class TestWhaleAccumulationReversalPattern:
     def test_bottom_confirm_required_blocks(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "BOTTOM_CONFIRM")
-        assert "higher_lows_sequence" in phase.required_blocks
+        assert "cvd_absorption" in phase.required_blocks
         assert "ls_ratio_recovery" in phase.required_blocks
         assert phase.phase_score_threshold == pytest.approx(0.70)
 

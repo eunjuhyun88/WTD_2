@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from api.schemas_memory import MemoryCandidate, MemoryContext
+
+if TYPE_CHECKING:
+    from memory.state_store import UserVerdictWeightStore
 
 
 @dataclass(frozen=True)
@@ -77,3 +81,72 @@ def rerank_candidates(
 
     scored.sort(key=lambda item: item[1], reverse=True)
     return scored[: max(top_k, 1)]
+
+
+# ---------------------------------------------------------------------------
+# Verdict feedback API — W-0346
+# ---------------------------------------------------------------------------
+
+def context_tags_from_outcome(
+    *,
+    symbol: str | None = None,
+    timeframe: str | None = None,
+    pattern_slug: str | None = None,
+) -> list[str]:
+    """Build context tags for a verdict outcome."""
+    tags: list[str] = []
+    if symbol:
+        tags.append(f"symbol:{symbol.upper()}")
+    if timeframe:
+        tags.append(f"timeframe:{timeframe.lower()}")
+    if pattern_slug:
+        tags.append(f"pattern:{pattern_slug.lower()}")
+    return tags
+
+
+def apply_verdict_feedback(
+    user_id: str,
+    verdict: str,
+    *,
+    symbol: str | None = None,
+    timeframe: str | None = None,
+    pattern_slug: str | None = None,
+    weight_store: "UserVerdictWeightStore | None" = None,
+) -> None:
+    """Apply verdict feedback to per-user reranker weights (fire-and-forget).
+
+    verdict ∈ {valid, invalid, near_miss, too_early, too_late}
+    Deltas: valid=+0.05, near_miss/too_early/too_late=+0.01/+0.02, invalid=−0.08
+    Cap: ±1.0 per context_tag. Cold start (n<5): no-op.
+    """
+    from memory.state_store import USER_VERDICT_WEIGHT_STORE
+    store = weight_store or USER_VERDICT_WEIGHT_STORE
+    tags = context_tags_from_outcome(symbol=symbol, timeframe=timeframe, pattern_slug=pattern_slug)
+    if tags:
+        store.apply(user_id, tags, verdict)
+
+
+def score_candidate_with_user_feedback(
+    candidate: MemoryCandidate,
+    context: MemoryContext,
+    user_id: str,
+    *,
+    weight_store: "UserVerdictWeightStore | None" = None,
+    base_weights: RerankWeights | None = None,
+) -> tuple[float, list[str]]:
+    """Score a candidate with per-user verdict adjustments applied on top."""
+    from memory.state_store import USER_VERDICT_WEIGHT_STORE
+    store = weight_store or USER_VERDICT_WEIGHT_STORE
+    adjustments = store.get_adjustments(user_id)
+
+    score, reasons = score_candidate(candidate, context, base_weights)
+
+    # Apply user-specific tag bonuses/penalties
+    tags_lower = {tag.lower() for tag in candidate.tags}
+    for raw_tag, delta in adjustments.items():
+        tag_value = raw_tag.split(":", 1)[-1].lower() if ":" in raw_tag else raw_tag.lower()
+        if tag_value in tags_lower and delta != 0.0:
+            score += delta
+            reasons.append(f"user_feedback:{raw_tag}")
+
+    return score, reasons

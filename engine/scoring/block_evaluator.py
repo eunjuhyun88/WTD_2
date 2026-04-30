@@ -65,6 +65,8 @@ from building_blocks.confirmations.post_dump_compression import post_dump_compre
 from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
+from building_blocks.confirmations.cvd_surge_long import cvd_surge_long
+from building_blocks.confirmations.whale_tick_buy import whale_tick_buy
 from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.delta_flip_var import delta_flip_var
 from building_blocks.confirmations.volume_dryup import volume_dryup
@@ -76,7 +78,6 @@ from building_blocks.confirmations.oi_exchange_divergence import oi_exchange_div
 from building_blocks.confirmations.venue_oi_divergence import venue_oi_divergence
 from building_blocks.confirmations.venue_funding_spread_extreme import venue_funding_spread_extreme
 from building_blocks.confirmations.isolated_venue_pump import isolated_venue_pump
-from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.relative_velocity_bull import relative_velocity_bull
 from building_blocks.confirmations.cvd_price_divergence import cvd_price_divergence
 from building_blocks.confirmations.orderbook_imbalance_ratio import orderbook_imbalance_ratio
@@ -94,6 +95,7 @@ from social.blocks import (
 from building_blocks.confirmations.cot_large_spec_short import cot_large_spec_short
 from building_blocks.confirmations.cot_commercial_net_long import cot_commercial_net_long
 from building_blocks.confirmations.cot_positioning_flip import cot_positioning_flip
+from building_blocks.confirmations.macro_regime_extreme import macro_regime_extreme
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -109,13 +111,6 @@ from building_blocks.confirmations.holder_concentration_ok import holder_concent
 from building_blocks.confirmations.vwap_break import vwap_break
 from building_blocks.confirmations.relative_strength_btc import relative_strength_btc
 from building_blocks.confirmations.oi_acceleration import oi_acceleration
-# HTML reference pattern blocks (volatility-squeeze, alpha-confluence, radar-golden, etc.)
-from building_blocks.confirmations.atr_ultra_low import atr_ultra_low
-from building_blocks.confirmations.liq_zone_squeeze_setup import liq_zone_squeeze_setup
-from building_blocks.confirmations.volume_surge_bull import volume_surge_bull
-from building_blocks.confirmations.volume_surge_bear import volume_surge_bear
-from building_blocks.confirmations.negative_funding_bias import negative_funding_bias
-from building_blocks.confirmations.oi_contraction_confirm import oi_contraction_confirm
 
 log = logging.getLogger("engine.blocks")
 
@@ -168,6 +163,8 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
+    ("cvd_surge_long",     cvd_surge_long),
+    ("whale_tick_buy",     whale_tick_buy),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),
     ("smart_money_accumulation", smart_money_accumulation),
@@ -203,6 +200,11 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("cot_large_spec_short",    cot_large_spec_short),
     ("cot_commercial_net_long", cot_commercial_net_long),
     ("cot_positioning_flip",    cot_positioning_flip),
+    # W-0338: Macro regime extremes (fear_greed, vix, btc_dominance)
+    ("macro_fear_extreme",      lambda ctx: macro_regime_extreme(ctx, mode="fear")),
+    ("macro_greed_extreme",     lambda ctx: macro_regime_extreme(ctx, mode="greed")),
+    ("macro_vix_spike",         lambda ctx: macro_regime_extreme(ctx, mode="vix_spike")),
+    ("macro_btc_dom_high",      lambda ctx: macro_regime_extreme(ctx, mode="btc_dom_high")),
     # W-0115 Alpha pipeline blocks
     ("spot_futures_cvd_divergence",     spot_futures_cvd_divergence),
     ("dex_buy_pressure",                dex_buy_pressure),
@@ -211,13 +213,6 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("vwap_break",                      vwap_break),
     ("relative_strength_btc",           relative_strength_btc),
     ("oi_acceleration",                 oi_acceleration),
-    # HTML reference pattern blocks (volatility-squeeze, alpha-confluence, radar-golden, etc.)
-    ("atr_ultra_low",                   atr_ultra_low),
-    ("liq_zone_squeeze_setup",          liq_zone_squeeze_setup),
-    ("volume_surge_bull",               volume_surge_bull),
-    ("volume_surge_bear",               volume_surge_bear),
-    ("negative_funding_bias",           negative_funding_bias),
-    ("oi_contraction_confirm",          oi_contraction_confirm),
     # absorption + cross-asset blocks (alpha-hunter, radar-golden, alpha-flow)
     ("absorption_signal",               absorption_signal),
     ("alt_btc_accel_ratio",             alt_btc_accel_ratio),

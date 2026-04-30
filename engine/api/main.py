@@ -24,7 +24,8 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
-from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user
+from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user, research
+from personalization.api import router as personalization_router
 from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
@@ -45,6 +46,7 @@ from api.auth import extract_user_id_from_jwt, is_protected_route
 from universe.config import DEFAULT_SCAN_UNIVERSE
 from observability.health import health_payload, readiness_payload
 from observability.metrics import increment, observe_ms, snapshot as metrics_snapshot
+from observability.sentry import init_sentry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -160,6 +162,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 # ---------------------------------------------------------------------------
 
 assert_public_runtime_security()
+init_sentry()
 docs_url, openapi_url = build_docs_urls()
 
 app = FastAPI(
@@ -292,6 +295,8 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(users.router, prefix="/users", tags=["users"])
     target.include_router(metrics_user.router, prefix="/metrics", tags=["metrics"])
     target.include_router(viz.router, prefix="/viz", tags=["viz"])
+    target.include_router(personalization_router, prefix="/personalization", tags=["personalization"])
+    target.include_router(research.router, prefix="/research", tags=["research"])
 
 
 def _include_worker_control_routes(target: FastAPI) -> None:

@@ -203,10 +203,10 @@ def run_app_typecheck(dry_run: bool) -> tuple[bool, str]:
         npm = shutil.which("npm")
         if not npm:
             return True, "SKIP (pnpm/npm not found)"
-        runner = [npm, "--prefix", str(APP_DIR), "run", "typecheck"]
+        runner = [npm, "--prefix", str(APP_DIR), "run", "check"]
         result = run(runner, cwd=REPO_ROOT)
     else:
-        result = run([pnpm, "typecheck"], cwd=APP_DIR)
+        result = run([pnpm, "check"], cwd=APP_DIR)
 
     output = (result.stdout + result.stderr).strip()
     tail = "\n".join(output.splitlines()[-20:])
@@ -354,7 +354,7 @@ Examples:
         if "engine" in block_step or any(s[1] == "engine" for s in steps[:int(block_step.split()[-1])]):
             print("다음: uv run pytest engine/tests/ -x -v", flush=True)
         else:
-            print("다음: cd app && pnpm typecheck", flush=True)
+            print("다음: cd app && pnpm check", flush=True)
         return EXIT_BLOCK
     else:
         print("결과: PASS \u2705", flush=True)

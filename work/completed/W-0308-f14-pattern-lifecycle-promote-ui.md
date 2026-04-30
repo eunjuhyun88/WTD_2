@@ -2,7 +2,7 @@
 
 > Wave: 4 | Priority: P1 | Effort: S
 > Charter: In-Scope L0 (pattern library curation)
-> Status: 🟡 Design Draft
+> Status: 🟢 Implemented — detail page mounted, focused tests pass
 > Created: 2026-04-29
 > Issue: #636
 
@@ -177,15 +177,42 @@ draft → archived
 
 1. ~~W-0245 정합성 확인~~ → `candidate_status` 필드 실측으로 확인 ✅. `PatternObject`에 이미 존재.
 2. ~~DB schema 확인~~ → `candidate_status: str = "none"` 존재 ✅
-3. `active_variant_registry.py` invalidate 메서드 grep (구현 전 확인 필수)
-4. migration 031 — `pattern_lifecycle_events` audit log 테이블
-5. engine `PATCH /api/patterns/{slug}/status` 구현
-6. UI 컴포넌트 구현
+3. ~~engine `PATCH /api/patterns/{slug}/status` 구현~~ ✅
+4. ~~app BFF proxy + API client 구현~~ ✅
+5. ~~PatternLifecycleCard + PromoteConfirmModal 구현 및 `/patterns/[slug]` 마운트~~ ✅
+6. 후속: registry invalidate / DB-backed audit table은 file-backed M0 이후 별도 hardening
+
+## Implementation Update — 2026-04-30
+
+W-0308 M0는 full DB migration 대신 file-backed lifecycle store로 먼저 닫는다. 이유:
+
+- `PatternObject.candidate_status` 필드는 이미 존재하지만 현재 app/engine read surface가 이 값을 일관되게 저장/갱신하지 않는다.
+- 운영자 1인 M0에서는 `ENGINE_DATA_DIR/pattern_lifecycle/status.json` + `audit.jsonl` write-through가 충분하다.
+- DB-backed `pattern_lifecycle_events`와 scanner registry invalidate는 production hardening 후속으로 분리한다.
+
+구현 파일:
+
+- `engine/patterns/lifecycle_store.py`
+- `engine/api/routes/patterns.py` (`GET /{slug}/lifecycle-status`, `PATCH /{slug}/status`)
+- `engine/tests/test_pattern_lifecycle.py`
+- `app/src/lib/api/lifecycleApi.ts`
+- `app/src/lib/api/lifecycleApi.test.ts`
+- `app/src/routes/api/patterns/[slug]/lifecycle-status/+server.ts`
+- `app/src/routes/api/patterns/[slug]/status/+server.ts`
+- `app/src/lib/components/patterns/PatternLifecycleCard.svelte`
+- `app/src/lib/components/patterns/PromoteConfirmModal.svelte`
+- `app/src/routes/patterns/[slug]/+page.svelte`
+
+검증:
+
+- `cd engine && uv run pytest tests/test_pattern_lifecycle.py -q --tb=short` → 4 passed
+- `npm --prefix app test -- lifecycleApi.test.ts` → 4 passed
+- `npm --prefix app run check` → 0 errors, pre-existing warnings only
 
 ## Handoff Checklist
 
-- [ ] W-0245 정합성 검증 결과 첨부
-- [ ] DB schema diff (status 컬럼 추가 migration 필요 시)
-- [ ] active_variant_registry invalidate latency 측정
-- [ ] confirm modal UX 검증 (실수 방지 효과)
+- [x] W-0245 정합성 검증 결과 첨부
+- [x] DB schema diff 판단: M0는 신규 migration 없이 file-backed store
+- [ ] active_variant_registry invalidate latency 측정 (후속)
+- [x] confirm modal UX 검증 (실수 방지 효과)
 - [ ] audit log 조회 endpoint (선택, M0 후속)

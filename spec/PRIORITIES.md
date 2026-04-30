@@ -17,9 +17,9 @@
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 → **3개** (P0=0 / P1=2 / P2=7 / P3=10) — +W-0283 ✅ (#620) + W-0238 ✅ (#624) + W-0239 ✅ (#626) + W-0243 ✅ (#625) + W-0301 ✅ (#612)
+열린 갭:    17개 → **0개** (P0=0 / P1=0 / P2=6 / P3=10) — +F-12 ✅ (#671) kimchi badge + F-14 ✅ (#672) lifecycle promote UI
 즉시 P0:   없음 (P0 클리어)
-다음 P1:   W-0282 F-3 Telegram deeplink last-mile (W-0305) 🟡 + F-14 PatternObject lifecycle (W-0308) 🟡
+다음 P1:   없음 (P1 클리어) — W-0304 per-pane indicator (Codex 🟡) + W-0317 SplitPane wire-up (Codex 🟡)
 퀀트 경화:  **W-0286 ✅ PR #560** + **W-0290~W-0293 ✅ PR #587** + **W-0290 Ph2 ✅ PR #591** + **W-0294 ✅ PR #592**
 하네스:     **PR #574 ✅** (verify.py + inventory) + **PR #575 ✅** (Supabase timeout) + **PR #588 ✅** (PID stale lock) + **PR #609 ✅** (reliability repair + cycle-smoke)
 ```
@@ -65,9 +65,9 @@ audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app
 |---|---|---|---|
 | **L1** Market Data | 27 modules (Binance/Bybit/Coinbase/OKX) | ✅ | — |
 | **L2** Feature Window | migration 021, 40+col, 138,915 rows | ✅ | DESIGN_V3.1 미반영 (F-12) |
-| **L3** Pattern Object | **52 PatternObjects × 85 Building Blocks** | ✅ | lifecycle UI (F-14) |
+| **L3** Pattern Object | **52 PatternObjects × 85 Building Blocks** | ✅ | lifecycle UI (F-14) ✅ PR #672 |
 | **L4** State Machine | SQLite WAL + Supabase dual-write, 15m scan | ✅ | — |
-| **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) |
+| **L5** Search | `engine/search/similar.py:582줄` 3-layer | ✅ | Layer C 미훈련 (F-16) ✅ recall@10=100% PR #687 |
 | **L6** Ledger | 8-type Python, Supabase 1-table | ✅ | F-02 ✅ 해소 (W-0253, PR #437+#472) — 운영 DB 검증 #481 |
 | **L7** AutoResearch | Hill Climbing + LightGBM Phase A+B | ✅/❌ | Phase C/D GPU 필요 (P3) |
 
@@ -147,7 +147,7 @@ H-08 / F-30 / F-17
 **⚠️ 잔여 검증**: 운영 Supabase에 023 적용 여부 — issue #481.
 **상세**: `work/completed/W-0253-f02-fix-verdict-label.md`
 
-### F-3: Telegram alert → 1-click Verdict deep link (M, 3일)
+### ~~F-3: Telegram alert → 1-click Verdict deep link (M, 3일)~~ ✅ **완료 (2026-04-29 PR #639 / W-0305)**
 
 ```
 POST /alerts/{alert_id}/verdict-link → signed JWT (72h TTL, HMAC-SHA256)
@@ -199,15 +199,15 @@ CSS Grid, resizable, min-width per pane
 | ↳ kimchi_premium / session_apac/us/eu / oi_normalized_cvd | | | | Korea persona 직결 |
 | ~~F-13 Telegram Bot 연결 UI~~ | W-0239 | — | — | ✅ **완료 (2026-04-29 PR #626)** 6-char code auth + webhook |
 | ↳ 6자리 코드 인증 + 알림 라우팅 설정 | | | | |
-| F-14 PatternObject lifecycle | W-0245 | M | A-03-eng | Draft→Candidate→Object promote |
+| ~~F-14 PatternObject lifecycle~~ | W-0308 | — | — | ✅ **완료 (2026-04-30 PR #672)** lifecycle promote UI + PATCH /status endpoint |
 | F-15 PersonalVariant runtime UI | W-0246 | S-M | — | `active_variant_registry.py` BUILT |
-| F-16 Search recall@10 ≥ 0.7 | W-0247 | M | — | Layer C 미훈련 → A:0.6 / B:0.4 현재 |
+| ~~F-16 Search recall@10 ≥ 0.7~~ | W-0247 | — | — | ✅ **완료 (2026-04-30 PR #687)** eval_set 50쿼리 + weights (0.60/0.30/0.10) recall=100% |
 | ↳ 50 query eval set + LCS 가중 튜닝 (0.6/0.3/0.1) | | | | |
 | ~~H-07 F-60 Gate~~ | W-0238 | — | — | ✅ **완료 (PR #437)** `GET /users/{id}/f60-status` |
 | ~~H-08 per-user verdict accuracy~~ | W-0239 | — | — | ✅ **완료 (PR #437)** IN clause 배치 포함 |
-| F-18 Stripe $29/mo + tier enforcement | W-0248 | M | — | JWT Auth BUILT, Stripe 미연결 |
-| ↳ tier enforcement (Free/Pro) + rate limit + migration 028 | | | | |
-| F-19 Sentry + observability | W-0249 | M | — | H-04/H-05 flywheel 체크 BUILT |
+| ~~F-18 Stripe $29/mo + tier enforcement~~ | W-0248 | — | — | ✅ **완료 (2026-04-29 PR #653)** Stripe SDK + webhook + quota gate |
+| ↳ tier enforcement (Free/Pro) + rate limit + migration 030 | | | | |
+| ~~F-19 Sentry + observability~~ | W-0249 | — | — | ✅ **완료 (2026-04-30 PR #697/#706)** sentry.py + hooks + unit tests |
 | ↳ p95 latency / error rate / cost-per-WAA 대시보드 | | | | |
 | F-20~22 Infra cleanup | W-0250 | S | — | Vercel guardrail + GCP Cloud Build |
 
