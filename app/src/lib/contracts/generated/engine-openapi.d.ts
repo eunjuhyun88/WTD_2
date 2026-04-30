@@ -2751,6 +2751,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/autoresearch/trigger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Autoresearch
+         * @description Manually trigger one autoresearch cycle (admin-only).
+         *
+         *     Requires X-API-Key header matching ENGINE_API_KEY env var.
+         *     Returns immediately with run summary (runs synchronously in thread).
+         */
+        post: operations["trigger_autoresearch_research_autoresearch_trigger_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/signals/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Signals
+         * @description Return active promoted signals for a symbol.
+         *
+         *     Filters to signals with expires_at > now AND promoted_at > now - lookback.
+         */
+        get: operations["get_signals_research_signals__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run
+         * @description Return status of a specific autoresearch run.
+         */
+        get: operations["get_run_research_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/research/findings": {
         parameters: {
             query?: never;
@@ -3096,6 +3161,25 @@ export interface components {
             user_id: string;
             /** Patterns */
             patterns: components["schemas"]["AffinityEntry"][];
+        };
+        /** AutoresearchTriggerResponse */
+        AutoresearchTriggerResponse: {
+            /** Status */
+            status: string;
+            /** Run Id */
+            run_id?: string | null;
+            /** N Symbols */
+            n_symbols?: number | null;
+            /** N Promoted */
+            n_promoted?: number | null;
+            /** N Written */
+            n_written?: number | null;
+            /** Elapsed S */
+            elapsed_s?: number | null;
+            /** Reason */
+            reason?: string | null;
+            /** Error */
+            error?: string | null;
         };
         /** BacktestConfig */
         BacktestConfig: {
@@ -3854,8 +3938,6 @@ export interface components {
              * @default 15
              */
             limit: number;
-            /** User Id */
-            user_id?: string | null;
         };
         /** OpportunityRunResponse */
         OpportunityRunResponse: {
@@ -3913,8 +3995,6 @@ export interface components {
             galaxyScore?: number | null;
             /** Alerts */
             alerts: string[];
-            /** Compositescore */
-            compositeScore?: number | null;
         };
         /** ParseRequest */
         ParseRequest: {
@@ -4376,6 +4456,27 @@ export interface components {
             text?: string | null;
             /** Image Refs */
             image_refs?: string[];
+        };
+        /** RunOut */
+        RunOut: {
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Status */
+            status: string;
+            /** N Symbols */
+            n_symbols: number;
+            /** N Patterns */
+            n_patterns: number;
+            /** N Promoted */
+            n_promoted: number;
+            /** Elapsed S */
+            elapsed_s: number | null;
+            /** Error Msg */
+            error_msg: string | null;
         };
         /** RuntimeCaptureListResponse */
         RuntimeCaptureListResponse: {
@@ -4891,6 +4992,34 @@ export interface components {
             };
             /** Candidates */
             candidates?: components["schemas"]["SearchCandidate"][];
+        };
+        /** SignalOut */
+        SignalOut: {
+            /** Symbol */
+            symbol: string;
+            /** Pattern */
+            pattern: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Sharpe */
+            sharpe: number | null;
+            /** Hit Rate */
+            hit_rate: number | null;
+            /** N Trades */
+            n_trades: number | null;
+            /** Promoted At */
+            promoted_at: string;
+            /** Expires At */
+            expires_at: string;
+        };
+        /** SignalsResponse */
+        SignalsResponse: {
+            /** Symbol */
+            symbol: string;
+            /** Signals */
+            signals: components["schemas"]["SignalOut"][];
+            /** Count */
+            count: number;
         };
         /** SimilarCandidate */
         SimilarCandidate: {
@@ -10053,6 +10182,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiscoverResponse"];
+                };
+            };
+        };
+    };
+    trigger_autoresearch_research_autoresearch_trigger_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoresearchTriggerResponse"];
+                };
+            };
+        };
+    };
+    get_signals_research_signals__symbol__get: {
+        parameters: {
+            query?: {
+                /** @description e.g. 1h, 6h, 24h, 7d */
+                lookback?: string;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_research_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
