@@ -101,6 +101,8 @@
     const tf = timeframe;
     let cancelled = false;
     chartLoading = true;
+    chartPayload = null;
+    analyzeData = null;
     microstructureLoading = true;
     lastCandleTime = null;
 
