@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`88cdbdb5` — origin/main (2026-05-01) — PR #783 W-PF-101~106 PropFirm P1 merged
+`feed5be7` — origin/main (2026-05-01) — PR #797 W-0361 TV-style keyboard shortcuts merged
 
 ---
 
@@ -14,6 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0358-chart-note-overlay` | P1 | 🟡 Design Draft → 구현 대상 |
+| `W-0361-cogochi-keyboard-shortcuts` | P1 | ✅ PR #797 Merged |
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 | `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
