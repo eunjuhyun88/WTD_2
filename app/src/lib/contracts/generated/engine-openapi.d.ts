@@ -2899,6 +2899,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/indicator-features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Indicator Features
+         * @description W-0366: Return user-facing indicator feature catalog for UI.
+         */
+        get: operations["get_indicator_features_research_indicator_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/research/signals/{signal_id}/components": {
         parameters: {
             query?: never;
@@ -10566,6 +10586,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_indicator_features_research_indicator_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
