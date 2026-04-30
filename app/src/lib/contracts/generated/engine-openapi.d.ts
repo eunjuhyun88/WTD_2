@@ -1,5 +1,5 @@
 // AUTO-GENERATED FILE. DO NOT EDIT.
-// Source: engine/scripts/export_openapi.py
+// Source: file:///tmp/w0367-openapi.json
 
 export interface paths {
     "/chart/klines": {
