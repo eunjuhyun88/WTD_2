@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`1aae0b09` — origin/main (2026-04-30) — PR #752 W-0348 pipeline Stage 6+7 (paper verification + composite score) merged
+`51b10032` — origin/main (2026-04-30) — PR #754 W-0340 Wallet 실연결화 merged
 
 ---
 
@@ -14,8 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0249-f19-sentry-observability` | P2 | 🔴 구현 시작 |
-| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
+| `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
+| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
 
