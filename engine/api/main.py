@@ -129,6 +129,8 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 
     if scheduler_enabled():
         from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore[import]
+        from propfirm.exit import ExitMonitor  # type: ignore[import]
+        from workers.propfirm_hl_feed import run_feed_once  # type: ignore[import]
         _kline_scheduler = AsyncIOScheduler()
         _kline_scheduler.add_job(
             prefetch_klines,
@@ -136,6 +138,23 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
             minutes=5,
             id="kline_prefetch",
             replace_existing=True,
+        )
+        _exit_monitor = ExitMonitor()
+        _kline_scheduler.add_job(
+            _exit_monitor.run_once,
+            "interval",
+            seconds=60,
+            id="propfirm_exit_monitor",
+            replace_existing=True,
+            max_instances=1,
+        )
+        _kline_scheduler.add_job(
+            run_feed_once,
+            "interval",
+            seconds=10,
+            id="propfirm_hl_feed",
+            replace_existing=True,
+            max_instances=1,
         )
         _kline_scheduler.start()
         start_scheduler()
