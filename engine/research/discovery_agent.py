@@ -97,7 +97,11 @@ class DiscoveryAgent:
 
         cycle_id = uuid.uuid4().hex[:12]
         started = datetime.now(timezone.utc)
-        log.info("=== Discovery cycle %s starting ===", cycle_id)
+
+        from observability.research_metrics import CycleTimer, record_cycle, set_cycle_id
+        set_cycle_id(cycle_id)
+        timer = CycleTimer()
+        log.info("research_cycle_start cycle_id=%s", cycle_id)
 
         try:
             result = await self._run_cycle(cycle_id, started)
@@ -110,9 +114,14 @@ class DiscoveryAgent:
                 error=str(exc),
             )
 
-        log.info(
-            "=== Discovery cycle %s done: %d proposals, $%.4f, %d turns ===",
-            cycle_id, len(result.proposals), result.total_cost_usd, result.turns_used,
+        record_cycle(
+            cycle_id=cycle_id,
+            stop_reason=result.stop_reason or "error",
+            proposals=len(result.proposals),
+            turns_used=result.turns_used,
+            cost_usd=result.total_cost_usd,
+            duration_ms=timer.elapsed_ms(),
+            error=result.error,
         )
         return result
 
@@ -169,7 +178,20 @@ class DiscoveryAgent:
                     except json.JSONDecodeError:
                         tool_input = {}
 
-                    result_dict = handlers.dispatch(tool_name, tool_input)
+                    try:
+                        result_dict = handlers.dispatch(tool_name, tool_input)
+                    except Exception as tool_exc:
+                        from observability.research_metrics import record_tool_error
+                        record_tool_error(
+                            tool_name=tool_name,
+                            error=str(tool_exc),
+                            cycle_id=cycle_id,
+                        )
+                        result_dict = {
+                            "error": f"tool_exception: {tool_exc}",
+                            "tool": tool_name,
+                        }
+
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,

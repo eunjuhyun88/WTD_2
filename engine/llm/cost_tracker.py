@@ -1,17 +1,8 @@
 """W-0316: Per-cycle LLM cost tracking with hard cap.
 
-Hard cap: $0.50/cycle. Exceeding → CostCapExceeded raised.
-Storage: Supabase llm_cost_records table (append-only).
-
-Cost estimation:
-  anthropic/claude-haiku-4-5-20251001:
-    input  $0.80/M tokens  ($0.00000080/token)
-    output $4.00/M tokens  ($0.00000400/token)
-  openai/gpt-4o-mini:
-    input  $0.15/M tokens
-    output $0.60/M tokens
-  groq/llama-3.1-70b-versatile: ~$0.001/M tokens
-  ollama/*: $0.00
+Hard cap: $0.50/cycle (LLM_CYCLE_COST_CAP env). Exceeding → CostCapExceeded.
+Storage: Supabase llm_cost_records (append-only).
+Pricing: see llm/pricing.py — update there when rates change.
 """
 from __future__ import annotations
 
@@ -20,38 +11,11 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from llm.pricing import estimate_cost
+
 log = logging.getLogger(__name__)
 
 HARD_CAP_USD: float = float(os.environ.get("LLM_CYCLE_COST_CAP", "0.50"))
-
-# Per-token cost table (USD per token). Approximate.
-_TOKEN_COST: dict[str, tuple[float, float]] = {
-    # Anthropic
-    "anthropic/claude-haiku-4-5-20251001": (0.80e-6, 4.00e-6),
-    "anthropic/claude-sonnet-4-6":         (3.00e-6, 15.00e-6),
-    "anthropic/claude-opus-4-7":           (15.00e-6, 75.00e-6),
-    # OpenAI
-    "openai/gpt-4o-mini":                  (0.15e-6, 0.60e-6),
-    "openai/gpt-4o":                       (5.00e-6, 15.00e-6),
-    # Groq (free tier within limits → treat as near-zero)
-    "groq/llama-3.3-70b-versatile":        (0.59e-6, 0.79e-6),
-    "groq/llama-3.1-70b-versatile":        (0.59e-6, 0.79e-6),
-    "groq/llama-3.1-8b-instant":           (0.05e-6, 0.08e-6),
-    # Cerebras (fastest inference, free tier)
-    "cerebras/qwen-3-235b-a22b-instruct-2507": (0.0, 0.0),
-    "cerebras/llama-3.3-70b":              (0.0, 0.0),
-    # HuggingFace Inference API (free tier)
-    "huggingface/Qwen/Qwen2.5-72B-Instruct": (0.0, 0.0),
-    # NVIDIA NIM (free credits tier — Nemotron not available on free accounts)
-    "nvidia_nim/meta/llama-3.1-70b-instruct":          (0.97e-6, 0.97e-6),
-    "nvidia_nim/meta/llama-3.3-70b-instruct":          (0.97e-6, 0.97e-6),
-    # DeepSeek
-    "deepseek/deepseek-chat":              (0.14e-6, 0.28e-6),
-    # Mistral
-    "mistral/mistral-small-latest":        (0.20e-6, 0.60e-6),
-    # Gemini
-    "gemini/gemini-1.5-flash":             (0.075e-6, 0.30e-6),
-}
 
 
 class CostCapExceeded(Exception):
@@ -85,7 +49,7 @@ class CostTracker:
         output_tokens: int,
     ) -> float:
         """Record one LLM call. Returns call cost. Raises CostCapExceeded if over cap."""
-        cost = _estimate_cost(model, input_tokens, output_tokens)
+        cost = estimate_cost(model, input_tokens, output_tokens)
         self._total_usd += cost
         self._records.append({
             "cycle_id": self.cycle_id,
@@ -97,8 +61,11 @@ class CostTracker:
             "cumulative_usd": self._total_usd,
             "recorded_at": datetime.now(timezone.utc).isoformat(),
         })
-        log.debug("llm call: task=%s model=%s cost=$%.5f cumulative=$%.4f",
-                  task, model, cost, self._total_usd)
+        log.debug(
+            "llm_call task=%s model=%s in=%d out=%d cost=$%.5f cumul=$%.4f cycle=%s",
+            task, model, input_tokens, output_tokens, cost, self._total_usd,
+            self.cycle_id,
+        )
 
         if self._total_usd > self.cap_usd:
             raise CostCapExceeded(self.cycle_id, self._total_usd, self.cap_usd)
@@ -121,18 +88,3 @@ class CostTracker:
             log.warning("cost tracker Supabase flush failed", exc_info=True)
 
 
-def _estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    if any(model.startswith(p) for p in ("ollama/", "ollama_chat/")):
-        return 0.0
-    # Try exact match first, then prefix match
-    costs = _TOKEN_COST.get(model)
-    if costs is None:
-        for key, val in _TOKEN_COST.items():
-            if model.startswith(key.split("/")[0]):
-                costs = val
-                break
-    if costs is None:
-        log.warning("unknown model cost for %r — assuming haiku rate", model)
-        costs = _TOKEN_COST["anthropic/claude-haiku-4-5-20251001"]
-    in_cost, out_cost = costs
-    return in_cost * input_tokens + out_cost * output_tokens

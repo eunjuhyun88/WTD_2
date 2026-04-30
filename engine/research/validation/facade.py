@@ -137,6 +137,7 @@ def validate_and_gate(
         # Registry
         hypothesis_id: str | None = None
         n_trials = 0
+        registry_ok = False
         try:
             store = HypothesisRegistryStore()
             n_trials = store.get_n_trials(family)
@@ -145,12 +146,26 @@ def validate_and_gate(
                 family=family,
                 overall_pass=overall_pass,
                 stage=stage,
+                as_of=as_of,
                 gate_dict=gate_result.to_dict(),
                 result_dict={"pass_rate": report.overall_pass_rate, "f1_kill": report.f1_kill},
             )
+            registry_ok = True
         except Exception:
             # Registry failure must not block validation result
             log.warning("hypothesis_registry write failed for %s\n%s", slug, traceback.format_exc())
+
+        try:
+            from observability.research_metrics import record_validation
+            record_validation(
+                slug=slug,
+                family=family,
+                overall_pass=overall_pass,
+                stage=stage,
+                registry_ok=registry_ok,
+            )
+        except Exception:
+            pass  # metrics must never block
 
         return GatedValidationResult(
             slug=slug,

@@ -228,14 +228,19 @@ class ToolHandlers:
         self, slug: str, symbol: str, timeframe: str
     ) -> dict:
         try:
-            # Python-level hard gate before calling validation pipeline
-            # (caller should already check, but we enforce here too)
+            from datetime import datetime, timezone
+
             from research.validation.facade import validate_and_gate
             from research.pattern_search import ReplayBenchmarkPack
 
             pack = ReplayBenchmarkPack(pattern_slug=slug, cases=[])
             family = f"{symbol.lower()}_{timeframe.lower()}"
-            result = validate_and_gate(slug=slug, pack=pack, family=family)
+            # as_of = now: no historical pack data available in agent context.
+            # This is a conservative bound (today's bar is not future data).
+            as_of = datetime.now(timezone.utc)
+            result = validate_and_gate(
+                slug=slug, pack=pack, family=family, as_of=as_of
+            )
             return {
                 "slug": slug,
                 "overall_pass": result.overall_pass,

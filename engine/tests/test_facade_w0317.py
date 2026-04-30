@@ -249,7 +249,9 @@ def test_registry_register_returns_id():
     from research.validation.hypothesis_registry_store import HypothesisRegistryStore
     store = HypothesisRegistryStore()
     with patch("research.validation.hypothesis_registry_store._client", return_value=_mock_sb(inserted_id="abc-123")):
-        hid = store.register("slug-x", "btcusdt_4h", True, "shadow")
+        from datetime import datetime, timezone
+        hid = store.register("slug-x", "btcusdt_4h", True, "shadow",
+                             as_of=datetime(2025, 1, 1, tzinfo=timezone.utc))
     assert hid == "abc-123"
 
 
