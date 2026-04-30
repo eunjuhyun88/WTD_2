@@ -21,7 +21,15 @@ export interface PatternStats {
   decay_direction: string | null;
   recent_30d_count: number;
   recent_30d_success_rate: number | null;
-  ml_shadow: unknown | null;
+  ml_shadow: {
+    total_entries: number;
+    decided_entries: number;
+    state_counts: Record<string, number>;
+    score_coverage: number | null;
+    training_usable_count: number;
+    ready_to_train: boolean;
+    readiness_reason: string;
+  } | null;
 }
 
 /** Map one raw engine stats payload to a typed PatternStats object. */
