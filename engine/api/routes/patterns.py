@@ -1256,6 +1256,29 @@ async def get_pattern_backtest(
     except Exception:
         raise HTTPException(status_code=404, detail=f"Pattern {slug!r} not found")
 
+    # Cache-first: return Supabase-cached stats when fresh and universe matches default
+    if universe == "default":
+        from research.backtest_cache import get_cached
+        cached = await asyncio.to_thread(get_cached, slug, tf, "default")
+        if cached:
+            return {
+                "slug": slug,
+                "timeframe": cached.get("timeframe", tf),
+                "universe_size": None,
+                "since": cached.get("since"),
+                "n_signals": cached["n_signals"],
+                "win_rate": cached.get("win_rate"),
+                "avg_return_72h": cached.get("avg_return_72h"),
+                "hit_rate": cached.get("hit_rate"),
+                "avg_peak_pct": cached.get("avg_peak_pct"),
+                "sharpe": cached.get("sharpe"),
+                "apr": cached.get("apr"),
+                "equity_curve": cached.get("equity_curve", []),
+                "insufficient_data": cached.get("insufficient_data", True),
+                "cache_hit": True,
+                "cached_at": cached.get("computed_at"),
+            }
+
     uni = _DEFAULT_UNIVERSE if universe == "default" else [s.strip() for s in universe.split(",") if s.strip()]
     since = datetime.now(timezone.utc) - timedelta(days=since_days)
 
@@ -1279,4 +1302,6 @@ async def get_pattern_backtest(
         "apr": result.apr,
         "equity_curve": result.equity_curve,
         "insufficient_data": result.n_signals < 10,
+        "cache_hit": False,
+        "cached_at": None,
     }
