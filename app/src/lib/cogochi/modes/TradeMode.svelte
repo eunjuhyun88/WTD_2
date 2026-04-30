@@ -1723,9 +1723,9 @@
     <!-- PEEK bar — at bottom of chart column -->
     <div class="peek-bar" role="tablist" aria-label="Analysis tabs">
       {#each [
-        { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)',  badge: 'α82', badgeColor: 'var(--amb)' },
-        { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',       badge: '5',   badgeColor: '#7aa2e0' },
-        { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)',    badge: 'R:R 4.2×', badgeColor: 'var(--amb)' },
+        { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)',  badge: confidenceAlpha, badgeColor: 'var(--amb)' },
+        { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',       badge: scanCandidates.length > 0 ? `${scanCandidates.length}` : '—',   badgeColor: '#7aa2e0' },
+        { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)',    badge: analyzeData?.entryPlan?.riskReward != null ? `R:R ${analyzeData.entryPlan.riskReward.toFixed(1)}×` : '—', badgeColor: 'var(--amb)' },
       ] as tab}
         <button
           class="pb-tab"
