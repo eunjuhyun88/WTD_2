@@ -36,7 +36,7 @@ P3 — Funded + Payout (4주+)      ← Entry Gate 7개 PASS 후 (법무 외부 
 
 | Issue | W-# | 제목 | Effort | 차단 |
 |---|---|---|---|---|
-| [#770](https://github.com/eunjuhyun88/WTD_2/issues/770) | W-PF-101 | 031_propfirm_p1_core.sql 통합 스키마 | S | — |
+| [#770](https://github.com/eunjuhyun88/WTD_2/issues/770) | W-PF-101 | 033_propfirm_p1_core.sql 통합 스키마 | S | — |
 | [#771](https://github.com/eunjuhyun88/WTD_2/issues/771) | W-PF-102 | HL market feed worker (BTC/ETH/SOL → Redis) | M | — |
 | [#772](https://github.com/eunjuhyun88/WTD_2/issues/772) | W-PF-103 | PatternFireRouter + patterns/scanner hook | M | — (Q-PF-001/004 ✅) |
 | [#773](https://github.com/eunjuhyun88/WTD_2/issues/773) | W-PF-104 | EntryDecider + LimitMatcher | M | Q-PF-002 |
@@ -80,7 +80,7 @@ P3 — Funded + Payout (4주+)      ← Entry Gate 7개 PASS 후 (법무 외부 
 | D-PF-004 | P3 Entry Gate 격상 (법무 미완료 시 P3 착수 불가) |
 | D-PF-005 | strategy_id = `wtd.{ledger_record_dirname}` |
 | D-PF-006 | P1 Surface = `/lab` "패턴 런" 탭 (Q-PF-003 closed) |
-| D-PF-007 | Migration 031 → 032 → 033 순차 additive |
+| D-PF-007 | Migration 033(propfirm_p1_core) → 034(p2_eval) → 035(p3_funded) 순차 additive. 031=hypothesis_registry, 032=llm_cost_records (main 선점) |
 
 ---
 

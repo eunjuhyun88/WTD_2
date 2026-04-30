@@ -791,7 +791,7 @@ P3 (실거래) **착수 전 차단 조건**:
 
 | 파일 | Phase | 내용 |
 |---|---|---|
-| `031_propfirm_p1_core.sql` | P1 | trading_accounts, orders, positions, fills, daily_performance, pattern_fires |
+| `033_propfirm_p1_core.sql` | P1 | trading_accounts, orders, positions, fills, daily_performance, pattern_fires |
 | `032_propfirm_p2_eval.sql` | P2 | users.* 확장, subscriptions, evaluations, verifications, risk_events |
 | `033_propfirm_p3_funded.sql` | P3 | hl_order_ledger, payouts, audit_logs |
 
