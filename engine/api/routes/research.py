@@ -6,13 +6,21 @@ W-0361: POST /research/autoresearch/trigger, GET /research/signals/{symbol},
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
+import time
+from datetime import timezone
+from functools import lru_cache
+from typing import Optional
 
+import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from api.limiter import limiter
 from api.schemas_search import MarketSearchRequest, MarketSearchResponse
+
+log = logging.getLogger("engine.api.research")
 
 router = APIRouter()
 
@@ -385,3 +393,134 @@ async def get_signal_components(signal_id: str):
     if data is None:
         raise HTTPException(status_code=404, detail="signal not found")
     return data
+
+
+# ── W-0352: GET /research/top-patterns ──────────────────────────────────────
+
+REQUIRED_COLUMNS = {
+    "pattern", "symbol", "direction", "n_signals", "n_executed",
+    "win_rate", "expectancy_pct", "sharpe", "calmar",
+    "max_drawdown_pct", "final_equity", "scan_ts",
+    "composite_score", "quality_grade",
+}
+
+GRADE_ORDER = {"S": 4, "A": 3, "B": 2, "C": 1}
+
+
+class TopPatternItem(BaseModel):
+    pattern_slug: str
+    symbol: Optional[str]
+    direction: Optional[str]
+    composite_score: Optional[float]
+    quality_grade: Optional[str]
+    n_trades_paper: Optional[int]
+    win_rate_paper: Optional[float]
+    sharpe_paper: Optional[float]
+    max_drawdown_pct_paper: Optional[float]
+    expectancy_pct_paper: Optional[float]
+    model_source: Optional[str] = None
+
+
+class TopPatternsResponse(BaseModel):
+    patterns: list[TopPatternItem]
+    generated_at: Optional[str]
+    pipeline_run_id: Optional[str]
+    total_available: int
+    limit_applied: int
+
+
+@lru_cache(maxsize=4)
+def _load_parquet_cached(path: str, mtime: float) -> pd.DataFrame:
+    return pd.read_parquet(path)
+
+
+try:
+    from pipeline import latest_top_patterns_path
+except ImportError:  # pragma: no cover — only missing outside engine context
+    latest_top_patterns_path = None  # type: ignore[assignment]
+
+
+@router.get("/top-patterns", response_model=TopPatternsResponse)
+def get_top_patterns(
+    limit: int = Query(default=20, ge=1),
+    min_grade: str = Query(default="B", pattern="^[SABC]$"),
+) -> TopPatternsResponse:
+    limit_applied = min(limit, 100)
+
+    path = latest_top_patterns_path()
+    if path is None:
+        return TopPatternsResponse(
+            patterns=[],
+            generated_at=None,
+            pipeline_run_id=None,
+            total_available=0,
+            limit_applied=limit_applied,
+        )
+
+    try:
+        mtime = path.stat().st_mtime
+        df = _load_parquet_cached(str(path), mtime)
+    except Exception as exc:
+        log.warning("top-patterns: failed to read parquet %s: %s", path, exc)
+        return TopPatternsResponse(
+            patterns=[],
+            generated_at=None,
+            pipeline_run_id=None,
+            total_available=0,
+            limit_applied=limit_applied,
+        )
+
+    missing = REQUIRED_COLUMNS - set(df.columns)
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Pipeline parquet missing columns: {sorted(missing)}",
+        )
+
+    df = df.dropna(subset=["composite_score", "quality_grade"])
+
+    min_rank = GRADE_ORDER.get(min_grade, 2)
+    df = df[df["quality_grade"].map(lambda g: GRADE_ORDER.get(g, 0)) >= min_rank]
+
+    total_available = len(df)
+
+    if len(df) > 1:
+        df = df.sort_values("composite_score", ascending=False, kind="mergesort")
+
+    df = df.head(limit_applied)
+
+    sa_ratio = (df["quality_grade"].isin(["S", "A"]).sum() / max(total_available, 1))
+    if sa_ratio > 0.5:
+        log.warning("top-patterns: S+A ratio %.0f%% > 50%% — possible score inflation", sa_ratio * 100)
+
+    generated_at = (
+        __import__("datetime").datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+    )
+    pipeline_run_id = path.stem.replace("results_", "")
+
+    model_source_col = "model_source" if "model_source" in df.columns else None
+
+    items = [
+        TopPatternItem(
+            pattern_slug=str(row["pattern"]),
+            symbol=row.get("symbol") or None,
+            direction=row.get("direction") or None,
+            composite_score=float(row["composite_score"]) if pd.notna(row.get("composite_score")) else None,
+            quality_grade=str(row["quality_grade"]) if pd.notna(row.get("quality_grade")) else None,
+            n_trades_paper=int(row["n_executed"]) if pd.notna(row.get("n_executed")) else None,
+            win_rate_paper=float(row["win_rate"]) if pd.notna(row.get("win_rate")) else None,
+            sharpe_paper=float(row["sharpe"]) if pd.notna(row.get("sharpe")) else None,
+            max_drawdown_pct_paper=float(row["max_drawdown_pct"]) if pd.notna(row.get("max_drawdown_pct")) else None,
+            expectancy_pct_paper=float(row["expectancy_pct"]) if pd.notna(row.get("expectancy_pct")) else None,
+            model_source=str(row[model_source_col]) if model_source_col and pd.notna(row.get(model_source_col)) else None,
+        )
+        for _, row in df.iterrows()
+    ]
+
+    return TopPatternsResponse(
+        patterns=items,
+        generated_at=generated_at,
+        pipeline_run_id=pipeline_run_id,
+        total_available=total_available,
+        limit_applied=limit_applied,
+    )
