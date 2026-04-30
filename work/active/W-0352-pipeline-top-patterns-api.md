@@ -200,3 +200,32 @@ backtest 분포 기준). `min_grade=A`는 상위 ~15%, `S`는 ~3%.
 - [ ] AC7: pytest ≥ 6 PASS (신규 테스트 파일).
 - [ ] CI green.
 - [ ] PR merged + CURRENT.md SHA 업데이트.
+
+## Owner
+engine+app
+
+## Canonical Files
+- `engine/api/routes/research.py`
+- `engine/pipeline.py`
+- `engine/tests/api/test_top_patterns_endpoint.py`
+
+## Facts
+- `pipeline.py:39` `_OUT_DIR = Path(__file__).parent / "experiments" / "pipeline"` 확인
+- `pipeline.py:354` `out_path = self.out_dir / f"results_{run_ts[:10]}.parquet"` 확인
+- `pipeline.py:355` `df.to_parquet()` 직접 호출 (atomic rename 없음) — F3 리스크
+- W-0348 / W-0314 (composite_score + paper verification) 이미 머지됨
+
+## Assumptions
+- parquet 파일 크기 ≤ 5MB (최대 200 패턴 × 50 컬럼)
+- LRU cache maxsize=4, TTL=60s로 충분
+
+## Next Steps
+1. `engine/pipeline.py` — `latest_top_patterns_path()` helper 추가
+2. `engine/api/routes/research.py` — pydantic 스키마 + GET endpoint 구현
+3. pytest ≥ 6 신규 테스트
+4. Contract CI pass 확인
+
+## Handoff Checklist
+- [ ] Q-0352-01 해소: atomic rename 포함 여부 결정
+- [ ] Q-0352-02 해소: min_grade 기본값 확인
+- [ ] 구현 + PR + CI green
