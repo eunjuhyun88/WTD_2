@@ -38,13 +38,10 @@
       const config = { clientId };
 
       const root = createRoot(hostEl);
-      root.render(
-        React.createElement(
-          WalletConnectProvider,
-          { config },
-          React.createElement(WalletConnectEmbed, { className: 'dogeos-wallet-embed' }),
-        ),
-      );
+      const embedEl = React.createElement(WalletConnectEmbed, { className: 'dogeos-wallet-embed' });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error — children passed as 3rd arg per React.createElement convention
+      root.render(React.createElement(WalletConnectProvider, { config }, embedEl));
 
       unmountFn = () => root.unmount();
     } catch (err) {

@@ -110,7 +110,13 @@
 
   // ── Decision Summary derivations ────────────────────────────────────────────
   const decisionDir   = $derived(heroVerdict?.direction ?? null);
-  const decisionPWin  = $derived(analysisData?.p_win != null ? Math.round((analysisData.p_win as number) * 100) : null);
+  const decisionPWin  = $derived(
+    analysisData?.entryPlan?.confidencePct != null
+      ? Math.round(analysisData.entryPlan.confidencePct)
+      : analysisData?.ensemble?.ensemble_score != null
+        ? Math.round(analysisData.ensemble.ensemble_score * 100)
+        : null
+  );
   const _atr          = $derived((analysisData as any)?.deep?.atr_levels ?? {});
   const decisionEntry = $derived(_atr.entry_long ?? _atr.entry ?? null);
   const decisionStop  = $derived(_atr.stop_long  ?? _atr.stop  ?? null);
