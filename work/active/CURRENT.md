@@ -1,4 +1,4 @@
-# CURRENT — 2026-04-30
+# CURRENT — 2026-05-01
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`51b10032` — origin/main (2026-04-30) — PR #754 W-0340 Wallet 실연결화 merged
+`a654ea26` — origin/main (2026-05-01) — PR #782 W-0357 Cogochi TV-Style Indicators + AI Results List UX merged
 
 ---
 
@@ -14,6 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0356-cogochi-3column-redesign` | P0 | ✅ Merged PR #778 |
+| `W-0357-cogochi-tv-indicators-ai-list-ux` | P0 | ✅ Merged PR #782 |
 | `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
