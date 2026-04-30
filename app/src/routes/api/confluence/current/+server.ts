@@ -240,6 +240,7 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
   cache.set(cacheKey, { at: Date.now(), payload: enriched });
   return json(enriched, {
     headers: {
+      'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
       'X-Cache': 'MISS',
       'X-WTD-Plane': 'fact',
       'X-WTD-Upstream': 'legacy-compute',
