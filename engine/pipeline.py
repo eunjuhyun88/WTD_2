@@ -59,21 +59,36 @@ def _t_to_p(t: float, n: int) -> float:
         return 1.0 - 0.5 * (1 + math.erf(t / math.sqrt(2)))
 
 
-def _bh_correct(p_values: list[float], alpha: float = BH_ALPHA) -> np.ndarray:
-    """Benjamini-Hochberg FDR correction. Returns boolean reject mask."""
-    m = len(p_values)
-    if m == 0:
+def _bh_correct(
+    p_values: list[float],
+    alpha: float = BH_ALPHA,
+    m_total: int | None = None,
+) -> np.ndarray:
+    """Benjamini-Hochberg FDR correction. Returns boolean reject mask.
+
+    Args:
+        p_values: p-values for the subset being tested.
+        alpha: FDR target level.
+        m_total: Total number of hypotheses in the family (Benjamini-Hochberg 1995).
+            When provided, BH thresholds use m_total instead of len(p_values),
+            which correctly accounts for hypotheses not in p_values (e.g. pre-filtered).
+    """
+    k = len(p_values)
+    if k == 0:
         return np.array([], dtype=bool)
+    m = m_total if (m_total is not None and m_total >= k) else k
     arr = np.asarray(p_values)
     order = np.argsort(arr)
     sorted_p = arr[order]
-    threshold = (np.arange(1, m + 1) / m) * alpha
+    # BH threshold: p_(i) <= (i/m) * alpha where i is rank in full family
+    # For subset, adjust rank: rank of i-th sorted p in the full family of m
+    ranks = np.arange(1, k + 1)  # positions 1..k
+    threshold = (ranks / m) * alpha
     below = sorted_p <= threshold
     if not below.any():
-        return np.zeros(m, dtype=bool)
-    # Reject all up to the largest k where p_(k) <= (k/m)*alpha
+        return np.zeros(k, dtype=bool)
     max_k = int(np.where(below)[0].max())
-    reject = np.zeros(m, dtype=bool)
+    reject = np.zeros(k, dtype=bool)
     reject[order[: max_k + 1]] = True
     return reject
 
@@ -143,6 +158,7 @@ class ResearchPipeline:
         self.out_dir = Path(out_dir) if out_dir else _OUT_DIR
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.scan_workers = scan_workers
+        self._last_m_total: int = 0
         self._store = store
 
     @property
@@ -159,11 +175,14 @@ class ResearchPipeline:
         log.info("Stage 2: PATTERN SCAN")
         loop = AutoResearchLoop(store=self.store, scan_workers=self.scan_workers)
         result = loop.run_cycle(symbols=symbols, save=True)
+        # Capture m_total from scanner for BH family (W-0341)
+        self._last_m_total = getattr(loop.scanner, "last_m_total", 0)
         log.info(
-            "  Scanned %d symbols, %d patterns total, %d gate-passed",
+            "  Scanned %d symbols, %d patterns total, %d gate-passed (m_total=%d)",
             result.n_symbols_scanned,
             result.n_patterns_total,
             result.n_gate_passed,
+            self._last_m_total,
         )
         return result.top_patterns, result.cycle_id
 
@@ -193,7 +212,14 @@ class ResearchPipeline:
         # BH-FDR correction
         eligible = df["n_executed"] >= BH_MIN_N
         p_vals = df.loc[eligible, "p_value"].tolist()
-        reject = _bh_correct(p_vals)
+        m_total = self._last_m_total if self._last_m_total >= len(p_vals) else None
+        if m_total:
+            log.info("  BH-FDR: using m_total=%d (full search space)", m_total)
+        if m_total is not None:
+            assert m_total >= len(p_vals), (
+                f"m_total={m_total} must be >= eligible count={len(p_vals)}"
+            )
+        reject = _bh_correct(p_vals, m_total=m_total)
 
         df["bh_reject"] = False
         df.loc[eligible[eligible].index, "bh_reject"] = reject

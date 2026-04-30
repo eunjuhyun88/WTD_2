@@ -27,6 +27,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -51,8 +52,13 @@ from building_blocks.entries.rsi_threshold import rsi_threshold
 from data_cache.parquet_store import ParquetStore
 from scanner.feature_calc import compute_features_table, MIN_HISTORY_BARS
 from scanner.pnl import ExecutionCosts
+from research.pattern_scan.oos_split import holdout_cutoff as _oos_cutoff
 
 log = logging.getLogger("engine.pattern_scan.scanner")
+
+_OOS_WIRING = os.getenv("RESEARCH_OOS_WIRING", "off").lower() == "on"
+_OOS_HOLDOUT_FRAC = 0.30
+_MIN_HOLDOUT_TRADES = 10
 
 _RESULTS_PATH = Path(__file__).parent.parent / "experiments" / "pattern_scan_results.parquet"
 _COMPRESS = "zstd"
@@ -331,15 +337,16 @@ def _scan_one_symbol(
     costs: ExecutionCosts,
     macro: pd.DataFrame | None = None,
     sector_scores: dict[str, float] | None = None,
-) -> list[PatternResult]:
-    results = []
+) -> tuple[list[PatternResult], dict[str, list[float]]]:
+    results: list[PatternResult] = []
+    trade_returns_by_pattern: dict[str, list[float]] = {}
     scan_ts = datetime.now(timezone.utc).isoformat()
 
     try:
         raw = store.read_ohlcv(symbol)
         if len(raw) < MIN_HISTORY_BARS:
             log.debug("[%s] insufficient data (%d rows < %d)", symbol, len(raw), MIN_HISTORY_BARS)
-            return []
+            return [], {}
 
         klines = _klines_for_context(raw)
         perp = _build_perp_from_store(store, symbol)
@@ -352,14 +359,19 @@ def _scan_one_symbol(
 
         if len(features) < 50:
             log.debug("[%s] insufficient features (%d rows)", symbol, len(features))
-            return []
+            return [], {}
 
         ctx = Context(klines=klines, features=features, symbol=symbol)
         adv = float((klines["close"] * klines["volume"]).mean())
 
     except Exception as exc:
         log.warning("[%s] context build failed: %s", symbol, exc)
-        return []
+        return [], {}
+
+    # OOS wiring (W-0341): compute holdout cutoff when enabled
+    holdout_ts: "pd.Timestamp | None" = None
+    if _OOS_WIRING:
+        holdout_ts = _oos_cutoff(klines, _OOS_HOLDOUT_FRAC)
 
     for combo in combos:
         try:
@@ -377,6 +389,10 @@ def _scan_one_symbol(
                 for ts, val in fired.items()
                 if val and (last_valid_ts is None or ts <= last_valid_ts)
             ]
+
+            # OOS: filter signals to holdout period only
+            if _OOS_WIRING and holdout_ts is not None:
+                signals = [s for s in signals if s.timestamp >= holdout_ts]
 
             if not signals:
                 results.append(PatternResult(
@@ -397,6 +413,9 @@ def _scan_one_symbol(
                 logger=_NULL_LOGGER,
             )
             m = bt.metrics
+            trade_returns_by_pattern[combo.name] = [
+                t.realized_pnl_pct * 100.0 for t in bt.trades
+            ]
             results.append(PatternResult(
                 symbol=symbol, pattern=combo.name, direction=combo.direction,
                 n_signals=len(signals), n_executed=m.n_executed,
@@ -409,7 +428,7 @@ def _scan_one_symbol(
         except Exception as exc:
             log.warning("[%s/%s] backtest failed: %s", symbol, combo.name, exc)
 
-    return results
+    return results, trade_returns_by_pattern
 
 
 class PatternScanner:
@@ -430,12 +449,15 @@ class PatternScanner:
         self.costs = costs or _DEFAULT_COSTS
         self._macro = macro
         self._sector_scores = sector_scores
+        self.last_m_total: int = 0
+        self._last_trade_returns: dict[tuple[str, str], list[float]] = {}
 
     def scan_symbol(self, symbol: str) -> list[PatternResult]:
-        return _scan_one_symbol(
+        results, _ = _scan_one_symbol(
             symbol, self.store, self.combos, self.risk_cfg, self.costs,
             macro=self._macro, sector_scores=self._sector_scores,
         )
+        return results
 
     def scan_universe(
         self,
@@ -446,16 +468,26 @@ class PatternScanner:
         """Parallel scan across all symbols. Returns results DataFrame."""
         t0 = time.monotonic()
         all_results: list[PatternResult] = []
+        all_trade_returns: dict[tuple[str, str], list[float]] = {}
         done = 0
         fail = 0
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {pool.submit(self.scan_symbol, sym): sym for sym in symbols}
+            futures = {
+                pool.submit(
+                    _scan_one_symbol,
+                    sym, self.store, self.combos, self.risk_cfg, self.costs,
+                    self._macro, self._sector_scores,
+                ): sym
+                for sym in symbols
+            }
             for fut in as_completed(futures):
                 sym = futures[fut]
                 try:
-                    res = fut.result()
+                    res, tr = fut.result()
                     all_results.extend(res)
+                    for pat, rets in tr.items():
+                        all_trade_returns[(sym, pat)] = rets
                     done += 1
                     if done % 50 == 0:
                         log.info("Scanned %d/%d symbols...", done, len(symbols))
@@ -477,6 +509,10 @@ class PatternScanner:
         # Cap spurious Sharpe from tiny-n results (std≈0 edge case)
         df["sharpe"] = df["sharpe"].clip(-10, 10)
         df = df.sort_values("sharpe", ascending=False).reset_index(drop=True)
+
+        # Track total tests for BH family (W-0341)
+        self.last_m_total = len(symbols) * len(self.combos)
+        self._last_trade_returns = all_trade_returns
 
         self.save_results(df)
         return df

@@ -1,21 +1,23 @@
 {"ts": "2026-04-28T00:00:00Z", "w_id": "W-0269", "issue": 506, "pr": [], "status": "design", "agent": "A066"}
-{"ts":"2026-04-27T19:09:48Z","w_id":"W-0272","issue":521,"pr":[],"status":"design","agent":"A066"}
-{"ts":"2026-04-27T20:29:40Z","w_id":"W-0279","issue":539,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-27T20:29:40Z","w_id":"W-0280","issue":540,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-28T09:47:41Z","w_id":"W-0281","issue":548,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-28T09:47:42Z","w_id":"W-0282","issue":546,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-28T09:47:42Z","w_id":"W-0283","issue":547,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-28T17:00:05Z","w_id":"W-0289","issue":566,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-28T17:52:24Z","w_id":"W-0290","issue":568,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-28T17:55:38Z","w_id":"W-0291","issue":569,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-28T17:55:39Z","w_id":"W-0292","issue":570,"pr":[],"status":"design","agent":"unknown"}
-{"work_id":"W-0294","issue":590,"status":"design","title":"Multi-Year Historical Data Pipeline + Quant-Grade Layer P Backtest"}
+{"ts": "2026-04-27T19:09:48Z", "w_id": "W-0272", "issue": 521, "pr": [], "status": "design", "agent": "A066"}
+{"ts": "2026-04-27T20:29:40Z", "w_id": "W-0279", "issue": 539, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-27T20:29:40Z", "w_id": "W-0280", "issue": 540, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-28T09:47:41Z", "w_id": "W-0281", "issue": 548, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-28T09:47:42Z", "w_id": "W-0282", "issue": 546, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-28T09:47:42Z", "w_id": "W-0283", "issue": 547, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-28T17:00:05Z", "w_id": "W-0289", "issue": 566, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-28T17:52:24Z", "w_id": "W-0290", "issue": 568, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-28T17:55:38Z", "w_id": "W-0291", "issue": 569, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-28T17:55:39Z", "w_id": "W-0292", "issue": 570, "pr": [], "status": "design", "agent": "unknown"}
+{"work_id": "W-0294", "issue": 590, "status": "design", "title": "Multi-Year Historical Data Pipeline + Quant-Grade Layer P Backtest"}
 {"issue": 611, "branch": "feat/W-0301-cmc1000-data-pipeline", "title": "CMC 1000+ \ud000\ud2b8 \ub370\uc774\ud130 \ud30c\uc774\ud504\ub77c\uc778", "w_id": "W-0301"}
-{"ts":"2026-04-29T10:28:17Z","w_id":"W-0248","issue":445,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-29T10:28:17Z","w_id":"W-0305","issue":633,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-29T10:28:17Z","w_id":"W-0306","issue":634,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-29T10:28:17Z","w_id":"W-0307","issue":635,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-29T10:28:17Z","w_id":"W-0308","issue":636,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-29T13:28:47Z","w_id":"W-0311","issue":642,"pr":[],"status":"design","agent":"unknown"}
-{"ts":"2026-04-29T14:59:04Z","w_id":"W-0309","issue":656,"pr":[],"status":"in_progress","agent":"unknown"}
-{"ts":"2026-04-30T02:33:00+09:00","w_id":"W-0321","issue":682,"pr":[],"status":"in_progress","agent":"A091"}
+{"ts": "2026-04-29T10:28:17Z", "w_id": "W-0248", "issue": 445, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-29T10:28:17Z", "w_id": "W-0305", "issue": 633, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-29T10:28:17Z", "w_id": "W-0306", "issue": 634, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-29T10:28:17Z", "w_id": "W-0307", "issue": 635, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-29T10:28:17Z", "w_id": "W-0308", "issue": 636, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-29T13:28:47Z", "w_id": "W-0311", "issue": 642, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-29T14:59:04Z", "w_id": "W-0309", "issue": 656, "pr": [], "status": "in_progress", "agent": "unknown"}
+{"ts": "2026-04-30T02:33:00+09:00", "w_id": "W-0321", "issue": 682, "pr": [], "status": "in_progress", "agent": "A091"}
+{"ts": "2026-04-30T08:26:50Z", "w_id": "W-0343", "issue": 727, "pr": [], "status": "design", "agent": "unknown"}
+{"ts": "2026-04-30T08:50:47Z", "w_id": "W-0339", "issue": 715, "pr": [], "status": "completed", "agent": "unknown"}
