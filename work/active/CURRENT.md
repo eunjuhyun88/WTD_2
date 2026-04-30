@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`40e7d26b` — origin/main (2026-04-30) — PR #753 W-0349 liveTickState + TradeMode CSS BEM migration merged
+`d6f47ee1` — origin/main (2026-04-30) — PR #778 W-0356 cogochi 3-column merged
 
 ---
 
@@ -15,7 +15,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0249-f19-sentry-observability` | P2 | 🔴 구현 시작 |
-| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft (Codex 진행 중) |
+| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
 
