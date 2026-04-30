@@ -38,6 +38,8 @@ from .gates import (
     evaluate_gate_v2,
 )
 from .runner import run_full_validation
+from .facade import GatedValidationResult, validate_and_gate
+from .hypothesis_registry_store import HypothesisRegistryStore
 
 __all__ = [
     # cv (V-01)
@@ -73,4 +75,8 @@ __all__ = [
     "evaluate_gate_v2",
     # runner (W-0280)
     "run_full_validation",
+    # facade (W-0317)
+    "GatedValidationResult",
+    "validate_and_gate",
+    "HypothesisRegistryStore",
 ]
