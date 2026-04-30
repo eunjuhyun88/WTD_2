@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`a4daa1c4` — origin/main (2026-05-01) — PR #792 W-0358 Chart Note Overlay merged
+`fead8727` — origin/main (2026-05-01) — PR #805 W-0358 scanner ML inference merged
 
 ---
 
@@ -14,9 +14,10 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0358-chart-note-overlay` | P1 | ✅ PR #792 Merged |
-| `W-0361-cogochi-keyboard-shortcuts` | P1 | ✅ PR #797 Merged |
-| `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
+| `W-0358-research-scanner-ml-inference` | P1 | ✅ Merged (#805) |
+| `W-0365-alpha-1cycle-pnl-verified` | P0 | 🟡 Design Draft (#806) |
+| `W-0366-pattern-indicator-filters` | P1 | 🟡 Design Draft (#808) |
+| `W-0352-pipeline-top-patterns-api` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 | `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
