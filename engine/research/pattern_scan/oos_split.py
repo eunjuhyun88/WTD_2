@@ -1,4 +1,4 @@
-"""OOS time-split for pattern scan (W-0341).
+"""OOS time-split for pattern scan (W-0343).
 
 Splits a time-indexed DataFrame into train (first 70%) and holdout (last 30%)
 to prevent in-sample evaluation bias (Bailey & López de Prado 2014).
