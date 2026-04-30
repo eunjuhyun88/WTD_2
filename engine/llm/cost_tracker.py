@@ -42,8 +42,10 @@ _TOKEN_COST: dict[str, tuple[float, float]] = {
     "cerebras/llama-3.3-70b":              (0.0, 0.0),
     # HuggingFace Inference API (free tier)
     "huggingface/Qwen/Qwen2.5-72B-Instruct": (0.0, 0.0),
-    # NVIDIA NIM
-    "nvidia_nim/meta/llama-3.1-70b-instruct": (0.97e-6, 0.97e-6),
+    # NVIDIA NIM (free credits tier)
+    "nvidia_nim/meta/llama-3.1-70b-instruct":          (0.97e-6, 0.97e-6),
+    "nvidia_nim/meta/llama-3.3-70b-instruct":          (0.97e-6, 0.97e-6),
+    "nvidia_nim/nvidia/llama-3.1-nemotron-70b-instruct": (0.0, 0.0),  # free credits
     # DeepSeek
     "deepseek/deepseek-chat":              (0.14e-6, 0.28e-6),
     # Mistral

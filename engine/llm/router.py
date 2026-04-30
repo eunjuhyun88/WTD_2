@@ -22,17 +22,26 @@ _LOCAL_PREFIXES = ("ollama/", "ollama_chat/")
 _API_ONLY_TASKS = {"judge"}
 
 TASK_MODEL: dict[str, str] = {
-    # judge: tool_use 정확도 최우선 → Groq Llama-3.3-70b (12키 로테이션)
+    # judge: tool_use + reasoning → Groq Llama-3.3-70b (12키 로테이션)
     "judge":   os.environ.get("LLM_JUDGE_MODEL",   "groq/llama-3.3-70b-versatile"),
-    # summary: 속도 최우선 → Cerebras (가장 빠른 추론), fallback HuggingFace Qwen
+    # summary: 속도 최우선 → Cerebras (가장 빠른 추론)
     "summary": os.environ.get("LLM_SUMMARY_MODEL", "cerebras/qwen-3-235b-a22b-instruct-2507"),
-    # scan: 컨텍스트 이해 → HuggingFace Qwen2.5-72B (무료, 128k context)
-    "scan":    os.environ.get("LLM_SCAN_MODEL",    "huggingface/Qwen/Qwen2.5-72B-Instruct"),
+    # scan: reasoning 최우선 → NVIDIA Nemotron-70b (무료 크레딧, 추론 특화)
+    "scan":    os.environ.get("LLM_SCAN_MODEL",    "nvidia_nim/nvidia/llama-3.1-nemotron-70b-instruct"),
 }
 
+# judge fallback 우선순위: NVIDIA NIM → DeepSeek → HuggingFace
 JUDGE_FALLBACK_MODEL: str = os.environ.get(
-    "LLM_JUDGE_FALLBACK_MODEL", "deepseek/deepseek-chat"
+    "LLM_JUDGE_FALLBACK_MODEL", "nvidia_nim/meta/llama-3.3-70b-instruct"
 )
+
+# 전체 fallback 체인 (순서대로 시도)
+FALLBACK_CHAIN: list[str] = [
+    "groq/llama-3.3-70b-versatile",
+    "nvidia_nim/meta/llama-3.3-70b-instruct",
+    "deepseek/deepseek-chat",
+    "huggingface/Qwen/Qwen2.5-72B-Instruct",
+]
 
 
 def resolve_model(task: str, override: str | None = None) -> str:
