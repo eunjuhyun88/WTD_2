@@ -79,11 +79,13 @@
 
   import { shellStore } from '$lib/cogochi/shell.store';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { onDestroy } from 'svelte';
 
   let cards = $state<AICard[]>([]);
   let inputValue = $state('');
   let loading = $state(false);
   let scrollEl: HTMLDivElement | undefined = $state();
+  let textareaEl: HTMLTextAreaElement | undefined = $state();
   const canSend = $derived(inputValue.trim().length > 0 && !loading);
 
   function selectSymbol(sym: string): void {
@@ -361,6 +363,22 @@
       void handleAnalyzeRange(from, to);
     }, 300);
   });
+
+  // ── `/` shortcut — focus AI input ────────────────────────────────────────
+  const onFocusCmd = (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail?.id === 'focus_ai_input') {
+      textareaEl?.focus();
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('cogochi:cmd', onFocusCmd);
+  }
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('cogochi:cmd', onFocusCmd);
+    }
+  });
 </script>
 
 <div class="panel">
@@ -465,6 +483,7 @@
   <div class="input-area">
     <div class="input-box">
       <textarea
+        bind:this={textareaEl}
         value={inputValue}
         placeholder="분석 / 스캔 / 판정 — 'BTC 분석' ↵"
         rows={2}
