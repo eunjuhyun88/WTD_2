@@ -16,6 +16,8 @@
 |---|---|---|
 | `W-0372-ia-consolidation` | P1 | 🟡 Phase C — ★★★ Terminal 이식 + WatchlistRail add/delete |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
+| `W-0377-core-loop-pipeline-repair` | P0 | 🟡 Design Draft — Break A/B/C 수정 |
+| `W-0378-ai-agent-integration` | P0 | 🟡 Design Draft — 4 Phase, W-0377 dependency |
 
 ---
 
