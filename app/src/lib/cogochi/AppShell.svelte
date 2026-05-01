@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import CommandBar from './CommandBar.svelte';
+  // CommandBar unused — W-0375 (removed from desktop chrome)
+  // import CommandBar from './CommandBar.svelte';
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
   import WatchlistRail from './WatchlistRail.svelte';
@@ -229,18 +230,7 @@
 
   {:else}
     <!-- ── DESKTOP / TABLET ── -->
-    <CommandBar
-      sessionName={$activeTab?.title?.slice(0, 32) || ''}
-      onRangeSelect={() => {
-        const next = !$activeTabState.rangeSelection;
-        shellStore.updateTabState(s => ({ ...s, rangeSelection: next }));
-        if (next) chartSaveMode.enterRangeMode();
-        else chartSaveMode.exitRangeMode();
-      }}
-      hasRange={$activeTabState.rangeSelection || $chartSaveMode.active}
-      {paletteOpen}
-      setPaletteOpen={(open) => (paletteOpen = open)}
-    />
+    <!-- CommandBar: UNUSED — W-0375 (60px chrome saved) -->
 
     <TopBar
       onSymbolTap={() => (desktopSymbolPickerOpen = true)}
