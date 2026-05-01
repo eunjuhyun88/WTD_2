@@ -141,13 +141,8 @@ export function applyAuthenticatedUser(user: AuthUserPayload) {
 }
 
 export function clearAuthenticatedUser() {
-  walletStore.update((w) => ({
-    ...w,
-    email: null,
-    nickname: null,
-    tier: w.connected ? 'connected' : 'guest',
-    showWalletModal: false,
-    walletModalStep: 'wallet-select',
+  walletStore.update(() => ({
+    ...defaultWallet,
   }));
 }
 
