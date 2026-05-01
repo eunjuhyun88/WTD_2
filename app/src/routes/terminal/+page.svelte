@@ -19,6 +19,7 @@
     removeIndicator as removeChartIndicator,
     normalizeIndicatorKey,
   } from '$lib/stores/chartIndicators';
+  import { applyChartAction } from '$lib/stores/paneIndicators';
   import { normalizeTimeframe } from '$lib/utils/timeframe';
   import { buildCanonicalHref } from '$lib/seo/site';
   import { get } from 'svelte/store';
@@ -1010,12 +1011,9 @@
           console.warn('chart_action: invalid timeframe', payload.timeframe, err);
         }
       } else if (action === 'add_indicator' && typeof payload.indicator === 'string') {
-        const key = normalizeIndicatorKey(payload.indicator);
-        if (key) addChartIndicator(key);
-        else console.warn('chart_action: unknown indicator', payload.indicator);
+        applyChartAction('add_indicator', payload.indicator as any);
       } else if (action === 'remove_indicator' && typeof payload.indicator === 'string') {
-        const key = normalizeIndicatorKey(payload.indicator);
-        if (key) removeChartIndicator(key);
+        applyChartAction('remove_indicator', payload.indicator as any);
       } else if (action === 'add_phase_marker') {
         // Alpha Universe phase transition marker
         const marker = {

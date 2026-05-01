@@ -184,3 +184,15 @@ export function snapshotIndicators(): ChartIndicatorState {
 export function resetIndicators(): void {
   _store.set({ ...DEFAULT_STATE });
 }
+
+/**
+ * @deprecated — W-0304 migrated to per-pane stores.
+ * This is a back-compat alias for single-pane mode (paneId=0).
+ * Will be removed in W-0306 cleanup.
+ * Use `import { getIndicatorStore } from '$lib/stores/paneIndicators'` instead.
+ */
+export function deprecatedGetPaneStore() {
+  // Lazy import to avoid circular deps
+  const { getIndicatorStore } = require('./paneIndicators');
+  return getIndicatorStore(0);
+}
