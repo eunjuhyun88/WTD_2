@@ -2,9 +2,17 @@
 	/**
 	 * /lab/counterfactual — distribution comparison + filter attribution.
 	 * W-0383. Read-only analytics; no production thresholds change here.
+	 * Extended: active rule cycle banner + cycle commits timeline overlay.
 	 */
 	import { onMount } from 'svelte';
 	import type { CounterfactualReview, HorizonHour, SinceDays } from '$lib/contracts';
+
+	interface CycleMarker {
+		cycleId: number;
+		commitSha: string;
+		timestamp: Date;
+		status: string;
+	}
 
 	let pattern = $state<string>('ALL');
 	let horizon = $state<HorizonHour>(24);
@@ -12,6 +20,8 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let data = $state<CounterfactualReview | null>(null);
+	let activeCycle = $state<CycleMarker | null>(null);
+	let cycleHistory = $state<CycleMarker[]>([]);
 
 	const PATTERN_OPTIONS = ['ALL', 'wyckoff-spring', 'bull-flag', 'breakout', 'reversal'];
 	const HORIZON_OPTIONS: HorizonHour[] = [1, 4, 24, 72];
@@ -34,6 +44,21 @@
 				return;
 			}
 			data = body.data as CounterfactualReview;
+
+			// Load cycle history
+			const cycleRes = await fetch(`/api/research/ledger?limit=20&offset=0`);
+			const cycleBody = await cycleRes.json();
+			if (cycleBody.ok && cycleBody.entries) {
+				cycleHistory = cycleBody.entries
+					.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+					.map((entry: any) => ({
+						cycleId: entry.cycleId,
+						commitSha: entry.commitSha,
+						timestamp: new Date(entry.createdAt),
+						status: entry.status
+					}));
+				activeCycle = cycleHistory[0] || null;
+			}
 		} catch (e) {
 			error = (e as Error).message;
 		} finally {
@@ -104,6 +129,15 @@
 		</div>
 	</header>
 
+	{#if activeCycle}
+		<div class="active-cycle-banner" data-testid="active-cycle-banner">
+			<strong>Active Rule Cycle:</strong>
+			Cycle #{activeCycle.cycleId} ({activeCycle.status})
+			· Commit: <code>{activeCycle.commitSha.substring(0, 8)}</code>
+			· Updated: {activeCycle.timestamp.toLocaleString()}
+		</div>
+	{/if}
+
 	{#if loading}
 		<p class="muted" data-testid="cfx-loading">Loading…</p>
 	{:else if error}
@@ -123,10 +157,28 @@
 					<dt>IQR</dt><dd>±{((data.traded.iqr[1] - data.traded.iqr[0]) / 2).toFixed(2)}%</dd>
 					<dt>p_win</dt><dd>{(data.traded.p_win * 100).toFixed(1)}%</dd>
 				</dl>
-				<div class="hist" aria-label="traded histogram">
-					{#each data.traded.histogram as count}
-						<span class="bin" style="height: {(count / maxBin()) * 100}%"></span>
-					{/each}
+				<div class="hist-container">
+					<div class="hist" aria-label="traded histogram">
+						{#each data.traded.histogram as count}
+							<span class="bin" style="height: {(count / maxBin()) * 100}%"></span>
+						{/each}
+					</div>
+					{#if cycleHistory.length > 0}
+						<svg class="cycle-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+							{#each cycleHistory as cycle, idx}
+								{@const xPos = ((cycleHistory.length - idx) / cycleHistory.length) * 100}
+								<line
+									x1={xPos}
+									y1="0"
+									x2={xPos}
+									y2="100"
+									stroke={cycle.status === 'committed' ? '#10b981' : '#ef4444'}
+									stroke-width="0.5"
+									opacity="0.5"
+								/>
+							{/each}
+						</svg>
+					{/if}
 				</div>
 			</article>
 			<article class="dist blocked">
@@ -136,10 +188,28 @@
 					<dt>IQR</dt><dd>±{((data.blocked.iqr[1] - data.blocked.iqr[0]) / 2).toFixed(2)}%</dd>
 					<dt>p_win</dt><dd>{(data.blocked.p_win * 100).toFixed(1)}%</dd>
 				</dl>
-				<div class="hist" aria-label="blocked histogram">
-					{#each data.blocked.histogram as count}
-						<span class="bin neg" style="height: {(count / maxBin()) * 100}%"></span>
-					{/each}
+				<div class="hist-container">
+					<div class="hist" aria-label="blocked histogram">
+						{#each data.blocked.histogram as count}
+							<span class="bin neg" style="height: {(count / maxBin()) * 100}%"></span>
+						{/each}
+					</div>
+					{#if cycleHistory.length > 0}
+						<svg class="cycle-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+							{#each cycleHistory as cycle, idx}
+								{@const xPos = ((cycleHistory.length - idx) / cycleHistory.length) * 100}
+								<line
+									x1={xPos}
+									y1="0"
+									x2={xPos}
+									y2="100"
+									stroke={cycle.status === 'committed' ? '#10b981' : '#ef4444'}
+									stroke-width="0.5"
+									opacity="0.5"
+								/>
+							{/each}
+						</svg>
+					{/if}
 				</div>
 			</article>
 		</section>
@@ -226,6 +296,9 @@
 	.controls label { display: flex; flex-direction: column; font-size: 9px; text-transform: uppercase; gap: 4px; color: var(--g7); }
 	.controls select { font-family: var(--font-mono, ui-monospace); font-size: 11px; background: var(--g1); color: var(--g10); border: 1px solid var(--g3); padding: 4px 8px; }
 
+	.active-cycle-banner { background: var(--amb); color: var(--g0); padding: 8px 12px; font-size: 11px; margin-bottom: 12px; font-family: var(--font-mono, ui-monospace); }
+	.active-cycle-banner code { background: var(--g0); color: var(--amb); padding: 2px 4px; border-radius: 2px; }
+
 	.distros { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 	.dist { background: var(--g1); border: 1px solid var(--g3); padding: 12px; }
 	.dist h2 { font-size: 10px; letter-spacing: 0.06em; margin: 0 0 8px; }
@@ -233,7 +306,9 @@
 	.dist dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 8px; font-size: 11px; font-family: var(--font-mono, ui-monospace); }
 	.dist dt { color: var(--g7); }
 	.dist dd { margin: 0; text-align: right; }
+	.hist-container { position: relative; }
 	.hist { display: flex; align-items: flex-end; gap: 2px; height: 60px; background: var(--g0); padding: 4px; }
+	.cycle-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; pointer-events: none; }
 	.bin { flex: 1; background: var(--pos); min-height: 1px; opacity: 0.85; }
 	.bin.neg { background: var(--g6); }
 
