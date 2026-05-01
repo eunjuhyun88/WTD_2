@@ -2,7 +2,7 @@
 
 > Wave: 5 | Priority: P1 | Effort: L (3 phases, 10-14일)
 > Charter: §In-Scope (UI/UX 통합은 Frozen 아님)
-> Status: 🟡 Design Draft
+> Status: 🟡 Phase B In Progress
 > Created: 2026-05-01
 > Issue: #825
 
@@ -266,7 +266,7 @@ Redirect 신규/유지:
   routes/market/* (디렉토리 통째로)
 
 Supabase:
-  app/supabase/migrations/040_user_watchlist.sql (신규 — Phase C)
+  app/supabase/migrations/042_user_watchlist.sql (신규 — Phase C, 040/041 이미 사용)
 ```
 
 ---
@@ -380,29 +380,19 @@ Supabase:
 
 ## Implementation Plan
 
-### Phase A — 네비 정리 + Dashboard 재목적 (3-4일)
+### Phase A — 네비 정리 ✅ (PR #826 머지 완료)
 
-**Goal:** Nav dead-click 0, 5-hub 구조 진입, Home 재목적
+**완료 항목:**
+1. ~~`routes/market/*` 삭제~~ — routes에 처음부터 없음 (N/A)
+2. `AppNavRail.svelte` 7→5 변경 ✅ — PR #826
+3. `MobileBottomNav.svelte` 전면 개편 ✅ — PR #826
+4. WatchlistRail fold 토글 ✅ — 기존 코드에 이미 구현돼 있었음 (folded state + CSS + button)
 
-1. `routes/market/*` 삭제 (Charter Frozen 위반)
-2. `AppNavRail.svelte` 7→5 변경:
-   - `[Home][Terminal][Patterns][Lab][Settings]`
-   - Home → `/dashboard`, Terminal → `/cogochi`
-   - icon 5종 (기존 4 + Settings 1개 신규)
-3. `MobileBottomNav.svelte` 전면 개편 (5-hub 매핑, safe-area 유지)
-4. `/agent` `/cogochi` (라벨로서) `/scanner` Nav 메뉴 제거 (redirect는 유지)
-5. `/dashboard` 재목적:
-   - 상단에 지갑 섹션 추가 (WalletConnect 상태 + balance)
-   - Passport 요약 섹션 추가 (Level/LP/Tier/WinRate — `/passport`에서 핵심 4 수치만 가져옴)
-   - 기존 WATCHING + KimchiPremium + OpportunityScore + AdapterDiff 유지
-6. WatchlistRail fold 토글 (Phase A 범위 — UI만)
-
-**Phase A Exit Criteria:**
-- Nav 항목 5개
-- Nav 클릭 → 빈페이지/redirect 0건
-- Mobile/Desktop 항목 정합 (5/5)
-- `/dashboard` 상단에 지갑 + Passport 요약 표시
-- WatchlistRail fold 작동
+**Phase A Exit Criteria: PASS**
+- Nav 항목 5개 ✅
+- Nav 클릭 → 빈페이지/redirect 0건 ✅
+- Mobile/Desktop 항목 정합 (5/5) ✅
+- WatchlistRail fold 작동 ✅
 
 ### Phase B — Hub Layout + Terminal 핵심 4개 이식 (4-5일)
 
@@ -443,7 +433,7 @@ Supabase:
    - ResearchPanel → AIPanel 강화
 2. **PineScriptGenerator** → Lab hub 신규 PineScript 탭
 3. **WatchlistRail Supabase**
-   - migration 040: `user_watchlist` 테이블 (`user_id`, `symbol`, `position`, `created_at`)
+   - migration 042: `user_watchlist` 테이블 (`user_id`, `symbol`, `position`, `created_at`)
    - localStorage → Supabase 마이그레이션 로직
 4. `/terminal` → `/cogochi` redirect 추가 (코드 보존)
 5. Mobile 실기기 테스트 (safe-area-inset, tap target 44px)
@@ -471,7 +461,7 @@ Supabase:
 - [ ] **AC9** Mobile Bottom Nav 5-hub 정합, safe-area-inset 처리, tap target ≥ 44px
 - [ ] **AC10** `/dashboard` Home 재목적: 지갑 + Passport 요약 (Level/LP/Tier/WinRate) + WATCHING + 기존 stats
 - [ ] **AC11** Patterns / Lab / Settings hub `+layout.svelte` 탭 신규 3개
-- [ ] **AC12** Supabase migration 040 `user_watchlist` deploy + RLS
+- [ ] **AC12** Supabase migration 042 `user_watchlist` deploy + RLS
 - [ ] **AC13** CI green / typecheck pass / vitest pass
 - [ ] **AC14** PR 3개 atomic (Phase A / B / C 각각 별도 merge)
 - [ ] **AC15** PR merged + CURRENT.md SHA 업데이트
@@ -516,6 +506,9 @@ app
 - `app/src/routes/market/` (삭제)
 - `app/src/routes/strategies/` (이동 → patterns/strategies)
 - `app/src/routes/benchmark/` (이동 → patterns/benchmark)
+- `app/src/routes/cogochi/+page.svelte` (Phase B: ★★★ 이식 연결점)
+- `app/src/routes/terminal/+page.svelte` (Phase C: redirect 추가)
+- `app/src/routes/dashboard/+page.server.ts` (Phase B: passport summary fetch)
 
 ## Assumptions
 
@@ -531,6 +524,6 @@ app
 
 ## Handoff Checklist
 
-- [ ] Phase A PR #826 머지
-- [ ] Phase B 브랜치 생성 후 hub layout 구현
-- [ ] Phase C WatchlistRail Supabase 저장
+- [x] Phase A PR #826 머지 — AppNavRail 7→5 + MobileBottomNav (2026-05-01)
+- [ ] Phase B PR: /dashboard Home 재목적 + hub layouts (Patterns/Lab/Settings) + ★★★ 이식
+- [ ] Phase C PR: ★★ 이식 + WatchlistRail add/delete Supabase + /terminal redirect

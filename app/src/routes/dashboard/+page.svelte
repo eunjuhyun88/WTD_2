@@ -1,15 +1,40 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { buildCanonicalHref } from '$lib/seo/site';
   import { allStrategies, setActiveStrategy } from '$lib/stores/strategyStore';
   import type { StrategyEntry } from '$lib/stores/strategyStore';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
+  import { walletStore, openWalletModal } from '$lib/stores/walletStore';
   import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
   import KimchiPremiumBadge from '$lib/components/market/KimchiPremiumBadge.svelte';
   import type { CaptureRow, FlywheelHealth, OpportunityScore } from './+page.server';
 
+  interface PassportSummary {
+    tier: string;
+    winRate: number;
+    totalLp: number;
+    streak: number;
+    wins: number;
+    losses: number;
+  }
+
   let { data } = $props();
+
+  const wallet = $derived($walletStore);
+  let passport = $state<PassportSummary | null>(null);
+
+  onMount(async () => {
+    try {
+      const r = await fetch('/api/profile/passport');
+      if (r.ok) {
+        const d = (await r.json()) as { passport?: PassportSummary };
+        if (d.passport) passport = d.passport;
+      }
+    } catch { /* silent */ }
+  });
+
   const sourcePendingVerdicts = $derived(data.pendingVerdicts ?? []);
   const flywheel = $derived(data.flywheelHealth as FlywheelHealth | null);
   const topOpportunities = $derived((data.topOpportunities ?? []) as OpportunityScore[]);
@@ -209,10 +234,10 @@
 <div class="surface-page chrome-layout dash">
   <header class="surface-hero surface-fixed-hero dashboard-workbar">
     <div class="surface-copy dashboard-workbar-copy">
-      <span class="surface-kicker">Dashboard</span>
+      <span class="surface-kicker">Home</span>
       <div class="dashboard-title-stack">
         <h1 class="surface-title">My Workspace</h1>
-        <span class="dashboard-workbar-note">Inbox for saved setups, live watches, and next actions</span>
+        <span class="dashboard-workbar-note">지갑 · 패스포트 · 활성 포지션 한눈에</span>
       </div>
     </div>
     <div class="surface-stats dashboard-workbar-stats">
@@ -241,6 +266,51 @@
   </header>
 
   <div class="surface-scroll-body">
+
+  <!-- Home: Wallet + Passport Summary -->
+  <section class="home-profile-strip">
+    <div class="home-wallet">
+      {#if wallet.connected && wallet.address}
+        <span class="home-wallet-dot home-wallet-dot--on"></span>
+        <span class="home-wallet-addr">{wallet.shortAddr ?? wallet.address.slice(0, 6) + '…' + wallet.address.slice(-4)}</span>
+        {#if wallet.balance > 0}
+          <span class="home-wallet-bal">{wallet.balance.toFixed(4)} ETH</span>
+        {/if}
+        <span class="home-wallet-chain">{wallet.chain ?? 'ARB'}</span>
+      {:else}
+        <span class="home-wallet-dot home-wallet-dot--off"></span>
+        <button class="home-wallet-connect" onclick={() => openWalletModal()}>지갑 연결</button>
+      {/if}
+    </div>
+
+    {#if passport}
+      <div class="home-passport">
+        <span class="home-pp-tier" data-tier={passport.tier.toLowerCase()}>{passport.tier}</span>
+        <div class="home-pp-stat">
+          <span class="home-pp-label">Win</span>
+          <strong class:pos={passport.winRate >= 55} class:neg={passport.winRate < 45}>{passport.winRate.toFixed(1)}%</strong>
+        </div>
+        <div class="home-pp-stat">
+          <span class="home-pp-label">LP</span>
+          <strong>{passport.totalLp.toLocaleString()}</strong>
+        </div>
+        <div class="home-pp-stat">
+          <span class="home-pp-label">Streak</span>
+          <strong class:pos={passport.streak > 0} class:neg={passport.streak < 0}>{passport.streak > 0 ? '+' : ''}{passport.streak}</strong>
+        </div>
+        <div class="home-pp-stat">
+          <span class="home-pp-label">W/L</span>
+          <strong>{passport.wins}/{passport.losses}</strong>
+        </div>
+        <a href="/passport" class="home-pp-link">상세 →</a>
+      </div>
+    {:else if wallet.connected}
+      <div class="home-passport home-passport--loading">Passport 로딩 중…</div>
+    {:else}
+      <div class="home-passport home-passport--empty">지갑 연결 후 Passport 표시</div>
+    {/if}
+  </section>
+
   <section class="surface-grid">
     <div class="surface-section-head">
       <div>
@@ -542,6 +612,119 @@
 </div>
 
 <style>
+  /* Home Profile Strip */
+  .home-profile-strip {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(249, 216, 194, 0.06);
+    flex-wrap: wrap;
+  }
+
+  .home-wallet {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .home-wallet-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .home-wallet-dot--on  { background: #22AB94; }
+  .home-wallet-dot--off { background: rgba(250, 247, 235, 0.2); }
+
+  .home-wallet-addr { color: rgba(250, 247, 235, 0.7); letter-spacing: 0.02em; }
+  .home-wallet-bal  { color: rgba(250, 247, 235, 0.45); }
+  .home-wallet-chain {
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(249, 216, 194, 0.08);
+    color: rgba(249, 216, 194, 0.5);
+    letter-spacing: 0.06em;
+  }
+
+  .home-wallet-connect {
+    background: none;
+    border: 1px solid rgba(249, 216, 194, 0.2);
+    color: rgba(249, 216, 194, 0.6);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .home-wallet-connect:hover {
+    border-color: rgba(249, 216, 194, 0.5);
+    color: rgba(249, 216, 194, 0.9);
+  }
+
+  .home-passport {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    font-size: 11px;
+  }
+
+  .home-passport--loading,
+  .home-passport--empty {
+    color: rgba(250, 247, 235, 0.25);
+    font-size: 10px;
+    font-style: italic;
+  }
+
+  .home-pp-tier {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(249, 216, 194, 0.08);
+    color: rgba(249, 216, 194, 0.7);
+  }
+  .home-pp-tier[data-tier="gold"]     { background: rgba(255, 193, 7, 0.12);  color: #FFC107; }
+  .home-pp-tier[data-tier="silver"]   { background: rgba(176, 196, 222, 0.12); color: #B0C4DE; }
+  .home-pp-tier[data-tier="platinum"] { background: rgba(147, 112, 219, 0.12); color: #9370DB; }
+
+  .home-pp-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+  }
+
+  .home-pp-label {
+    font-size: 8px;
+    color: rgba(250, 247, 235, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .home-pp-stat strong { font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(250, 247, 235, 0.85); }
+  .home-pp-stat strong.pos { color: #22AB94; }
+  .home-pp-stat strong.neg { color: #F23645; }
+
+  .home-pp-link {
+    font-size: 10px;
+    color: rgba(249, 216, 194, 0.4);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .home-pp-link:hover { color: rgba(249, 216, 194, 0.8); }
+
+  @media (max-width: 768px) {
+    .home-passport { margin-left: 0; }
+  }
+
   .dashboard-workbar {
     padding: 16px 20px;
     gap: 16px;

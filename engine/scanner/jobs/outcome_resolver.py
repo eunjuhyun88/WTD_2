@@ -100,6 +100,73 @@ def _build_pattern_outcome(
     )
 
 
+def _write_pnl_to_ledger_outcomes(
+    *,
+    outcome_id: str,
+    ohlcv: "pd.DataFrame",
+    capture: "CaptureRecord",
+    policy: "OutcomePolicy",
+) -> None:
+    """Compute realized P&L via simulate_trade and update ledger_outcomes row."""
+    import pandas as pd
+    from pnl.pnl_compute import simulate_trade
+    from pnl.cost_model import DEFAULT_TIER
+    from ledger.supabase_record_store import _sb
+
+    if ohlcv is None or ohlcv.empty:
+        return
+
+    captured_at_ms = capture.captured_at_ms
+    cap_dt = pd.Timestamp(captured_at_ms / 1000, unit="s", tz="UTC")
+
+    # Align index timezone
+    idx = ohlcv.index
+    if idx.tzinfo is None:
+        idx = idx.tz_localize("UTC")
+        ohlcv = ohlcv.copy()
+        ohlcv.index = idx
+
+    mask = idx >= cap_dt
+    if not mask.any():
+        return
+    entry_bar_idx = int(mask.nonzero()[0][0])
+    # simulate_trade needs entry_bar_idx+1 to exist
+    if entry_bar_idx + 1 >= len(ohlcv):
+        return
+
+    # direction: default long (CaptureRecord has no direction field)
+    direction: int = 1
+
+    entry_px = float(ohlcv.iloc[entry_bar_idx + 1]["open"])
+    stop_px = entry_px * (1.0 - abs(policy.miss_threshold_pct))
+    target_px = entry_px * (1.0 + policy.hit_threshold_pct)
+    horizon_bars = max(1, int(policy.evaluation_window_hours))
+
+    result = simulate_trade(
+        ohlcv=ohlcv,
+        entry_bar_idx=entry_bar_idx,
+        direction=direction,
+        stop_px=stop_px,
+        target_px=target_px,
+        horizon_bars=horizon_bars,
+        cost_tier=DEFAULT_TIER,
+    )
+
+    _sb().table("ledger_outcomes").update({
+        "entry_side": result.entry_side,
+        "exit_reason": result.exit_reason,
+        "fee_bps_total": result.fee_bps_total,
+        "slippage_bps_total": result.slippage_bps_total,
+        "pnl_bps_gross": round(result.pnl_bps_gross, 4),
+        "pnl_bps_net": round(result.pnl_bps_net, 4),
+        "pnl_pct_net": round(result.pnl_pct_net, 6),
+        "holding_bars": result.holding_bars,
+        "mfe_bps": round(result.mfe_bps, 4),
+        "mae_bps": round(result.mae_bps, 4),
+        "pnl_verdict": result.verdict,
+    }).eq("id", outcome_id).execute()
+
+
 def _distinct_windows() -> list[float]:
     """Distinct evaluation windows across registered policies."""
     from patterns.outcome_policy import _PATTERN_POLICIES
@@ -199,6 +266,22 @@ def resolve_outcomes(
             outcome_id=outcome.id,
         )
         resolved.append(outcome)
+
+        # W-0365: P&L computation — wire pnl_compute into outcome
+        try:
+            _write_pnl_to_ledger_outcomes(
+                outcome_id=outcome.id + ":outcome",
+                ohlcv=klines,
+                capture=capture,
+                policy=policy,
+            )
+        except Exception as exc:
+            log.warning(
+                "outcome_resolver: pnl_compute failed for %s: %s",
+                capture.capture_id,
+                exc,
+            )
+
         log.info(
             "outcome_resolver: %s/%s → %s (peak=%.2f%%, exit=%.2f%%)",
             capture.symbol,

@@ -1,4 +1,4 @@
-# CURRENT — 2026-04-30
+# CURRENT — 2026-05-01
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`1eec30ca` — origin/main (2026-05-01) — PR #801 W-0363/W-0364 perf phase1 merged
+`f3eeebac` — origin/main (2026-05-01) — PR #826 W-0372 Phase A merged (AppNavRail 7→5 + MobileBottomNav)
 
 ---
 
@@ -14,47 +14,37 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0372-ia-consolidation` | P1 | 🟡 Phase A — PR #826 |
+| `W-0372-ia-consolidation` | P1 | 🟡 Phase B — hub layout + ★★★ transplant |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
 
-## Wave 4 실행 계획 (갭 분석 반영, 2026-04-30)
+## Wave 5 실행 계획 (2026-05-01)
 
 ```
-완료:  W-0248 Stripe ✅ | W-0306 F-5 ✅ | W-0307 Kimchi HUD ✅ | W-0308 Lifecycle UI ✅ | W-0247 F-16 recall ✅
-즉시:  W-PF-101 schema (PR #783) → W-PF-102~105 engine → W-PF-106 UI
-Week2: W-0317 SplitPane wire-up + W-0304 per-pane indicator
-Week3: F-19 Sentry + F-20 infra cleanup
-Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
+완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
+완료:  W-0372 Phase A ✅ — AppNavRail 7→5 + MobileBottomNav 5-hub (#826)
+즉시:  W-0372 Phase B — /dashboard Home repurpose + /market 삭제 + WatchlistRail fold + ★★★ transplant
+다음:  W-0372 Phase C — ★★ transplant + Supabase watchlist migration
+이후:  W-0304 per-pane indicator
 ```
-
-상세: `work/active/W-0252-v00-pattern-search-audit.md`
 
 ---
 
-## A081~A083 세션 핵심 lesson
+## 핵심 lesson (A099/A100 세션)
 
-- **CI flaky 근본 fix**: 임계값에 4× 여유 (CI variance ≠ 회귀) [A077]
-- **W-number 충돌**: claim 전 origin/main의 work-issue-map 확인 필수 [A078]
-- **tier_gate 테스트 격리**: search/captures route 테스트는 dependency_overrides 또는 autouse fixture 필수 [A083]
-- **lock file 누락**: 신규 npm 패키지 추가 시 package-lock.json 반드시 같이 커밋 [A083]
-- **local main 오염 방지**: 모든 feature 작업은 feat/ 브랜치에서만, main에 직접 커밋 금지 [A083]
+- **Contract CI CURRENT.md sync**: active table에 나열된 work item 파일이 실제로 존재해야 함. 파일 없으면 CI 즉시 BLOCK
+- **Contract CI 필수 섹션**: Owner / Facts / Canonical Files / Assumptions / Next Steps / Handoff Checklist 전부 있어야 통과
+- **W-0372 Phase A lock-in**: /cogochi = Terminal hub 핵심, /terminal → redirect. 5-Hub 확정
 
 ---
 
-## Frozen (Wave 4 기간 중 비접촉)
+## Frozen (Wave 5 기간 중 비접촉)
 
-- Copy Trading Phase 1+ (N-05 marketplace → F-60 gate 후)
+- Copy Trading Phase 1+
 - Chart UX polish (W-0212류)
 - Phase C/D ORPO/DPO (GPU 필요)
-
----
-
-## A086 세션 핵심 lesson
-
-- **PR close 전 내용 비교 필수**: `gh pr diff` 읽고 아키텍처/성능/UX 3축 비교 후 close. 내용 확인 없이 "이미 됐다"로 close 금지 [A086]
-- **병렬 작업 도메인 분리**: `+page.svelte` 공유 파일은 같은 에이전트에서 순차 처리 [A086]
+- AI 차트 분석, 자동매매, 신규 메모리 stack
 
 ---
 
@@ -62,7 +52,6 @@ Week4: F-30 Ledger 4-table (P2, D6 lock-in: M3 전 스키마 변경 금지)
 
 ```bash
 ./tools/start.sh
-# W-PF-102~106 PropFirm P1 engine + UI
-gh pr checks 783
-cat work/active/W-PF-100-propfirm-master-epic.md
+cat work/active/W-0372-ia-consolidation.md
+# Phase B: /dashboard Home repurpose + /market 삭제 + WatchlistRail fold + ★★★ transplant
 ```
