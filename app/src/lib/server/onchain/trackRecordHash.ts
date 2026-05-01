@@ -217,7 +217,7 @@ export async function getAgentTrackRecord(
     const totalDecided = row.wins + row.losses;
     const winRate = totalDecided > 0 ? row.wins / totalDecided : 0;
 
-    return { ...row, winRate };
+    return { totalCommits: row.total, totalRevealed: row.revealed, wins: row.wins, losses: row.losses, draws: row.draws, winRate };
   } catch {
     return { totalCommits: 0, totalRevealed: 0, wins: 0, losses: 0, draws: 0, winRate: 0 };
   }

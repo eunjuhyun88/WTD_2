@@ -1,19 +1,4 @@
 <script lang="ts">
-  /**
-   * Terminal · PEEK layout (DESIGN-ONLY PORT)
-   *
-   * Full-bleed chart + bottom Peek drawer (ANALYZE / SCAN / JUDGE).
-   *
-   * Reuses existing stores + fetchers (read-only):
-   *   - activePairState (symbol/tf)
-   *   - fetchTerminalAnalysisBundle (ANALYZE data)
-   *   - fetchScannerAlerts (SCAN alerts)
-   *   - fetchPatternCaptures (JUDGE history)
-   *   - fetchSimilarPatternCaptures (SCAN similar setups)
-   *
-   * NOTE: saveJudgment / rejudge are UI-only stubs in this port.
-   *       Wire them to real endpoints later — current build is layout only.
-   */
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair } from '$lib/stores/activePairStore';
   import {
@@ -27,13 +12,13 @@
   } from '$lib/api/terminalPersistence';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
   import TerminalCommandBar from '../../../components/terminal/workspace/TerminalCommandBar.svelte';
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import TerminalContextPanel from '../../../components/terminal/workspace/TerminalContextPanel.svelte';
-  import PeekDrawer from '../../../components/terminal/peek/PeekDrawer.svelte';
   import ScanGrid from '../../../components/terminal/peek/ScanGrid.svelte';
-  import JudgePanel from '../../../components/terminal/peek/JudgePanel.svelte';
+  import IndicatorPanel from '../../../components/terminal/peek/IndicatorPanel.svelte';
+  import AIAgentPanel from '../../../components/terminal/peek/AIAgentPanel.svelte';
 
   // ── State ────────────────────────────────────────────────────────────────
   let analysisData = $state<TerminalAnalyzeData | null>(null);
@@ -45,15 +30,14 @@
   let captures = $state<PatternCaptureRecord[]>([]);
   let similar = $state<PatternCaptureRecord[]>([]);
   let loadingSimilar = $state(false);
-  let savingJudgment = $state(false);
 
-  let analyzeTab = $state('summary');
   let analysisInFlight = '';
 
+  interface RangeSelection { from: number; to: number; fromTime?: number; toTime?: number; }
+  let rangeSelection = $state<RangeSelection | null>(null);
+
   // ── Derived from activePairState ─────────────────────────────────────────
-  const activeSymbol = $derived(
-    $activePairState.pair.replace('/', '').toUpperCase()
-  );
+  const activeSymbol = $derived($activePairState.pair.replace('/', '').toUpperCase());
   const activeTf = $derived($activePairState.timeframe);
 
   // ── Fetchers ─────────────────────────────────────────────────────────────
@@ -90,53 +74,35 @@
     if (!symbol) return;
     loadingSimilar = true;
     try {
-      const draft = {
-        symbol,
-        timeframe: tf,
-        triggerOrigin: 'manual' as const,
-        markers: [],
-      } as any;
+      const draft = { symbol, timeframe: tf, triggerOrigin: 'manual' as const, markers: [] } as any;
       try {
         const matches = await fetchSimilarPatternCaptures(draft);
         similar = (matches ?? []).map((m: any) => m.record ?? m).filter(Boolean);
       } catch {
-        similar = captures.filter(
-          (r) => r.symbol.toUpperCase().includes(symbol.replace(/USDT$/, ''))
-        );
+        similar = captures.filter((r) => r.symbol.toUpperCase().includes(symbol.replace(/USDT$/, '')));
       }
-    } finally {
-      loadingSimilar = false;
-    }
-  }
-
-  // ── Judgment save — UI-only stub (design port). Wire to API later. ───────
-  async function saveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
-    if (savingJudgment) return;
-    savingJudgment = true;
-    try {
-      console.log('[peek] saveJudgment (UI stub)', {
-        symbol: activeSymbol,
-        timeframe: activeTf,
-        ...input,
-      });
-      // TODO: POST /api/terminal/pattern-captures when backend is ready.
-      await new Promise((r) => setTimeout(r, 250));
-    } finally {
-      savingJudgment = false;
-    }
-  }
-
-  async function rejudge(input: { captureId: string; outcome: 'correct' | 'wrong' | 'partial' | 'timeout'; note: string }) {
-    console.log('[peek] rejudge (UI stub)', input);
-    // TODO: PATCH /api/terminal/pattern-captures/[id] when backend route exists.
+    } finally { loadingSimilar = false; }
   }
 
   function openCapture(record: PatternCaptureRecord) {
     setActivePair(record.symbol.replace(/USDT$/, '') + '/USDT');
   }
 
+  // ── Range selection from chartSaveMode store ──────────────────────────────
+  const unsubRange = chartSaveMode.subscribe((state) => {
+    if (state.active && state.anchorA !== null && state.anchorB !== null) {
+      const lo = Math.min(state.anchorA, state.anchorB);
+      const hi = Math.max(state.anchorA, state.anchorB);
+      const klines = ohlcvBars as Array<{ time?: number; t?: number }>;
+      const fromIdx = Math.max(0, klines.findIndex(k => (k.time ?? k.t ?? 0) >= lo));
+      const toIdx = klines.reduce((acc, k, i) => ((k.time ?? k.t ?? 0) <= hi ? i : acc), fromIdx);
+      rangeSelection = { from: fromIdx, to: toIdx, fromTime: lo, toTime: hi };
+    } else if (!state.active) {
+      rangeSelection = null;
+    }
+  });
+
   // ── Auto-refresh on pair change ──────────────────────────────────────────
-  let pairWatcher = $state(0);
   $effect(() => {
     const sym = activeSymbol;
     const tf = activeTf;
@@ -144,14 +110,15 @@
       if (sym) {
         loadAnalysis(sym, tf);
         loadSimilar(sym, tf);
+        rangeSelection = null;
+        chartSaveMode.exitRangeMode();
       }
     });
-    pairWatcher++;
   });
 
   // ── Mount + periodic refresh ─────────────────────────────────────────────
-  let alertTimer: any = null;
-  let captureTimer: any = null;
+  let alertTimer: ReturnType<typeof setInterval> | null = null;
+  let captureTimer: ReturnType<typeof setInterval> | null = null;
 
   onMount(() => {
     loadAlerts();
@@ -162,23 +129,8 @@
   onDestroy(() => {
     if (alertTimer) clearInterval(alertTimer);
     if (captureTimer) clearInterval(captureTimer);
+    unsubRange();
   });
-
-  // ── Derived counts for peek bar ──────────────────────────────────────────
-  const analyzeCount = $derived((analysisData as any)?.verdict ? 1 : 0);
-  const scanCount = $derived(scannerAlerts.length);
-  const judgeCount = $derived(captures.filter((c: any) => {
-    const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
-    return !hasOutcome;
-  }).length);
-
-  // ── Verdict extraction for JudgePanel ────────────────────────────────────
-  const judgeVerdict = $derived((analysisData as any)?.verdict ?? null);
-  const judgeEntry   = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
-  const judgeStop    = $derived((analysisData as any)?.verdict?.stop  ?? (analysisData as any)?.deep?.stop  ?? null);
-  const judgeTarget  = $derived((analysisData as any)?.verdict?.target?? (analysisData as any)?.deep?.target?? null);
-  const judgePWin    = $derived((analysisData as any)?.p_win ?? null);
-  const judgeLast    = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
 </script>
 
 <svelte:head>
@@ -188,83 +140,70 @@
 <div class="peek-shell">
   <TerminalCommandBar />
 
-  <main class="peek-main">
-    <div class="chart-wrap">
+  <div class="peek-body">
+    <!-- Left rail: scan list -->
+    <aside class="left-col">
+      <ScanGrid
+        alerts={scannerAlerts}
+        {similar}
+        activeSymbol={activeSymbol}
+        {loadingSimilar}
+        onOpenCapture={openCapture}
+      />
+    </aside>
+
+    <!-- Center: chart — always full height, never covered -->
+    <main class="center-col">
       <ChartBoard
         symbol={activeSymbol}
         tf={activeTf}
         initialData={chartPayload}
         contextMode="chart"
       />
-    </div>
+    </main>
 
-    <PeekDrawer {analyzeCount} {scanCount} {judgeCount}>
-      <svelte:fragment slot="analyze">
-        <TerminalContextPanel
-          {analysisData}
-          activeTab={analyzeTab}
-          onTabChange={(t) => analyzeTab = t}
-          bars={ohlcvBars}
-          {layerBarsMap}
-        />
-      </svelte:fragment>
-
-      <svelte:fragment slot="scan">
-        <ScanGrid
-          alerts={scannerAlerts}
-          {similar}
-          {activeSymbol}
-          {loadingSimilar}
-          onOpenCapture={openCapture}
-        />
-      </svelte:fragment>
-
-      <svelte:fragment slot="judge">
-        <JudgePanel
-          symbol={activeSymbol}
-          timeframe={activeTf}
-          verdict={judgeVerdict}
-          entry={judgeEntry}
-          stop={judgeStop}
-          target={judgeTarget}
-          pWin={judgePWin}
-          lastPrice={judgeLast}
-          {captures}
-          saving={savingJudgment}
-          onSaveJudgment={saveJudgment}
-          onRejudge={rejudge}
-          onOpenCapture={openCapture}
-        />
-      </svelte:fragment>
-    </PeekDrawer>
-  </main>
+    <!-- Right rail: indicator values + AI agent -->
+    <aside class="right-col">
+      <IndicatorPanel
+        {analysisData}
+        symbol={activeSymbol}
+        tf={activeTf}
+      />
+      <AIAgentPanel
+        symbol={activeSymbol}
+        tf={activeTf}
+        {analysisData}
+        {rangeSelection}
+        {ohlcvBars}
+        onEnterRangeMode={() => chartSaveMode.enterRangeMode()}
+      />
+    </aside>
+  </div>
 </div>
 
 <style>
-  :global(html),
-  :global(body) {
-    height: 100%;
-    margin: 0;
-    background: var(--sc-bg-0, #0b0e14);
+  :global(html), :global(body) {
+    height: 100%; margin: 0; background: var(--sc-bg-0, #0b0e14);
   }
   .peek-shell {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
-    background: var(--sc-bg-0, #0b0e14);
-    color: var(--sc-text-0, #f7f2ea);
+    display: flex; flex-direction: column; height: 100vh; width: 100vw;
+    overflow: hidden; background: var(--sc-bg-0, #0b0e14); color: var(--sc-text-0, #f7f2ea);
   }
-  .peek-main {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
+  .peek-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+  .left-col {
+    width: 220px; flex-shrink: 0; border-right: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
   }
-  .chart-wrap {
-    flex: 1;
-    min-height: 0;
-    position: relative;
+  .center-col { flex: 1; min-width: 0; position: relative; }
+  .right-col {
+    width: 260px; flex-shrink: 0; border-left: 1px solid rgba(255,255,255,0.06);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .right-col :global(.ind-panel) { flex: 1; min-height: 0; overflow-y: auto; }
+  .right-col :global(.aap) { flex-shrink: 0; max-height: 50%; overflow-y: auto; }
+
+  @media (max-width: 959px) {
+    .left-col { display: none; }
+    .right-col { width: 220px; }
   }
 </style>

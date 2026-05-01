@@ -54,12 +54,8 @@ export function useChartDataFeed(opts: ChartDataFeedOpts) {
       return;
     }
 
-    // Only use pre-fetched initialData on the very first load (no prior key).
-    // On symbol/TF changes _lastDataKey is already set, so we skip this and
-    // fetch fresh — otherwise stale data from the previous symbol gets cached
-    // under the new symbol's key and the dedup guard on line 47 locks it in.
     const initialData = opts.getInitialData();
-    if (initialData && !emaTf && !_lastDataKey) {
+    if (initialData && !emaTf) {
       _cache.set(dataKey, initialData);
       chartData = initialData;
       error = null;

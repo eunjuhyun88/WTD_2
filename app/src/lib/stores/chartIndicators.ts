@@ -51,14 +51,14 @@ export type ChartIndicatorState = Record<IndicatorKey, boolean>;
 
 const DEFAULT_STATE: ChartIndicatorState = {
   ema: true,
-  bb: false,
+  bb: true,
   vwap: false,
   atr_bands: false,
   derivatives: true,
   derivativesOverlay: false,  // sub-pane by default (TradingView standard)
   cvd: true,
   macd: false,
-  rsi: false,
+  rsi: true,
   oi: true,
   funding: true,
   liq: true,

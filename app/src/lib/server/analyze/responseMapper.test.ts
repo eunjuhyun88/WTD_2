@@ -30,6 +30,8 @@ function createRawBundle(): AnalyzeRawBundle {
 		takerPoints: [],
 		forceOrders: [],
 		fundingRate: 0.01,
+		spotKlines: [],
+		coinbaseSpotPrice: null,
 	};
 }
 
