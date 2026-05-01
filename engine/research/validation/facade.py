@@ -22,6 +22,19 @@ import numpy as np
 from engine.research.proposer.schemas import ChangeProposal
 from engine.features.gex_pressure import gex_filter_proposal
 from engine.research.validation.pbo import pbo_filter_proposal
+from engine.research.validation.pipeline import (
+    ValidationPipelineConfig,
+    ValidationReport,
+    run_validation_pipeline,
+)
+from engine.research.validation.gates import (
+    GateV2Config,
+    GateV2Result,
+    evaluate_gate_v2,
+)
+from engine.research.validation.hypothesis_registry_store import (
+    HypothesisRegistryStore,
+)
 
 log = logging.getLogger("engine.research.validation.facade")
 
@@ -117,21 +130,6 @@ def validate_and_gate(
         # Enabled flag
         if os.environ.get("VALIDATION_PIPELINE_ENABLED", "true").lower() == "false":
             return _fail(slug, family, stage, "VALIDATION_PIPELINE_ENABLED=false")
-
-        # Import locally to avoid circular imports
-        from engine.research.validation.pipeline import (
-            ValidationPipelineConfig,
-            ValidationReport,
-            run_validation_pipeline,
-        )
-        from engine.research.validation.gates import (
-            GateV2Config,
-            GateV2Result,
-            evaluate_gate_v2,
-        )
-        from engine.research.validation.hypothesis_registry_store import (
-            HypothesisRegistryStore,
-        )
 
         # Build config with W-0317 horizon bands
         if config is None:
