@@ -21,6 +21,7 @@
   import { shellStore } from './shell.store';
   import { chartAIOverlay } from '$lib/stores/chartAIOverlay';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { setChartFreshness } from '$lib/stores/chartFreshness';
   import { crosshairBus, publishCrosshair } from '$lib/stores/crosshairBus';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
@@ -78,6 +79,11 @@
   // D-6: keep chartSaveMode payload in sync so save() can slice indicators.
   $effect(() => {
     chartSaveMode.setPayload(chartData);
+  });
+
+  // D-10: publish chart-data tick freshness for StatusBar.
+  $effect(() => {
+    if (chartData) setChartFreshness(Date.now());
   });
 
   // Re-create DrawingManager whenever symbol/tf changes (per-pair persistence).

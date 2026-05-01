@@ -5,9 +5,16 @@
     modelDelta: number;
     onSwitchMode: (mode: 'trade' | 'train' | 'flywheel') => void;
     sidebarVisible: boolean;
+    /** D-10: latest verdict label, e.g. "LONG" / "SHORT" / "WAIT" / null. */
+    lastVerdictKind?: 'LONG' | 'SHORT' | 'WAIT' | null;
+    /** D-10: epoch ms of latest data tick (chart price). null = unknown. */
+    lastUpdatedAt?: number | null;
   }
 
-  const { mode, verdicts, modelDelta, onSwitchMode, sidebarVisible }: Props = $props();
+  const {
+    mode, verdicts, modelDelta, onSwitchMode, sidebarVisible,
+    lastVerdictKind = null, lastUpdatedAt = null,
+  }: Props = $props();
 
   const modes = [
     { id: 'trade', label: 'TRADE', color: 'var(--brand)' },
@@ -21,12 +28,23 @@
   }
 
   let currentTime = $state(getTime());
+  let nowMs = $state(Date.now());
   $effect(() => {
     const interval = setInterval(() => {
       currentTime = getTime();
+      nowMs = Date.now();
     }, 1000);
     return () => clearInterval(interval);
   });
+
+  const freshnessSec = $derived(
+    lastUpdatedAt == null ? null : Math.max(0, Math.floor((nowMs - lastUpdatedAt) / 1000)),
+  );
+  const freshnessClass = $derived(
+    freshnessSec == null ? '' :
+    freshnessSec < 15 ? 'fresh-good' :
+    freshnessSec < 60 ? 'fresh-warn' : 'fresh-stale',
+  );
 </script>
 
 <div class="status-bar">
@@ -60,6 +78,26 @@
       {modelDelta >= 0 ? '+' : ''}{modelDelta.toFixed(3)}
     </strong>
   </span>
+
+  {#if lastVerdictKind}
+    <span class="divider">│</span>
+    <span class="status-item" title="최근 verdict (LONG/SHORT/WAIT)">
+      verdict
+      <span
+        class="verdict-pill"
+        class:vp-long={lastVerdictKind === 'LONG'}
+        class:vp-short={lastVerdictKind === 'SHORT'}
+        class:vp-wait={lastVerdictKind === 'WAIT'}
+      >{lastVerdictKind}</span>
+    </span>
+  {/if}
+
+  {#if freshnessSec !== null}
+    <span class="divider">│</span>
+    <span class="status-item" title="최근 데이터 갱신 경과 시간">
+      fresh <strong class={freshnessClass}>{freshnessSec}s</strong>
+    </span>
+  {/if}
 
   <span class="spacer"></span>
 
@@ -148,6 +186,27 @@
   .negative {
     color: var(--neg);
   }
+
+  /* D-10 verdict pill + freshness */
+  .verdict-pill {
+    display: inline-block;
+    padding: 1px 5px;
+    margin-left: 3px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    border-radius: 2px;
+    border: 0.5px solid var(--g4);
+    background: var(--g2);
+    color: var(--g8);
+  }
+  .verdict-pill.vp-long  { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 40%, transparent); }
+  .verdict-pill.vp-short { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 40%, transparent); }
+  .verdict-pill.vp-wait  { color: var(--amb, #d6a347); border-color: color-mix(in srgb, var(--amb, #d6a347) 40%, transparent); }
+
+  .fresh-good  { color: var(--pos); }
+  .fresh-warn  { color: var(--amb, #d6a347); }
+  .fresh-stale { color: var(--neg); }
 
   .spacer {
     flex: 1;

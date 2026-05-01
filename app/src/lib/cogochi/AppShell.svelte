@@ -16,7 +16,8 @@
   import TradeMode from './modes/TradeMode.svelte';
   import WorkspaceStage from './WorkspaceStage.svelte';
   import { get } from 'svelte/store';
-  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta, isDecideMode } from './shell.store';
+  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta, isDecideMode, allVerdicts } from './shell.store';
+  import { chartFreshness } from '$lib/stores/chartFreshness';
   import DecideRightPanel from './DecideRightPanel.svelte';
   import MultiPaneChartAdapter from './MultiPaneChartAdapter.svelte';
   import PatternLibraryPanelAdapter from './PatternLibraryPanelAdapter.svelte';
@@ -43,6 +44,16 @@
 
   const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
   const aiPaneWidth = $derived($activeTabState.rightPanelExpanded ? 480 : Math.max(300, $shellStore.aiWidth));
+
+  // D-10: status-bar mini Verdict / freshness wiring.
+  const lastVerdictKind = $derived.by<'LONG' | 'SHORT' | 'WAIT' | null>(() => {
+    const entries = Object.values($allVerdicts);
+    if (entries.length === 0) return null;
+    const last = entries[entries.length - 1];
+    if (last === 'agree') return 'LONG';
+    if (last === 'disagree') return 'WAIT';
+    return null;
+  });
 
   function openDesktopSymbolPicker(tabId?: string) {
     desktopSymbolPickerTabId = tabId ?? $shellStore.activeTabId;
@@ -385,6 +396,8 @@
       modelDelta={$modelDelta}
       onSwitchMode={(m) => shellStore.switchMode(m)}
       sidebarVisible={$shellStore.sidebarVisible}
+      lastVerdictKind={lastVerdictKind}
+      lastUpdatedAt={$chartFreshness}
     />
   {/if}
 
