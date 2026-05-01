@@ -41,6 +41,14 @@ log = logging.getLogger("engine.pipeline")
 _OUT_DIR = Path(__file__).parent / "experiments" / "pipeline"
 _COMPRESS = "zstd"
 
+
+def latest_top_patterns_path() -> "Path | None":
+    """Return the most-recently-modified results parquet in _OUT_DIR, or None."""
+    files = list(_OUT_DIR.glob("results_*.parquet"))
+    if not files:
+        return None
+    return max(files, key=lambda p: p.stat().st_mtime)
+
 # BH-FDR threshold
 BH_ALPHA = 0.05
 # Minimum signals to include in BH family
