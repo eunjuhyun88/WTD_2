@@ -118,6 +118,97 @@ REFACTOR:
 - Groq 12-key가 cycle당 24+ debate calls 흡수 가능
 - 기존 1955+ 테스트가 깨지지 않도록 새 모듈은 augment-only
 
+## Scope
+
+### 포함 사항
+- Orchestrator + Ratchet 자동화 (git commit/reset)
+- Proposer 8-track LLM + GP + Optuna (L1)
+- 6-Layer 정합성 게이트 (L2~L6)
+- Ensemble 10종 전부 (single, parallel-vote, judge-arbitrate, debate, MoA, etc)
+- Ledger 누적 및 UI 5페이지 (ledger, battle, ensemble, diff, counterfactual)
+- Supabase migration 2개 (autoresearch_ledger, ensemble_rounds)
+
+### 파일 기준
+- 신규: engine/research/orchestrator.py, ratchet.py, proposer/, ensemble/, validation/pbo.py, rules/active.yaml, program.md, gex_pressure.py, fetch_deribit_options.py, migrations/045~046
+- Refactor: engine/llm/router.py (propose task + Gemma track), app/src/routes/lab/counterfactual/+page.svelte (배너 + cycle lines)
+
+### API 변화
+- 신규 POST /api/research/run-cycle (body: {strategy, sandbox})
+- 신규 GET /api/research/ledger (결과 조회)
+- 신규 GET /api/research/ensemble/strategies (활성 전략 목록)
+
+## Non-Goals
+
+- Real-time live monitoring dashboard (background job만 지원)
+- GPU 병렬화 (순차 L1~L6 OK, cycle당 6분)
+- Automated deployment to production (main 진입은 사람 PR만)
+- Copy trading (W-0380)
+- Live strategy backtesting WebSocket (async polling OK)
+- Multi-exchange orderbook orchestration (Spot+Perp 기본만)
+
+## Decisions
+
+### [D-001] 개별 CI vs 동시 다중 LLM
+**선택**: 동시 (asyncio.gather) L1에서, 각각 독립적으로 fast-eval (L2)에 진입.
+**사유**: 6분 budget 내 multi-model diversity 확보, cost control 가능 (비용 초과시 즉시 abort).
+**거절 옵션**: 순차 실행 (latency 늘어남, 실시간 성 저하).
+
+### [D-002] Ensemble strategy 선택 (운영)
+**선택**: 기본=judge-arbitrate (cost 9×, quality 우수), 실험=multi-agent-debate (R=2), 벤치=MoA (주 1회).
+**사유**: judge-arbitrate는 cost vs quality 최적화, debate는 diversity 최대, MoA는 SOTA 성능.
+**거절 옵션**: 단일 strategy 고정 (다양성 부족).
+
+### [D-003] Gamma 해석 (Layer 5)
+**선택**: 3-겹침 (Gemma LLM track + Options GEX + Optuna gamma hyperparameter).
+**사유**: 모두 통계적으로 독립적 신호, 성능 분리 추적 가능.
+
+### [D-004] Ratchet git 격리
+**선택**: autoresearch/cycle-{N} 브랜치 (main 진입 금지), 사람이 별도 PR로만 main 반영.
+**사유**: 자동 commit 실패 or rollback 안전, 인간 작업과 충돌 회피.
+
+### [D-005] PBO vs Walk-Forward only
+**선택**: 둘 다 (L3 + L6 counterfactual).
+**사유**: PBO는 backtest overfitting 탐지, Walk-Forward는 OOS drift 감지. 상호 보완.
+
+## Open Questions
+
+- [ ] [Q-001] Debate R-round termination: Jaccard ≥ 0.8 OR max R=2 중 어디서 cut? (비용 vs 수렴)
+- [ ] [Q-002] Proposer 후보 상한: L1 max 100 vs soft cap? (메모리, 비용)
+- [ ] [Q-003] Ledger 장기 보관: 1년 이상 데이터 쿼리 성능 영향? (partition by cycle_date?)
+- [ ] [Q-004] Deribit options Greeks freshness: intraday resync 몇 시간마다? (API rate limit 고려)
+- [ ] [Q-005] Manual override: 사람이 rejected cycle 재제출 가능? (audit trail)
+
+## Next Steps
+
+1. Phase 0 (PR-1): engine/research/rules/active.yaml + program.md 템플릿, PurgedKFold leakage test
+2. Phase 1 (PR-2): orchestrator.py + ratchet.py (no proposer yet)
+3. Phase 2 (PR-3): proposer 4종 (llm_proposer asyncio.gather, gp, grid)
+4. Phase 3 (PR-4): ensemble 10종 (single부터 MoA까지)
+5. Phase 4 (PR-5): pbo.py + gex_pressure.py + fetch_deribit_options.py
+6. Phase 5 (PR-6): Supabase migrations 045~046 + schema changes
+7. Phase 6 (PR-7): UI 5페이지 (ledger, battle, ensemble, diff, counterfactual 확장)
+8. Sandbox mode (PR-8): AUTORESEARCH_SANDBOX_MODE env toggle, smoke test pass
+
+## Exit Criteria
+
+- [ ] AC1: pytest autoresearch tests 전부 PASS (50+ new tests)
+- [ ] AC2: pnpm test:unit research/* 0 errors
+- [ ] AC3: orchestrator 6분 budget 내 cycle 완료 (avg 4.2분)
+- [ ] AC4: ensemble 10종 ledger에 누적, UI 5페이지 조회 가능
+- [ ] AC5: git ratchet atomic (6 layer 모두 통과 or all 파기)
+- [ ] AC6: Sandbox smoke test pass (AUTORESEARCH_SANDBOX_MODE=true)
+- [ ] AC7: Contract CI green (CURRENT.md main SHA 업데이트)
+
+## Handoff Checklist
+
+- [ ] W-0379 파일 완성 + Issue #859 링크 확인
+- [ ] 8 LLM track 모두 라우터에 등록 (engine/llm/router.py)
+- [ ] rules/active.yaml + program.md 템플릿 frozen (에이전트 읽기 전용)
+- [ ] Ledger schema (autoresearch_round + ensemble_round) migration 044-046 준비
+- [ ] Phase 0~8 모두 PR 작성, CI green 확인
+- [ ] Sandbox mode toggle working (env var + test 병렬)
+- [ ] Team handoff 문서 (agent.md 또는 이 W-0379 자체)
+
 ---
 
 ## 1. CTO 관점 — 6-Layer 격벽 구조
