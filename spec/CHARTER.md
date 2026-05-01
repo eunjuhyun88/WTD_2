@@ -40,40 +40,22 @@
 
 ---
 
-## 🚫 Frozen / Non-Goals
+## ✅ Frozen 전면 해제 (2026-05-01, 사용자 결정)
 
-다음 키워드/범위는 **신규 작업 금지**. PR 머지된 것이 있어도 Phase 2+로 동결.
+> 이전 Frozen/Non-Goals 항목 전면 해제. TradingView feature parity, AI 차트 분석, LLM chat, 모바일 native, 카피트레이딩 시그널, 자동매매, Portfolio P&L, social, customer-facing LLM 포함 전체 In-Scope.
 
-### PRD §1.3 명시 Non-Goals
-
-- ❌ **범용 스크리너** (시그널만 던지고 검증 없이 매매 권유하는 툴 류)
-- ❌ **대중형 소셜/카피트레이딩** (`copy.trad`, `copy_trading`, `leaderboard`, `subscription` 류)
-- ❌ **초보자용 "AI가 알려주는 매매"**
-- ❌ **실자금 자동매매 실행** (Phase 2+ 별도 레인)
-
-> **차트 Frozen 해제 (2026-05-01, 사용자 결정)**: 기존 "AI 차트 분석 툴 / TradingView 대체 / TradingView feature parity / Chart UX polish" 4개 항목 해제. W-0372 Phase D(Terminal→Cogochi 이식) 및 후속 차트 작업이 In-Scope에 포함됨. 단, 카피트레이딩/실자금 자동매매/대중형 시그널 툴은 여전히 Frozen.
-
-### Pattern Verification Lane 예외 (PRD v3, 2026-04-28)
-
-- ✅ **Paper Trading은 허용** — 단, **검증 도구**로만. PRD master § 0.3 참조.
-  - 허용: `engine/verification/` 신규 모듈 / 시뮬 체결 / paper P&L 추적 / backtest
-  - 금지: 실자금 주문 / 거래소 API key 보관 / `engine/copy_trading/` 코드 수정·import
-  - 원칙: "패턴이 진짜 먹히는지 보는 ground-truth 신호 수집"이지 "사용자 대신 매매하는 도구" 아님
-
-### 메타 도구 동결 (야크쉐이빙 차단)
+### 유일한 유지 제약 (야크쉐이빙 방지)
 
 - ❌ **신규** MemKraft 대체/확장 시스템 (별도 메모리 stack 빌드)
 - ❌ **신규** agent dispatcher / orchestration OS / handoff framework 빌드
 - ❌ **신규** slash command 시스템 (현재 set 충분)
 - ❌ **신규** worktree 정리 자동화 대규모 시스템 (수동 cleanup으로 충분)
 
-→ 핵심: **새 도구를 빌드하는 것**이 frozen. 기존 도구 사용·안정화는 별개 (§Coordination 참조).
+→ 핵심: **새 에이전트 도구를 빌드하는 것**만 frozen. 기존 도구 사용·안정화는 별개.
 
-### Polish 동결 (코어 미완성 동안)
+### Paper Trading
 
-- ❌ **Pine Script LLM-only 생성** — W-0211 Phase 1로 충분
-
-> Chart UX polish 항목은 2026-05-01 해제 (위 §PRD §1.3 주석 참조).
+- ✅ **Paper Trading 허용** — 검증 도구 + 사용자 경험 포함. PRD master § 0.3 참조.
 
 ---
 

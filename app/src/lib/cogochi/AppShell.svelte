@@ -1,10 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import CommandBar from './CommandBar.svelte';
+  // CommandBar unused — W-0375 (removed from desktop chrome)
+  // import CommandBar from './CommandBar.svelte';
+  import NewsFlashBar from '../../components/terminal/workspace/NewsFlashBar.svelte';
+  import ResearchPanel from '../../components/terminal/workspace/ResearchPanel.svelte';
+  import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
   import WatchlistRail from './WatchlistRail.svelte';
   import AIPanel from './AIPanel.svelte';
+  import AIAgentPanel from './AIAgentPanel.svelte';
+  import TopBar from './TopBar.svelte';
   import Splitter from './Splitter.svelte';
   import TradeMode from './modes/TradeMode.svelte';
   import WorkspaceStage from './WorkspaceStage.svelte';
@@ -31,6 +37,7 @@
   let indicatorSettingsOpen = $state(false);
 
   const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
+  const aiPaneWidth = $derived($activeTabState.rightPanelExpanded ? 480 : Math.max(300, $shellStore.aiWidth));
 
   function openDesktopSymbolPicker(tabId?: string) {
     desktopSymbolPickerTabId = tabId ?? $shellStore.activeTabId;
@@ -226,18 +233,15 @@
 
   {:else}
     <!-- ── DESKTOP / TABLET ── -->
-    <CommandBar
-      sessionName={$activeTab?.title?.slice(0, 32) || ''}
-      onRangeSelect={() => {
-        const next = !$activeTabState.rangeSelection;
-        shellStore.updateTabState(s => ({ ...s, rangeSelection: next }));
-        if (next) chartSaveMode.enterRangeMode();
-        else chartSaveMode.exitRangeMode();
-      }}
-      hasRange={$activeTabState.rangeSelection || $chartSaveMode.active}
-      {paletteOpen}
-      setPaletteOpen={(open) => (paletteOpen = open)}
+    <!-- CommandBar: UNUSED — W-0375 (60px chrome saved) -->
+
+    <TopBar
+      onSymbolTap={() => (desktopSymbolPickerOpen = true)}
+      onIndicators={() => (indicatorSettingsOpen = true)}
     />
+
+    <!-- NewsFlashBar: auto-hides when no events, throttled headlines -->
+    <NewsFlashBar symbol={desktopSymbol} />
 
     <div class="main-row">
       <!-- Left: WatchlistRail — always visible -->
@@ -294,25 +298,46 @@
             onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
           />
         {/if}
+
+        <!-- ResearchPanel: slides in when chart range is fully selected (A+B anchors) -->
+        {#if $chartSaveMode.active && $chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
+          <div class="research-overlay">
+            <ResearchPanel
+              symbol={desktopSymbol}
+              tf={$activeTabState.timeframe ?? '4h'}
+              open={true}
+              viewport={{
+                timeFrom: Math.min($chartSaveMode.anchorA, $chartSaveMode.anchorB),
+                timeTo: Math.max($chartSaveMode.anchorA, $chartSaveMode.anchorB),
+                tf: $activeTabState.timeframe ?? '4h',
+                barCount: 0,
+                klines: [],
+                indicators: {},
+              } satisfies ChartViewportSnapshot}
+              onClose={() => chartSaveMode.exitRangeMode()}
+              onSaved={(captureId) => {
+                shellStore.setDecisionBundle({
+                  symbol: desktopSymbol,
+                  timeframe: $activeTabState.timeframe ?? '4h',
+                  patternSlug: null,
+                });
+                shellStore.setRightPanelTab('analyze');
+                chartSaveMode.exitRangeMode();
+              }}
+            />
+          </div>
+        {/if}
       </div>
 
-      <!-- Right: AI panel or Decide panel — always visible -->
+      <!-- Right: AI agent panel or Decide panel — always visible -->
       <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
-      <div class="ai-pane" style:width={`${Math.max(300, $shellStore.aiWidth)}px`}>
+      <div class="ai-pane" style:width={`${aiPaneWidth}px`}>
         {#if $isDecideMode}
           <DecideRightPanel />
         {:else}
-          <AIPanel
+          <AIAgentPanel
             messages={$activeTabState.chat || []}
             onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
-            onApplySetup={(setup) => {
-              shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
-              shellStore.update(st => ({
-                ...st,
-                tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
-              }));
-            }}
-            onClose={() => {}}
             symbol={desktopSymbol}
             timeframe={$activeTabState.timeframe ?? '4h'}
             onSelectSymbol={(s) => shellStore.setSymbol(s)}
@@ -423,6 +448,26 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+  }
+
+  /* ResearchPanel slides in from right side of chart area on range selection */
+  .research-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 340px;
+    z-index: 20;
+    background: var(--g1, #0c0a09);
+    border-left: 1px solid var(--g4, #272320);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    animation: slide-in-right 0.15s ease-out;
+  }
+
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);   opacity: 1; }
   }
 
   .ai-pane {

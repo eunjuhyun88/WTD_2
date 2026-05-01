@@ -38,6 +38,7 @@ from scoring.block_evaluator import evaluate_blocks
 from scoring.ensemble import compute_ensemble, EnsembleResult, SignalDirection
 from scoring.lightgbm_engine import get_engine as get_lgbm
 from models.signal import SignalSnapshot
+from research.blocked_candidate_store import insert_blocked_candidate
 
 log = logging.getLogger("engine.scanner")
 
@@ -200,8 +201,16 @@ def _score_symbol(
     regime_str = snapshot.regime.value if hasattr(snapshot.regime, "value") else str(snapshot.regime)
     ensemble = compute_ensemble(p_win, blocks, regime_str)
 
-    # Only emit if not neutral
+    # Only emit if not neutral; log every blocked signal for counterfactual analysis
     if ensemble.direction == SignalDirection.NEUTRAL:
+        insert_blocked_candidate(
+            symbol=symbol,
+            timeframe="1h",
+            direction="neutral",
+            reason="below_min_conviction",
+            score=ensemble.ensemble_score,
+            p_win=p_win,
+        )
         return None
 
     return ScanSignal(

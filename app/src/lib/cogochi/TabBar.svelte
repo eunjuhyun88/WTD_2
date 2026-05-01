@@ -218,7 +218,7 @@
 
 <style>
   .tab-bar {
-    height: 30px;
+    height: var(--zone-tab-bar, 24px);
     display: flex;
     align-items: stretch;
     background: var(--g0);
@@ -478,14 +478,10 @@
   }
 
   .work-mode-btn.active {
-    color: var(--g9);
-    background: color-mix(in srgb, var(--g3) 80%, transparent);
-    border-color: color-mix(in srgb, var(--g5) 30%, transparent);
+    color: var(--amb);
+    background: var(--amb-d);
+    border-color: color-mix(in srgb, var(--amb) 30%, transparent);
   }
-
-  .work-mode-btn.active[aria-pressed='true'][title*='Observe'] { color: #8bb0ff; border-color: color-mix(in srgb, #8bb0ff 22%, transparent); background: color-mix(in srgb, #8bb0ff 8%, transparent); }
-  .work-mode-btn.active[aria-pressed='true'][title*='Analyze'] { color: var(--brand); border-color: color-mix(in srgb, var(--brand) 22%, transparent); background: color-mix(in srgb, var(--brand) 8%, transparent); }
-  .work-mode-btn.active[aria-pressed='true'][title*='Execute'] { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 22%, transparent); background: color-mix(in srgb, var(--pos) 8%, transparent); }
 
   /* INDICATORS button (right side) */
   .ind-tab-btn {

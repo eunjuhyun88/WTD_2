@@ -1,0 +1,52 @@
+/* ═══════════════════════════════════════════════════════
+   cogochi design tokens — TradingView-grade density
+   ═══════════════════════════════════════════════════════ */
+:root {
+  /* ── Zone heights (chrome budget = 80px total) ─────── */
+  --zone-top-bar:    32px;
+  --zone-tab-bar:    24px;
+  --zone-status-bar: 24px;
+  --zone-left-rail:  160px;
+  --zone-right-panel: 280px;
+  --zone-right-panel-expanded: 440px;
+
+  /* ── Palette — Bloomberg dark ───────────────────────── */
+  --g0:  #080706;   /* void */
+  --g1:  #0c0a09;   /* base bg */
+  --g2:  #111009;   /* surface */
+  --g3:  #191714;   /* divider */
+  --g4:  #242018;   /* border */
+  --g5:  #3a3530;   /* muted */
+  --g6:  #524d47;   /* placeholder */
+  --g7:  #857e76;   /* secondary text */
+  --g8:  #bab4ad;   /* body text */
+  --g9:  #e8e4df;   /* primary text */
+  --g10: #f5f2ee;   /* emphasis */
+
+  /* ── Semantic ────────────────────────────────────────── */
+  --amb:   #f5a623;   /* amber — active / accent */
+  --amb-d: #1e1508;   /* amber dim bg */
+  --pos:   #26a65b;   /* bullish green */
+  --pos-d: #0d1f14;
+  --neg:   #e84545;   /* bearish red */
+  --neg-d: #200d0d;
+  --blue:  #3d7de4;   /* info */
+  --blue-d:#0d1528;
+  --brand: #3d7de4;
+
+  /* ── Typography ─────────────────────────────────────── */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-sans: 'Inter', 'Geist', system-ui, sans-serif;
+
+  /* ── Spacing — 5 steps only ─────────────────────────── */
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 12px;
+
+  /* ── Radius ─────────────────────────────────────────── */
+  --r-1: 2px;
+  --r-2: 3px;
+  --r-3: 4px;
+}

@@ -300,6 +300,48 @@ export type {
 	Strategy,
 	TradeRecord
 } from './backtest';
+export {
+	CounterfactualReviewSchema,
+	DistributionStatsSchema,
+	FilterDragStateSchema,
+	FilterRowSchema,
+	ForwardReturnRowSchema,
+	HorizonHourSchema,
+	ReasonRowSchema,
+	SinceDaysSchema,
+	VerdictSchema,
+	WelchTestSchema
+} from './counterfactualReview';
+export type {
+	CounterfactualReview,
+	DistributionStats,
+	EquityPreview,
+	FilterDragState,
+	FilterRow,
+	FilterType,
+	ForwardReturnRow,
+	HorizonHour,
+	ReasonRow,
+	SinceDays,
+	Verdict,
+	WelchTest
+} from './counterfactualReview';
+export {
+	BucketCellSchema,
+	EvidenceRowSchema,
+	PatternFormulaSchema,
+	PatternSettingsSchema,
+	SuspectRowSchema,
+	SuspectWeightSchema
+} from './patternFormula';
+export type {
+	BucketCell,
+	EvidenceRow,
+	PatternFormula,
+	PatternSettings,
+	SuspectRow,
+	SuspectWeight
+} from './patternFormula';
 export type {
 	ChartPatternDetection,
 	ChartPatternDirection,

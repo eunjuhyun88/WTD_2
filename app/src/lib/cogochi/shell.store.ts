@@ -9,6 +9,9 @@ import {
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
+// v2 migration: verdict→analyze, research→scan
+export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
+export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 
 export interface WorkspacePanelRect {
   x: number; y: number; w: number; h: number;
@@ -36,6 +39,11 @@ export interface TabState {
   workspaceSplitY: number;
   layoutMode: 'C';
   analyzeLayout: AnalyzePanelLayoutState;
+  chartType: ChartType;
+  rightPanelTab: RightPanelTab;
+  rightPanelExpanded: boolean;
+  drawerOpen: boolean;
+  drawerKind: 'evidence-grid' | 'why-panel' | 'pattern-library' | 'verdict-card' | 'research-full' | 'judge-full' | null;
 }
 
 export interface Tab {
@@ -165,6 +173,11 @@ const FRESH_TAB_STATE = (): TabState => ({
   workspaceSplitY: 54,
   layoutMode: 'C',
   analyzeLayout: DEFAULT_ANALYZE_PANEL_LAYOUT,
+  chartType: 'candle',
+  rightPanelTab: 'decision' as RightPanelTab,
+  rightPanelExpanded: false,
+  drawerOpen: false,
+  drawerKind: null,
 });
 
 const makeDefault = (): ShellState => ({
@@ -196,10 +209,20 @@ const makeDefault = (): ShellState => ({
   decisionBundle: null,
 });
 
+const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
+function migrateRightPanelTab(raw: unknown): RightPanelTab {
+  // v1→v2: verdict→analyze, research→scan
+  if (raw === 'verdict') return 'analyze';
+  if (raw === 'research') return 'scan';
+  if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
+  return 'decision';
+}
+
 function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
   return {
     ...FRESH_TAB_STATE(),
     ...(tabState ?? {}),
+    rightPanelTab: migrateRightPanelTab((tabState as any)?.rightPanelTab),
     workspaceLayout: { ...FRESH_WORKSPACE_LAYOUT(), ...(tabState?.workspaceLayout ?? {}) },
     layoutMode: 'C',
     analyzeLayout: normalizeAnalyzePanelLayout(tabState?.analyzeLayout),
@@ -244,7 +267,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v8';
+const SHELL_KEY = 'cogochi_shell_v9'; // v9: RightPanelTab migration (verdict→analyze, research→scan)
 
 function createShellStore() {
   let initial: ShellState;
@@ -445,6 +468,42 @@ function createShellStore() {
       });
     },
 
+    setRightPanelTab: (tab: RightPanelTab) => {
+      update(st => ({
+        ...st,
+        tabs: st.tabs.map(t =>
+          t.id === st.activeTabId ? { ...t, tabState: { ...t.tabState, rightPanelTab: tab } } : t
+        ),
+      }));
+    },
+
+    setChartType: (chartType: ChartType) => {
+      update(st => ({
+        ...st,
+        tabs: st.tabs.map(t =>
+          t.id === st.activeTabId ? { ...t, tabState: { ...t.tabState, chartType } } : t
+        ),
+      }));
+    },
+
+    openDrawer: (drawerKind: TabState['drawerKind']) => {
+      update(st => ({
+        ...st,
+        tabs: st.tabs.map(t =>
+          t.id === st.activeTabId ? { ...t, tabState: { ...t.tabState, drawerOpen: true, drawerKind } } : t
+        ),
+      }));
+    },
+
+    closeDrawer: () => {
+      update(st => ({
+        ...st,
+        tabs: st.tabs.map(t =>
+          t.id === st.activeTabId ? { ...t, tabState: { ...t.tabState, drawerOpen: false, drawerKind: null } } : t
+        ),
+      }));
+    },
+
     // ── Mode switch ───────────────────────────────────────────────────────
 
     switchMode: (m: 'trade' | 'train' | 'flywheel') => {
@@ -616,3 +675,6 @@ export const modelDelta = derived(allVerdicts, $v => {
   return agree * 0.03 - disagree * 0.01;
 });
 export const isDecideMode = derived(shellStore, $st => $st.workMode === 'decide');
+export const activeRightPanelTab = derived(shellStore, $st =>
+  $st.tabs.find(t => t.id === $st.activeTabId)?.tabState.rightPanelTab ?? 'decision'
+);
