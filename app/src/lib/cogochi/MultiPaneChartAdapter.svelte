@@ -15,10 +15,12 @@
   import MultiPaneChart from '../../components/terminal/workspace/MultiPaneChart.svelte';
   import DrawingCanvas from '../../components/terminal/workspace/DrawingCanvas.svelte';
   import AIOverlayCanvas from './AIOverlayCanvas.svelte';
+  import RangeActionToast from './RangeActionToast.svelte';
   import { DrawingManager } from '$lib/chart/DrawingManager';
   import { PriceLineManager } from '$lib/chart/usePriceLines';
   import { shellStore } from './shell.store';
   import { chartAIOverlay } from '$lib/stores/chartAIOverlay';
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { crosshairBus, publishCrosshair } from '$lib/stores/crosshairBus';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
@@ -43,6 +45,17 @@
 
   let unsubCrossOut: (() => void) | null = null;
 
+  // D-6: drag-to-save range capture state.
+  let dragActive = false;
+  let dragOnMouseDown: ((e: MouseEvent) => void) | null = null;
+  let dragOnMouseMove: ((e: MouseEvent) => void) | null = null;
+  let dragOnMouseUp:   ((e: MouseEvent) => void) | null = null;
+  let toastVisible = $state(false);
+
+  const saveModeActive = $derived($chartSaveMode.active);
+  const saveAnchorA = $derived($chartSaveMode.anchorA);
+  const saveAnchorB = $derived($chartSaveMode.anchorB);
+
   async function fetchChart(sym: string, tf: string) {
     loading = true;
     error = null;
@@ -60,6 +73,11 @@
 
   $effect(() => {
     fetchChart(symbol, timeframe);
+  });
+
+  // D-6: keep chartSaveMode payload in sync so save() can slice indicators.
+  $effect(() => {
+    chartSaveMode.setPayload(chartData);
   });
 
   // Re-create DrawingManager whenever symbol/tf changes (per-pair persistence).
@@ -129,11 +147,101 @@
     };
   }
 
+  // D-6: convert clientX to chart time using mainEl bounding rect.
+  function clientXToChartTime(clientX: number): number | null {
+    if (!chartRef || !mainEl) return null;
+    const rect = mainEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const t = chartRef.timeScale().coordinateToTime(x);
+    if (t === null) return null;
+    return typeof t === 'number' ? t : Math.floor(new Date(t as string).getTime() / 1000);
+  }
+
+  function attachDragHandlers() {
+    if (!mainEl || !chartRef || dragOnMouseDown) return;
+
+    dragOnMouseDown = (e: MouseEvent) => {
+      const t = clientXToChartTime(e.clientX);
+      if (t === null) return;
+      chartSaveMode.startDrag(t);
+      dragActive = true;
+      toastVisible = false;
+      e.preventDefault();
+    };
+
+    dragOnMouseMove = (e: MouseEvent) => {
+      if (!dragActive) return;
+      const t = clientXToChartTime(e.clientX);
+      if (t !== null) chartSaveMode.adjustAnchor('B', t);
+    };
+
+    dragOnMouseUp = (e: MouseEvent) => {
+      if (!dragActive) return;
+      const t = clientXToChartTime(e.clientX);
+      if (t !== null) chartSaveMode.adjustAnchor('B', t);
+      dragActive = false;
+      const snap = chartSaveMode.snapshot();
+      if (snap.anchorA !== null && snap.anchorB !== null && snap.anchorA !== snap.anchorB) {
+        toastVisible = true;
+      }
+    };
+
+    mainEl.addEventListener('mousedown', dragOnMouseDown);
+    mainEl.addEventListener('mousemove', dragOnMouseMove);
+    mainEl.addEventListener('mouseup', dragOnMouseUp);
+    window.addEventListener('mouseup', dragOnMouseUp);
+  }
+
+  function detachDragHandlers() {
+    if (mainEl) {
+      if (dragOnMouseDown) mainEl.removeEventListener('mousedown', dragOnMouseDown);
+      if (dragOnMouseMove) mainEl.removeEventListener('mousemove', dragOnMouseMove);
+      if (dragOnMouseUp)   mainEl.removeEventListener('mouseup',   dragOnMouseUp);
+    }
+    if (dragOnMouseUp) window.removeEventListener('mouseup', dragOnMouseUp);
+    dragOnMouseDown = null;
+    dragOnMouseMove = null;
+    dragOnMouseUp   = null;
+    dragActive = false;
+  }
+
+  // D-6: react to save-mode toggle — attach/detach drag handlers and toggle pan/scale.
+  $effect(() => {
+    const active = saveModeActive;
+    if (!chartRef) return;
+    if (active) {
+      chartRef.applyOptions({ handleScroll: false, handleScale: false });
+      attachDragHandlers();
+    } else {
+      detachDragHandlers();
+      toastVisible = false;
+      try {
+        chartRef.applyOptions({ handleScroll: true, handleScale: true });
+      } catch {
+        // chart may be re-creating
+      }
+    }
+  });
+
+  // D-6: when both anchors set after a drag, ensure toast is shown.
+  $effect(() => {
+    if (saveModeActive && saveAnchorA != null && saveAnchorB != null && !dragActive) {
+      toastVisible = true;
+    } else if (!saveModeActive) {
+      toastVisible = false;
+    }
+  });
+
+  function dismissToast() {
+    toastVisible = false;
+  }
+
   onDestroy(() => {
     drawingMgr?.detach();
     drawingMgr = null;
     unsubCrossOut?.();
     unsubCrossOut = null;
+    detachDragHandlers();
     priceLineMgr.clearAILines();
     chartRef = null;
     seriesRef = null;
@@ -163,6 +271,13 @@
       containerEl={mainEl}
       {symbol}
     />
+    {#if toastVisible}
+      <RangeActionToast
+        {symbol}
+        {timeframe}
+        onDismiss={dismissToast}
+      />
+    {/if}
   {/if}
 </div>
 
