@@ -48,6 +48,10 @@
 	async function loadDiffData(): Promise<void> {
 		try {
 			const cycleId = $page.params.cycle_id;
+			if (!cycleId) {
+				error = 'Cycle ID not found';
+				return;
+			}
 			const res = await fetch(`/api/research/cycle/${cycleId}`);
 			const body = await res.json();
 			if (!res.ok || !body.ok) {
