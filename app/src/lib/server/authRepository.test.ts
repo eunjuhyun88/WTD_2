@@ -12,6 +12,8 @@ import {
   createWalletOnlyUser,
   findAuthUserByWallet,
   findAuthUserForLogin,
+  findAuthUserByEmail,
+  createEmailOnlyUser,
 } from './authRepository';
 
 const row = {
@@ -152,5 +154,75 @@ describe('authRepository wallet schema compatibility', () => {
     });
     expect(client.query.mock.calls[0]?.[0]).toContain('INSERT INTO app_users');
     expect(client.query.mock.calls[1]?.[0]).toContain('INSERT INTO user_wallets');
+  });
+});
+
+// ── W-0373: email-only Privy user path ───────────────────────────────────────
+describe('authRepository email-only user (W-0373)', () => {
+  const emailRow = {
+    id: 'user-email-1',
+    email: 'alice@example.com',
+    nickname: 'alice',
+    tier: 'registered' as const,
+    phase: 1,
+    wallet_address: null,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('findAuthUserByEmail returns user when email matches', async () => {
+    vi.mocked(query).mockResolvedValueOnce({ rows: [emailRow], rowCount: 1 } as never);
+
+    const result = await findAuthUserByEmail('alice@example.com');
+
+    expect(result).toEqual(emailRow);
+    const [sql, params] = vi.mocked(query).mock.calls[0] ?? [];
+    expect(sql).toContain('lower(email) = lower($1)');
+    expect(params).toEqual(['alice@example.com']);
+  });
+
+  it('findAuthUserByEmail returns null when no match', async () => {
+    vi.mocked(query).mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+
+    const result = await findAuthUserByEmail('nobody@example.com');
+
+    expect(result).toBeNull();
+  });
+
+  it('findAuthUserByEmail returns null for empty email', async () => {
+    const result = await findAuthUserByEmail('');
+    expect(result).toBeNull();
+    expect(vi.mocked(query)).not.toHaveBeenCalled();
+  });
+
+  it('createEmailOnlyUser inserts into users and returns row', async () => {
+    vi.mocked(query).mockResolvedValueOnce({
+      rows: [emailRow],
+      rowCount: 1,
+    } as never);
+
+    const result = await createEmailOnlyUser('alice@example.com', 'did:privy:abc123');
+
+    expect(result.email).toBe('alice@example.com');
+    expect(result.tier).toBe('registered');
+    expect(result.phase).toBe(1);
+    expect(result.wallet_address).toBeNull();
+
+    const [sql, params] = vi.mocked(query).mock.calls[0] ?? [];
+    expect(sql).toContain('INSERT INTO users');
+    expect(params?.[0]).toBe('alice@example.com');
+  });
+
+  it('createEmailOnlyUser retries on nickname collision', async () => {
+    vi.mocked(query)
+      .mockRejectedValueOnce({ code: '23505', constraint: 'uq_users_nickname_lower' })
+      .mockResolvedValueOnce({ rows: [{ ...emailRow, nickname: 'alice_AB1' }], rowCount: 1 } as never);
+
+    const result = await createEmailOnlyUser('alice@example.com', 'did:privy:abc123');
+
+    expect(result.email).toBe('alice@example.com');
+    expect(vi.mocked(query).mock.calls.length).toBe(2);
   });
 });

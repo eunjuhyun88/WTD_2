@@ -408,6 +408,118 @@ async function findLegacyAuthUserForLogin(
 }
 
 /**
+ * Find user by email alone (used when no wallet address is present in Privy token).
+ */
+export async function findAuthUserByEmail(email: string): Promise<AuthUserRow | null> {
+  if (!email) return null;
+  try {
+    const result = await query<AuthUserRow>(
+      `
+        SELECT id, email, nickname, tier, phase, wallet_address
+        FROM users
+        WHERE lower(email) = lower($1)
+        LIMIT 1
+      `,
+      [email]
+    );
+    return result.rows[0] || null;
+  } catch (error: any) {
+    if (!isLegacyAuthSchemaError(error)) throw error;
+    const result = await query<AuthUserRow>(
+      `
+        SELECT id, email, nickname, tier, phase, NULL AS wallet_address
+        FROM app_users
+        WHERE lower(email) = lower($1)
+        LIMIT 1
+      `,
+      [email]
+    );
+    return result.rows[0] || null;
+  }
+}
+
+/**
+ * Create an email-only user — no wallet address required (Privy email-first path).
+ * Auto-generates a display nickname from the email prefix.
+ */
+export async function createEmailOnlyUser(email: string, privySub: string): Promise<AuthUserRow> {
+  const prefix = email.split('@')[0] ?? 'user';
+  const safe = prefix.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 18) || 'user';
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const extra = attempt === 0 ? '' : `_${Math.random().toString(16).slice(2, 5).toUpperCase()}`;
+    const autoNickname = `${safe}${extra}`;
+
+    try {
+      try {
+        const result = await query<AuthUserRow>(
+          `
+            INSERT INTO users (email, nickname, tier, phase, privy_sub)
+            VALUES ($1, $2, 'registered', 1, $3)
+            RETURNING id, email, nickname, tier, phase, wallet_address
+          `,
+          [email, autoNickname, privySub || null]
+        );
+        return result.rows[0];
+      } catch (error: any) {
+        if (error?.code === '42703') {
+          // privy_sub column not migrated yet — insert without it
+          const result = await query<AuthUserRow>(
+            `
+              INSERT INTO users (email, nickname, tier, phase)
+              VALUES ($1, $2, 'registered', 1)
+              RETURNING id, email, nickname, tier, phase, wallet_address
+            `,
+            [email, autoNickname]
+          );
+          return result.rows[0];
+        }
+        if (!isLegacyAuthSchemaError(error)) throw error;
+        // Legacy schema path
+        const client_result = await query<AuthUserRow>(
+          `
+            INSERT INTO app_users (email, nickname, tier, phase)
+            VALUES ($1, $2, 'registered', 1)
+            RETURNING id, email, nickname, tier, phase
+          `,
+          [email, autoNickname]
+        );
+        return { ...client_result.rows[0], wallet_address: null };
+      }
+    } catch (err: any) {
+      const isNicknameConflict = err?.code === '23505' && err?.constraint?.includes('nickname');
+      const isEmailConflict = err?.code === '23505' && (err?.constraint?.includes('email') || err?.constraint?.includes('uq_users_email'));
+      if (isEmailConflict) throw err; // email collision = race, caller handles
+      if (!isNicknameConflict) throw err;
+    }
+  }
+
+  // Last resort: null nickname
+  try {
+    const result = await query<AuthUserRow>(
+      `
+        INSERT INTO users (email, tier, phase)
+        VALUES ($1, 'registered', 1)
+        RETURNING id, email, nickname, tier, phase, wallet_address
+      `,
+      [email]
+    );
+    return result.rows[0];
+  } catch (error: any) {
+    if (!isLegacyAuthSchemaError(error)) throw error;
+    const result = await query<AuthUserRow>(
+      `
+        INSERT INTO app_users (email, tier, phase)
+        VALUES ($1, 'registered', 1)
+        RETURNING id, email, nickname, tier, phase
+      `,
+      [email]
+    );
+    return { ...result.rows[0], wallet_address: null };
+  }
+}
+
+/**
  * Find user by wallet address alone (wallet-first auth).
  */
 export async function findAuthUserByWallet(
