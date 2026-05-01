@@ -14,7 +14,6 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0352-pipeline-top-patterns-api` | P1 | 🟡 Design Draft |
 | `W-0364-500ccu-perf-extension` | P1 | 🟡 In Progress |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
@@ -24,8 +23,8 @@
 
 ```
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
-즉시:  W-0352 top-patterns API → alpha 1cycle 완성
-다음:  W-0364 500ccu perf extension → W-0304 per-pane indicator
+즉시:  W-0364 500ccu perf extension
+다음:  W-0304 per-pane indicator
 ```
 
 ---
@@ -51,6 +50,5 @@
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0352-pipeline-top-patterns-api.md
-# W-0369 설계: alpha invite gating + 4 telemetry events
+cat work/active/W-0364-500ccu-perf-extension.md
 ```
