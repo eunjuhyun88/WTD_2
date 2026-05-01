@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-01
+# CURRENT — 2026-05-02
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`c982f613` — origin/main (2026-05-01) — PR #839 W-0374 Phase D-0~D-3 merged (Bloomberg UX TopBar + AIAgentPanel 5-tab)
+`a94a0f69` — origin/main (2026-05-02) — PR #862 W-0379 Phase 6 merged (research UI: ledger + battle + ensemble + diff + counterfactual)
 
 ---
 
@@ -15,12 +15,11 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟡 Phase D-4+ — IndicatorLibrary + DrawingToolbar + drag-to-save |
-| `W-0379-quant-autoresearch-orchestrator` | P0 | 🟡 Design Locked v4 — 6-Layer + 8-track + 10 ensemble (#859) |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
 
-## Wave 5 실행 계획 (2026-05-01)
+## Wave 5 실행 계획 (2026-05-02)
 
 ```
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
@@ -31,8 +30,10 @@
 완료:  W-0373 ✅ — wallet auth Privy email-first + silent failure fixes (#834)
 완료:  W-0358 ✅ — multi-exchange OHLCV ingestion framework (#836)
 완료:  W-0374 Phase D-0~D-3 ✅ — Bloomberg UX TopBar + AIAgentPanel 5-tab (#839)
+완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
+완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
 즉시:  W-0374 Phase D-4+ — IndicatorLibrary drawer + DrawingToolbar + drag-to-save → AI pattern
-다음:  W-0304 per-pane indicator (after W-0374 foundation stable)
+추후:  W-0304 per-pane indicator (after W-0374 foundation stable)
 ```
 
 ---
