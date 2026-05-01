@@ -324,6 +324,9 @@
         <span class="surface-meta">Waiting</span>
         <strong>{pendingChallengeCount}</strong>
       </article>
+      <a class="surface-sublink" href="/lab/counterfactual" data-testid="lab-counterfactual-link">
+        Counterfactual →
+      </a>
     </div>
   </header>
 
@@ -557,6 +560,20 @@
 </div>
 
 <style>
+  .surface-sublink {
+    align-self: center;
+    margin-left: 8px;
+    padding: 4px 10px;
+    color: var(--amb, #f5a623);
+    font-size: 11px;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--amb, #f5a623);
+    border-radius: 2px;
+  }
+  .surface-sublink:hover { background: rgba(245, 166, 35, 0.12); }
+
   .toolbar-shell {
     margin-top: 14px;
     overflow: auto;
