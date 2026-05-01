@@ -4,7 +4,7 @@
 // Sliding-window rate limiter backed by Upstash Redis.
 // Fallback to in-memory limiter if Redis unavailable.
 
-import { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { createRateLimiter } from './rateLimit';
 
 interface DistributedConfig {
@@ -24,8 +24,8 @@ class UpstashDistributedLimiter {
   constructor(config: DistributedConfig = {}) {
     this.windowMs = config.windowMs ?? 60_000;
     this.max = config.max ?? 60;
-    this.url = UPSTASH_REDIS_REST_URL ?? '';
-    this.token = UPSTASH_REDIS_REST_TOKEN ?? '';
+    this.url = env.UPSTASH_REDIS_REST_URL ?? '';
+    this.token = env.UPSTASH_REDIS_REST_TOKEN ?? '';
     this.redisAvailable = !!this.url && !!this.token;
   }
 
@@ -126,3 +126,17 @@ export const marketMicrostructureLimiterDistributed = createDistributedLimiter({
   windowMs: 60_000,
   max: 90,
 });
+
+export async function checkDistributedRateLimit(args: {
+  scope: string;
+  key: string;
+  windowMs?: number;
+  max?: number;
+  allowInfraFallback?: boolean;
+}): Promise<boolean> {
+  const limiter = createDistributedLimiter({
+    windowMs: args.windowMs ?? 60_000,
+    max: args.max ?? 60,
+  });
+  return limiter.check(`${args.scope}:${args.key}`);
+}

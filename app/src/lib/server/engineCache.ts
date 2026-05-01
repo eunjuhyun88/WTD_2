@@ -4,7 +4,7 @@
 // Stale-While-Revalidate cache for engine read-path responses.
 // Fallback to no caching if Redis unavailable.
 
-import { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 interface CacheEntry {
   value: unknown;
@@ -27,8 +27,8 @@ class UpstashEngineCache {
   constructor(config: EngineCapacheConfig = {}) {
     this.ttlSecs = config.ttlSecs ?? 60;
     this.swrSecs = config.swrSecs ?? 120;
-    this.url = UPSTASH_REDIS_REST_URL ?? '';
-    this.token = UPSTASH_REDIS_REST_TOKEN ?? '';
+    this.url = env.UPSTASH_REDIS_REST_URL ?? '';
+    this.token = env.UPSTASH_REDIS_REST_TOKEN ?? '';
     this.redisAvailable = !!this.url && !!this.token;
   }
 
