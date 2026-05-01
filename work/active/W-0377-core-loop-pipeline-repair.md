@@ -117,7 +117,7 @@ Break A/B가 수정되면:
 
 ---
 
-## Canonical Files (건드릴 파일 전체)
+## Canonical Files
 
 ```
 engine/scanner/scheduler.py
@@ -251,3 +251,44 @@ def test_pipeline_coherence_breaks_a_b_c():
 - [ ] AC5: `uv run pytest engine/tests/ -x -q` PASS (regression 없음)
 - [ ] CI green
 - [ ] PR merged + CURRENT.md SHA 업데이트
+
+## Owner
+
+eunjuhyun88 — single-PR scope, 2-3d effort.
+
+## Facts
+
+- `engine/scanner/scheduler.py:538` gates verification_loop via `ENABLE_SIGNAL_EVENTS` env var (default `"false"`).
+- `engine/patterns/scanner.py` writes `scan_signal_events` rows on entry signal — gated identically.
+- `engine/scanner/jobs/outcome_resolver.py` already imports `simulate_trade` and writes `ledger_outcomes` (merged via #842).
+- Issue #849 tracks the three breakages (A/B/C).
+
+## Assumptions
+
+- Cloud Run deploy will pick up the new code-level default without env var change.
+- Existing tests (`test_pipeline_coherence.py`) cover the regression surface for Break A/B/C.
+- No DB migration is needed — columns already exist after migration 038.
+
+## Open Questions
+
+- 없음 — design is locked.
+
+## Decisions
+
+- D1: 코드 레벨 default를 `"true"`로 바꾼다 (env 누락 시에도 파이프라인 흐르게).
+- D2: `outcome_resolver`는 `simulate_trade`를 호출해 `ledger_outcomes`까지 같이 채운다 (W-0365와 합류).
+- D3: CURRENT.md에서 stale W-0365/W-0366 active rows를 제거한다 (Break C).
+
+## Next Steps
+
+1. PR #853 머지 후 prod Cloud Run 배포 트리거.
+2. 30분 smoke window: `scan_signal_events` rows 누적 확인.
+3. CURRENT.md main SHA 업데이트 + W-0377 row 제거.
+
+## Handoff Checklist
+
+- [ ] AC1~AC5 모두 체크.
+- [ ] `engine/tests/test_pipeline_coherence.py` 7/7 PASS (로컬 + CI).
+- [ ] PR #853 머지.
+- [ ] prod smoke 후 `scan_signal_events` rows 1+ 확인.
+- [ ] CURRENT.md에서 W-0377 active row 제거.

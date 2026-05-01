@@ -746,7 +746,7 @@ engine/tests/test_agent_phase4.py
 
 ---
 
-## Decisions (D1~D7)
+## Decisions
 
 | # | 결정 | 채택 이유 | 거절 옵션 |
 |---|---|---|---|
@@ -833,7 +833,7 @@ train_lgbm_job (04:00 + 500개 threshold)
 
 ---
 
-## Canonical Files (건드릴 파일 전체)
+## Canonical Files
 
 ```
 Phase 1:
@@ -881,7 +881,7 @@ Phase 4:
 
 ---
 
-## Open Questions (확정됨)
+## Open Questions
 
 - Q1: `agent_interactions` prompt 원문 저장 vs hash → **원문** (Jin solo dogfood, GDPR 비해당)
 - Q2: `/judge` LLM이 휴리스틱 verdict override 가능? → **surface only** — 사용자 ✓/✗ 최종
@@ -922,3 +922,38 @@ Phase 4:
 [ ] PR-4 open → 머지
 [ ] AC1~AC10 전체 체크
 ```
+
+## Owner
+
+eunjuhyun88 — multi-PR (4 Phase × 4 PR), depends on W-0377 머지.
+
+## Scope
+
+Cogochi AI Agent 통합 — 5-tab Panel + Command Bar 1줄 + agent_interactions 로깅 +
+4 Phase 분해 (D~H Break 갭 메우기).
+
+## Facts
+
+- AIAgentPanel은 332줄 5-tab 구조이며 PR #854에서 SCN/JDG/ANL wiring 머지됨.
+- agent_interactions 테이블은 Phase 1 추가 예정 (지금은 미존재).
+- W-0377 파이프라인 복구 머지 후에야 안정적인 데이터 흐름 확보됨.
+
+## Assumptions
+
+- Phase별 단일 PR로 분해 가능 (PR-1~PR-4 순차).
+- W-0377 머지 후 prod에서 agent 로그가 즉시 흐른다.
+- GDPR 면제 (Jin solo dogfood) → prompt 원문 저장 OK.
+
+## Next Steps
+
+1. W-0377 머지 대기.
+2. Phase 1 PR open → agent_interactions 마이그레이션 + 로깅 wiring.
+3. Phase 2/3/4 순차 진행.
+
+## Handoff Checklist
+
+- [ ] W-0377 머지 확인.
+- [ ] Phase 1 PR open + 머지.
+- [ ] Phase 2/3/4 PR 순차.
+- [ ] AC1~AC10 전체 체크.
+- [ ] CURRENT.md에서 W-0378 active row 정리.
