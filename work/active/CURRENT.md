@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`c982f613` — origin/main (2026-05-01) — PR #839 W-0374 Phase D-0~D-3 merged (Bloomberg UX TopBar + AIAgentPanel 5-tab)
+`3509373d` — origin/main (2026-05-01) — W-0365+W-0366 (#814) + W-0367 (#813) + W-0368 패턴 hardening + wallet fix (#822)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟡 Phase D-4+ — IndicatorLibrary + DrawingToolbar + drag-to-save |
+| `W-0364-500ccu-perf-extension` | P1 | 🟡 In Progress |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 | `W-0377-core-loop-pipeline-repair` | P0 | 🟡 Design Draft — Break A/B/C 수정 |
 | `W-0378-ai-agent-integration` | P0 | 🟡 Design Draft — 4 Phase, W-0377 dependency |
@@ -25,24 +25,17 @@
 
 ```
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
-완료:  W-0372 Phase A ✅ — AppNavRail 7→5 + MobileBottomNav 5-hub (#826)
-완료:  W-0372 Phase B ✅ — hub layouts + Home profile + 5 redirects (#829)
-완료:  W-0372 Phase C ✅ — WatchlistRail fold+add/delete + route cleanup (#830)
-완료:  W-0372 Phase D ✅ — DecisionHUD + MultiPaneChart + PatternLibraryPanel + VerdictInboxPanel (#835)
-완료:  W-0373 ✅ — wallet auth Privy email-first + silent failure fixes (#834)
-완료:  W-0358 ✅ — multi-exchange OHLCV ingestion framework (#836)
-완료:  W-0374 Phase D-0~D-3 ✅ — Bloomberg UX TopBar + AIAgentPanel 5-tab (#839)
-즉시:  W-0374 Phase D-4+ — IndicatorLibrary drawer + DrawingToolbar + drag-to-save → AI pattern
-다음:  W-0304 per-pane indicator (after W-0374 foundation stable)
+즉시:  W-0364 500ccu perf extension
+다음:  W-0304 per-pane indicator
 ```
 
 ---
 
-## 핵심 lesson (A099/A100 세션)
+## 핵심 lesson (이번 세션)
 
-- **Contract CI CURRENT.md sync**: active table에 나열된 work item 파일이 실제로 존재해야 함. 파일 없으면 CI 즉시 BLOCK
-- **Contract CI 필수 섹션**: Owner / Facts / Canonical Files / Assumptions / Next Steps / Handoff Checklist 전부 있어야 통과
-- **W-0372 Phase A lock-in**: /cogochi = Terminal hub 핵심, /terminal → redirect. 5-Hub 확정
+- **worktree CACHE_DIR 버그**: `list_cached_symbols`가 worktree-local 빈 디렉토리 참조 → `_primary_cache_dir()` 사용으로 해결. git 기반 shared cache 경로 확인 필수
+- **Contract CI**: engine 엔드포인트 추가 시 `npm run contract:sync:engine-types` + 커밋 필수 (자동 sync 있어도 CI 트리거 타이밍 문제 가능)
+- **migration 테이블 혼용**: `pattern_outcomes`(legacy) vs `ledger_outcomes`(canonical) — migration은 canonical 테이블에 적용
 
 ---
 
@@ -59,7 +52,5 @@
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0374-cogochi-bloomberg-ux-restructure.md
-# Phase D-4: IndicatorLibrary drawer (TV-style add/search/pin)
-# Phase D-5: DrawingToolbar + drag-to-save → AI agent pattern capture
+cat work/active/W-0364-500ccu-perf-extension.md
 ```
