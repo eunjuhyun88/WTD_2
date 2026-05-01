@@ -132,6 +132,7 @@ _BETA_JOB_FLAGS = {
     "alpha_observer_warm": os.environ.get("ENABLE_ALPHA_OBSERVER_WARM_JOB", "false"),
     "extreme_event_detector": os.environ.get("EXTREME_EVENT_TRACKER_JOB", "false"),
     "extreme_event_outcome": os.environ.get("EXTREME_EVENT_OUTCOME_JOB", "false"),
+    "backtest_stats_refresh": os.environ.get("ENABLE_BACKTEST_STATS_REFRESH_JOB", "false"),
 }
 
 
@@ -317,6 +318,19 @@ async def _fetch_okx_signals_job() -> None:
             log.info(f"  {symbol}: {result['signals_appended']} signals cached")
     total_appended = sum(r.get("signals_appended", 0) for r in results)
     log.info(f"✓ OKX signals job complete: {total_appended} total signals cached")
+
+
+async def _backtest_stats_refresh_job() -> None:
+    """W-0369: Refresh backtest stats cache for all PatternObjects — runs at 03:00 UTC."""
+    import asyncio
+    from research.backtest_cache import refresh_all_patterns
+    from research.live_monitor import DEFAULT_UNIVERSE
+
+    log.info("backtest_stats_refresh: starting daily refresh for %d universe symbols", len(DEFAULT_UNIVERSE))
+    results = await asyncio.to_thread(refresh_all_patterns, DEFAULT_UNIVERSE)
+    ok = sum(1 for v in results.values() if v == "ok")
+    err = sum(1 for v in results.values() if v == "error")
+    log.info("backtest_stats_refresh: done — %d ok, %d errors", ok, err)
 
 
 def start_scheduler() -> None:
@@ -524,6 +538,20 @@ def start_scheduler() -> None:
     if os.environ.get("ENABLE_SIGNAL_EVENTS", "false").lower() == "true":
         from research.verification_loop import register_scheduler as _reg_vloop
         _reg_vloop(_scheduler)
+
+    # W-0369: Daily pattern backtest stats refresh — 03:00 UTC
+    if _job_enabled("backtest_stats_refresh"):
+        _scheduler.add_job(
+            _backtest_stats_refresh_job,
+            trigger="cron",
+            hour=3,
+            minute=0,
+            id="backtest_stats_refresh",
+            name="Daily pattern backtest stats refresh (W-0369)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
 
     _scheduler.start()
     log.info(

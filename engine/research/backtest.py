@@ -90,6 +90,49 @@ class BacktestResult:
             return None
         return sum(1 for s in self.signals if s.target_hit) / len(self.signals)
 
+    @property
+    def equity_curve(self) -> list[float]:
+        """Cumulative multiplicative returns, normalised to 1.0 at start."""
+        vals = [s.fwd_return_72h for s in self.signals if s.fwd_return_72h is not None]
+        if not vals:
+            return []
+        curve = [1.0]
+        for r in vals:
+            curve.append(curve[-1] * (1 + r))
+        return curve
+
+    @property
+    def total_return(self) -> Optional[float]:
+        curve = self.equity_curve
+        return curve[-1] - 1.0 if len(curve) >= 2 else None
+
+    @property
+    def apr(self) -> Optional[float]:
+        """Annualised return; None when observation_days < 30."""
+        if self.since is None:
+            return None
+        tr = self.total_return
+        if tr is None:
+            return None
+        obs_days = (datetime.now(timezone.utc) - self.since).days
+        if obs_days < 30:
+            return None
+        return (1 + tr) ** (365 / obs_days) - 1
+
+    @property
+    def sharpe(self) -> Optional[float]:
+        """Annualised Sharpe from 72h forward returns; None when n < 3."""
+        import math
+        vals = [s.fwd_return_72h for s in self.signals if s.fwd_return_72h is not None]
+        if len(vals) < 3:
+            return None
+        mean = sum(vals) / len(vals)
+        variance = sum((v - mean) ** 2 for v in vals) / len(vals)
+        std = variance ** 0.5
+        if std < 1e-10:
+            return None
+        return (mean / std) * math.sqrt(365 / 3)
+
     def summary(self) -> str:
         lines = [
             f"pattern   : {self.pattern_slug}",
