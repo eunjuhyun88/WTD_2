@@ -12,6 +12,7 @@ export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
 // v2 migration: verdict→analyze, research→scan
 export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
+export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D';
 
 export interface WorkspacePanelRect {
   x: number; y: number; w: number; h: number;
