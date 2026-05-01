@@ -4,6 +4,7 @@
 > Charter: §In-Scope (IA Consolidation + Chart UX). 차트 Frozen 2026-05-01 해제됨.
 > Status: 🟡 Design Draft
 > Parent: W-0372 (Phase A/B ✅, Phase C PR #830 OPEN)
+> Issue: #833
 > Created: 2026-05-01
 > Owner: app
 
