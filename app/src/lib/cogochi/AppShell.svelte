@@ -8,14 +8,16 @@
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
   import WatchlistRail from './WatchlistRail.svelte';
-  import AIPanel from './AIPanel.svelte';
   import AIAgentPanel from './AIAgentPanel.svelte';
+  import BottomSheet from './BottomSheet.svelte';
   import TopBar from './TopBar.svelte';
+  import ChartToolbar from './ChartToolbar.svelte';
   import Splitter from './Splitter.svelte';
   import TradeMode from './modes/TradeMode.svelte';
   import WorkspaceStage from './WorkspaceStage.svelte';
   import { get } from 'svelte/store';
-  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta, isDecideMode } from './shell.store';
+  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta, isDecideMode, allVerdicts } from './shell.store';
+  import { chartFreshness } from '$lib/stores/chartFreshness';
   import DecideRightPanel from './DecideRightPanel.svelte';
   import MultiPaneChartAdapter from './MultiPaneChartAdapter.svelte';
   import PatternLibraryPanelAdapter from './PatternLibraryPanelAdapter.svelte';
@@ -26,6 +28,9 @@
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
   import ModeSheet from './ModeSheet.svelte';
   import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
+  import IndicatorLibrary from './IndicatorLibrary.svelte';
+  import DrawingRail from './DrawingRail.svelte';
+  import type { DrawingTool } from './shell.store';
 
   let paletteOpen = $state(false);
   let mobileTF = $state('4h');
@@ -35,9 +40,20 @@
   let desktopSymbolPickerTabId = $state<string | null>(null);
   let modeSheetOpen = $state(false);
   let indicatorSettingsOpen = $state(false);
+  let indicatorLibraryOpen = $state(false);
 
   const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
   const aiPaneWidth = $derived($activeTabState.rightPanelExpanded ? 480 : Math.max(300, $shellStore.aiWidth));
+
+  // D-10: status-bar mini Verdict / freshness wiring.
+  const lastVerdictKind = $derived.by<'LONG' | 'SHORT' | 'WAIT' | null>(() => {
+    const entries = Object.values($allVerdicts);
+    if (entries.length === 0) return null;
+    const last = entries[entries.length - 1];
+    if (last === 'agree') return 'LONG';
+    if (last === 'disagree') return 'WAIT';
+    return null;
+  });
 
   function openDesktopSymbolPicker(tabId?: string) {
     desktopSymbolPickerTabId = tabId ?? $shellStore.activeTabId;
@@ -61,13 +77,6 @@
         chat: [...chat, { role: 'user', text: userText }, { role: 'assistant', text: assistantText }],
       };
     });
-  }
-
-  let aiSwipeTouchStartY = $state(0);
-  function onAITouchStart(e: TouchEvent) { aiSwipeTouchStartY = e.touches[0].clientY; }
-  function onAITouchEnd(e: TouchEvent) {
-    const dy = e.changedTouches[0].clientY - aiSwipeTouchStartY;
-    if (dy > 60) shellStore.update(s => ({ ...s, aiVisible: false }));
   }
 
   $effect(() => {
@@ -123,10 +132,42 @@
         chartSaveMode.enterRangeMode();
         shellStore.updateTabState(s => ({ ...s, rangeSelection: true }));
       }
+
+      // 1-8: Timeframe shortcuts (from TopBar integration)
+      if (!mod && /^[1-8]$/.test(e.key) && !isInputActive()) {
+        const tfIndex = parseInt(e.key) - 1;
+        const tfs = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'];
+        if (tfs[tfIndex]) {
+          e.preventDefault();
+          shellStore.setTimeframe(tfs[tfIndex]);
+        }
+      }
+
+      // D-4: drawing tool shortcuts (no modifier, no input focused)
+      if (!mod && !isInputActive()) {
+        const k = e.key.toLowerCase();
+        const map: Record<string, DrawingTool> = {
+          t: 'trendLine',
+          h: 'horizontalLine',
+          v: 'verticalLine',
+          e: 'extendedLine',
+          r: 'rectangle',
+          f: 'fibRetracement',
+          l: 'textLabel',
+        };
+        if (map[k]) {
+          e.preventDefault();
+          shellStore.setDrawingTool(map[k]);
+        }
+      }
+
       if (e.key === 'Escape') {
         if (chartSaveMode.snapshot().active) {
           chartSaveMode.exitRangeMode();
           shellStore.updateTabState(s => ({ ...s, rangeSelection: false }));
+        }
+        if (get(shellStore).drawingTool !== 'cursor') {
+          shellStore.setDrawingTool('cursor');
         }
         if (desktopSymbolPickerOpen) desktopSymbolPickerOpen = false;
       }
@@ -137,6 +178,16 @@
       if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         desktopSymbolPickerOpen = true;
+      }
+      // D-7: ⌘L → focus AI Search (Bloomberg-style)
+      if (mod && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('cogochi:cmd', { detail: { id: 'focus_ai_search' } }));
+      }
+      // D-7: ⌘I → toggle IndicatorLibrary (was ⌘L)
+      if (mod && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        indicatorLibraryOpen = !indicatorLibraryOpen;
       }
     };
 
@@ -151,6 +202,7 @@
       else if (c.id === 'mode_decide') shellStore.setWorkMode('decide');
       else if (c.id === 'new_trade') shellStore.openTab({ kind: 'trade', title: 'new session' });
       else if (c.id === 'open_indicator_settings') { indicatorSettingsOpen = true; }
+      else if (c.id === 'open_indicator_library') { indicatorLibraryOpen = true; }
       else if (c.id === 'open_ai_detail') {
         appendAIDetail(c.userText ?? '현재 analyze detail 설명해줘', c.assistantText ?? '');
       }
@@ -202,34 +254,20 @@
     {#if modeSheetOpen}
       <ModeSheet activeMode={$activeMode} onClose={() => (modeSheetOpen = false)} />
     {/if}
-    {#if $shellStore.aiVisible}
-      <div
-        class="mobile-ai-sheet"
-        ontouchstart={onAITouchStart}
-        ontouchend={onAITouchEnd}
-        role="dialog"
-        aria-modal="true"
-        aria-label="AI panel"
-        tabindex="0"
-      >
-        <div class="sheet-topbar">
-          <div class="sheet-handle"></div>
-          <button class="sheet-close" onclick={() => shellStore.toggleAI()}>×</button>
-        </div>
-        <AIPanel
-          messages={$activeTabState.chat || []}
-          onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
-          onApplySetup={(setup) => {
-            shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
-            shellStore.update(st => ({
-              ...st,
-              tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
-            }));
-          }}
-          onClose={() => shellStore.toggleAI()}
+    <BottomSheet
+      open={$shellStore.aiVisible}
+      title="AI AGENT"
+      height="85vh"
+      onClose={() => shellStore.toggleAI()}
+    >
+      <div class="mobile-agent-host">
+        <AIAgentPanel
+          symbol={mobileSymbol}
+          timeframe={mobileTF}
+          onSelectSymbol={(s) => { mobileSymbol = s; shellStore.setSymbol(s); }}
         />
       </div>
-    {/if}
+    </BottomSheet>
 
   {:else}
     <!-- ── DESKTOP / TABLET ── -->
@@ -252,6 +290,9 @@
         />
       </div>
       <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
+
+      <!-- D-4: Drawing rail (left of canvas, desktop only) -->
+      <DrawingRail />
 
       <!-- Center: Canvas + TabBar -->
       <div class="canvas-col" style:position="relative">
@@ -278,6 +319,11 @@
           onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
           onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
           onIndicators={() => (indicatorSettingsOpen = true)}
+        />
+
+        <ChartToolbar
+          onIndicators={() => (indicatorLibraryOpen = true)}
+          onSettings={() => (indicatorSettingsOpen = true)}
         />
 
         {#if $isDecideMode}
@@ -336,8 +382,6 @@
           <DecideRightPanel />
         {:else}
           <AIAgentPanel
-            messages={$activeTabState.chat || []}
-            onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
             symbol={desktopSymbol}
             timeframe={$activeTabState.timeframe ?? '4h'}
             onSelectSymbol={(s) => shellStore.setSymbol(s)}
@@ -352,6 +396,8 @@
       modelDelta={$modelDelta}
       onSwitchMode={(m) => shellStore.switchMode(m)}
       sidebarVisible={$shellStore.sidebarVisible}
+      lastVerdictKind={lastVerdictKind}
+      lastUpdatedAt={$chartFreshness}
     />
   {/if}
 
@@ -370,6 +416,11 @@
   {#if indicatorSettingsOpen}
     <IndicatorSettingsSheet onClose={() => (indicatorSettingsOpen = false)} />
   {/if}
+
+  <IndicatorLibrary
+    open={indicatorLibraryOpen}
+    onClose={() => (indicatorLibraryOpen = false)}
+  />
 
   <!-- Pattern Library overlay (modal) — only on desktop -->
   {#if $viewportTier.tier !== 'MOBILE'}
@@ -442,12 +493,14 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    contain: layout paint;
   }
 
   .decide-canvas {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    contain: layout paint;
   }
 
   /* ResearchPanel slides in from right side of chart area on range selection */
@@ -473,6 +526,7 @@
   .ai-pane {
     flex-shrink: 0;
     overflow: hidden;
+    contain: layout paint;
   }
 
   .mobile-canvas {
@@ -481,56 +535,14 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    contain: layout paint;
   }
 
-  .mobile-ai-sheet {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    height: 52%;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    z-index: 200;
-    background: var(--g1);
-    border-top: 1px solid var(--g5);
-    border-radius: 8px 8px 0 0;
+  .mobile-agent-host {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    animation: sheetSlideUp 0.2s ease;
-  }
-
-  .sheet-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    padding: 8px 12px 4px;
-    flex-shrink: 0;
-  }
-
-  .sheet-handle {
-    width: 36px; height: 4px;
-    background: var(--g5);
-    border-radius: 2px;
-  }
-
-  .sheet-close {
-    position: absolute;
-    right: 12px; top: 6px;
-    width: 28px; height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--g2);
-    border: 0.5px solid var(--g4);
-    border-radius: 4px;
-    color: var(--g6);
-    font-size: 16px;
-    cursor: pointer;
-    line-height: 1;
-  }
-  .sheet-close:active { background: var(--g3); }
-
-  @keyframes sheetSlideUp {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
+    contain: layout paint;
   }
 </style>
