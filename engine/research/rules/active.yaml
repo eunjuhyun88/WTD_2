@@ -1,0 +1,34 @@
+# engine/research/rules/active.yaml
+schema_version: 1
+last_modified_at: "2026-05-02T00:00:00Z"
+last_modified_by: "human"          # 'human' | 'autoresearch:cycle-{N}'
+last_commit_sha: "initial"
+
+filters:
+  - name: vol_zscore_filter
+    expr: "vol_zscore > 1.5"
+    enabled: true
+    rationale: "exclude low-volatility periods"
+  - name: oi_change_24h_filter
+    expr: "abs(oi_change_24h_zscore) > 1.0"
+    enabled: true
+    rationale: "require OI movement"
+  - name: cvd_change_zscore
+    expr: "abs(cvd_change_zscore) > 0.8"
+    enabled: false
+    rationale: "experimental"
+
+thresholds:
+  GATE_MIN_SIGNALS: 30          # was 5 in W-0303
+  GATE_MIN_HIT_RATE: 0.50
+  GATE_MIN_T_STAT: 1.96         # was 1.0
+  GATE_MIN_SHARPE: 0.5          # was 0.3
+  GATE_MAX_DRAWDOWN: 0.30
+  PROMOTE_SHARPE: 0.7
+  PROMOTE_DSR: 0.0              # +epsilon
+  PROMOTE_DSR_DELTA: 0.05       # autoresearch only commits if Δ>0.05
+
+regime_weights:
+  bull: 1.0
+  bear: 1.0
+  sideways: 1.0

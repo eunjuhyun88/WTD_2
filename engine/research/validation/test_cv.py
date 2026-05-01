@@ -387,3 +387,92 @@ def test_performance_under_100ms_for_split_logic() -> None:
     elapsed_ms = (time.perf_counter() - start) * 1000
     assert len(folds) == 5
     assert elapsed_ms < 100, f"split exceeded budget: {elapsed_ms:.1f}ms"
+
+
+# ---------------------------------------------------------------------------
+# label leakage validation — W-0290 Phase 2
+# ---------------------------------------------------------------------------
+
+
+def test_purged_kfold_prevents_label_leakage() -> None:
+    """W-0290 Phase 2 — verify purge+embargo prevents forward-return label leakage.
+
+    For each fold, train samples whose time + horizon overlaps the test
+    window are excluded. This test confirms the purge window is large
+    enough to prevent any label-data contamination.
+
+    Setup: create synthetic OHLCV-like data with hourly bars. For each
+    train/test split, verify that no train index t can have a forward-return
+    label (t, t+horizon] that extends into [test_start, test_end).
+    """
+    n_samples = 500
+    horizon_hours = 4  # forward-return label window is [t, t+4)
+    embargo_pct = 0.005
+
+    cv = PurgedKFold(
+        PurgedKFoldConfig(
+            n_splits=5,
+            label_horizon_hours=horizon_hours,
+            embargo_floor_pct=embargo_pct,
+        )
+    )
+    idx = _hourly_index(n_samples)
+
+    for fold_idx, (train_idx, test_idx) in enumerate(cv.split(idx)):
+        test_start = test_idx[0]
+        test_end = test_idx[-1] + 1  # exclusive
+
+        # For each training sample, its forward-return label window is
+        # [t, t+horizon). This must not overlap [test_start, test_end).
+        for t in train_idx:
+            label_start = t
+            label_end = t + horizon_hours  # forward-return window
+
+            # Check: label window [label_start, label_end) must not
+            # intersect [test_start, test_end).
+            # Overlap occurs iff label_start < test_end AND label_end > test_start
+            has_overlap = label_start < test_end and label_end > test_start
+            assert not has_overlap, (
+                f"fold {fold_idx}: train sample {t} has label window "
+                f"[{label_start}, {label_end}) that overlaps test window "
+                f"[{test_start}, {test_end})"
+            )
+
+
+def test_embargo_blocks_autocorrelated_samples() -> None:
+    """W-0290 Phase 2 — verify embargo prevents re-entry of autocorrelated samples.
+
+    After a test fold ends at test_end, the embargo window
+    [test_end, test_end + embargo) is excluded from train. This prevents
+    high-autocorrelation samples immediately after test from leaking
+    information via temporal proximity.
+
+    This test checks that embargo_bars are correctly applied and no train
+    sample falls in the embargo zone.
+    """
+    n_samples = 1000
+    horizon_hours = 4
+    embargo_pct = 0.01
+
+    cv = PurgedKFold(
+        PurgedKFoldConfig(
+            n_splits=5,
+            label_horizon_hours=horizon_hours,
+            embargo_floor_pct=embargo_pct,
+        )
+    )
+    idx = _hourly_index(n_samples)
+    embargo_bars = cv._embargo_bars(n_samples)
+
+    for fold_idx, (train_idx, test_idx) in enumerate(cv.split(idx)):
+        test_end = test_idx[-1] + 1
+        embargo_start = test_end
+        embargo_end = test_end + embargo_bars
+
+        # No train index should fall in [embargo_start, embargo_end).
+        for t in train_idx:
+            in_embargo = embargo_start <= t < embargo_end
+            assert not in_embargo, (
+                f"fold {fold_idx}: train sample {t} falls in embargo window "
+                f"[{embargo_start}, {embargo_end})"
+            )
