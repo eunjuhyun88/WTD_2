@@ -123,6 +123,17 @@
         chartSaveMode.enterRangeMode();
         shellStore.updateTabState(s => ({ ...s, rangeSelection: true }));
       }
+
+      // 1-8: Timeframe shortcuts (from TopBar integration)
+      if (!mod && /^[1-8]$/.test(e.key) && !isInputActive()) {
+        const tfIndex = parseInt(e.key) - 1;
+        const tfs = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'];
+        if (tfs[tfIndex]) {
+          e.preventDefault();
+          shellStore.setTimeframe(tfs[tfIndex]);
+        }
+      }
+
       if (e.key === 'Escape') {
         if (chartSaveMode.snapshot().active) {
           chartSaveMode.exitRangeMode();
