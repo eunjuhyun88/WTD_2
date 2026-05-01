@@ -2,7 +2,7 @@
  * aiQueryRouter — D-7 unit tests.
  */
 import { describe, it, expect } from 'vitest';
-import { routeAIQuery, extractSymbol, extractPrice, extractTimeframe } from './aiQueryRouter';
+import { routeAIQuery, extractSymbol, extractPrice, extractTimeframe, extractRange } from './aiQueryRouter';
 
 const CTX = { symbol: 'BTCUSDT', timeframe: '4h' };
 
@@ -68,6 +68,49 @@ describe('aiQueryRouter / routeAIQuery', () => {
     const action = routeAIQuery('어때', CTX);
     expect(action.kind).toBe('analyze');
     if (action.kind === 'analyze') expect(action.symbol).toBe('BTCUSDT');
+  });
+
+  it('routes "BTC 95000~96000 zone" → range', () => {
+    const action = routeAIQuery('BTC 95000~96000 zone', CTX);
+    expect(action.kind).toBe('range');
+    if (action.kind === 'range') {
+      expect(action.fromPrice).toBe(95000);
+      expect(action.toPrice).toBe(96000);
+      expect(action.symbol).toBe('BTCUSDT');
+    }
+  });
+
+  it('routes "ETH 3500-3600 저항 zone" → range with Resistance Zone label', () => {
+    const action = routeAIQuery('ETH 3500-3600 저항 zone', CTX);
+    expect(action.kind).toBe('range');
+    if (action.kind === 'range') {
+      expect(action.label).toBe('Resistance Zone');
+      expect(action.symbol).toBe('ETHUSDT');
+    }
+  });
+
+  it('"96000-95000" still normalizes to (min, max)', () => {
+    const action = routeAIQuery('BTC 96000-95000 zone', CTX);
+    expect(action.kind).toBe('range');
+    if (action.kind === 'range') {
+      expect(action.fromPrice).toBe(95000);
+      expect(action.toPrice).toBe(96000);
+    }
+  });
+});
+
+describe('aiQueryRouter / extractRange', () => {
+  it('parses "X~Y"', () => {
+    expect(extractRange('95000~96000')).toEqual({ fromPrice: 95000, toPrice: 96000 });
+  });
+  it('parses "X to Y"', () => {
+    expect(extractRange('3500 to 3600')).toEqual({ fromPrice: 3500, toPrice: 3600 });
+  });
+  it('returns null when no pair', () => {
+    expect(extractRange('hello 96000')).toBeNull();
+  });
+  it('returns null on equal endpoints', () => {
+    expect(extractRange('100~100')).toBeNull();
   });
 });
 

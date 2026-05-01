@@ -10,6 +10,7 @@ export type AIRouterAction =
   | { kind: 'judge';      symbol: string; timeframe: string; verdict: 'long' | 'short' }
   | { kind: 'indicator';  query: string }
   | { kind: 'overlay';    symbol: string; price: number; label: string }
+  | { kind: 'range';      symbol: string; fromPrice: number; toPrice: number; label: string }
   | { kind: 'recall';     symbol: string; timeframe: string }
   | { kind: 'timeframe';  timeframe: string }
   | { kind: 'unknown';    reason: string };
@@ -62,6 +63,20 @@ export function extractPrice(text: string): number | null {
 }
 
 /**
+ * Extract a price range "X~Y" / "X-Y" / "X to Y" / "X부터 Y까지".
+ * Returns null when fewer than two distinct prices are present.
+ */
+export function extractRange(text: string): { fromPrice: number; toPrice: number } | null {
+  const sep = /(\d[\d.,]*)\s*(?:~|-|–|—|to|부터)\s*(\d[\d.,]*)/i;
+  const m = text.match(sep);
+  if (!m) return null;
+  const a = Number(m[1].replace(/,/g, ''));
+  const b = Number(m[2].replace(/,/g, ''));
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return null;
+  return { fromPrice: Math.min(a, b), toPrice: Math.max(a, b) };
+}
+
+/**
  * Classify intent and produce a typed action descriptor.
  *
  * Order matters: more specific patterns first.
@@ -86,6 +101,21 @@ export function routeAIQuery(text: string, ctx: AIRouterContext): AIRouterAction
       symbol: extractSymbol(t, ctx.symbol),
       timeframe: extractTimeframe(t, ctx.timeframe),
     };
+  }
+
+  // Range box (e.g. "BTC 95000~96000 zone", "ETH 3500-3600 range")
+  if (/zone|range|구간|박스|박스권/i.test(lower) || /\d[\d.,]*\s*(?:~|–|—|to|부터)\s*\d/i.test(t)) {
+    const range = extractRange(t);
+    if (range) {
+      const isResist = /저항|resistance|매도|상단/i.test(lower);
+      return {
+        kind: 'range',
+        symbol: extractSymbol(t, ctx.symbol),
+        fromPrice: range.fromPrice,
+        toPrice: range.toPrice,
+        label: isResist ? 'Resistance Zone' : 'Range',
+      };
+    }
   }
 
   // Overlay (e.g. "BTC 96,000 저항 표시", "draw resistance at 3500")
