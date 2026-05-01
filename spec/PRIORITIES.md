@@ -368,20 +368,22 @@ promotion_gate_pass_rate_30d > 0
 
 ## 13. Frozen / Non-Goals
 
+> **전면 해제 (2026-05-01, 사용자 결정)** — 이하 항목 전부 In-Scope로 전환.
+
 ```
-❌ Copy Trading 직접 주문 실행 — 영구. 시그널 알림은 OK (F-60), order 실행은 X
-❌ TradingView feature parity — 영구
-❌ 자동매매 in-product — 영구
-❌ Broadcasting-only 시그널 (Alpha Hunter 방식 모방) — 영구
-❌ Multi-Agent OS / MemKraft 추가 개발 — 야크쉐이빙
-❌ 자유 텍스트 LLM chat (AI Parser 외) — 영구
-❌ 모바일 native 앱 — Phase 2+ (PWA 우선)
-❌ Free-form floating canvas — 폐기 (IDE split-pane으로 대체)
-❌ Portfolio P&L / social comments / options / price prediction
-🟢 Paper trading: 검증 도구로 허용 (PRD v3 § 0.3, W-0281 design lock-in PR #543) — 실자금 자동매매는 ❌ 그대로
-❌ 성과 수수료 / KOL 유료방 / 초보자 교육 / 블랙박스 SaaS
-❌ Customer-facing LLM chat (parser 외)
-❌ Pine Script Generator 확장 — W-0211 완료, Phase 2+ LLM-only 보류
+✅ TradingView feature parity — 해제
+✅ Customer-facing LLM chat — 해제
+✅ 자유 텍스트 LLM chat — 해제
+✅ 자동매매 in-product — 해제 (Phase별 점진 구현)
+✅ Copy Trading 주문 실행 — 해제 (Phase별 점진 구현)
+✅ Broadcasting-only 시그널 — 해제
+✅ 모바일 native 앱 — 해제 (PWA 우선 유지, native는 Phase 2+)
+✅ Portfolio P&L / social comments / options / price prediction — 해제
+✅ 성과 수수료 / KOL 유료방 / 초보자 교육 — 해제
+✅ Pine Script Generator LLM — 해제
+✅ Free-form floating canvas — 해제 (IDE split-pane 이후 재검토)
+🟢 Paper trading: 허용 유지 (PRD v3 § 0.3)
+❌ Multi-Agent OS / MemKraft 추가 개발 — 야크쉐이빙 (유지)
 ```
 
 ---
