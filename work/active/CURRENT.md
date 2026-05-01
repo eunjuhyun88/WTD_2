@@ -1,4 +1,4 @@
-# CURRENT — 2026-04-30
+# CURRENT — 2026-05-01
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`1eec30ca` — origin/main (2026-05-01) — PR #801 W-0363/W-0364 perf phase1 merged
+`889f3f57` — origin/main (2026-05-01) — PR #818 W-0369 Strategy Library + Benchmark merged
 
 ---
 
@@ -14,9 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
+| `W-0372-ia-consolidation` | P1 | 🟡 Design Draft — Issue #825 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
 ---
 
