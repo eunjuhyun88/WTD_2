@@ -15,6 +15,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟡 Phase D-4+ — IndicatorLibrary + DrawingToolbar + drag-to-save |
+| `W-0379-quant-autoresearch-orchestrator` | P0 | 🟡 Design Locked v4 — 6-Layer + 8-track + 10 ensemble (#859) |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
