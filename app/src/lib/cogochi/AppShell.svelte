@@ -11,6 +11,7 @@
   import AIPanel from './AIPanel.svelte';
   import AIAgentPanel from './AIAgentPanel.svelte';
   import TopBar from './TopBar.svelte';
+  import ChartToolbar from './ChartToolbar.svelte';
   import Splitter from './Splitter.svelte';
   import TradeMode from './modes/TradeMode.svelte';
   import WorkspaceStage from './WorkspaceStage.svelte';
@@ -289,6 +290,11 @@
           onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
           onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
           onIndicators={() => (indicatorSettingsOpen = true)}
+        />
+
+        <ChartToolbar
+          onIndicators={() => (indicatorSettingsOpen = true)}
+          onSettings={() => (indicatorSettingsOpen = true)}
         />
 
         {#if $isDecideMode}
