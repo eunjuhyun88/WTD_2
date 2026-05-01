@@ -80,6 +80,27 @@
       <button class="drill-close" onclick={() => (drillSlug = null)} type="button">×</button>
       <h2 class="drill-title">{drillSlug}</h2>
       {#if s}
+        {#if s.equity_curve.length >= 2}
+          {@const curve = s.equity_curve}
+          {@const cMin = Math.min(...curve)}
+          {@const cMax = Math.max(...curve)}
+          {@const cRange = cMax - cMin || 1}
+          {@const W = 280}
+          {@const H = 72}
+          {@const pts = curve.map((v, i) => `${((i / (curve.length - 1)) * W).toFixed(1)},${(H - ((v - cMin) / cRange) * (H - 8) - 4).toFixed(1)}`).join(' ')}
+          {@const isUp = curve[curve.length - 1] >= curve[0]}
+          <div class="drill-chart">
+            <svg width="{W}" height="{H}" viewBox="0 0 {W} {H}" class="drill-curve">
+              <polyline points={pts} fill="none"
+                stroke={isUp ? 'var(--sc-green,#4caf7d)' : 'var(--sc-red,#e05c5c)'}
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="drill-curve-labels">
+              <span>1.00</span>
+              <span class:pos={isUp} class:neg={!isUp}>{curve[curve.length-1].toFixed(3)}</span>
+            </div>
+          </div>
+        {/if}
         <div class="drill-stats">
           <div class="ds"><span>APR</span><strong>{s.apr != null ? ((s.apr * 100).toFixed(1) + '%') : '—'}</strong></div>
           <div class="ds"><span>Win Rate</span><strong>{s.win_rate != null ? ((s.win_rate * 100).toFixed(1) + '%') : '—'}</strong></div>
@@ -190,6 +211,25 @@
   .ds { display: flex; flex-direction: column; gap: 2px; }
   .ds span { font-size: 10px; color: var(--g5, #666); text-transform: uppercase; }
   .ds strong { font-size: 14px; font-weight: 700; color: var(--g9, #f0f0f0); font-variant-numeric: tabular-nums; }
+  .drill-chart {
+    margin-bottom: 14px;
+    background: var(--g0, #0a0a0a);
+    border: 1px solid var(--g3, #2a2a2a);
+    border-radius: 6px;
+    padding: 8px;
+    overflow: hidden;
+  }
+  .drill-curve { display: block; width: 100%; height: auto; }
+  .drill-curve-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--g5, #666);
+    font-variant-numeric: tabular-nums;
+  }
+  .drill-curve-labels span.pos { color: var(--sc-green, #4caf7d); }
+  .drill-curve-labels span.neg { color: var(--sc-red, #e05c5c); }
   .drill-warn {
     margin-top: 12px;
     font-size: 11px; color: var(--g5, #888);

@@ -1,24 +1,11 @@
--- W-0368/W-0369: Add missing DLQ and backtest_stats tables
+-- W-0369: Fix pattern_backtest_stats schema to match backtest_cache.py
+-- Migration 040 created this table with wrong column names (pattern_slug, n_trades, cached_at).
+-- This migration drops and recreates with the correct schema used by backtest_cache.upsert_stats().
 
-CREATE TABLE IF NOT EXISTS public.scan_signal_events_dlq (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  original_data JSONB NOT NULL,
-  error_msg TEXT,
-  attempt_count INTEGER NOT NULL DEFAULT 3,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  replayed_at TIMESTAMPTZ
-);
+-- Drop wrong schema if created by migration 040
+DROP TABLE IF EXISTS public.pattern_backtest_stats;
 
-CREATE INDEX IF NOT EXISTS dlq_unresolved 
-  ON public.scan_signal_events_dlq (created_at DESC)
-  WHERE replayed_at IS NULL;
-
--- Add columns to scan_signal_events for retry tracking
-ALTER TABLE public.scan_signal_events
-  ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS last_error TEXT;
-
--- Pattern backtest stats cache (matches engine/research/backtest_cache.py)
+-- Recreate with correct schema (matches engine/research/backtest_cache.py)
 CREATE TABLE IF NOT EXISTS public.pattern_backtest_stats (
   slug             TEXT NOT NULL,
   timeframe        TEXT NOT NULL DEFAULT '1h',
