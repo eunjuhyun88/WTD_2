@@ -6,7 +6,7 @@
    * into PatternCaptureRecord so PatternLibraryPanel can render them.
    * Opens/closes via shell.store.activeSection === 'library'.
    */
-  import PatternLibraryPanel from '../components/terminal/workspace/PatternLibraryPanel.svelte';
+  import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import { shellStore } from './shell.store';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
 
@@ -41,8 +41,9 @@
       patternSlug: cap.pattern_slug ?? undefined,
       snapshot: {},
       decision: {
-        verdict: (cap.outcome ?? null) as PatternCaptureRecord['decision']['verdict'],
-        userVerdict: (cap.user_verdict ?? null) as PatternCaptureRecord['decision']['userVerdict'],
+        verdict: (cap.outcome === 'bullish' || cap.outcome === 'bearish' || cap.outcome === 'neutral')
+          ? cap.outcome
+          : undefined,
       },
       sourceFreshness: {},
       createdAt: ts,
@@ -74,7 +75,7 @@
   {records}
   {loading}
   onClose={() => shellStore.update(s => ({ ...s, sidebarVisible: false }))}
-  onSelect={(record) => {
+  onSelect={(record: PatternCaptureRecord) => {
     shellStore.setSymbol(record.symbol);
     shellStore.setDecisionBundle({
       symbol: record.symbol,

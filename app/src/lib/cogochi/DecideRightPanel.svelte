@@ -6,7 +6,7 @@
    * Replaces AIPanel when workMode === 'decide'.
    */
   import DecisionHUDAdapter from './DecisionHUDAdapter.svelte';
-  import VerdictInboxPanel from '../components/terminal/peek/VerdictInboxPanel.svelte';
+  import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
   import { shellStore } from './shell.store';
 
   type Tab = 'hud' | 'verdicts';

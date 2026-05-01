@@ -5,7 +5,7 @@
    * Fetches ChartSeriesPayload from /api/chart/klines and feeds it
    * to MultiPaneChart. Reacts to symbol/timeframe changes from shell.store.
    */
-  import MultiPaneChart from '../components/terminal/workspace/MultiPaneChart.svelte';
+  import MultiPaneChart from '../../components/terminal/workspace/MultiPaneChart.svelte';
   import { shellStore } from './shell.store';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
 
