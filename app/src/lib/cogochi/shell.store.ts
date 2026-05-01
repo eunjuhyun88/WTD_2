@@ -8,7 +8,7 @@ import {
 
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
-export type ShellWorkMode = 'observe' | 'analyze' | 'execute';
+export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
 
 export interface WorkspacePanelRect {
   x: number; y: number; w: number; h: number;
@@ -70,6 +70,10 @@ export interface ShellState {
   visibleIndicators: string[];
   archetypePrefs: Record<string, string>;
   indicatorSettings: Record<string, Record<string, unknown>>;
+  // ── Decide mode ──────────────────────────────────────────────────────────
+  hudVisible: boolean;
+  selectedVerdictId: string | null;
+  decisionBundle: null | { symbol: string; timeframe: string; patternSlug: string | null };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -187,6 +191,9 @@ const makeDefault = (): ShellState => ({
   visibleIndicators: defaultVisible().map(d => d.id),
   archetypePrefs: {},
   indicatorSettings: {},
+  hudVisible: false,
+  selectedVerdictId: null,
+  decisionBundle: null,
 });
 
 function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
@@ -209,7 +216,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
       ? raw.workspaceImmersivePaneId
       : null;
   const workMode: ShellWorkMode =
-    raw.workMode === 'observe' || raw.workMode === 'execute' || raw.workMode === 'analyze'
+    raw.workMode === 'observe' || raw.workMode === 'execute' || raw.workMode === 'analyze' || raw.workMode === 'decide'
       ? raw.workMode
       : 'analyze';
   return {
@@ -229,6 +236,9 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
     visibleIndicators: raw.visibleIndicators ?? base.visibleIndicators,
     archetypePrefs: raw.archetypePrefs ?? {},
     indicatorSettings: raw.indicatorSettings ?? {},
+    hudVisible: raw.hudVisible ?? false,
+    selectedVerdictId: raw.selectedVerdictId ?? null,
+    decisionBundle: raw.decisionBundle ?? null,
   };
 }
 
@@ -542,6 +552,16 @@ function createShellStore() {
       }));
     },
 
+    // ── Decide mode ───────────────────────────────────────────────────────
+
+    toggleHud: () => { update(st => ({ ...st, hudVisible: !st.hudVisible })); },
+
+    selectVerdict: (id: string | null) => { update(st => ({ ...st, selectedVerdictId: id })); },
+
+    setDecisionBundle: (b: null | { symbol: string; timeframe: string; patternSlug: string | null }) => {
+      update(st => ({ ...st, decisionBundle: b }));
+    },
+
     // ── Indicator visibility ───────────────────────────────────────────────
 
     toggleIndicatorVisible: (id: string) => {
@@ -595,3 +615,4 @@ export const modelDelta = derived(allVerdicts, $v => {
   }
   return agree * 0.03 - disagree * 0.01;
 });
+export const isDecideMode = derived(shellStore, $st => $st.workMode === 'decide');
