@@ -96,7 +96,7 @@
 
 <style>
 .top-bar {
-  height: var(--zone-top-bar, 32px);
+  height: 48px;
   display: flex;
   align-items: center;
   gap: 0;
