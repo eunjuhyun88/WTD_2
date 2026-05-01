@@ -90,10 +90,18 @@ def _row_to_outcome(row: dict) -> PatternOutcome:
     return PatternOutcome(**d)
 
 
+_PATTERN_OUTCOMES_EXTRA_FIELDS = frozenset({"definition_id", "definition_ref", "pattern_version"})
+
+
 def _outcome_to_row(outcome: PatternOutcome) -> dict:
-    """Serialize PatternOutcome to a Supabase-compatible row dict."""
+    """Serialize PatternOutcome to a Supabase-compatible row dict.
+
+    Strips fields that exist on the dataclass but have no column in
+    pattern_outcomes (avoids PGRST204 schema-cache errors).
+    """
     d = outcome.to_dict()
-    # to_dict() already converts datetimes to ISO strings — no extra work needed.
+    for key in _PATTERN_OUTCOMES_EXTRA_FIELDS:
+        d.pop(key, None)
     return d
 
 

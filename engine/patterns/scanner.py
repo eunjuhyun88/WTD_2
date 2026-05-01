@@ -20,11 +20,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
+
+_SIGNAL_EVENTS_ENABLED = os.getenv("ENABLE_SIGNAL_EVENTS", "false").lower() == "true"
 
 from capture.store import CaptureStore
 from capture.types import CaptureRecord
@@ -230,6 +234,44 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
             loop.run_until_complete(get_router().on_entry_signal(transition))
     except Exception as _pf_exc:
         log.debug("propfirm router skipped: %s", _pf_exc)
+
+    # W-0367: write to scan_signal_events for P&L feedback loop (fire-and-forget)
+    if _SIGNAL_EVENTS_ENABLED:
+        _snapshot = transition.feature_snapshot or {}
+        _component_scores = {
+            "phase_scores": [],
+            "indicator_snapshot": {
+                k: _snapshot.get(k)
+                for k in (
+                    "cvd_change_zscore", "oi_change_1h_zscore",
+                    "oi_change_24h_zscore", "bb_squeeze",
+                    "oi_change_1h", "oi_change_24h", "vol_zscore",
+                )
+            },
+            "overall_score": float(entry_score.p_win or 0.5),
+            "schema_version": 1,
+        }
+        _fired_at = transition.timestamp or datetime.now(tz=timezone.utc)
+        _entry_price = entry_price
+        _symbol = transition.symbol
+        _pattern = transition.pattern_slug
+
+        def _write_signal_event():
+            try:
+                from research.signal_event_store import insert_signal_event, init_outcomes
+                signal_id = insert_signal_event(
+                    fired_at=_fired_at,
+                    symbol=_symbol,
+                    pattern=_pattern,
+                    direction="long",
+                    entry_price=_entry_price,
+                    component_scores=_component_scores,
+                )
+                if signal_id:
+                    init_outcomes(signal_id, _fired_at)
+            except Exception as _se_exc:
+                log.debug("scan_signal_event write skipped: %s", _se_exc)
+        threading.Thread(target=_write_signal_event, daemon=True).start()
 
 
 def _on_success(transition: PhaseTransition) -> None:

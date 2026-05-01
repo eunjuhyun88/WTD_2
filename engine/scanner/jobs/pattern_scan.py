@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import Any, Awaitable, Callable
 
@@ -50,7 +51,9 @@ async def pattern_scan_job(
     from scanner.alerts_pattern import send_pattern_entry_alerts
 
     universe = await load_universe_async(universe_name)
-    prewarm_perp_cache(universe, max_workers=5)
+    _prewarm = prewarm_perp_cache(universe, max_workers=5)
+    if inspect.isawaitable(_prewarm):
+        await _prewarm
     result = await run_pattern_scan(universe_name, prewarm=False, symbols=universe)
 
     n_candidates = sum(len(v) for v in result.get("entry_candidates", {}).values())
