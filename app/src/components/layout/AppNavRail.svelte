@@ -9,13 +9,10 @@
   }
 
   const primary = [
+    { href: '/dashboard', label: 'Home', icon: 'home' },
     { href: '/cogochi', label: 'Terminal', icon: 'terminal' },
-    { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { href: '/lab', label: 'Lab', icon: 'lab' },
     { href: '/patterns', label: 'Patterns', icon: 'patterns' },
-    { href: '/strategies', label: 'Strategies', icon: 'strategies' },
-    { href: '/agent', label: 'Agent', icon: 'agent' },
-    { href: '/market', label: 'Market', icon: 'market' },
+    { href: '/lab', label: 'Lab', icon: 'lab' },
   ];
 
   const util = [
@@ -41,45 +38,25 @@
         aria-current={active(item.href) ? 'page' : undefined}
       >
         <span class="rail-icon" aria-hidden="true">
-          {#if item.icon === 'terminal'}
+          {#if item.icon === 'home'}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 7L8 2L14 7V14H10V10H6V14H2V7Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            </svg>
+          {:else if item.icon === 'terminal'}
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <polyline points="2,5 6,8 2,11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               <line x1="8" y1="11" x2="14" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          {:else if item.icon === 'dashboard'}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect x="2" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
-              <rect x="9" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
-              <rect x="2" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
-              <rect x="9" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
-            </svg>
-          {:else if item.icon === 'lab'}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M6 2V7.5L2.5 13.5H13.5L10 7.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-              <line x1="5" y1="2" x2="11" y2="2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-              <circle cx="6.5" cy="11" r="1" fill="currentColor" opacity="0.6"/>
             </svg>
           {:else if item.icon === 'patterns'}
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <polygon points="8,2 14,8 8,14 2,8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
               <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
             </svg>
-          {:else if item.icon === 'strategies'}
+          {:else if item.icon === 'lab'}
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <polyline points="2,11 5,7 8,9 11,4 14,6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="14" cy="6" r="1.2" fill="currentColor"/>
-            </svg>
-          {:else if item.icon === 'agent'}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="5.5" r="2.8" stroke="currentColor" stroke-width="1.3"/>
-              <path d="M2 14c0-3 2.686-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-          {:else if item.icon === 'market'}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect x="4.5" y="6.5" width="2" height="6" rx="0.4" stroke="currentColor" stroke-width="1.2"/>
-              <rect x="9.5" y="3.5" width="2" height="9" rx="0.4" stroke="currentColor" stroke-width="1.2"/>
-              <line x1="5.5" y1="4.5" x2="5.5" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-              <line x1="10.5" y1="1.5" x2="10.5" y2="3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              <path d="M6 2V7.5L2.5 13.5H13.5L10 7.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="5" y1="2" x2="11" y2="2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              <circle cx="6.5" cy="11" r="1" fill="currentColor" opacity="0.6"/>
             </svg>
           {/if}
         </span>

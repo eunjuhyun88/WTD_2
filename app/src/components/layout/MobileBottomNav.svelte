@@ -4,15 +4,15 @@
   const activePath = $derived($page.url.pathname);
 
   const items = [
-    { label: 'Home',      href: '/',          icon: 'home'      },
+    { label: 'Home',      href: '/dashboard', icon: 'home'      },
     { label: 'Terminal',  href: '/cogochi',   icon: 'terminal'  },
-    { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
+    { label: 'Patterns',  href: '/patterns',  icon: 'patterns'  },
     { label: 'Lab',       href: '/lab',       icon: 'lab'       },
-    { label: 'Market',    href: '/market',    icon: 'market'    },
+    { label: 'Settings',  href: '/settings',  icon: 'settings'  },
   ];
 
   function active(href: string) {
-    if (href === '/') return activePath === '/';
+    if (href === '/dashboard') return activePath === '/dashboard' || activePath === '/';
     if (href === '/cogochi') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
     return activePath === href || activePath.startsWith(href + '/');
   }
