@@ -1291,20 +1291,12 @@
   <!-- ═══ LAYOUT C · Chart + peek bar + sidebar (merged C+D) ═══════════════ -->
   <div class="layout-c">
     <div class="chart-section lc-main">
-    <div class="chart-header">
-      <button class="symbol" onclick={() => onSymbolTap?.()} title="심볼 변경">{symbol}</button>
-      <span class="timeframe">{timeframe.toUpperCase()}</span>
-      <span class="pattern">Tradoor v2</span>
-      <span class="hd-sep"></span>
-      <!-- Live price + derivatives -->
-      <span class="hd-price">{fmtPrice}</span>
+    <div class="chart-controls-bar">
+      <!-- symbol + TF moved to TopBar (W-0375 P1) -->
       {#if analyzeData?.snapshot?.funding_rate != null}
         <span class="hd-chip" class:neg={analyzeData.snapshot.funding_rate < 0} class:pos={analyzeData.snapshot.funding_rate > 0}>
           FUND {fmtFunding}
         </span>
-      {/if}
-      {#if false}
-        <span class="hd-chip">L/S {fmtLS}</span>
       {/if}
       <div class="ind-toggles">
           <span class="ind-label-hdr">INDICATORS</span>
@@ -2185,12 +2177,13 @@
     position: relative;
   }
 
-  .chart-header {
-    padding: 8px 16px;
+  .chart-controls-bar {
+    height: 28px;
+    padding: 0 12px;
     border-bottom: 0.5px solid var(--g4);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     background: var(--g0);
     flex-shrink: 0;
     font-family: 'JetBrains Mono', monospace;
@@ -3739,13 +3732,11 @@
       rgba(5,7,10,0.94);
     box-shadow: inset 1px 0 0 rgba(255,255,255,0.02);
   }
-  .chart-header {
-    min-height: 46px;
-    padding: 8px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.055);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008)),
-      #07090d;
+  .chart-controls-bar {
+    height: 28px;
+    padding: 0 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: var(--g0);
   }
   .symbol {
     font-size: 15px;
@@ -3977,10 +3968,10 @@
     border-radius: 8px 0 0 8px;
   }
 
-  .observe-mode .chart-header {
-    min-height: 38px;
-    padding: 6px 12px;
-    gap: 9px;
+  .observe-mode .chart-controls-bar {
+    height: 28px;
+    padding: 0 12px;
+    gap: 8px;
   }
 
   .observe-mode .pattern {
