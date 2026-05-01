@@ -9,8 +9,9 @@ import {
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
-// v3 migration (D-7): analyze→verdict, scan→research, plus 'pattern'
-export type RightPanelTab = 'decision' | 'pattern' | 'verdict' | 'research' | 'judge';
+// v4 migration (W-0375 Phase 3): research→decision, verdict→judge.
+// New tab set aligns with TradeMode panels: AI / ANL / SCN / JDG / PAT.
+export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D';
 export type ChartActiveMode = 'idle' | 'drawing' | 'save-range';
@@ -225,11 +226,11 @@ const makeDefault = (): ShellState => ({
   drawingTool: 'cursor',
 });
 
-const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge']);
+const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
 function migrateRightPanelTab(raw: unknown): RightPanelTab {
-  // v2→v3 (D-7): analyze→verdict, scan→research
-  if (raw === 'analyze') return 'verdict';
-  if (raw === 'scan') return 'research';
+  // v3→v4 (W-0375 Phase 3): research→decision, verdict→judge
+  if (raw === 'research') return 'decision';
+  if (raw === 'verdict') return 'judge';
   if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
   return 'decision';
 }
@@ -285,7 +286,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v10'; // v10 (D-7): RightPanelTab restored to verdict/research + 5-tab
+const SHELL_KEY = 'cogochi_shell_v11'; // v11 (W-0375 P3): RightPanelTab → decision/analyze/scan/judge/pattern
 
 function createShellStore() {
   let initial: ShellState;
@@ -684,6 +685,7 @@ function createShellStore() {
       set(makeDefault());
       if (typeof window !== 'undefined') {
         localStorage.removeItem(SHELL_KEY);
+        localStorage.removeItem('cogochi_shell_v10');
         localStorage.removeItem('cogochi_shell_v6');
         localStorage.removeItem('cogochi_shell_v5');
       }
