@@ -124,17 +124,17 @@ export const gmxOrderLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 /** GMX read operations (positions, balance, markets): 60 per minute per IP */
 export const gmxReadLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 
-/** Auth nonce issue: 8 per minute per IP */
-export const authNonceLimiter = createRateLimiter({ windowMs: 60_000, max: 8 });
+/** Auth nonce issue: 20 per minute per IP (user may try multiple wallets; combined local+distributed counts) */
+export const authNonceLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
-/** Auth register: 8 per minute per IP */
-export const authRegisterLimiter = createRateLimiter({ windowMs: 60_000, max: 8 });
+/** Auth register: 10 per minute per IP */
+export const authRegisterLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
-/** Auth login: 10 per minute per IP */
-export const authLoginLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
+/** Auth login: 20 per minute per IP */
+export const authLoginLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
-/** Auth verify wallet: 10 per minute per IP */
-export const authVerifyLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
+/** Auth verify wallet: 20 per minute per IP */
+export const authVerifyLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
 /** Market snapshot (heavy fan-out): 20 per minute per IP */
 export const marketSnapshotLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });

@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     fallbackIp,
     limiter: authNonceLimiter,
     scope: 'auth:nonce',
-    max: 8,
+    max: 20,
     tooManyMessage: 'Too many nonce requests. Please wait.',
   });
   if (!guard.ok) return guard.response;
