@@ -14,6 +14,14 @@
   const MAX_SYMBOLS = 20;
 
   interface PatternRow { slug: string; label: string; symbol?: string; }
+  interface WhaleAlert {
+    symbol: string;
+    amount: number;       // USD
+    direction: 'buy' | 'sell';
+    exchange: string;
+    timestamp: number;    // unix ms
+    confidence?: number;  // 0-100
+  }
   interface Props { activeSymbol?: string; onSelectSymbol?: (symbol: string) => void; }
 
   let { activeSymbol = 'BTCUSDT', onSelectSymbol }: Props = $props();
@@ -39,6 +47,10 @@
   let sparkData = $state<Record<string, number[]>>({});
   let myPatterns      = $state<PatternRow[]>([]);
   let patternsLoading = $state(true);
+  let whaleAlerts     = $state<WhaleAlert[]>([]);
+  let whaleCollapsed  = $state(false);
+  // Re-render time-delta strings every 30s without re-fetching
+  let whaleTick       = $state(0);
   let folded    = $state(
     typeof localStorage !== 'undefined' && localStorage.getItem('cogochi.watchlist.folded') === 'true'
   );
@@ -87,8 +99,60 @@
     } catch { /* silent */ } finally { patternsLoading = false; }
   });
 
+  // Whale alerts: fetch + 10s polling, keyed off the watchlist symbols.
+  $effect(() => {
+    if (typeof window === 'undefined' || symbols.length === 0) return;
+    const syms = symbols.join(',');
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const r = await fetch(`/api/whale-alerts?symbols=${encodeURIComponent(syms)}&limit=5`);
+        if (!r.ok) return;
+        const d = (await r.json()) as { alerts?: WhaleAlert[] };
+        if (!cancelled && Array.isArray(d.alerts)) whaleAlerts = d.alerts;
+      } catch { /* silent */ }
+    }
+
+    void load();
+    const poll = setInterval(load, 10_000);
+    const ticker = setInterval(() => { whaleTick = whaleTick + 1; }, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+      clearInterval(ticker);
+    };
+  });
+
   function pick(symbol: string) { onSelectSymbol?.(symbol); }
   function shortName(s: string) { return s.replace(/USDT$/, ''); }
+
+  function getTimeDelta(timestamp: number, _tick: number = 0): string {
+    void _tick; // referenced so $derived/effects re-run on whaleTick change
+    const diffMs = Date.now() - timestamp;
+    const diffM = Math.floor(diffMs / 60_000);
+    const diffH = Math.floor(diffM / 60);
+    if (diffM < 1) return 'now';
+    if (diffM < 60) return `${diffM}m ago`;
+    if (diffH < 24) return `${diffH}h ago`;
+    return `${Math.floor(diffH / 24)}d ago`;
+  }
+
+  function fmtAmount(usd: number): string {
+    if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(1)}M`;
+    if (usd >= 1_000) return `$${(usd / 1_000).toFixed(0)}K`;
+    return `$${usd.toFixed(0)}`;
+  }
+
+  function focusWhale(alert: WhaleAlert) {
+    const sym = alert.symbol.toUpperCase();
+    // Add to watchlist if missing so the row exists to highlight.
+    if (!symbols.includes(sym) && symbols.length < MAX_SYMBOLS && /^[A-Z]{2,10}USDT$/.test(sym)) {
+      symbols = [...symbols, sym];
+      saveSymbols(symbols);
+    }
+    onSelectSymbol?.(sym);
+  }
 
   function removeSymbol(sym: string) {
     symbols = symbols.filter(s => s !== sym);
@@ -232,6 +296,44 @@
       </li>
     {/each}
   </ul>
+
+  <!-- WHALE ALERTS -->
+  {#if !folded && whaleAlerts.length > 0}
+    <div class="section-header">
+      <span class="section-label">WHALE ALERTS</span>
+      <span class="section-actions">
+        <span class="section-count">{whaleAlerts.length}</span>
+        <button
+          class="fold-btn"
+          onclick={() => (whaleCollapsed = !whaleCollapsed)}
+          title={whaleCollapsed ? 'Expand whale alerts' : 'Collapse whale alerts'}
+          aria-label={whaleCollapsed ? 'Expand whale alerts' : 'Collapse whale alerts'}
+        >{whaleCollapsed ? '▶' : '▼'}</button>
+      </span>
+    </div>
+    {#if !whaleCollapsed}
+      <ul class="whale-list">
+        {#each whaleAlerts as alert (alert.timestamp + alert.symbol + alert.exchange)}
+          <li>
+            <button
+              type="button"
+              class="whale-alert"
+              class:buy={alert.direction === 'buy'}
+              class:sell={alert.direction === 'sell'}
+              onclick={() => focusWhale(alert)}
+              title="{alert.direction.toUpperCase()} {fmtAmount(alert.amount)} on {alert.exchange}"
+            >
+              <span class="alert-symbol">{shortName(alert.symbol)}</span>
+              <span class="alert-direction">{alert.direction === 'buy' ? '↑' : '↓'}</span>
+              <span class="alert-amount">{fmtAmount(alert.amount)}</span>
+              <span class="alert-exchange">{alert.exchange}</span>
+              <span class="alert-time">{getTimeDelta(alert.timestamp, whaleTick)}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
 
   <!-- 내 패턴 -->
   {#if !folded}
@@ -531,5 +633,69 @@
     font-size: 9px;
     color: var(--g5);
     letter-spacing: 0.08em;
+  }
+
+  .whale-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .whale-alert {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 5px 10px;
+    background: transparent;
+    border: none;
+    border-bottom: 0.5px solid var(--g3);
+    color: var(--g8);
+    font-family: inherit;
+    font-size: 9px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+  }
+  .whale-alert:hover { background: var(--g2); }
+
+  .whale-alert.buy .alert-direction,
+  .whale-alert.buy .alert-amount { color: #22AB94; }
+  .whale-alert.sell .alert-direction,
+  .whale-alert.sell .alert-amount { color: #F23645; }
+
+  .alert-symbol {
+    font-weight: 600;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }
+
+  .alert-direction {
+    flex-shrink: 0;
+    font-weight: 600;
+  }
+
+  .alert-amount {
+    flex-shrink: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .alert-exchange {
+    color: var(--g6);
+    flex-shrink: 0;
+    font-size: 8px;
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
+  }
+
+  .alert-time {
+    margin-left: auto;
+    color: var(--g5);
+    font-size: 8px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
   }
 </style>
