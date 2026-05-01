@@ -9,7 +9,10 @@
   import TradeMode from './modes/TradeMode.svelte';
   import WorkspaceStage from './WorkspaceStage.svelte';
   import { get } from 'svelte/store';
-  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta } from './shell.store';
+  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta, isDecideMode } from './shell.store';
+  import DecideRightPanel from './DecideRightPanel.svelte';
+  import MultiPaneChartAdapter from './MultiPaneChartAdapter.svelte';
+  import PatternLibraryPanelAdapter from './PatternLibraryPanelAdapter.svelte';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
@@ -138,6 +141,7 @@
       else if (c.id === 'mode_trade') shellStore.switchMode('trade');
       else if (c.id === 'mode_train') shellStore.switchMode('train');
       else if (c.id === 'mode_fly') shellStore.switchMode('flywheel');
+      else if (c.id === 'mode_decide') shellStore.setWorkMode('decide');
       else if (c.id === 'new_trade') shellStore.openTab({ kind: 'trade', title: 'new session' });
       else if (c.id === 'open_indicator_settings') { indicatorSettingsOpen = true; }
       else if (c.id === 'open_ai_detail') {
@@ -272,38 +276,48 @@
           onIndicators={() => (indicatorSettingsOpen = true)}
         />
 
-        <WorkspaceStage
-          tabs={$shellStore.tabs}
-          activeTabId={$shellStore.activeTabId}
-          workMode={$shellStore.workMode}
-          workspaceMode={$shellStore.workspaceMode}
-          workspacePaneIds={$shellStore.workspacePaneIds}
-          workspaceImmersivePaneId={$shellStore.workspaceImmersivePaneId}
-          workspaceColumnSplit={$shellStore.workspaceColumnSplit}
-          workspaceLeftSplitY={$shellStore.workspaceLeftSplitY}
-          workspaceRightSplitY={$shellStore.workspaceRightSplitY}
-          onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
-        />
+        {#if $isDecideMode}
+          <div class="decide-canvas">
+            <MultiPaneChartAdapter />
+          </div>
+        {:else}
+          <WorkspaceStage
+            tabs={$shellStore.tabs}
+            activeTabId={$shellStore.activeTabId}
+            workMode={$shellStore.workMode}
+            workspaceMode={$shellStore.workspaceMode}
+            workspacePaneIds={$shellStore.workspacePaneIds}
+            workspaceImmersivePaneId={$shellStore.workspaceImmersivePaneId}
+            workspaceColumnSplit={$shellStore.workspaceColumnSplit}
+            workspaceLeftSplitY={$shellStore.workspaceLeftSplitY}
+            workspaceRightSplitY={$shellStore.workspaceRightSplitY}
+            onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
+          />
+        {/if}
       </div>
 
-      <!-- Right: AI panel — always visible -->
+      <!-- Right: AI panel or Decide panel — always visible -->
       <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
       <div class="ai-pane" style:width={`${Math.max(300, $shellStore.aiWidth)}px`}>
-        <AIPanel
-          messages={$activeTabState.chat || []}
-          onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
-          onApplySetup={(setup) => {
-            shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
-            shellStore.update(st => ({
-              ...st,
-              tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
-            }));
-          }}
-          onClose={() => {}}
-          symbol={desktopSymbol}
-          timeframe={$activeTabState.timeframe ?? '4h'}
-          onSelectSymbol={(s) => shellStore.setSymbol(s)}
-        />
+        {#if $isDecideMode}
+          <DecideRightPanel />
+        {:else}
+          <AIPanel
+            messages={$activeTabState.chat || []}
+            onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
+            onApplySetup={(setup) => {
+              shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
+              shellStore.update(st => ({
+                ...st,
+                tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
+              }));
+            }}
+            onClose={() => {}}
+            symbol={desktopSymbol}
+            timeframe={$activeTabState.timeframe ?? '4h'}
+            onSelectSymbol={(s) => shellStore.setSymbol(s)}
+          />
+        {/if}
       </div>
     </div>
 
@@ -330,6 +344,11 @@
 
   {#if indicatorSettingsOpen}
     <IndicatorSettingsSheet onClose={() => (indicatorSettingsOpen = false)} />
+  {/if}
+
+  <!-- Pattern Library overlay (modal) — only on desktop -->
+  {#if $viewportTier.tier !== 'MOBILE'}
+    <PatternLibraryPanelAdapter />
   {/if}
 </div>
 
@@ -397,6 +416,12 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+  }
+
+  .decide-canvas {
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
   }
 
