@@ -39,10 +39,20 @@
   let sparkData = $state<Record<string, number[]>>({});
   let myPatterns      = $state<PatternRow[]>([]);
   let patternsLoading = $state(true);
-  let folded    = $state(false);
+  let folded    = $state(
+    typeof localStorage !== 'undefined' && localStorage.getItem('cogochi.watchlist.folded') === 'true'
+  );
   let addOpen   = $state(false);
   let addInput  = $state('');
   let addError  = $state('');
+
+  // Persist fold state
+  $effect(() => {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem('cogochi.watchlist.folded', String(folded));
+    } catch {}
+  });
 
   // Re-subscribe whenever symbols list changes
   $effect(() => {
