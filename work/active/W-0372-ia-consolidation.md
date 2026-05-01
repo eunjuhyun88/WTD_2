@@ -475,3 +475,62 @@ Supabase:
 - [ ] **AC13** CI green / typecheck pass / vitest pass
 - [ ] **AC14** PR 3개 atomic (Phase A / B / C 각각 별도 merge)
 - [ ] **AC15** PR merged + CURRENT.md SHA 업데이트
+
+---
+
+## Owner
+
+app
+
+## Non-Goals
+
+- 페이지 내부 상세 디자인 변경 (컴포넌트 이식은 포함, CSS 리디자인은 제외)
+- `/verdict` 변경 (Telegram 딥링크 전용 유지)
+- 신규 기능 추가 (WatchlistRail add/delete 외)
+- `/terminal` 라우트 코드 삭제 (컴포넌트 소스 보존)
+- Charter Frozen 영역 (copy_trading, leaderboard, AI 차트분석, 자동매매)
+
+## Facts
+
+- 현재 nav 7개 중 dead-click 2건 (`/agent`→lab, `/market`→빈페이지)
+- 풀빌드 페이지 6개가 nav에서 도달 불가 (`/terminal`, `/settings`, `/passport`, `/analyze`, `/benchmark`, `/status`)
+- `/cogochi` AppShell: WatchlistRail + TabBar + AIPanel + TradeMode/TrainMode
+- `/terminal` 2003줄: DecisionHUD, MultiPaneChart, PatternLibraryPanel, VerdictInboxPanel 등
+- WatchlistRail 심볼 현재 7개 하드코딩
+- `app/src/components/layout/AppNavRail.svelte` — Phase A에서 7→5 완료
+
+## Canonical Files
+
+- `app/src/components/layout/AppNavRail.svelte`
+- `app/src/components/layout/MobileBottomNav.svelte`
+- `app/src/lib/cogochi/AppShell.svelte`
+- `app/src/lib/cogochi/WatchlistRail.svelte`
+- `app/src/lib/cogochi/WorkspaceStage.svelte`
+- `app/src/lib/cogochi/sections/LibrarySection.svelte`
+- `app/src/lib/cogochi/sections/VerdictsSection.svelte`
+- `app/src/lib/cogochi/shell.store.ts`
+- `app/src/routes/dashboard/+page.svelte`
+- `app/src/routes/patterns/+layout.svelte` (신규)
+- `app/src/routes/lab/+layout.svelte` (신규)
+- `app/src/routes/settings/+layout.svelte` (신규)
+- `app/src/routes/market/` (삭제)
+- `app/src/routes/strategies/` (이동 → patterns/strategies)
+- `app/src/routes/benchmark/` (이동 → patterns/benchmark)
+
+## Assumptions
+
+- W-0369 머지 완료 (main ee1c7f4d)
+- SvelteKit redirect(301) 사용 가능
+- Supabase `user_watchlist` 테이블은 Phase C에서 추가 (migration 041+)
+
+## Next Steps
+
+1. Phase A 완료: `/dashboard` Home 재목적 + `/market` 삭제 + WatchlistRail fold
+2. Phase B: Patterns/Lab/Settings hub layout + `/cogochi`에 ★★★ 4개 이식
+3. Phase C: ★★ 4개 이식 + Supabase watchlist + `/terminal` redirect
+
+## Handoff Checklist
+
+- [ ] Phase A PR #826 머지
+- [ ] Phase B 브랜치 생성 후 hub layout 구현
+- [ ] Phase C WatchlistRail Supabase 저장
