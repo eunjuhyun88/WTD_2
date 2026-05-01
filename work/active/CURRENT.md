@@ -14,12 +14,9 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0365-alpha-1cycle-pnl-verified` | P0 | ✅ Merged (#814) |
-| `W-0366-pattern-indicator-filters` | P1 | ✅ Merged (#814) |
 | `W-0352-pipeline-top-patterns-api` | P1 | 🟡 Design Draft |
 | `W-0364-500ccu-perf-extension` | P1 | 🟡 In Progress |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
 ---
 
