@@ -1,56 +1,58 @@
 <script lang="ts">
   /**
    * WatchlistRail — TV-style left rail
-   * - Top: major pairs with live price + 24h% (Binance miniTicker WebSocket ~1s)
+   * - Top: user-configurable symbol list (add/delete, max 20, localStorage)
+   * - Fold/unfold toggle (‹/›)
+   * - Real-time price feed: Binance miniTicker WebSocket ~1s
    * - Bottom: "내 패턴" section sourced from /api/patterns/terminal
-   *
-   * Real-time feed: subscribeMiniTicker opens a single multi-stream WS for all
-   * SYMBOLS. Updates arrive ~1s apart (Binance push cadence).
    */
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { subscribeMiniTicker, type MiniTickerUpdate } from '$lib/api/binance';
 
-  interface PatternRow {
-    slug: string;
-    label: string;
-    symbol?: string;
-  }
+  const STORAGE_KEY = 'cogochi:watchlist:v1';
+  const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT'];
+  const MAX_SYMBOLS = 20;
 
-  interface Props {
-    activeSymbol?: string;
-    onSelectSymbol?: (symbol: string) => void;
-  }
+  interface PatternRow { slug: string; label: string; symbol?: string; }
+  interface Props { activeSymbol?: string; onSelectSymbol?: (symbol: string) => void; }
 
   let { activeSymbol = 'BTCUSDT', onSelectSymbol }: Props = $props();
 
-  const SYMBOLS: readonly string[] = [
-    'BTCUSDT',
-    'ETHUSDT',
-    'SOLUSDT',
-    'BNBUSDT',
-    'XRPUSDT',
-    'AVAXUSDT',
-    'DOGEUSDT',
-  ];
+  function loadSymbols(): string[] {
+    if (typeof localStorage === 'undefined') return [...DEFAULT_SYMBOLS];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed as string[];
+      }
+    } catch {}
+    return [...DEFAULT_SYMBOLS];
+  }
 
-  // Live tick state per symbol: price + 24h change %
-  let ticks = $state<Record<string, MiniTickerUpdate>>({});
-  // 7-bar sparkline: circular buffer of close prices per symbol
+  function saveSymbols(syms: string[]) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(syms)); } catch {}
+  }
+
+  let symbols   = $state<string[]>(loadSymbols());
+  let ticks     = $state<Record<string, MiniTickerUpdate>>({});
   let sparkData = $state<Record<string, number[]>>({});
-
-  let myPatterns = $state<PatternRow[]>([]);
+  let myPatterns      = $state<PatternRow[]>([]);
   let patternsLoading = $state(true);
+  let folded    = $state(false);
+  let addOpen   = $state(false);
+  let addInput  = $state('');
+  let addError  = $state('');
 
-  let unsubscribe: (() => void) | null = null;
-
-  onMount(async () => {
-    // Real-time price feed
-    unsubscribe = subscribeMiniTicker(
-      [...SYMBOLS],
+  // Re-subscribe whenever symbols list changes
+  $effect(() => {
+    if (typeof window === 'undefined' || symbols.length === 0) return;
+    const syms = [...symbols];
+    const unsub = subscribeMiniTicker(
+      syms,
       () => {},
       (updates) => {
         ticks = { ...ticks, ...updates };
-        // Update sparkline buffers
         const next: Record<string, number[]> = { ...sparkData };
         for (const [sym, tick] of Object.entries(updates)) {
           const prev = next[sym] ?? [];
@@ -59,8 +61,10 @@
         sparkData = next;
       },
     );
+    return () => unsub();
+  });
 
-    // My patterns (one-shot)
+  onMount(async () => {
     try {
       const r = await fetch('/api/patterns/terminal');
       if (r.ok) {
@@ -70,29 +74,39 @@
           .map((p) => ({ slug: p.slug ?? '', label: p.label ?? p.slug ?? '', symbol: p.symbol }))
           .filter((p) => p.slug.length > 0);
       }
-    } catch {
-      // silent — empty state is fine
-    } finally {
-      patternsLoading = false;
-    }
+    } catch { /* silent */ } finally { patternsLoading = false; }
   });
 
-  onDestroy(() => {
-    unsubscribe?.();
-  });
+  function pick(symbol: string) { onSelectSymbol?.(symbol); }
+  function shortName(s: string) { return s.replace(/USDT$/, ''); }
 
-  function pick(symbol: string): void {
-    onSelectSymbol?.(symbol);
+  function removeSymbol(sym: string) {
+    symbols = symbols.filter(s => s !== sym);
+    saveSymbols(symbols);
   }
 
-  function shortName(symbol: string): string {
-    return symbol.replace(/USDT$/, '');
+  function addSymbol() {
+    const sym = addInput.trim().toUpperCase();
+    addError = '';
+    if (!sym) return;
+    if (symbols.includes(sym)) { addError = '이미 추가됨'; return; }
+    if (symbols.length >= MAX_SYMBOLS) { addError = `최대 ${MAX_SYMBOLS}개`; return; }
+    if (!/^[A-Z]{2,10}USDT$/.test(sym)) { addError = 'USDT 페어만 지원 (예: BTCUSDT)'; return; }
+    symbols = [...symbols, sym];
+    saveSymbols(symbols);
+    addInput = '';
+    addOpen = false;
+  }
+
+  function onAddKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') addSymbol();
+    if (e.key === 'Escape') { addOpen = false; addInput = ''; addError = ''; }
   }
 
   function fmtPrice(p: number): string {
     if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
-    if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
-    if (p >= 1) return p.toFixed(3);
+    if (p >= 1000)  return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (p >= 1)     return p.toFixed(3);
     return p.toPrecision(4);
   }
 
@@ -102,93 +116,142 @@
 
   function sparkPolyline(prices: number[]): string {
     const W = 30, H = 14;
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
+    const min = Math.min(...prices), max = Math.max(...prices);
     const range = max - min || 1;
     return prices
-      .map((p, i) => {
-        const x = (i / (prices.length - 1)) * W;
-        const y = H - ((p - min) / range) * H;
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      })
+      .map((p, i) => `${((i / (prices.length - 1)) * W).toFixed(1)},${(H - ((p - min) / range) * H).toFixed(1)}`)
       .join(' ');
   }
 </script>
 
-<div class="rail">
+<div class="rail" class:rail--folded={folded}>
+
+  <!-- WATCHLIST header -->
   <div class="section-header">
-    <span class="section-label">WATCHLIST</span>
-    <span class="section-count">{SYMBOLS.length}</span>
+    {#if !folded}
+      <span class="section-label">WATCHLIST</span>
+      <span class="section-actions">
+        <span class="section-count">{symbols.length}/{MAX_SYMBOLS}</span>
+        {#if symbols.length < MAX_SYMBOLS}
+          <button
+            class="add-btn"
+            onclick={() => { addOpen = !addOpen; addError = ''; }}
+            title="심볼 추가"
+            aria-label="Add symbol"
+          >+</button>
+        {/if}
+      </span>
+    {/if}
+    <button
+      class="fold-btn"
+      onclick={() => (folded = !folded)}
+      title={folded ? 'Expand watchlist' : 'Collapse watchlist'}
+      aria-label={folded ? 'Expand watchlist' : 'Collapse watchlist'}
+    >{folded ? '›' : '‹'}</button>
   </div>
+
+  <!-- Add symbol input -->
+  {#if !folded && addOpen}
+    <div class="add-row">
+      <!-- svelte-ignore a11y_autofocus -->
+      <input
+        class="add-input"
+        type="text"
+        placeholder="SOLUSDT…"
+        bind:value={addInput}
+        onkeydown={onAddKeydown}
+        maxlength={12}
+        autofocus
+      />
+      <button class="add-confirm" onclick={addSymbol} title="확인">+</button>
+      <button class="add-cancel" onclick={() => { addOpen = false; addInput = ''; addError = ''; }} title="취소">✕</button>
+    </div>
+    {#if addError}
+      <div class="add-error">{addError}</div>
+    {/if}
+  {/if}
+
+  <!-- Symbol list -->
   <ul class="symbol-list">
-    {#each SYMBOLS as sym (sym)}
+    {#each symbols as sym (sym)}
       {@const tick = ticks[sym]}
       {@const spark = sparkData[sym] ?? []}
-      <li>
+      <li class="symbol-item">
         <button
           type="button"
           class="symbol-row"
           class:active={sym === activeSymbol}
           onclick={() => pick(sym)}
+          title={sym}
         >
           <span class="sym-name">{shortName(sym)}</span>
-          <span class="sym-right">
-            {#if tick}
-              <span class="sym-price">{fmtPrice(tick.price)}</span>
-              <span class="sym-bottom">
-                <span
-                  class="sym-change"
-                  class:up={tick.change24h >= 0}
-                  class:dn={tick.change24h < 0}
-                >{fmtChange(tick.change24h)}</span>
-                {#if spark.length >= 3}
-                  <svg class="sparkline" viewBox="0 0 30 14" width="30" height="14">
-                    <polyline
-                      points={sparkPolyline(spark)}
-                      fill="none"
-                      stroke={tick.change24h >= 0 ? '#22AB94' : '#F23645'}
-                      stroke-width="1.2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                {/if}
-              </span>
-            {:else}
-              <span class="sym-loading">…</span>
-            {/if}
-          </span>
+          {#if !folded}
+            <span class="sym-right">
+              {#if tick}
+                <span class="sym-price">{fmtPrice(tick.price)}</span>
+                <span class="sym-bottom">
+                  <span class="sym-change" class:up={tick.change24h >= 0} class:dn={tick.change24h < 0}>
+                    {fmtChange(tick.change24h)}
+                  </span>
+                  {#if spark.length >= 3}
+                    <svg class="sparkline" viewBox="0 0 30 14" width="30" height="14">
+                      <polyline
+                        points={sparkPolyline(spark)}
+                        fill="none"
+                        stroke={tick.change24h >= 0 ? '#22AB94' : '#F23645'}
+                        stroke-width="1.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  {/if}
+                </span>
+              {:else}
+                <span class="sym-loading">…</span>
+              {/if}
+            </span>
+            <button
+              type="button"
+              class="del-btn"
+              onclick={(e) => { e.stopPropagation(); removeSymbol(sym); }}
+              title="제거"
+              aria-label="Remove {sym}"
+            >×</button>
+          {/if}
         </button>
       </li>
     {/each}
   </ul>
 
-  <div class="section-header">
-    <span class="section-label">내 패턴</span>
-    {#if !patternsLoading}
-      <span class="section-count">{myPatterns.length}</span>
+  <!-- 내 패턴 -->
+  {#if !folded}
+    <div class="section-header">
+      <span class="section-label">내 패턴</span>
+      {#if !patternsLoading}
+        <span class="section-count">{myPatterns.length}</span>
+      {/if}
+    </div>
+    {#if patternsLoading}
+      <div class="empty">loading…</div>
+    {:else if myPatterns.length === 0}
+      <div class="empty">없음</div>
+    {:else}
+      <ul class="pattern-list">
+        {#each myPatterns as p (p.slug)}
+          <li>
+            <button
+              type="button"
+              class="pattern-row"
+              title={p.slug}
+              onclick={() => onSelectSymbol?.(p.symbol ?? activeSymbol)}
+            >
+              <span class="pattern-dot"></span>
+              <span class="pattern-label">{p.label}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
     {/if}
-  </div>
-  {#if patternsLoading}
-    <div class="empty">loading…</div>
-  {:else if myPatterns.length === 0}
-    <div class="empty">없음</div>
-  {:else}
-    <ul class="pattern-list">
-      {#each myPatterns as p (p.slug)}
-        <li>
-          <button
-            type="button"
-            class="pattern-row"
-            title={p.slug}
-            onclick={() => onSelectSymbol?.(p.symbol ?? activeSymbol)}
-          >
-            <span class="pattern-dot"></span>
-            <span class="pattern-label">{p.label}</span>
-          </button>
-        </li>
-      {/each}
-    </ul>
   {/if}
 </div>
 
@@ -203,7 +266,34 @@
     overflow-y: auto;
     font-family: 'JetBrains Mono', monospace;
     color: var(--g8);
+    transition: width 0.2s ease;
   }
+
+  .rail--folded {
+    width: 36px;
+    min-width: 36px;
+    overflow: hidden;
+  }
+
+  .rail--folded .symbol-row {
+    justify-content: center;
+    padding: 6px 4px;
+  }
+
+  .rail--folded .sym-name { font-size: 9px; }
+
+  .fold-btn {
+    background: none;
+    border: none;
+    color: var(--g5);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.1s;
+  }
+  .fold-btn:hover { color: var(--g8); }
 
   .section-header {
     display: flex;
@@ -219,17 +309,96 @@
     position: sticky;
     top: 0;
     z-index: 1;
+    flex-shrink: 0;
+  }
+
+  .rail--folded .section-header {
+    justify-content: center;
+    padding: 8px 4px 4px;
   }
 
   .section-label { font-weight: 600; }
   .section-count { font-size: 8px; color: var(--g6); }
 
-  .symbol-list,
-  .pattern-list {
+  .section-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .add-btn {
+    background: none;
+    border: 1px solid var(--g4);
+    color: var(--g6);
+    font-size: 11px;
+    line-height: 1;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .add-btn:hover { color: var(--g9); border-color: var(--g6); }
+
+  .add-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: var(--g1);
+    border-bottom: 1px solid var(--g4);
+    flex-shrink: 0;
+  }
+
+  .add-input {
+    flex: 1;
+    background: var(--g2);
+    border: 1px solid var(--g4);
+    border-radius: 4px;
+    color: var(--g9);
+    font-family: inherit;
+    font-size: 10px;
+    padding: 3px 6px;
+    outline: none;
+    text-transform: uppercase;
+    min-width: 0;
+  }
+  .add-input:focus { border-color: var(--brand); }
+  .add-input::placeholder { text-transform: none; color: var(--g5); }
+
+  .add-confirm, .add-cancel {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: color 0.1s;
+  }
+  .add-confirm { color: #22AB94; }
+  .add-confirm:hover { color: #4ade80; }
+  .add-cancel { color: var(--g5); }
+  .add-cancel:hover { color: var(--g8); }
+
+  .add-error {
+    padding: 2px 8px 4px;
+    font-size: 9px;
+    color: #F23645;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+
+  .symbol-list, .pattern-list {
     list-style: none;
     margin: 0;
     padding: 0;
   }
+
+  .symbol-item { position: relative; }
 
   .symbol-row {
     width: 100%;
@@ -249,6 +418,7 @@
   }
 
   .symbol-row:hover { background: var(--g2); }
+  .symbol-row:hover .del-btn { opacity: 1; }
 
   .symbol-row.active {
     background: var(--g3);
@@ -256,6 +426,20 @@
     border-left: 2px solid var(--brand);
     padding-left: 8px;
   }
+
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--g5);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0 0 0 4px;
+    opacity: 0;
+    transition: opacity 0.1s, color 0.1s;
+    flex-shrink: 0;
+  }
+  .del-btn:hover { color: #F23645; }
 
   .sym-name {
     font-weight: 600;
@@ -291,20 +475,14 @@
   .sym-change.up { color: #22AB94; }
   .sym-change.dn { color: #F23645; }
 
-  .sparkline {
-    display: block;
-    flex-shrink: 0;
-  }
+  .sparkline { display: block; flex-shrink: 0; }
 
   .sym-loading {
     font-size: 9px;
     color: var(--g5);
     animation: blink 1.2s infinite;
   }
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
   .pattern-row {
     display: flex;
@@ -322,7 +500,6 @@
     text-align: left;
     transition: background 0.1s;
   }
-
   .pattern-row:hover { background: var(--g2); }
 
   .pattern-dot {
