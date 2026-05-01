@@ -1208,6 +1208,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/pnl-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pnl Stats
+         * @description W-0365: Realized P&L statistics for a pattern slug.
+         *
+         *     Queries ledger_outcomes for pnl_bps_net + pnl_verdict.
+         *     Returns preliminary=True if N < 30.
+         */
+        get: operations["get_pnl_stats_patterns__slug__pnl_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/training-records": {
         parameters: {
             query?: never;
@@ -2880,6 +2903,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/market-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Market Search
+         * @description W-0365: Run pattern market search and return ranked candidates.
+         */
+        post: operations["market_search_research_market_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/indicator-features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Indicator Features
+         * @description W-0366: Return user-facing indicator feature catalog for UI.
+         */
+        get: operations["get_indicator_features_research_indicator_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/research/signals/{signal_id}/components": {
         parameters: {
             query?: never;
@@ -3681,6 +3744,55 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** MarketSearchRequest */
+        MarketSearchRequest: {
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** Variant Slug */
+            variant_slug?: string | null;
+            /**
+             * Timeframe
+             * @default 1h
+             */
+            timeframe: string;
+            /** Universe */
+            universe?: string[] | null;
+            /**
+             * Top K
+             * @default 20
+             */
+            top_k: number;
+            /**
+             * Run Type
+             * @default user
+             */
+            run_type: string;
+            /** Indicator Filters */
+            indicator_filters?: {
+                [key: string]: unknown;
+            }[] | null;
+        };
+        /** MarketSearchResponse */
+        MarketSearchResponse: {
+            /** Run Id */
+            run_id: string;
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** Candidates */
+            candidates: {
+                [key: string]: unknown;
+            }[];
+            /** Total Candidates */
+            total_candidates: number;
+            /** Retrieval Source */
+            retrieval_source: string;
+            /** Run Type */
+            run_type: string;
+            /** Elapsed Ms */
+            elapsed_ms: number;
+            /** No Candidates Reason */
+            no_candidates_reason?: string | null;
+        };
         /** MemoryCandidate */
         MemoryCandidate: {
             /** Id */
@@ -4270,6 +4382,42 @@ export interface components {
             long_short_ratio: number;
             /** Taker Buy Ratio */
             taker_buy_ratio?: number | null;
+        };
+        /** PnLStatsPoint */
+        PnLStatsPoint: {
+            /** Ts */
+            ts: string;
+            /** Cumulative Pnl Bps */
+            cumulative_pnl_bps: number;
+        };
+        /** PnLStatsResponse */
+        PnLStatsResponse: {
+            /** Pattern Slug */
+            pattern_slug: string;
+            /** N */
+            n: number;
+            /** Mean Pnl Bps */
+            mean_pnl_bps: number | null;
+            /** Std Pnl Bps */
+            std_pnl_bps: number | null;
+            /** Sharpe Like */
+            sharpe_like: number | null;
+            /** Win Rate */
+            win_rate: number | null;
+            /** Loss Rate */
+            loss_rate: number | null;
+            /** Indeterminate Rate */
+            indeterminate_rate: number | null;
+            /** Ci Low */
+            ci_low: number | null;
+            /** Ci High */
+            ci_high: number | null;
+            /** Preliminary */
+            preliminary: boolean;
+            /** Btc Hold Return Pct */
+            btc_hold_return_pct: number | null;
+            /** Equity Curve */
+            equity_curve: components["schemas"]["PnLStatsPoint"][];
         };
         /** QualityJudgementRequest */
         QualityJudgementRequest: {
@@ -7753,6 +7901,37 @@ export interface operations {
             };
         };
     };
+    get_pnl_stats_patterns__slug__pnl_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PnLStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_training_records_patterns__slug__training_records_get: {
         parameters: {
             query?: {
@@ -10435,6 +10614,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    market_search_research_market_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarketSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarketSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_indicator_features_research_indicator_features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
