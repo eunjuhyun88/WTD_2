@@ -1533,4 +1533,60 @@ PR 분할 11개. 검증 protocol: 각 phase 종료 시 vitest + svelte-check + P
 
 ---
 
+## Goal
+Bloomberg-terminal-grade UX restructure: TopBar(symbol/TF/chart-type) + AIAgentPanel(5-tab) + IndicatorLibrary + DrawingToolbar.
+
+## Owner
+app
+
+## Scope
+`app/src/lib/cogochi/` — AppShell, shell.store, TopBar, AIAgentPanel, WatchlistRail, CommandBar, +layout.svelte
+
+## Non-Goals
+Copy trading, ORPO/DPO model training, backend engine changes, new memory stack.
+
+## Facts
+D-0~D-3 merged PR #839 main=`c982f613`. svelte-check 0 errors. 5 CI checks green.
+
+## Canonical Files
+- `app/src/lib/cogochi/TopBar.svelte`
+- `app/src/lib/cogochi/AIAgentPanel.svelte`
+- `app/src/lib/cogochi/shell.store.ts`
+- `app/src/lib/cogochi/AppShell.svelte`
+- `app/src/lib/cogochi/cogochi.css`
+- `app/src/routes/cogochi/+layout.svelte`
+
+## Assumptions
+D-0~D-3 foundation is live. Next phases D-4+ build on top.
+
+## Decisions
+D-1: TopBar replaces CommandBar TF section. D-2: AIAgentPanel replaces legacy AIPanel.
+
+## Next Steps
+1. D-4: IndicatorLibrary drawer (TV-style search/pin/add)
+2. D-5: DrawingToolbar + drag-to-save → AI pattern capture
+3. D-6: AI overlay layer on MultiPaneChart
+4. D-7: Bloomberg polish (KpiStrip / NewsFlash / StatusBar)
+
+## Exit Criteria
+- [ ] AC1: svelte-check 0 errors on all D phases
+- [ ] AC2: TopBar TF change updates chart reactively
+- [ ] AC3: AIAgentPanel 5 tabs all render without error
+- [ ] AC4: Indicator library shows all registered indicators
+- [ ] CI green + PR merged + CURRENT.md SHA updated
+
+## Open Questions
+- [ ] Q1: IndicatorLibrary — inline drawer vs modal overlay?
+- [ ] Q2: DrawingToolbar placement — vertical left rail vs floating?
+
+## Handoff Checklist
+- [x] D-0 design tokens + shell.store extensions ✅ (#839)
+- [x] D-1 TopBar (symbol + 8 TF + chart type) ✅ (#839)
+- [x] D-2 AIAgentPanel 5-tab ✅ (#839)
+- [x] D-3 AppShell wiring ✅ (#839)
+- [ ] D-4 IndicatorLibrary drawer
+- [ ] D-5 DrawingToolbar + drag-to-save
+- [ ] D-6 AI overlay layer
+- [ ] D-7 Bloomberg polish
+
 END
