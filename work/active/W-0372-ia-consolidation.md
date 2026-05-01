@@ -473,7 +473,7 @@ WatchlistRail.svelte 마이그레이션 로직:
 
 ---
 
-## Exit Criteria (전체)
+## Exit Criteria
 
 - [x] **AC1** Nav 항목 데스크탑/모바일 5개 (Phase A ✅)
 - [x] **AC2** Nav 클릭 시 빈페이지/redirect 도달 0건 (Phase A ✅)
@@ -508,7 +508,7 @@ app
 - Charter Frozen 영역 (copy_trading, leaderboard, AI 차트분석, 자동매매)
 - Drawing tools (DrawingCanvas/Toolbar) — Phase D 이후 별도 항목
 
-## Facts (실측)
+## Facts
 
 - AppShell.svelte: 466줄 (Phase D 이식 후 ~900줄 예상)
 - WorkspaceStage.svelte: 415줄
@@ -556,6 +556,11 @@ app
 - SvelteKit redirect(301) 사용 가능
 - Supabase auth.uid() 사용 가능 (RLS)
 - Phase D 시작 전 Phase C PR #830 머지 완료
+
+## Next Steps
+
+- Phase C PR #830 머지 (CI green 후)
+- Phase D 착수: W-0372-phase-d-cogochi-terminal-import.md (issue #833) — ★★★ 컴포넌트 이식
 
 ## Handoff Checklist
 
