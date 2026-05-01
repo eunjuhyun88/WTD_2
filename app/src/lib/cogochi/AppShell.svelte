@@ -8,8 +8,8 @@
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
   import WatchlistRail from './WatchlistRail.svelte';
-  import AIPanel from './AIPanel.svelte';
   import AIAgentPanel from './AIAgentPanel.svelte';
+  import BottomSheet from './BottomSheet.svelte';
   import TopBar from './TopBar.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
   import Splitter from './Splitter.svelte';
@@ -66,13 +66,6 @@
         chat: [...chat, { role: 'user', text: userText }, { role: 'assistant', text: assistantText }],
       };
     });
-  }
-
-  let aiSwipeTouchStartY = $state(0);
-  function onAITouchStart(e: TouchEvent) { aiSwipeTouchStartY = e.touches[0].clientY; }
-  function onAITouchEnd(e: TouchEvent) {
-    const dy = e.changedTouches[0].clientY - aiSwipeTouchStartY;
-    if (dy > 60) shellStore.update(s => ({ ...s, aiVisible: false }));
   }
 
   $effect(() => {
@@ -250,34 +243,20 @@
     {#if modeSheetOpen}
       <ModeSheet activeMode={$activeMode} onClose={() => (modeSheetOpen = false)} />
     {/if}
-    {#if $shellStore.aiVisible}
-      <div
-        class="mobile-ai-sheet"
-        ontouchstart={onAITouchStart}
-        ontouchend={onAITouchEnd}
-        role="dialog"
-        aria-modal="true"
-        aria-label="AI panel"
-        tabindex="0"
-      >
-        <div class="sheet-topbar">
-          <div class="sheet-handle"></div>
-          <button class="sheet-close" onclick={() => shellStore.toggleAI()}>×</button>
-        </div>
-        <AIPanel
-          messages={$activeTabState.chat || []}
-          onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
-          onApplySetup={(setup) => {
-            shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
-            shellStore.update(st => ({
-              ...st,
-              tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
-            }));
-          }}
-          onClose={() => shellStore.toggleAI()}
+    <BottomSheet
+      open={$shellStore.aiVisible}
+      title="AI AGENT"
+      height="85vh"
+      onClose={() => shellStore.toggleAI()}
+    >
+      <div class="mobile-agent-host">
+        <AIAgentPanel
+          symbol={mobileSymbol}
+          timeframe={mobileTF}
+          onSelectSymbol={(s) => { mobileSymbol = s; shellStore.setSymbol(s); }}
         />
       </div>
-    {/if}
+    </BottomSheet>
 
   {:else}
     <!-- ── DESKTOP / TABLET ── -->
@@ -501,12 +480,14 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    contain: layout paint;
   }
 
   .decide-canvas {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    contain: layout paint;
   }
 
   /* ResearchPanel slides in from right side of chart area on range selection */
@@ -532,6 +513,7 @@
   .ai-pane {
     flex-shrink: 0;
     overflow: hidden;
+    contain: layout paint;
   }
 
   .mobile-canvas {
@@ -540,56 +522,14 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    contain: layout paint;
   }
 
-  .mobile-ai-sheet {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    height: 52%;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    z-index: 200;
-    background: var(--g1);
-    border-top: 1px solid var(--g5);
-    border-radius: 8px 8px 0 0;
+  .mobile-agent-host {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    animation: sheetSlideUp 0.2s ease;
-  }
-
-  .sheet-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    padding: 8px 12px 4px;
-    flex-shrink: 0;
-  }
-
-  .sheet-handle {
-    width: 36px; height: 4px;
-    background: var(--g5);
-    border-radius: 2px;
-  }
-
-  .sheet-close {
-    position: absolute;
-    right: 12px; top: 6px;
-    width: 28px; height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--g2);
-    border: 0.5px solid var(--g4);
-    border-radius: 4px;
-    color: var(--g6);
-    font-size: 16px;
-    cursor: pointer;
-    line-height: 1;
-  }
-  .sheet-close:active { background: var(--g3); }
-
-  @keyframes sheetSlideUp {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
+    contain: layout paint;
   }
 </style>
