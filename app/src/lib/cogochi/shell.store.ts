@@ -13,6 +13,16 @@ export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
 export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D';
+export type ChartActiveMode = 'idle' | 'drawing' | 'save-range';
+export type DrawingTool =
+  | 'cursor'
+  | 'trendLine'
+  | 'horizontalLine'
+  | 'verticalLine'
+  | 'extendedLine'
+  | 'rectangle'
+  | 'fibRetracement'
+  | 'textLabel';
 
 export interface WorkspacePanelRect {
   x: number; y: number; w: number; h: number;
@@ -83,6 +93,9 @@ export interface ShellState {
   hudVisible: boolean;
   selectedVerdictId: string | null;
   decisionBundle: null | { symbol: string; timeframe: string; patternSlug: string | null };
+  // ── Drawing mode (D-4) ───────────────────────────────────────────────────
+  chartActiveMode: ChartActiveMode;
+  drawingTool: DrawingTool;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -208,6 +221,8 @@ const makeDefault = (): ShellState => ({
   hudVisible: false,
   selectedVerdictId: null,
   decisionBundle: null,
+  chartActiveMode: 'idle',
+  drawingTool: 'cursor',
 });
 
 const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
@@ -263,6 +278,8 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
     hudVisible: raw.hudVisible ?? false,
     selectedVerdictId: raw.selectedVerdictId ?? null,
     decisionBundle: raw.decisionBundle ?? null,
+    chartActiveMode: raw.chartActiveMode ?? 'idle',
+    drawingTool: raw.drawingTool ?? 'cursor',
   };
 }
 
@@ -484,6 +501,23 @@ function createShellStore() {
         tabs: st.tabs.map(t =>
           t.id === st.activeTabId ? { ...t, tabState: { ...t.tabState, chartType } } : t
         ),
+      }));
+    },
+
+    setDrawingTool: (tool: DrawingTool) => {
+      update(st => {
+        const next = st.drawingTool === tool && tool !== 'cursor' ? 'cursor' : tool;
+        const mode: ChartActiveMode = next === 'cursor' ? 'idle' : 'drawing';
+        return { ...st, drawingTool: next, chartActiveMode: mode };
+      });
+    },
+
+    setChartActiveMode: (mode: ChartActiveMode) => {
+      update(st => ({
+        ...st,
+        chartActiveMode: mode,
+        // Reverting to idle/save-range clears any active drawing tool
+        drawingTool: mode === 'drawing' ? st.drawingTool : 'cursor',
       }));
     },
 

@@ -28,6 +28,8 @@
   import ModeSheet from './ModeSheet.svelte';
   import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
+  import DrawingRail from './DrawingRail.svelte';
+  import type { DrawingTool } from './shell.store';
 
   let paletteOpen = $state(false);
   let mobileTF = $state('4h');
@@ -137,10 +139,31 @@
         }
       }
 
+      // D-4: drawing tool shortcuts (no modifier, no input focused)
+      if (!mod && !isInputActive()) {
+        const k = e.key.toLowerCase();
+        const map: Record<string, DrawingTool> = {
+          t: 'trendLine',
+          h: 'horizontalLine',
+          v: 'verticalLine',
+          e: 'extendedLine',
+          r: 'rectangle',
+          f: 'fibRetracement',
+          l: 'textLabel',
+        };
+        if (map[k]) {
+          e.preventDefault();
+          shellStore.setDrawingTool(map[k]);
+        }
+      }
+
       if (e.key === 'Escape') {
         if (chartSaveMode.snapshot().active) {
           chartSaveMode.exitRangeMode();
           shellStore.updateTabState(s => ({ ...s, rangeSelection: false }));
+        }
+        if (get(shellStore).drawingTool !== 'cursor') {
+          shellStore.setDrawingTool('cursor');
         }
         if (desktopSymbolPickerOpen) desktopSymbolPickerOpen = false;
       }
@@ -271,6 +294,9 @@
         />
       </div>
       <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
+
+      <!-- D-4: Drawing rail (left of canvas, desktop only) -->
+      <DrawingRail />
 
       <!-- Center: Canvas + TabBar -->
       <div class="canvas-col" style:position="relative">
