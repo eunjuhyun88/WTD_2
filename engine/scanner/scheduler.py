@@ -534,8 +534,8 @@ def start_scheduler() -> None:
             misfire_grace_time=600,
         )
 
-    # W-0367: Signal outcome resolver — hourly, only when ENABLE_SIGNAL_EVENTS=true
-    if os.environ.get("ENABLE_SIGNAL_EVENTS", "false").lower() == "true":
+    # W-0377: Signal outcome resolver — hourly, default ON (was false before W-0377)
+    if os.environ.get("ENABLE_SIGNAL_EVENTS", "true").lower() == "true":
         from research.verification_loop import register_scheduler as _reg_vloop
         _reg_vloop(_scheduler)
 

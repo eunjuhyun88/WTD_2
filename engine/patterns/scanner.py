@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any
 
-_SIGNAL_EVENTS_ENABLED = os.getenv("ENABLE_SIGNAL_EVENTS", "false").lower() == "true"
+_SIGNAL_EVENTS_ENABLED = os.getenv("ENABLE_SIGNAL_EVENTS", "true").lower() == "true"
 
 from capture.store import CaptureStore
 from capture.types import CaptureRecord
