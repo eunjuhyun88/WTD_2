@@ -173,6 +173,7 @@
         <ChartPane
           symbol={pane.symbol}
           tf={pane.tf}
+          paneId={pane.id}
           active={pane.id === activePaneId}
           closeable={panes.length > 1}
           {surfaceStyle}
