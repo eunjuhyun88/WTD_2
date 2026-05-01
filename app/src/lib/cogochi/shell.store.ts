@@ -9,7 +9,8 @@ import {
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
-export type RightPanelTab = 'decision' | 'pattern' | 'verdict' | 'research' | 'judge';
+// v2 migration: verdict→analyze, research→scan
+export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 
 export interface WorkspacePanelRect {
@@ -173,7 +174,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   layoutMode: 'C',
   analyzeLayout: DEFAULT_ANALYZE_PANEL_LAYOUT,
   chartType: 'candle',
-  rightPanelTab: 'decision',
+  rightPanelTab: 'decision' as RightPanelTab,
   rightPanelExpanded: false,
   drawerOpen: false,
   drawerKind: null,
@@ -208,10 +209,20 @@ const makeDefault = (): ShellState => ({
   decisionBundle: null,
 });
 
+const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
+function migrateRightPanelTab(raw: unknown): RightPanelTab {
+  // v1→v2: verdict→analyze, research→scan
+  if (raw === 'verdict') return 'analyze';
+  if (raw === 'research') return 'scan';
+  if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
+  return 'decision';
+}
+
 function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
   return {
     ...FRESH_TAB_STATE(),
     ...(tabState ?? {}),
+    rightPanelTab: migrateRightPanelTab((tabState as any)?.rightPanelTab),
     workspaceLayout: { ...FRESH_WORKSPACE_LAYOUT(), ...(tabState?.workspaceLayout ?? {}) },
     layoutMode: 'C',
     analyzeLayout: normalizeAnalyzePanelLayout(tabState?.analyzeLayout),
@@ -256,7 +267,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v8';
+const SHELL_KEY = 'cogochi_shell_v9'; // v9: RightPanelTab migration (verdict→analyze, research→scan)
 
 function createShellStore() {
   let initial: ShellState;

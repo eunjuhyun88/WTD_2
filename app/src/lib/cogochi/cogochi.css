@@ -1,41 +1,52 @@
-/* cogochi design tokens */
+/* ═══════════════════════════════════════════════════════
+   cogochi design tokens — TradingView-grade density
+   ═══════════════════════════════════════════════════════ */
 :root {
-  /* grid zones */
-  --zone-left-rail: 180px;
-  --zone-right-panel: 320px;
-  --zone-right-panel-expanded: 480px;
-  --zone-drawing-tool: 40px;
-  --zone-top-bar: 48px;
-  --zone-news-flash: 28px;
-  --zone-tab-bar: 40px;
-  --zone-status-bar: 32px;
+  /* ── Zone heights (chrome budget = 80px total) ─────── */
+  --zone-top-bar:    32px;
+  --zone-tab-bar:    24px;
+  --zone-status-bar: 24px;
+  --zone-left-rail:  160px;
+  --zone-right-panel: 280px;
+  --zone-right-panel-expanded: 440px;
 
-  /* colors (Bloomberg dark) */
-  --c-bg: #0c0a09;
-  --c-surface: #141210;
-  --c-border: #272320;
-  --c-text-primary: #eceae8;
-  --c-text-secondary: #9d9690;
-  --c-text-dim: #706a62;
-  --c-accent: #f5a623;
-  --c-accent-blue: #4a90e2;
-  --c-pos: #4ade80;
-  --c-neg: #f87171;
-  --c-amb: #facc15;
+  /* ── Palette — Bloomberg dark ───────────────────────── */
+  --g0:  #080706;   /* void */
+  --g1:  #0c0a09;   /* base bg */
+  --g2:  #111009;   /* surface */
+  --g3:  #191714;   /* divider */
+  --g4:  #242018;   /* border */
+  --g5:  #3a3530;   /* muted */
+  --g6:  #524d47;   /* placeholder */
+  --g7:  #857e76;   /* secondary text */
+  --g8:  #bab4ad;   /* body text */
+  --g9:  #e8e4df;   /* primary text */
+  --g10: #f5f2ee;   /* emphasis */
 
-  /* spacing */
-  --sp-xs: 4px;
-  --sp-sm: 8px;
-  --sp-md: 12px;
-  --sp-lg: 16px;
-  --sp-xl: 24px;
+  /* ── Semantic ────────────────────────────────────────── */
+  --amb:   #f5a623;   /* amber — active / accent */
+  --amb-d: #1e1508;   /* amber dim bg */
+  --pos:   #26a65b;   /* bullish green */
+  --pos-d: #0d1f14;
+  --neg:   #e84545;   /* bearish red */
+  --neg-d: #200d0d;
+  --blue:  #3d7de4;   /* info */
+  --blue-d:#0d1528;
+  --brand: #3d7de4;
 
-  /* radius */
-  --r-sm: 3px;
-  --r-md: 6px;
-  --r-lg: 10px;
+  /* ── Typography ─────────────────────────────────────── */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-sans: 'Inter', 'Geist', system-ui, sans-serif;
 
-  /* font */
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  /* ── Spacing — 5 steps only ─────────────────────────── */
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 12px;
+
+  /* ── Radius ─────────────────────────────────────────── */
+  --r-1: 2px;
+  --r-2: 3px;
+  --r-3: 4px;
 }
