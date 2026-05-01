@@ -2,12 +2,23 @@
 // Accepts a Privy access token, verifies it via Privy JWKS, issues a session cookie.
 // Requires: PRIVY_APP_SECRET and PUBLIC_PRIVY_APP_ID env vars.
 
+// POST /api/auth/privy
+// Accepts a Privy access token, verifies it via Privy JWKS, issues a session cookie.
+// Supports both wallet-linked users and email-only users (no EVM address in JWT).
+// Requires: PRIVY_APP_SECRET and PUBLIC_PRIVY_APP_ID env vars.
+
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { env as pubEnv } from '$env/dynamic/public';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { createAuthSession, findAuthUserByWallet, createWalletOnlyUser } from '$lib/server/authRepository';
+import {
+  createAuthSession,
+  findAuthUserByWallet,
+  createWalletOnlyUser,
+  findAuthUserByEmail,
+  createEmailOnlyUser,
+} from '$lib/server/authRepository';
 import {
   buildSessionCookieValue,
   SESSION_COOKIE_NAME,
@@ -38,26 +49,43 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     return json({ error: 'accessToken is required' }, { status: 400 });
   }
 
-  let walletAddress: string;
+  // Verified claims from the Privy JWT
+  let walletAddress: string | null = null;
+  let privyEmail: string | null = null;
+  let privySub: string = '';
+
   try {
     const jwksUrl = new URL(`https://auth.privy.io/api/v1/apps/${appId}/jwks.json`);
     const JWKS = createRemoteJWKSet(jwksUrl);
     const { payload } = await jwtVerify(accessToken, JWKS, { audience: appId });
-    const sub = typeof payload.sub === 'string' ? payload.sub : '';
-    // Privy sub format: "did:privy:<id>" — the embedded wallet address is in custom claim.
-    // Privy also embeds `linked_accounts` with type=wallet. Fallback: use sub directly if EVM addr.
+    privySub = typeof payload.sub === 'string' ? payload.sub : '';
+
+    // Privy embeds linked_accounts with type=wallet or type=email
     const linked = Array.isArray((payload as any).linked_accounts)
       ? (payload as any).linked_accounts
       : [];
+
+    // Extract EVM wallet address (optional — email-only users have none)
     const walletEntry = linked.find(
       (a: any) => a.type === 'wallet' && typeof a.address === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a.address)
     );
     if (walletEntry) {
       walletAddress = (walletEntry.address as string).toLowerCase();
-    } else if (/^0x[0-9a-fA-F]{40}$/.test(sub)) {
-      walletAddress = sub.toLowerCase();
-    } else {
-      return json({ error: 'No wallet address found in Privy token' }, { status: 400 });
+    } else if (/^0x[0-9a-fA-F]{40}$/.test(privySub)) {
+      walletAddress = privySub.toLowerCase();
+    }
+
+    // Extract email from linked_accounts (email-first Privy path)
+    const emailEntry = linked.find(
+      (a: any) => a.type === 'email' && typeof a.address === 'string' && a.address.includes('@')
+    );
+    if (emailEntry) {
+      privyEmail = (emailEntry.address as string).trim().toLowerCase();
+    }
+
+    // Must have at least one usable identifier
+    if (!walletAddress && !privyEmail) {
+      return json({ error: 'No wallet address or email found in Privy token' }, { status: 400 });
     }
   } catch (err: any) {
     console.error('[auth/privy] JWT verification failed:', err?.message ?? err);
@@ -65,16 +93,38 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   }
 
   try {
-    let user = await findAuthUserByWallet(walletAddress);
-    if (!user) {
-      try {
-        user = await createWalletOnlyUser(walletAddress, '');
-      } catch (createError: any) {
-        if (createError?.code === '23505') {
-          user = await findAuthUserByWallet(walletAddress);
+    let user = null;
+
+    if (walletAddress) {
+      // Wallet path: find or create by wallet address
+      user = await findAuthUserByWallet(walletAddress);
+      if (!user) {
+        try {
+          user = await createWalletOnlyUser(walletAddress, '');
+        } catch (createError: any) {
+          if (createError?.code === '23505') {
+            user = await findAuthUserByWallet(walletAddress);
+          }
+          if (!user) throw createError;
         }
-        if (!user) throw createError;
       }
+    } else if (privyEmail) {
+      // Email-only path: find or create by email (no wallet address)
+      user = await findAuthUserByEmail(privyEmail);
+      if (!user) {
+        try {
+          user = await createEmailOnlyUser(privyEmail, privySub);
+        } catch (createError: any) {
+          if (createError?.code === '23505') {
+            user = await findAuthUserByEmail(privyEmail);
+          }
+          if (!user) throw createError;
+        }
+      }
+    }
+
+    if (!user) {
+      return json({ error: 'Failed to resolve user' }, { status: 500 });
     }
 
     const sessionToken = crypto.randomUUID().toLowerCase();
