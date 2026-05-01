@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`7551d795` — origin/main (2026-05-01) — PR #829 W-0372 Phase B merged (hub layouts + Home profile + 5 redirects)
+`c982f613` — origin/main (2026-05-01) — PR #839 W-0374 Phase D-0~D-3 merged (Bloomberg UX TopBar + AIAgentPanel 5-tab)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0372-ia-consolidation` | P1 | 🟡 Phase C — ★★★ Terminal 이식 + WatchlistRail add/delete |
+| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟡 Phase D-4+ — IndicatorLibrary + DrawingToolbar + drag-to-save |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
@@ -25,9 +25,13 @@
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
 완료:  W-0372 Phase A ✅ — AppNavRail 7→5 + MobileBottomNav 5-hub (#826)
 완료:  W-0372 Phase B ✅ — hub layouts + Home profile + 5 redirects (#829)
-즉시:  W-0372 Phase C — ★★★ Terminal 이식 (DecisionHUD/PatternLibraryPanel/VerdictInboxPanel/MultiPaneChart) + WatchlistRail add/delete
-다음:  W-0372 Phase C 완료 후 → W-0304 per-pane indicator
-이후:  W-0304 per-pane indicator
+완료:  W-0372 Phase C ✅ — WatchlistRail fold+add/delete + route cleanup (#830)
+완료:  W-0372 Phase D ✅ — DecisionHUD + MultiPaneChart + PatternLibraryPanel + VerdictInboxPanel (#835)
+완료:  W-0373 ✅ — wallet auth Privy email-first + silent failure fixes (#834)
+완료:  W-0358 ✅ — multi-exchange OHLCV ingestion framework (#836)
+완료:  W-0374 Phase D-0~D-3 ✅ — Bloomberg UX TopBar + AIAgentPanel 5-tab (#839)
+즉시:  W-0374 Phase D-4+ — IndicatorLibrary drawer + DrawingToolbar + drag-to-save → AI pattern
+다음:  W-0304 per-pane indicator (after W-0374 foundation stable)
 ```
 
 ---
@@ -53,6 +57,7 @@
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0372-ia-consolidation.md
-# Phase B: /dashboard Home repurpose + /market 삭제 + WatchlistRail fold + ★★★ transplant
+cat work/active/W-0374-cogochi-bloomberg-ux-restructure.md
+# Phase D-4: IndicatorLibrary drawer (TV-style add/search/pin)
+# Phase D-5: DrawingToolbar + drag-to-save → AI agent pattern capture
 ```
