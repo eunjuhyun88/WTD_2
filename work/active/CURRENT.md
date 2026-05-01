@@ -14,9 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0341-hypothesis-registry-supabase-deploy` | P1 | 🟡 Design Draft |
+| `W-0372-ia-consolidation` | P1 | 🟡 Phase A — PR #826 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
 ---
 
