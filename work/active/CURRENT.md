@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`3509373d` — origin/main (2026-05-01) — W-0365+W-0366 (#814) + W-0367 (#813) + W-0368 패턴 hardening + wallet fix (#822)
+`f3eeebac` — origin/main (2026-05-01) — PR #826 W-0372 Phase A merged (AppNavRail 7→5 + MobileBottomNav)
 
 ---
 
@@ -14,12 +14,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0365-alpha-1cycle-pnl-verified` | P0 | ✅ Merged (#814) |
-| `W-0366-pattern-indicator-filters` | P1 | ✅ Merged (#814) |
-| `W-0352-pipeline-top-patterns-api` | P1 | 🟡 Design Draft |
-| `W-0364-500ccu-perf-extension` | P1 | 🟡 In Progress |
+| `W-0372-ia-consolidation` | P1 | 🟡 Phase B — hub layout + ★★★ transplant |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-PF-100-propfirm-master-epic` | P1 | 🟢 W-PF-101~106 Merged — PR #783 |
 
 ---
 
@@ -27,17 +23,19 @@
 
 ```
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
-즉시:  W-0352 top-patterns API → alpha 1cycle 완성
-다음:  W-0364 500ccu perf extension → W-0304 per-pane indicator
+완료:  W-0372 Phase A ✅ — AppNavRail 7→5 + MobileBottomNav 5-hub (#826)
+즉시:  W-0372 Phase B — /dashboard Home repurpose + /market 삭제 + WatchlistRail fold + ★★★ transplant
+다음:  W-0372 Phase C — ★★ transplant + Supabase watchlist migration
+이후:  W-0304 per-pane indicator
 ```
 
 ---
 
-## 핵심 lesson (이번 세션)
+## 핵심 lesson (A099/A100 세션)
 
-- **worktree CACHE_DIR 버그**: `list_cached_symbols`가 worktree-local 빈 디렉토리 참조 → `_primary_cache_dir()` 사용으로 해결. git 기반 shared cache 경로 확인 필수
-- **Contract CI**: engine 엔드포인트 추가 시 `npm run contract:sync:engine-types` + 커밋 필수 (자동 sync 있어도 CI 트리거 타이밍 문제 가능)
-- **migration 테이블 혼용**: `pattern_outcomes`(legacy) vs `ledger_outcomes`(canonical) — migration은 canonical 테이블에 적용
+- **Contract CI CURRENT.md sync**: active table에 나열된 work item 파일이 실제로 존재해야 함. 파일 없으면 CI 즉시 BLOCK
+- **Contract CI 필수 섹션**: Owner / Facts / Canonical Files / Assumptions / Next Steps / Handoff Checklist 전부 있어야 통과
+- **W-0372 Phase A lock-in**: /cogochi = Terminal hub 핵심, /terminal → redirect. 5-Hub 확정
 
 ---
 
@@ -54,6 +52,6 @@
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0352-pipeline-top-patterns-api.md
-# W-0369 설계: alpha invite gating + 4 telemetry events
+cat work/active/W-0372-ia-consolidation.md
+# Phase B: /dashboard Home repurpose + /market 삭제 + WatchlistRail fold + ★★★ transplant
 ```
