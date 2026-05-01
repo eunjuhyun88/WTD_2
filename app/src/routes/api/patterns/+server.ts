@@ -3,10 +3,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { engineFetch } from '$lib/server/engineTransport';
-import { scanLimiter } from '$lib/server/rateLimit';
+import { scanLimiterDistributed } from '$lib/server/distributedRateLimit';
 
 export const GET: RequestHandler = async ({ getClientAddress }) => {
-  if (!scanLimiter.check(getClientAddress())) {
+  if (!(await scanLimiterDistributed.check(getClientAddress()))) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
   try {
