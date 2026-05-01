@@ -27,6 +27,7 @@
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
   import ModeSheet from './ModeSheet.svelte';
   import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
+  import IndicatorLibrary from './IndicatorLibrary.svelte';
 
   let paletteOpen = $state(false);
   let mobileTF = $state('4h');
@@ -36,6 +37,7 @@
   let desktopSymbolPickerTabId = $state<string | null>(null);
   let modeSheetOpen = $state(false);
   let indicatorSettingsOpen = $state(false);
+  let indicatorLibraryOpen = $state(false);
 
   const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
   const aiPaneWidth = $derived($activeTabState.rightPanelExpanded ? 480 : Math.max(300, $shellStore.aiWidth));
@@ -150,6 +152,10 @@
         e.preventDefault();
         desktopSymbolPickerOpen = true;
       }
+      if (mod && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        indicatorLibraryOpen = !indicatorLibraryOpen;
+      }
     };
 
     const onCmd = (e: CustomEvent) => {
@@ -163,6 +169,7 @@
       else if (c.id === 'mode_decide') shellStore.setWorkMode('decide');
       else if (c.id === 'new_trade') shellStore.openTab({ kind: 'trade', title: 'new session' });
       else if (c.id === 'open_indicator_settings') { indicatorSettingsOpen = true; }
+      else if (c.id === 'open_indicator_library') { indicatorLibraryOpen = true; }
       else if (c.id === 'open_ai_detail') {
         appendAIDetail(c.userText ?? '현재 analyze detail 설명해줘', c.assistantText ?? '');
       }
@@ -293,7 +300,7 @@
         />
 
         <ChartToolbar
-          onIndicators={() => (indicatorSettingsOpen = true)}
+          onIndicators={() => (indicatorLibraryOpen = true)}
           onSettings={() => (indicatorSettingsOpen = true)}
         />
 
@@ -387,6 +394,11 @@
   {#if indicatorSettingsOpen}
     <IndicatorSettingsSheet onClose={() => (indicatorSettingsOpen = false)} />
   {/if}
+
+  <IndicatorLibrary
+    open={indicatorLibraryOpen}
+    onClose={() => (indicatorLibraryOpen = false)}
+  />
 
   <!-- Pattern Library overlay (modal) — only on desktop -->
   {#if $viewportTier.tier !== 'MOBILE'}
