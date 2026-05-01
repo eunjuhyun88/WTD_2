@@ -164,6 +164,59 @@ def _load_klines_from_market_data(symbol: str, timeframe: str = "1h") -> pd.Data
         return None
 
 
+_STALE_THRESHOLD_HOURS = 2
+
+
+def _extend_klines_to_now(df: pd.DataFrame, symbol: str, timeframe: str) -> pd.DataFrame:
+    """Append recent Binance bars when parquet data is more than 2 hours stale."""
+    from datetime import datetime, timezone, timedelta
+
+    if df.empty:
+        return df
+
+    last_ts = df.index[-1]
+    if hasattr(last_ts, "tzinfo") and last_ts.tzinfo is None:
+        last_ts = last_ts.tz_localize("UTC")
+    gap_hours = (datetime.now(timezone.utc) - last_ts).total_seconds() / 3600
+    if gap_hours <= _STALE_THRESHOLD_HOURS:
+        return df
+
+    # Fetch only the bars needed to fill the gap (max 200 bars)
+    limit = min(int(gap_hours) + 2, 200)
+    try:
+        from data_cache.fetch_binance import _fetch_batch
+        import json, time as _time
+
+        end_ms = int((last_ts.timestamp() + gap_hours * 3600 + 3600) * 1000)
+        start_ms = int(last_ts.timestamp() * 1000) + 1
+        batch = _fetch_batch(symbol, timeframe, end_ms)
+        if not batch:
+            return df
+
+        import pandas as _pd
+        recent = _pd.DataFrame(
+            batch,
+            columns=[
+                "open_time", "open", "high", "low", "close", "volume",
+                "close_time", "quote_volume", "trades",
+                "taker_buy_base_volume", "taker_buy_quote_volume", "ignore",
+            ],
+        )
+        for col in ["open", "high", "low", "close", "volume", "taker_buy_base_volume"]:
+            recent[col] = recent[col].astype(float)
+        recent["timestamp"] = _pd.to_datetime(recent["open_time"], unit="ms", utc=True)
+        recent = recent.set_index("timestamp")
+        recent.index.name = "timestamp"
+        # Keep only rows newer than last parquet row
+        recent = recent[recent.index > last_ts]
+        if recent.empty:
+            return df
+        shared_cols = [c for c in ["open", "high", "low", "close", "volume", "taker_buy_base_volume"] if c in df.columns]
+        return pd.concat([df, recent[shared_cols]]).sort_index()
+    except Exception:
+        return df
+
+
 def load_klines(
     symbol: str,
     timeframe: str = "1h",
@@ -196,6 +249,8 @@ def load_klines(
         # Prefer new market_data parquet (full history) over legacy CSV
         md_df = _load_klines_from_market_data(symbol, timeframe)
         if md_df is not None and len(md_df) > 500:
+            if not offline:
+                md_df = _extend_klines_to_now(md_df, symbol, timeframe)
             return md_df
         path = cache_path(symbol, _CANONICAL_HOURLY_TIMEFRAME)
         if path.exists():
