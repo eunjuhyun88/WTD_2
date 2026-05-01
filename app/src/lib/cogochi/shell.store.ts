@@ -9,8 +9,8 @@ import {
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
-// v2 migration: verdict→analyze, research→scan
-export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
+// v3 migration (D-7): analyze→verdict, scan→research, plus 'pattern'
+export type RightPanelTab = 'decision' | 'pattern' | 'verdict' | 'research' | 'judge';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D';
 export type ChartActiveMode = 'idle' | 'drawing' | 'save-range';
@@ -225,11 +225,11 @@ const makeDefault = (): ShellState => ({
   drawingTool: 'cursor',
 });
 
-const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
+const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge']);
 function migrateRightPanelTab(raw: unknown): RightPanelTab {
-  // v1→v2: verdict→analyze, research→scan
-  if (raw === 'verdict') return 'analyze';
-  if (raw === 'research') return 'scan';
+  // v2→v3 (D-7): analyze→verdict, scan→research
+  if (raw === 'analyze') return 'verdict';
+  if (raw === 'scan') return 'research';
   if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
   return 'decision';
 }
@@ -285,7 +285,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v9'; // v9: RightPanelTab migration (verdict→analyze, research→scan)
+const SHELL_KEY = 'cogochi_shell_v10'; // v10 (D-7): RightPanelTab restored to verdict/research + 5-tab
 
 function createShellStore() {
   let initial: ShellState;

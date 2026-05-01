@@ -175,7 +175,13 @@
         e.preventDefault();
         desktopSymbolPickerOpen = true;
       }
+      // D-7: ⌘L → focus AI Search (Bloomberg-style)
       if (mod && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('cogochi:cmd', { detail: { id: 'focus_ai_search' } }));
+      }
+      // D-7: ⌘I → toggle IndicatorLibrary (was ⌘L)
+      if (mod && e.key.toLowerCase() === 'i') {
         e.preventDefault();
         indicatorLibraryOpen = !indicatorLibraryOpen;
       }
@@ -386,8 +392,6 @@
           <DecideRightPanel />
         {:else}
           <AIAgentPanel
-            messages={$activeTabState.chat || []}
-            onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
             symbol={desktopSymbol}
             timeframe={$activeTabState.timeframe ?? '4h'}
             onSelectSymbol={(s) => shellStore.setSymbol(s)}
