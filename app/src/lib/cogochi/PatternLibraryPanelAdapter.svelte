@@ -26,7 +26,9 @@
   let records = $state<PatternCaptureRecord[]>([]);
   let loading = $state(false);
 
-  const open = $derived($shellStore.activeSection === 'library' && $shellStore.sidebarVisible);
+  // Only open when explicitly triggered (activeSection='library' AND aiVisible is off)
+  // prevents auto-open on desktop where sidebarVisible is always true
+  const open = $derived($shellStore.activeSection === 'library' && !$shellStore.aiVisible);
 
   function normalize(cap: EngineCapture): PatternCaptureRecord {
     const ts = cap.captured_at_ms
