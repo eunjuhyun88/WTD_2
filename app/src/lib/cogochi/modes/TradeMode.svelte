@@ -10,6 +10,7 @@
     type TradeOutcomeResult,
   } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
+  import { cogochiDataStore } from '$lib/cogochi/cogochi.data.store';
   import type { ChartSeriesPayload, MarketMicrostructurePayload } from '$lib/api/terminalBackend';
   import type { FootprintBucket, MarketDepthLevel, MarketTradePrint } from '$lib/contracts/marketMicrostructure';
   import type { ShellWorkMode, TabState } from '$lib/cogochi/shell.store';
@@ -476,6 +477,10 @@
     const iv = setInterval(_loadAlphaWorldModel, 5 * 60 * 1000);
     return () => clearInterval(iv);
   });
+
+  // ── cogochi.data.store sync (producer role) ──────────────────────────────
+  $effect(() => { cogochiDataStore.setAnalyzeData(analyzeData); });
+  $effect(() => { cogochiDataStore.setScanCandidates(scanCandidates, scanLoading); });
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   function _fmtNum(v: number | null | undefined): string {
