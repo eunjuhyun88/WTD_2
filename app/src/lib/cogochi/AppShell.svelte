@@ -5,6 +5,8 @@
   import StatusBar from './StatusBar.svelte';
   import WatchlistRail from './WatchlistRail.svelte';
   import AIPanel from './AIPanel.svelte';
+  import AIAgentPanel from './AIAgentPanel.svelte';
+  import TopBar from './TopBar.svelte';
   import Splitter from './Splitter.svelte';
   import TradeMode from './modes/TradeMode.svelte';
   import WorkspaceStage from './WorkspaceStage.svelte';
@@ -31,6 +33,7 @@
   let indicatorSettingsOpen = $state(false);
 
   const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
+  const aiPaneWidth = $derived($activeTabState.rightPanelExpanded ? 480 : Math.max(300, $shellStore.aiWidth));
 
   function openDesktopSymbolPicker(tabId?: string) {
     desktopSymbolPickerTabId = tabId ?? $shellStore.activeTabId;
@@ -239,6 +242,11 @@
       setPaletteOpen={(open) => (paletteOpen = open)}
     />
 
+    <TopBar
+      onSymbolTap={() => (desktopSymbolPickerOpen = true)}
+      onIndicators={() => (indicatorSettingsOpen = true)}
+    />
+
     <div class="main-row">
       <!-- Left: WatchlistRail — always visible -->
       <div class="sidebar-pane" style:width={`${Math.max(180, $shellStore.sidebarWidth)}px`}>
@@ -296,23 +304,15 @@
         {/if}
       </div>
 
-      <!-- Right: AI panel or Decide panel — always visible -->
+      <!-- Right: AI agent panel or Decide panel — always visible -->
       <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
-      <div class="ai-pane" style:width={`${Math.max(300, $shellStore.aiWidth)}px`}>
+      <div class="ai-pane" style:width={`${aiPaneWidth}px`}>
         {#if $isDecideMode}
           <DecideRightPanel />
         {:else}
-          <AIPanel
+          <AIAgentPanel
             messages={$activeTabState.chat || []}
             onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
-            onApplySetup={(setup) => {
-              shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
-              shellStore.update(st => ({
-                ...st,
-                tabs: st.tabs.map(t => t.id === st.activeTabId ? { ...t, title: setup.text.slice(0, 30) } : t),
-              }));
-            }}
-            onClose={() => {}}
             symbol={desktopSymbol}
             timeframe={$activeTabState.timeframe ?? '4h'}
             onSelectSymbol={(s) => shellStore.setSymbol(s)}
