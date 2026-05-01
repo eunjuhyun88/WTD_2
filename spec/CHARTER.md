@@ -46,11 +46,12 @@
 
 ### PRD §1.3 명시 Non-Goals
 
-- ❌ **AI 차트 분석 툴** / TradingView 대체 / 범용 스크리너
+- ❌ **범용 스크리너** (시그널만 던지고 검증 없이 매매 권유하는 툴 류)
 - ❌ **대중형 소셜/카피트레이딩** (`copy.trad`, `copy_trading`, `leaderboard`, `subscription` 류)
 - ❌ **초보자용 "AI가 알려주는 매매"**
 - ❌ **실자금 자동매매 실행** (Phase 2+ 별도 레인)
-- ❌ **TradingView feature parity**
+
+> **차트 Frozen 해제 (2026-05-01, 사용자 결정)**: 기존 "AI 차트 분석 툴 / TradingView 대체 / TradingView feature parity / Chart UX polish" 4개 항목 해제. W-0372 Phase D(Terminal→Cogochi 이식) 및 후속 차트 작업이 In-Scope에 포함됨. 단, 카피트레이딩/실자금 자동매매/대중형 시그널 툴은 여전히 Frozen.
 
 ### Pattern Verification Lane 예외 (PRD v3, 2026-04-28)
 
@@ -70,8 +71,9 @@
 
 ### Polish 동결 (코어 미완성 동안)
 
-- ❌ **Chart UX polish** (`chart.polish`, W-0212 류) — W-0210/W-0211 머지로 충분
 - ❌ **Pine Script LLM-only 생성** — W-0211 Phase 1로 충분
+
+> Chart UX polish 항목은 2026-05-01 해제 (위 §PRD §1.3 주석 참조).
 
 ---
 
@@ -113,9 +115,10 @@ PR:    body에 "Closes #N"                                            # 머지 =
 ```
 copy.trad | copy_trading | leaderboard.*sub
 new.memkraft | new.multi.agent | new.dispatcher | new.handoff.framework
-chart.polish | chart.ux.polish | w-0212
 new.slash.command | new.coordination.stack
 ```
+
+(`chart.polish | chart.ux.polish | w-0212` 키워드 게이트 2026-05-01 해제됨.)
 
 → Issue/assignee/Project 사용 자체는 게이트 대상 아님 (§Coordination Allowed).
 

@@ -1,5 +1,3 @@
 import { redirect } from '@sveltejs/kit';
+export const load = () => redirect(301, '/cogochi');
 
-export function load() {
-	redirect(307, '/cogochi');
-}

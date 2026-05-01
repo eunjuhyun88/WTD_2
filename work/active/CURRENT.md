@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`f3eeebac` — origin/main (2026-05-01) — PR #826 W-0372 Phase A merged (AppNavRail 7→5 + MobileBottomNav)
+`7551d795` — origin/main (2026-05-01) — PR #829 W-0372 Phase B merged (hub layouts + Home profile + 5 redirects)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0372-ia-consolidation` | P1 | 🟡 Phase B — hub layout + ★★★ transplant |
+| `W-0372-ia-consolidation` | P1 | 🟡 Phase C — ★★★ Terminal 이식 + WatchlistRail add/delete |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
@@ -24,8 +24,9 @@
 ```
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
 완료:  W-0372 Phase A ✅ — AppNavRail 7→5 + MobileBottomNav 5-hub (#826)
-즉시:  W-0372 Phase B — /dashboard Home repurpose + /market 삭제 + WatchlistRail fold + ★★★ transplant
-다음:  W-0372 Phase C — ★★ transplant + Supabase watchlist migration
+완료:  W-0372 Phase B ✅ — hub layouts + Home profile + 5 redirects (#829)
+즉시:  W-0372 Phase C — ★★★ Terminal 이식 (DecisionHUD/PatternLibraryPanel/VerdictInboxPanel/MultiPaneChart) + WatchlistRail add/delete
+다음:  W-0372 Phase C 완료 후 → W-0304 per-pane indicator
 이후:  W-0304 per-pane indicator
 ```
 
