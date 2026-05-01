@@ -1,5 +1,9 @@
 {
   "model": "sonnet",
+  "env": {
+    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
+  },
   "permissions": {
     "allow": [
       "Bash(cd engine && python -m pytest*)",

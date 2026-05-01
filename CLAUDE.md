@@ -54,3 +54,28 @@ Target: `feat/{Issue-ID}-{slug}` 또는 `feat/{W-NNNN}-{slug}`.
 Auto-generated `claude/*`, `codex/*` → `git branch -m feat/{ID}-{slug}` rename만. 새 worktree 생성 금지.
 
 상세 규칙: `agents/coordination.md`
+
+## Task Delegation (Token Budget)
+
+작업은 가능한 한 subagent로 위임하고, 작업이 감당 가능한 가장 저렴한 모델을 선택한다.
+
+| 모델 | 용도 |
+|---|---|
+| Haiku | 단순 반복 / 기계적 작업, 판단 불필요 (이름 바꾸기, 일괄 패턴 치환, 파일 목록 수집 등) |
+| Sonnet | 범위가 정해진 리서치, 코드 탐색, 정리·요약 |
+| Opus | 진짜 기획·트레이드오프 판단이 필요한 경우에만 |
+
+**Spawn 제한**
+
+- Haiku는 추가 subagent를 spawn하지 않는다. 더 잘게 쪼개야 한다면 작업 사이즈가 잘못된 것이다.
+- 최대 spawn depth = 2 (parent → subagent → one more tier).
+- subagent가 더 똑똑한 모델이 필요하다고 판단하면 스스로 escalate하지 말고 parent에게 결과를 돌려준다.
+
+## Preferred Tools (Cost-First)
+
+같은 결과를 낸다면 항상 더 싼/가벼운 도구를 먼저 고른다.
+
+- **공개 페이지** → `WebFetch` (free, text-only)
+- **동적 페이지 / 인증벽** → `agent-browser` CLI (스크린샷 기반 도구 대비 토큰 ~82% 절감)
+- **PDF** → `pdftotext` (Read 도구 대신)
+- 같은 패턴으로 반복 fetch가 보이면 재사용 가능한 도구로 묶어달라고 요청한다.
