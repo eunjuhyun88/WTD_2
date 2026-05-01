@@ -552,25 +552,10 @@ class SupabaseLedgerRecordStore:
             log.warning("ledger_verdicts dual-write failed (non-fatal): %s", exc)
 
     def append_phase_attempt_record(self, attempt: "PhaseAttemptRecord") -> None:
-        self.append(PatternLedgerRecord(
-            record_type="phase_attempt",
-            pattern_slug=attempt.pattern_slug,
-            symbol=attempt.symbol,
-            transition_id=attempt.anchor_transition_id,
-            scan_id=attempt.scan_id,
-            payload={
-                "timeframe": attempt.timeframe,
-                "from_phase": attempt.from_phase,
-                "attempted_phase": attempt.attempted_phase,
-                "attempted_at": attempt.attempted_at.isoformat() if attempt.attempted_at else None,
-                "phase_score": attempt.phase_score,
-                "missing_blocks": attempt.missing_blocks,
-                "failed_reason": attempt.failed_reason,
-                "anchor_transition_id": attempt.anchor_transition_id,
-                "blocks_triggered": attempt.blocks_triggered,
-                "feature_snapshot": attempt.feature_snapshot,
-            },
-        ))
+        # W-0376: phase_attempt is research-only data (read by local LedgerRecordStore,
+        # not Supabase). Writing 10,400 rows/h caused 428 MB TOAST bloat and disk I/O
+        # burst exhaustion. Research pipeline reads from local JSON files, not Supabase.
+        pass
 
     def append_model_record(
         self,
