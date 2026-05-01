@@ -1,8 +1,21 @@
-"""Validation facade — 6-layer gate orchestration."""
+"""Validation facade — W-0317 validation pipeline + W-0379 6-layer autoresearch orchestrator.
+
+W-0317 Usage (discovery_tools.py):
+    from research.validation.facade import validate_and_gate, GatedValidationResult
+    result = validate_and_gate(slug=slug, pack=pack, family="btcusdt_4h")
+
+W-0379 Usage (autoresearch orchestrator):
+    from research.validation.facade import run_layer2_through_layer6
+    survived = run_layer2_through_layer6(proposals, rules_before, cycle_id)
+"""
 from __future__ import annotations
 
 import logging
-from typing import Optional
+import os
+import traceback
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Literal, Optional
 
 import numpy as np
 
@@ -11,6 +24,181 @@ from engine.features.gex_pressure import gex_filter_proposal
 from engine.research.validation.pbo import pbo_filter_proposal
 
 log = logging.getLogger("engine.research.validation.facade")
+
+_VALID_STAGES = {"shadow", "soft", "strict"}
+_HORIZONS_HOURS = [1, 4, 24, 72, 168]
+
+
+# ============================================================================
+# W-0317: Validation Pipeline + Gate V2 Facade (Discovery/Proposal Validation)
+# ============================================================================
+
+@dataclass(frozen=True)
+class GatedValidationResult:
+    """Result of validate_and_gate() call."""
+
+    slug: str
+    overall_pass: bool
+    stage: Literal["shadow", "soft", "strict"]
+    gate_result: Optional["GateV2Result"] = None
+    validation_report: Optional["ValidationReport"] = None
+    hypothesis_id: Optional[str] = None
+    dsr_n_trials: int = 0
+    family: str = "default"
+    computed_at: Optional[datetime] = None
+    error: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "slug": self.slug,
+            "overall_pass": self.overall_pass,
+            "stage": self.stage,
+            "hypothesis_id": self.hypothesis_id,
+            "dsr_n_trials": self.dsr_n_trials,
+            "family": self.family,
+            "computed_at": self.computed_at.isoformat() if self.computed_at else None,
+            "error": self.error,
+            "gate": self.gate_result.to_dict() if self.gate_result else None,
+        }
+
+
+def _get_stage() -> Literal["shadow", "soft", "strict"]:
+    val = os.environ.get("VALIDATION_STAGE", "shadow").lower().strip()
+    if val not in _VALID_STAGES:
+        log.error("Invalid VALIDATION_STAGE=%r — falling back to shadow", val)
+        return "shadow"
+    return val  # type: ignore[return-value]
+
+
+def _fail(slug: str, family: str, stage: str, msg: str) -> GatedValidationResult:
+    log.error("validate_and_gate failed for %s: %s", slug, msg)
+    return GatedValidationResult(
+        slug=slug,
+        overall_pass=False,
+        stage=stage,  # type: ignore[arg-type]
+        gate_result=None,
+        validation_report=None,
+        hypothesis_id=None,
+        dsr_n_trials=0,
+        family=family,
+        computed_at=datetime.now(timezone.utc),
+        error=msg[:500],
+    )
+
+
+def validate_and_gate(
+    slug: str,
+    pack: "ReplayBenchmarkPack",
+    *,
+    family: str = "default",
+    existing_promotion_pass: bool = False,
+    as_of: Optional[datetime] = None,
+    config: Optional["ValidationPipelineConfig"] = None,
+    gate_config: Optional["GateV2Config"] = None,
+) -> GatedValidationResult:
+    """Run full validation pipeline + gate v2. Never raises.
+
+    Args:
+        slug: Pattern identifier.
+        pack: ReplayBenchmarkPack with pattern windows.
+        family: "{symbol}_{timeframe}" for per-family DSR trial count.
+        existing_promotion_pass: Whether existing PromotionGatePolicy passed.
+        as_of: Lookahead guard — all entry timestamps must be < as_of.
+        config: ValidationPipelineConfig override.
+        gate_config: GateV2Config override.
+
+    Returns:
+        GatedValidationResult. overall_pass=False on any failure.
+    """
+    stage = _get_stage()
+    now = datetime.now(timezone.utc)
+
+    try:
+        # Enabled flag
+        if os.environ.get("VALIDATION_PIPELINE_ENABLED", "true").lower() == "false":
+            return _fail(slug, family, stage, "VALIDATION_PIPELINE_ENABLED=false")
+
+        # Import locally to avoid circular imports
+        from engine.research.validation.pipeline import (
+            ValidationPipelineConfig,
+            ValidationReport,
+            run_validation_pipeline,
+        )
+        from engine.research.validation.gates import (
+            GateV2Config,
+            GateV2Result,
+            evaluate_gate_v2,
+        )
+        from engine.research.validation.hypothesis_registry_store import (
+            HypothesisRegistryStore,
+        )
+
+        # Build config with W-0317 horizon bands
+        if config is None:
+            config = ValidationPipelineConfig(horizons_hours=_HORIZONS_HOURS)
+
+        # Run pipeline (12 modules)
+        report: ValidationReport = run_validation_pipeline(pack=pack, config=config)
+
+        # Gate v2 (G1~G8)
+        gate_result: GateV2Result = evaluate_gate_v2(
+            report, existing_promotion_pass, config=gate_config
+        )
+
+        # Stage-based pass logic
+        if stage == "shadow":
+            overall_pass = True  # observe only
+        elif stage == "soft":
+            overall_pass = True  # warn but don't block
+        else:  # strict
+            overall_pass = gate_result.overall_pass
+
+        # Registry
+        hypothesis_id: Optional[str] = None
+        n_trials = 0
+        try:
+            store = HypothesisRegistryStore()
+            n_trials = store.get_n_trials(family)
+            hypothesis_id = store.register(
+                slug=slug,
+                family=family,
+                overall_pass=overall_pass,
+                stage=stage,
+                gate_dict=gate_result.to_dict(),
+                result_dict={"pass_rate": report.overall_pass_rate, "f1_kill": report.f1_kill},
+            )
+        except Exception:
+            # Registry failure must not block validation result
+            log.warning(
+                "hypothesis_registry write failed for %s\n%s",
+                slug,
+                traceback.format_exc(),
+            )
+
+        return GatedValidationResult(
+            slug=slug,
+            overall_pass=overall_pass,
+            stage=stage,
+            gate_result=gate_result,
+            validation_report=report,
+            hypothesis_id=hypothesis_id,
+            dsr_n_trials=n_trials,
+            family=family,
+            computed_at=now,
+        )
+
+    except Exception as exc:
+        return _fail(
+            slug,
+            family,
+            stage,
+            f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}",
+        )
+
+
+# ============================================================================
+# W-0379: 6-Layer Autoresearch Orchestrator (Ensemble Strategy Validation)
+# ============================================================================
 
 
 def run_layer2_through_layer6(
