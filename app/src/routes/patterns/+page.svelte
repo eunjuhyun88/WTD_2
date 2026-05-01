@@ -203,6 +203,8 @@
       </button>
       <button class="surface-button-secondary" onclick={() => goto('/patterns/lifecycle')}>Lifecycle</button>
       <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
+      <a class="surface-sublink" href="/patterns/filter-drag" data-testid="patterns-filter-drag-link">Filter Drag →</a>
+      <a class="surface-sublink" href="/patterns/formula" data-testid="patterns-formula-link">Formula →</a>
     </div>
   </header>
 
@@ -460,6 +462,19 @@
   .patterns-copy {
     align-items: flex-start;
   }
+
+  .surface-sublink {
+    align-self: center;
+    padding: 4px 10px;
+    color: var(--amb, #f5a623);
+    font-size: 11px;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--amb, #f5a623);
+    border-radius: 2px;
+  }
+  .surface-sublink:hover { background: rgba(245, 166, 35, 0.12); }
 
   .page-loading,
   .page-error,

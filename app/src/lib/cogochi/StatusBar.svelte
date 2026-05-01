@@ -76,7 +76,7 @@
 
 <style>
   .status-bar {
-    height: 24px;
+    height: var(--zone-status-bar, 24px);
     flex-shrink: 0;
     display: flex;
     align-items: center;

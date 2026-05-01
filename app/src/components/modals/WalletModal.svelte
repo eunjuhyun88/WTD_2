@@ -229,10 +229,20 @@
             action: { label: 'Settings →', href: '/settings' },
           });
         } else {
-          closeWalletModal();
+          // Server returned a response but no user — show retryable error, keep modal open
+          actionError = 'Authentication failed — no session was created. Please try signing again.';
+          gtmEvent('auth_failure', { method: provider, stage: 'wallet_auth', reason_code: 'no_user', retryable: true });
         }
-      } catch {
-        closeWalletModal();
+      } catch (authErr) {
+        // Server-side auth failure — keep modal open so user can retry
+        const errMsg = authErr instanceof Error ? authErr.message : '';
+        actionError = classifyWalletAuthError(errMsg);
+        gtmEvent('auth_failure', {
+          method: provider,
+          stage: 'wallet_auth',
+          reason_code: classifyWalletAuthReason(errMsg),
+          retryable: true,
+        });
       }
     } catch (error) {
       clearWalletProof();
@@ -243,6 +253,35 @@
       // keep modal open for retry — do NOT close
     } finally {
       signingMessage = false;
+    }
+  }
+
+  // ── Auth error classification (Fix 4 / Fix 5) ───────────────
+  function classifyWalletAuthReason(msg: string): string {
+    const m = msg.toLowerCase();
+    if (m.includes('cancel') || m.includes('reject') || m.includes('denied')) return 'user_cancelled';
+    if (m.includes('nonce') || m.includes('expired') || m.includes('invalid nonce')) return 'nonce_expired';
+    if (m.includes('rate limit') || m.includes('too many') || m.includes('429')) return 'rate_limited';
+    if (m.includes('provider') || m.includes('extension') || m.includes('wallet')) return 'provider_error';
+    if (m.includes('server') || m.includes('500') || m.includes('503')) return 'server_error';
+    return 'unknown';
+  }
+
+  function classifyWalletAuthError(msg: string): string {
+    const reason = classifyWalletAuthReason(msg);
+    switch (reason) {
+      case 'user_cancelled':
+        return 'Signature cancelled. Click "Sign Message" to try again.';
+      case 'nonce_expired':
+        return 'Challenge expired. Click "Sign Message" to request a new one.';
+      case 'rate_limited':
+        return 'Too many attempts. Please wait a moment and try again.';
+      case 'provider_error':
+        return 'Wallet provider error. Check your extension and try again.';
+      case 'server_error':
+        return 'Server error. Please try again in a moment.';
+      default:
+        return msg || 'Authentication failed. Please try signing again.';
     }
   }
 

@@ -42,6 +42,11 @@
   import ResultPanel from '../../components/lab/ResultPanel.svelte';
   import RefinementPanel from '../../components/lab/RefinementPanel.svelte';
   import PatternRunPanel from '../../components/lab/PatternRunPanel.svelte';
+  import BacktestSummaryStrip from '../../components/lab/BacktestSummaryStrip.svelte';
+  import EquityCurveChart from '../../components/lab/EquityCurveChart.svelte';
+  import TradeLogTable from '../../components/lab/TradeLogTable.svelte';
+  import { buildEquitySeries } from '$lib/lab/equityCurve';
+  import type { EquitySeries } from '$lib/lab/equityCurve';
 
   let mode = $state<'auto' | 'manual'>('auto');
   let activeTab = $state<'strategy' | 'result' | 'order' | 'trades' | 'refinement' | 'pattern-run'>('strategy');
@@ -59,6 +64,9 @@
 
   let backtestResult = $state<BacktestResult | null>(null);
   let selectedTradeIndex = $state(-1);
+
+  // W-0381: equity series derived from backtest result + klines
+  const equitySeries = $derived<EquitySeries>(buildEquitySeries(backtestResult, klines));
 
   let manualPosition = $state<{
     direction: string;
@@ -316,6 +324,9 @@
         <span class="surface-meta">Waiting</span>
         <strong>{pendingChallengeCount}</strong>
       </article>
+      <a class="surface-sublink" href="/lab/counterfactual" data-testid="lab-counterfactual-link">
+        Counterfactual →
+      </a>
     </div>
   </header>
 
@@ -440,11 +451,18 @@
               onUpdateDirection={handleUpdateDirection}
             />
           {:else if activeTab === 'result'}
-            <ResultPanel
-              result={backtestResult}
-              {isRunning}
-              onSave={handleSave}
-              onViewChart={handleViewChart}
+            <!-- W-0381: Bloomberg-style backtest dashboard -->
+            <BacktestSummaryStrip result={backtestResult} {isRunning} />
+            <EquityCurveChart
+              series={equitySeries}
+              height={240}
+              selectedTradeTime={selectedTradeIndex >= 0 ? backtestResult?.trades[selectedTradeIndex]?.exitTime ?? null : null}
+            />
+            <TradeLogTable
+              trades={backtestResult?.trades ?? []}
+              selectedIndex={selectedTradeIndex}
+              {interval}
+              onSelectTrade={(idx) => selectTrade(idx)}
             />
           {:else if activeTab === 'refinement'}
             <RefinementPanel />
@@ -542,6 +560,20 @@
 </div>
 
 <style>
+  .surface-sublink {
+    align-self: center;
+    margin-left: 8px;
+    padding: 4px 10px;
+    color: var(--amb, #f5a623);
+    font-size: 11px;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--amb, #f5a623);
+    border-radius: 2px;
+  }
+  .surface-sublink:hover { background: rgba(245, 166, 35, 0.12); }
+
   .toolbar-shell {
     margin-top: 14px;
     overflow: auto;

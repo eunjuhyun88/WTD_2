@@ -145,6 +145,78 @@ def _fetch_and_cache_klines(symbol: str, timeframe: str, path: Path) -> pd.DataF
 
 # ─── Klines ──────────────────────────────────────────────────────────────────
 
+def _load_klines_from_market_data(symbol: str, timeframe: str = "1h") -> pd.DataFrame | None:
+    """Load klines from new market_data/ohlcv/ parquet files."""
+    ohlcv_dir = Path(__file__).parent / "market_data" / "ohlcv"
+    path = ohlcv_dir / f"{symbol}_{timeframe}.parquet"
+    if not path.exists():
+        return None
+    try:
+        df = pd.read_parquet(path)
+        df["ts"] = pd.to_datetime(df["ts"], utc=True)
+        df = df.set_index("ts").sort_index()
+        df.index.name = "timestamp"
+        # Rename taker_buy_vol to the name feature_calc expects
+        if "taker_buy_vol" in df.columns:
+            df = df.rename(columns={"taker_buy_vol": "taker_buy_base_volume"})
+        return df[["open", "high", "low", "close", "volume", "taker_buy_base_volume"]]
+    except Exception:
+        return None
+
+
+_STALE_THRESHOLD_HOURS = 2
+
+
+def _extend_klines_to_now(df: pd.DataFrame, symbol: str, timeframe: str) -> pd.DataFrame:
+    """Append recent Binance bars when parquet data is more than 2 hours stale."""
+    from datetime import datetime, timezone, timedelta
+
+    if df.empty:
+        return df
+
+    last_ts = df.index[-1]
+    if hasattr(last_ts, "tzinfo") and last_ts.tzinfo is None:
+        last_ts = last_ts.tz_localize("UTC")
+    gap_hours = (datetime.now(timezone.utc) - last_ts).total_seconds() / 3600
+    if gap_hours <= _STALE_THRESHOLD_HOURS:
+        return df
+
+    # Fetch only the bars needed to fill the gap (max 200 bars)
+    limit = min(int(gap_hours) + 2, 200)
+    try:
+        from data_cache.fetch_binance import _fetch_batch
+        import json, time as _time
+
+        end_ms = int((last_ts.timestamp() + gap_hours * 3600 + 3600) * 1000)
+        start_ms = int(last_ts.timestamp() * 1000) + 1
+        batch = _fetch_batch(symbol, timeframe, end_ms)
+        if not batch:
+            return df
+
+        import pandas as _pd
+        recent = _pd.DataFrame(
+            batch,
+            columns=[
+                "open_time", "open", "high", "low", "close", "volume",
+                "close_time", "quote_volume", "trades",
+                "taker_buy_base_volume", "taker_buy_quote_volume", "ignore",
+            ],
+        )
+        for col in ["open", "high", "low", "close", "volume", "taker_buy_base_volume"]:
+            recent[col] = recent[col].astype(float)
+        recent["timestamp"] = _pd.to_datetime(recent["open_time"], unit="ms", utc=True)
+        recent = recent.set_index("timestamp")
+        recent.index.name = "timestamp"
+        # Keep only rows newer than last parquet row
+        recent = recent[recent.index > last_ts]
+        if recent.empty:
+            return df
+        shared_cols = [c for c in ["open", "high", "low", "close", "volume", "taker_buy_base_volume"] if c in df.columns]
+        return pd.concat([df, recent[shared_cols]]).sort_index()
+    except Exception:
+        return df
+
+
 def load_klines(
     symbol: str,
     timeframe: str = "1h",
@@ -174,6 +246,12 @@ def load_klines(
     tf_min = tf_string_to_minutes(timeframe)
 
     if timeframe == _CANONICAL_HOURLY_TIMEFRAME:
+        # Prefer new market_data parquet (full history) over legacy CSV
+        md_df = _load_klines_from_market_data(symbol, timeframe)
+        if md_df is not None and len(md_df) > 500:
+            if not offline:
+                md_df = _extend_klines_to_now(md_df, symbol, timeframe)
+            return md_df
         path = cache_path(symbol, _CANONICAL_HOURLY_TIMEFRAME)
         if path.exists():
             return _read_klines_cache(path)
@@ -200,24 +278,91 @@ def load_klines(
 
 # ─── Perp ────────────────────────────────────────────────────────────────────
 
+def _load_perp_from_market_data(symbol: str) -> pd.DataFrame | None:
+    """Build perp DataFrame from new market_data/derivatives/ parquet files.
+
+    Merges OI, funding, and long/short ratio into the format expected by
+    compute_features_table(). Returns None if OI parquet is missing.
+    """
+    deriv_dir = Path(__file__).parent / "market_data" / "derivatives"
+    oi_path = deriv_dir / f"{symbol}_oi.parquet"
+    if not oi_path.exists():
+        return None
+
+    try:
+        oi_df = pd.read_parquet(oi_path)
+        oi_df["ts"] = pd.to_datetime(oi_df["ts"], utc=True)
+        oi_df = oi_df.set_index("ts").sort_index()
+
+        # oi_usd → oi_raw, oi_change_1h, oi_change_24h
+        oi_df = oi_df.rename(columns={"oi_usd": "oi_raw"})
+        oi_df["oi_change_1h"] = oi_df["oi_raw"].pct_change(1).fillna(0.0)
+        oi_df["oi_change_24h"] = oi_df["oi_raw"].pct_change(24).fillna(0.0)
+
+        # Funding
+        funding_path = deriv_dir / f"{symbol}_funding.parquet"
+        if funding_path.exists():
+            fr_df = pd.read_parquet(funding_path)
+            fr_df["ts"] = pd.to_datetime(fr_df["ts"], utc=True)
+            fr_df = fr_df.set_index("ts").sort_index()
+            rate_col = next((c for c in fr_df.columns if "rate" in c.lower() or "funding" in c.lower()), None)
+            if rate_col:
+                oi_df["funding_rate"] = fr_df[rate_col].reindex(oi_df.index, method="ffill").fillna(0.0)
+            else:
+                oi_df["funding_rate"] = 0.0
+        else:
+            oi_df["funding_rate"] = 0.0
+
+        # Long/short ratio
+        ls_path = deriv_dir / f"{symbol}_longshort.parquet"
+        if ls_path.exists():
+            ls_df = pd.read_parquet(ls_path)
+            ls_df["ts"] = pd.to_datetime(ls_df["ts"], utc=True)
+            ls_df = ls_df.set_index("ts").sort_index()
+            if "long_ratio" in ls_df.columns:
+                short_col = ls_df.get("short_ratio", 1.0 - ls_df["long_ratio"])
+                oi_df["long_short_ratio"] = (ls_df["long_ratio"].reindex(oi_df.index, method="ffill") /
+                                              short_col.reindex(oi_df.index, method="ffill").replace(0, 0.001)).fillna(1.0)
+            else:
+                oi_df["long_short_ratio"] = 1.0
+        else:
+            oi_df["long_short_ratio"] = 1.0
+
+        return oi_df[["oi_raw", "oi_change_1h", "oi_change_24h", "funding_rate", "long_short_ratio"]]
+
+    except Exception:
+        return None
+
+
 def load_perp(
     symbol: str,
     *,
     offline: bool = False,
 ) -> pd.DataFrame | None:
-    """Load merged perp series (funding, OI, LS ratio) from Binance FAPI.
+    """Load merged perp series (funding, OI, LS ratio).
 
-    Returns None on cache miss with offline=True or on network failure.
+    Priority:
+    1. market_data/derivatives/ parquet (1-year OI history, collected yesterday)
+    2. Legacy {symbol}_perp.csv in cache dir (28-day Binance FAPI)
+    3. Fetch from Binance FAPI if online
     """
-    path = perp_cache_path(symbol)
+    # 1. Try new market_data parquet (1 year of OI history)
+    market_df = _load_perp_from_market_data(symbol)
+    if market_df is not None and len(market_df) > 100:
+        return market_df
+
+    # 2. Fall back to legacy perp CSV
     existing = _find_existing_cache_path(f"{symbol}_perp.csv")
     if existing is not None:
-        path = existing
-        df = pd.read_csv(path, index_col=0, parse_dates=[0])
+        df = pd.read_csv(existing, index_col=0, parse_dates=[0])
         df.index = pd.to_datetime(df.index, utc=True, format="mixed")
         return df
+
     if offline:
         return None
+
+    # 3. Fetch from Binance FAPI
+    path = perp_cache_path(symbol)
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         df = fetch_perp_max(symbol)

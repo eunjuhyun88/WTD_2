@@ -303,12 +303,28 @@ export function initWalletListeners(): () => void {
   return () => { _walletListenerCleanup?.(); _walletListenerCleanup = null; };
 }
 
-/** Silently reconnect MetaMask if user previously authorized — no popup */
+/** Silently reconnect MetaMask if user previously authorized — no popup.
+ *  Only sets connected=true if the server session is also authenticated.
+ *  This prevents a false "connected" UI state when wtd_session cookie is absent. */
 export async function trySilentReconnect(): Promise<void> {
   if (typeof window === 'undefined') return;
   const { tryGetConnectedAccount, getPreferredEvmChainCode } = await import('$lib/wallet/providers');
   const address = await tryGetConnectedAccount('metamask');
   if (!address) return;
+
+  // Guard: only mark connected if the server has a valid session.
+  // fetchAuthSession hits /api/auth/session which checks the HTTP-only cookie.
+  let serverAuthenticated = false;
+  try {
+    const res = await fetchAuthSession();
+    serverAuthenticated = res.authenticated === true;
+  } catch {
+    // Network error — fail safe: do not claim connected
+    serverAuthenticated = false;
+  }
+
+  if (!serverAuthenticated) return;
+
   walletStore.update(w => {
     if (w.connected && w.address) return w; // already connected
     return {
