@@ -16,7 +16,7 @@ import type {
   SsrPayload,
   VenueDivergencePayload,
 } from '$lib/indicators/adapter';
-import { buildCogochiWorkspaceEnvelope } from '$lib/cogochi/workspaceDataPlane';
+import { buildCogochiWorkspaceEnvelope } from '$lib/hubs/terminal/workspaceDataPlane';
 
 async function readJson<T>(res: Response): Promise<T | null> {
   try {

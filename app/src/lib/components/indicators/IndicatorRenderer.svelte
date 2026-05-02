@@ -5,7 +5,7 @@
    * Keeps call-sites trivial: <IndicatorRenderer def={...} value={...} />
    */
   import type { IndicatorDef, IndicatorValue, IndicatorArchetype } from '$lib/indicators/types';
-  import { shellStore } from '$lib/cogochi/shell.store';
+  import { shellStore } from '$lib/hubs/terminal/shell.store';
   import IndicatorGauge from './IndicatorGauge.svelte';
   import IndicatorStratified from './IndicatorStratified.svelte';
   import IndicatorHeatmap from './IndicatorHeatmap.svelte';

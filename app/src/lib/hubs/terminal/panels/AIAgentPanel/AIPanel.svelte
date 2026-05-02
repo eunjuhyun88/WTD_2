@@ -77,7 +77,7 @@
     onSelectSymbol,
   }: Props = $props();
 
-  import { shellStore } from '$lib/cogochi/shell.store';
+  import { shellStore } from '$lib/hubs/terminal/shell.store';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { onDestroy } from 'svelte';
 
