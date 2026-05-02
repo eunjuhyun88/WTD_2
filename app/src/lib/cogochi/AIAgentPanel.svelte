@@ -27,11 +27,11 @@
   }
 
   const TABS: Array<{ id: RightPanelTab; label: string }> = [
-    { id: 'decision', label: 'DEC' },
-    { id: 'pattern',  label: 'PAT' },
-    { id: 'verdict',  label: 'VER' },
-    { id: 'research', label: 'RES' },
-    { id: 'judge',    label: 'JDG' },
+    { id: 'decision', label: 'Decision' },
+    { id: 'pattern',  label: 'Pattern'  },
+    { id: 'verdict',  label: 'Verdict'  },
+    { id: 'research', label: 'Research' },
+    { id: 'judge',    label: 'Judge'    },
   ];
 
   const DRAWER_TITLE: Record<NonNullable<TabState['drawerKind']>, string> = {
@@ -531,9 +531,9 @@
   border: none;
   border-bottom: 2px solid transparent;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
   color: var(--g5, #3d3830);
   cursor: pointer;
   background: transparent;

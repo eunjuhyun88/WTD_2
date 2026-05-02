@@ -5,6 +5,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;700;900&family=Bebas+Neue&family=Press+Start+2P&family=VT323&family=Racing+Sans+One&display=swap');
 @import '$lib/styles/tokens.css';
+@import '$lib/styles/typography.css';
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 

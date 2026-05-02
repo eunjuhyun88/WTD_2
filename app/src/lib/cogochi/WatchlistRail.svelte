@@ -382,8 +382,8 @@
   }
 
   .rail--folded {
-    width: 36px;
-    min-width: 36px;
+    width: 56px;
+    min-width: 56px;
     overflow: hidden;
   }
 
@@ -412,7 +412,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px 4px;
-    font-size: 8px;
+    font-size: 10px;
     color: var(--g5);
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -567,7 +567,7 @@
   }
 
   .sym-price {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--g9);
     letter-spacing: 0.01em;
     font-variant-numeric: tabular-nums;
@@ -580,7 +580,7 @@
   }
 
   .sym-change {
-    font-size: 8px;
+    font-size: 11px;
     letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
   }
