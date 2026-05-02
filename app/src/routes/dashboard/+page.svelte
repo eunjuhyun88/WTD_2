@@ -159,6 +159,70 @@
     goto('/lab');
   }
 
+  // ── Phase 5: Alert Strip + Kimchi bar ──────────────────────────────
+  interface AlertItem { sym: string; kind: 'OI' | 'FR'; label: string; value: number; }
+
+  const ALERT_SYMS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
+  const OI_SPIKE_THRESH  = 0.10;  // +10%/30m
+  const FR_HIGH_THRESH   = 0.0005; // +0.05%
+  const FR_LOW_THRESH    = -0.0003; // -0.03%
+
+  let alertItems    = $state<AlertItem[]>([]);
+  let dashKimchi    = $state<number | null>(null);
+  let dashKimchiUp  = $state<boolean | null>(null);
+
+  async function loadAlerts() {
+    const next: AlertItem[] = [];
+    await Promise.allSettled(ALERT_SYMS.map(async (sym) => {
+      const [oiRes, frRes] = await Promise.allSettled([
+        fetch(`/api/market/oi?symbol=${sym}&period=30m&limit=4`),
+        fetch(`/api/market/funding?symbol=${sym}&limit=1`),
+      ]);
+      if (oiRes.status === 'fulfilled' && oiRes.value.ok) {
+        const d = (await oiRes.value.json()) as { bars?: { c: number }[] };
+        const bars = d.bars ?? [];
+        if (bars.length >= 2) {
+          const cur = bars[bars.length - 1].c, prev = bars[0].c;
+          const delta = prev > 0 ? (cur - prev) / prev : 0;
+          if (Math.abs(delta) >= OI_SPIKE_THRESH) {
+            next.push({ sym: sym.replace('USDT', ''), kind: 'OI', label: `OI ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%/30m`, value: delta });
+          }
+        }
+      }
+      if (frRes.status === 'fulfilled' && frRes.value.ok) {
+        const d = (await frRes.value.json()) as { bars?: { delta: number }[] };
+        const bars = d.bars ?? [];
+        if (bars.length > 0) {
+          const fr = bars[bars.length - 1].delta;
+          if (fr > FR_HIGH_THRESH || fr < FR_LOW_THRESH) {
+            next.push({ sym: sym.replace('USDT', ''), kind: 'FR', label: `FR ${fr > 0 ? '+' : ''}${(fr * 100).toFixed(3)}%`, value: fr });
+          }
+        }
+      }
+    }));
+    alertItems = next;
+  }
+
+  async function loadDashKimchi() {
+    try {
+      const r = await fetch('/api/market/kimchi-premium');
+      if (!r.ok) return;
+      const d = (await r.json()) as { ok: boolean; data: { premium_pct: number } };
+      if (d.ok) {
+        const prev = dashKimchi;
+        dashKimchi = d.data.premium_pct;
+        if (prev !== null) dashKimchiUp = dashKimchi > prev;
+      }
+    } catch { /* silent */ }
+  }
+
+  $effect(() => {
+    void loadAlerts();
+    void loadDashKimchi();
+    const t1 = setInterval(loadAlerts, 60_000);
+    const t2 = setInterval(loadDashKimchi, 30_000);
+    return () => { clearInterval(t1); clearInterval(t2); };
+  });
 
 </script>
 
@@ -203,6 +267,29 @@
   </header>
 
   <div class="surface-scroll-body">
+
+  <!-- ── Alert Strip (AC10) ── -->
+  {#if alertItems.length > 0}
+    <div class="dash-alert-strip">
+      {#each alertItems as a (a.sym + a.kind)}
+        <span class="dash-alert-item" class:oi-up={a.kind === 'OI' && a.value > 0} class:oi-dn={a.kind === 'OI' && a.value < 0} class:fr-hi={a.kind === 'FR' && a.value > FR_HIGH_THRESH} class:fr-lo={a.kind === 'FR' && a.value < FR_LOW_THRESH}>
+          ⚡ <strong>{a.sym}</strong> {a.label}
+        </span>
+      {/each}
+    </div>
+  {/if}
+
+  <!-- ── Kimchi Premium Bar (AC11) ── -->
+  {#if dashKimchi !== null}
+    <div class="dash-kimchi-bar">
+      <span class="kimchi-label">Kimchi Premium</span>
+      <span class="kimchi-value" class:kim-hot={dashKimchi > 1.5} class:kim-cold={dashKimchi < -0.5}>
+        {dashKimchi > 0 ? '+' : ''}{dashKimchi.toFixed(2)}%
+        {#if dashKimchiUp !== null}<span class="kimchi-arrow">{dashKimchiUp ? '▲' : '▼'}</span>{/if}
+      </span>
+      <span class="kimchi-hint">Upbit / Binance BTC spread</span>
+    </div>
+  {/if}
 
   <!-- ── Section 1: Portfolio Strip (64px) ── -->
   <div class="trader-strip portfolio-strip">
@@ -413,6 +500,76 @@
 </div>
 
 <style>
+  /* ── Alert Strip (W-0390 Phase 5) ── */
+  .dash-alert-strip {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 16px;
+    height: 48px;
+    background: var(--g0, #080706);
+    border-bottom: 1px solid var(--g3, #1c1918);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs, 11px);
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+
+  .dash-alert-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    color: var(--g7);
+    padding: 3px 8px;
+    border: 0.5px solid var(--g4);
+    border-radius: 3px;
+    background: var(--g1);
+  }
+  .dash-alert-item.oi-up { color: #22AB94; border-color: rgba(34,171,148,.3); }
+  .dash-alert-item.oi-dn { color: #F23645; border-color: rgba(242,54,69,.3); }
+  .dash-alert-item.fr-hi { color: var(--amb, #d6a347); border-color: rgba(214,163,71,.3); }
+  .dash-alert-item.fr-lo { color: #38bdf8; border-color: rgba(56,189,248,.3); }
+
+  /* ── Kimchi Bar (W-0390 Phase 5) ── */
+  .dash-kimchi-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    height: 48px;
+    background: var(--g1, #0c0a09);
+    border-bottom: 1px solid var(--g3, #1c1918);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs, 11px);
+    flex-shrink: 0;
+  }
+
+  .kimchi-label {
+    color: var(--g5);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+
+  .kimchi-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--g8);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .kimchi-value.kim-hot { color: var(--amb, #d6a347); }
+  .kimchi-value.kim-cold { color: #38bdf8; }
+
+  .kimchi-arrow { font-size: 10px; margin-left: 2px; }
+
+  .kimchi-hint {
+    color: var(--g5);
+    font-size: 10px;
+    margin-left: 4px;
+  }
+
   /* ── Trader Strips ── */
   .trader-strip {
     display: flex;
