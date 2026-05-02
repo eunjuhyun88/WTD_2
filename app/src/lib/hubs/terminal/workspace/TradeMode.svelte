@@ -280,7 +280,7 @@
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study));
 
-    const userText = `${symbol} ${timeframe} analyze detail 설명해줘`;
+    const userText = `${symbol} ${timeframe} analyze detail — explain`;
     const assistantText = [
       `**${symbol} · ${timeframe} ANALYZE DETAIL**`,
       workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
@@ -577,7 +577,7 @@
     return direction.includes('short') || thesis.includes('short') || thesis.includes('bear') ? '숏' : '롱';
   });
   const analyzeDetailThesis = $derived(
-    workspaceEnvelope.aiContext.thesis ?? '분석 완료'
+    workspaceEnvelope.aiContext.thesis ?? 'Analysis complete'
   );
   const analyzeDetailWarnings = $derived(workspaceEnvelope.aiContext.warnings ?? []);
   const narrativeDir = $derived(analyzeDetailDirection);
@@ -620,7 +620,7 @@
       })
       .slice(0, 6);
 
-    return fallbackItems.length > 0 ? fallbackItems : [{ k: '분석 중', v: '...', note: '', pos: true }];
+    return fallbackItems.length > 0 ? fallbackItems : [{ k: 'Analyzing', v: '...', note: '', pos: true }];
   });
   const analyzeExecutionProposal = $derived.by(() => {
     const study = workspaceStudyMap.execution;
@@ -1123,7 +1123,7 @@
         {gammaPin}
       />
       {#if mobileView !== 'chart'}
-        <button class="chart-expand-btn" onclick={() => setMobileView?.('chart')} aria-label="차트 전체 보기">
+        <button class="chart-expand-btn" onclick={() => setMobileView?.('chart')} aria-label="Full chart view">
           ⤢
         </button>
       {/if}
@@ -1148,11 +1148,11 @@
         {#if chartLoading}
           <div class="mobile-loading">
             <div class="ml-spinner"></div>
-            <span>{symbol} {timeframe} 로딩 중…</span>
+            <span>{symbol} {timeframe} loading…</span>
           </div>
         {:else}
           <div class="narrative" role="region" aria-label="Trade bias and direction">
-            <span class="bull" aria-label="Recommendation">{analyzeDetailDirection} 진입 권장 ·</span> {analyzeDetailThesis}
+            <span class="bull" aria-label="Recommendation">{analyzeDetailDirection} entry recommended ·</span> {analyzeDetailThesis}
           </div>
           {#if confluence}
             <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
@@ -1181,7 +1181,7 @@
           {#if !analyzeData?.entryPlan}
             <button class="proposal-ai-cta" onclick={() => shellStore.update(s => ({...s, aiVisible: true}))}>
               <span class="pcta-icon">◆</span>
-              <span class="pcta-text">AI 진입 플랜 실행 →</span>
+              <span class="pcta-text">Run AI Entry Plan →</span>
             </button>
           {:else}
             {#each analyzeExecutionProposal as p}
@@ -1198,9 +1198,9 @@
           </div>
         {/if}
         {#if scanLoading && scanCandidates.length === 0}
-          <div class="scan-empty">스캔 중…</div>
+          <div class="scan-empty">Scanning…</div>
         {:else if scanCandidates.length === 0}
-          <div class="scan-empty">활성 신호 없음</div>
+          <div class="scan-empty">No active signals</div>
         {/if}
         {#each scanCandidates as x}
           {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
@@ -1225,7 +1225,7 @@
           <span class="jc-tf">{timeframe.toUpperCase()}</span>
           <span class="jc-spacer"></span>
           {#if analyzeDetailThesis}
-            <span class="jc-bias">{analyzeDetailDirection} 편향</span>
+            <span class="jc-bias">{analyzeDetailDirection} bias</span>
           {/if}
         </div>
         <div class="mp-section">
@@ -1284,9 +1284,9 @@
           {#if judgeOutcome}
             <div class="outcome-save-hint">
               {#if judgeSubmitting}
-                <span>저장 중…</span>
+                <span>Saving…</span>
               {:else if judgeSubmitResult?.saved}
-                <span style:color="var(--pos)">{judgeSubmitResult.training_triggered ? '학습 시작됨' : `저장됨 · ${judgeSubmitResult.count}건`}</span>
+                <span style:color="var(--pos)">{judgeSubmitResult.training_triggered ? 'Training started' : `Saved · ${judgeSubmitResult.count} records`}</span>
               {/if}
             </div>
           {/if}
@@ -1301,11 +1301,11 @@
       <div class="ls-static" aria-live="polite">
         <span class="ls-id">C</span>
         <span class="ls-name">SIDEBAR</span>
-        <span class="ls-desc">· 단일 레이아웃</span>
+        <span class="ls-desc">· single layout</span>
       </div>
       <span class="spacer"></span>
       <WorkspacePresetPicker />
-      <span class="ls-hint" role="status" aria-live="polite">ANALYZE 접기 가능</span>
+      <span class="ls-hint" role="status" aria-live="polite">ANALYZE can be collapsed</span>
     </nav>
   {/if}
 
@@ -1370,7 +1370,7 @@
         class="chart-save-compact multichart-toggle"
         class:active={multiChartMode}
         type="button"
-        title={multiChartMode ? '단일 차트로 전환' : '멀티 차트 레이아웃'}
+        title={multiChartMode ? 'Switch to single chart' : 'Multi-chart layout'}
         aria-pressed={multiChartMode}
         onclick={() => { multiChartMode = !multiChartMode; }}
       >⊞</button>
@@ -1471,7 +1471,7 @@
           {#if tab.id === 'analyze'}
             <span class="pb-val pos">{confidenceAlpha}</span>
             <span class="pb-sep" aria-hidden="true">·</span>
-            <span class="pb-txt">{analyzeDetailDirection} 진입 권장</span>
+            <span class="pb-txt">{analyzeDetailDirection} entry recommended</span>
             {#if analyzeData?.flowSummary?.oi && analyzeData.flowSummary.oi !== 'n/a'}
               <span class="pb-sep" aria-hidden="true">·</span>
               <span class="pb-dim">OI {analyzeData.flowSummary.oi}</span>
@@ -1534,9 +1534,9 @@
         <!-- Drawer header (tabs) -->
         <div class="drawer-header">
           {#each [
-            { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: '가설·근거' },
-            { id: 'scan', n: '03', label: 'SCAN', color: '#7aa2e0', desc: '유사 셋업' },
-            { id: 'judge', n: '04', label: 'JUDGE', color: 'var(--amb)', desc: '매매·판정' },
+            { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: 'thesis · evidence' },
+            { id: 'scan', n: '03', label: 'SCAN', color: '#7aa2e0', desc: 'similar setups' },
+            { id: 'judge', n: '04', label: 'JUDGE', color: 'var(--amb)', desc: 'trade · verdict' },
           ] as tab}
             <button
               class="dh-tab"
@@ -1642,7 +1642,7 @@
             type="button"
             onclick={() => (sidebarAnalyzeDockCollapsed = false)}
             aria-label="Expand analyze sidebar"
-            title="ANALYZE 펼치기"
+            title="Expand ANALYZE"
           >
             <span class="lc-rail-accent" aria-hidden="true"></span>
             <span class="lc-rail-step">{fmtConf}</span>
@@ -1653,7 +1653,7 @@
             type="button"
             onclick={() => (sidebarAnalyzeDockCollapsed = false)}
             aria-label="Expand analyze sidebar"
-            title="ANALYZE 펼치기"
+            title="Expand ANALYZE"
           >
             <span aria-hidden="true">◂</span>
           </button>
@@ -1672,7 +1672,7 @@
             onclick={() => (sidebarAnalyzeDockCollapsed = true)}
             aria-expanded={!sidebarAnalyzeDockCollapsed}
             aria-controls="sidebar-analyze-body"
-            title="HUD를 오른쪽으로 접기"
+            title="Collapse HUD to the right"
           >
             <span aria-hidden="true">▾</span>
           </button>

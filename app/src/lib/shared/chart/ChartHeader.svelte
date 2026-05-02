@@ -81,7 +81,7 @@
   >
     {#if saveActive}
       <span class="save-icon">✕</span>
-      <span class="btn-label">취소</span>
+      <span class="btn-label">Cancel</span>
     {:else}
       <span class="save-icon">⊞</span>
       <span class="btn-label">Save Setup</span>

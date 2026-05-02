@@ -31,14 +31,14 @@
 
   // Example prompts
   const examples = $derived([
-    `${activeSym} vs ETH normalized CVD 비교 차트`,
-    'VPVR (Volume Profile Visible Range) 히스토그램',
-    '스마트머니 진입/이탈 마커 (큰 캔들 돌파 감지)',
-    'Funding Rate + OI Delta 복합 지표',
-    '고래 청산 레벨 히트맵 (근사치)',
-    'MTF RSI: 15m/1H/4H/1D 동시 표시',
-    'CVD Divergence 자동 감지 + 알림',
-    '거래소별 Basis (선물-현물 스프레드)',
+    `${activeSym} vs ETH normalized CVD comparison chart`,
+    'VPVR (Volume Profile Visible Range) histogram',
+    'Smart money entry/exit markers (large candle breakout detection)',
+    'Funding Rate + OI Delta composite indicator',
+    'Whale liquidation level heatmap (approximation)',
+    'MTF RSI: 15m/1H/4H/1D simultaneous display',
+    'CVD Divergence auto-detection + alerts',
+    'Exchange-basis (futures-spot spread) by venue',
   ]);
 
   async function generate() {
@@ -98,7 +98,7 @@
       <div class="pine-head-left">
         <span class="pine-icon">⌥</span>
         <span class="pine-title">Pine Script Generator</span>
-        <span class="pine-subtitle">자연어 → TradingView 스크립트</span>
+        <span class="pine-subtitle">Natural language → TradingView script</span>
       </div>
       <button class="pine-close" onclick={onClose} aria-label="Close">×</button>
     </div>
@@ -108,20 +108,20 @@
       <textarea
         class="pine-prompt"
         bind:value={prompt}
-        placeholder="어떤 지표를 만들고 싶으신가요? 예: BTC와 ETH의 CVD를 같이 비교할 수 있는 normalized 차트"
+        placeholder="What indicator would you like to build? e.g. A normalized chart to compare CVD of BTC and ETH side by side"
         rows={3}
         onkeydown={handleKey}
         disabled={loading}
       ></textarea>
       <div class="pine-input-actions">
-        <span class="pine-hint">⌘Enter로 생성</span>
+        <span class="pine-hint">⌘Enter to generate</span>
         <button
           class="pine-generate-btn"
           onclick={generate}
           disabled={loading || !prompt.trim()}
         >
           {#if loading}
-            <span class="pine-spin">⟳</span> 생성 중…
+            <span class="pine-spin">⟳</span> Generating…
           {:else}
             ⚡ Generate Script
           {/if}
@@ -132,7 +132,7 @@
     <!-- Examples -->
     {#if !result && !loading}
       <div class="pine-examples">
-        <div class="pine-examples-label">예시 프롬프트</div>
+        <div class="pine-examples-label">Example prompts</div>
         <div class="pine-example-chips">
           {#each examples as ex}
             <button
@@ -184,7 +184,7 @@
           <div class="pine-notes">
             {#if result.usage}
               <div class="pine-note">
-                <span class="pine-note-label">사용법</span>
+                <span class="pine-note-label">Usage</span>
                 <span class="pine-note-text">{result.usage}</span>
               </div>
             {/if}

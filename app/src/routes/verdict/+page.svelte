@@ -72,34 +72,34 @@
 
 <div class="verdict-page">
   {#if status === 'loading'}
-    <div class="verdict-card"><p class="verdict-meta">링크 확인 중...</p></div>
+    <div class="verdict-card"><p class="verdict-meta">Verifying link…</p></div>
 
   {:else if status === 'invalid'}
     <div class="verdict-card verdict-card--error">
-      <h2>유효하지 않은 링크</h2>
-      <p class="verdict-meta">링크가 손상되었거나 잘못된 형식입니다.</p>
-      <button class="verdict-btn-secondary" onclick={() => goto('/cogochi')}>홈으로</button>
+      <h2>Invalid link</h2>
+      <p class="verdict-meta">The link is corrupted or malformed.</p>
+      <button class="verdict-btn-secondary" onclick={() => goto('/cogochi')}>Home</button>
     </div>
 
   {:else if status === 'expired'}
     <div class="verdict-card verdict-card--error">
-      <h2>만료된 링크</h2>
-      <p class="verdict-meta">Verdict 링크는 72시간 유효합니다. 앱에서 직접 verdict를 제출해주세요.</p>
+      <h2>Expired link</h2>
+      <p class="verdict-meta">Verdict links are valid for 72 hours. Please submit a verdict directly in the app.</p>
       <button class="verdict-btn-secondary" onclick={() => goto('/dashboard')}>Dashboard</button>
     </div>
 
   {:else if status === 'submitted'}
     <div class="verdict-card verdict-card--success">
       <div class="verdict-icon">✓</div>
-      <h2>Verdict 제출 완료</h2>
-      <p class="verdict-meta">피드백이 기록되었습니다. 10개 이상 모이면 패턴이 자동 개선됩니다.</p>
-      <button class="verdict-btn-secondary" onclick={() => goto('/dashboard')}>Dashboard로</button>
+      <h2>Verdict submitted</h2>
+      <p class="verdict-meta">Feedback recorded. Patterns improve automatically once 10+ verdicts are collected.</p>
+      <button class="verdict-btn-secondary" onclick={() => goto('/dashboard')}>Go to Dashboard</button>
     </div>
 
   {:else if status === 'ready' && captureInfo}
     <div class="verdict-card">
       <div class="verdict-header">
-        <span class="verdict-kicker">Verdict 제출</span>
+        <span class="verdict-kicker">Submit Verdict</span>
         <h2 class="verdict-symbol">{captureInfo.symbol}</h2>
         <p class="verdict-meta">{fmtSlug(captureInfo.pattern_slug)}</p>
       </div>
@@ -116,7 +116,7 @@
         >
           <span class="verdict-emoji">✅</span>
           <strong>Valid</strong>
-          <span>진입 후 수익</span>
+          <span>Profitable entry</span>
         </button>
         <button
           class="verdict-choice verdict-invalid"
@@ -125,7 +125,7 @@
         >
           <span class="verdict-emoji">✗</span>
           <strong>Invalid</strong>
-          <span>패턴 틀림 / 손실</span>
+          <span>Wrong pattern / Loss</span>
         </button>
         <button
           class="verdict-choice verdict-near-miss"
@@ -134,7 +134,7 @@
         >
           <span class="verdict-emoji">~</span>
           <strong>Near Miss</strong>
-          <span>패턴 맞음, 타점 놓침</span>
+          <span>Pattern correct, entry missed</span>
         </button>
         <button
           class="verdict-choice verdict-too-early"
@@ -143,7 +143,7 @@
         >
           <span class="verdict-emoji">⏫</span>
           <strong>Too Early</strong>
-          <span>조기 진입</span>
+          <span>Entered too early</span>
         </button>
         <button
           class="verdict-choice verdict-too-late"
@@ -152,7 +152,7 @@
         >
           <span class="verdict-emoji">⏰</span>
           <strong>Too Late</strong>
-          <span>진입 타이밍 놓침</span>
+          <span>Missed entry timing</span>
         </button>
       </div>
     </div>

@@ -204,7 +204,7 @@
       <!-- CVD band -->
       <rect x="0" y={bandTop(2) - 2} width={W} height={BAND_H + 4} fill="#0a0c10" opacity="0.5"/>
       <text x="8"  y={bandTop(2) + 11} fill="#6a7280" font-family="JetBrains Mono" font-size="8" letter-spacing="0.14em">CVD 15m</text>
-      <text x="80" y={bandTop(2) + 11} fill="#34c470" font-family="JetBrains Mono" font-size="9" font-weight="600">양전환</text>
+      <text x="80" y={bandTop(2) + 11} fill="#34c470" font-family="JetBrains Mono" font-size="9" font-weight="600">pos turn</text>
       <polyline
         points={ptsStr(cvdPts, v => bandTop(2) + BAND_H - v * BAND_H)}
         fill="none" stroke="#34c470" stroke-width="1.4"/>
