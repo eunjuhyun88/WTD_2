@@ -291,6 +291,18 @@ def resolve_outcomes(
             decision.exit_return_pct * 100.0,
         )
 
+    # W-0377 Break B: eagerly resolve scan_signal_outcomes for any pending rows.
+    # scan_signal_events has no FK to CaptureRecord, so we trigger the full
+    # verification_loop pass rather than per-capture lookup.
+    if resolved:
+        try:
+            from research.verification_loop import resolve_pending_outcomes as _rpo
+            n_signal = _rpo()
+            if n_signal:
+                log.debug("outcome_resolver: signal_events eager resolve %d row(s)", n_signal)
+        except Exception as _vl_exc:
+            log.debug("outcome_resolver: signal_events eager resolve skipped: %s", _vl_exc)
+
     return resolved
 
 
