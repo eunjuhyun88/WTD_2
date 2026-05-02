@@ -148,7 +148,7 @@
 
   .sh-title {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.12em;
     color: var(--brand);
@@ -156,7 +156,7 @@
 
   .sh-sub {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     flex: 1;
   }
@@ -185,7 +185,7 @@
 
   .family-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--g5);
@@ -210,7 +210,7 @@
     border: none;
     cursor: pointer;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     text-align: left;
     padding: 0;
@@ -243,7 +243,7 @@
     border-radius: 3px;
     color: var(--g6);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 2px 5px;
     cursor: pointer;
     height: 20px;
@@ -266,7 +266,7 @@
     border: 0.5px solid var(--g4);
     color: var(--g5);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 4px 10px;
     border-radius: 3px;
     cursor: pointer;
@@ -280,7 +280,7 @@
     border: 0.5px solid var(--brand-d);
     color: var(--brand);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 4px 14px;
     border-radius: 3px;
     cursor: pointer;

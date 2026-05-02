@@ -107,7 +107,7 @@
     background: var(--g2);
     border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
   }
 
@@ -133,7 +133,7 @@
     border: 0.5px solid var(--g4);
     border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     cursor: pointer;
     transition: all 0.15s;
@@ -164,7 +164,7 @@
   .range-btn {
     padding: 3px 8px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     background: transparent;
     border: 0.5px dashed var(--g4);
@@ -192,7 +192,7 @@
     border: 0.5px solid var(--g4);
     border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     cursor: pointer;
     transition: all 0.15s;

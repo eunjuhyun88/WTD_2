@@ -489,7 +489,7 @@
   .tab-hint {
     display: block;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.08em;
     margin-top: 1px;
@@ -677,13 +677,13 @@
 
   .detail-range {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
   .detail-when {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
   }
 
@@ -738,7 +738,7 @@
 
   .tag-editable {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 3px 8px;
     background: var(--g3);
     border: 0.5px solid transparent;
@@ -760,7 +760,7 @@
 
   .tag-add {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 3px 8px;
     border: 0.5px dashed var(--g4);
     color: var(--g6);
@@ -789,7 +789,7 @@
 
   .snap-val {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g9);
   }
 
@@ -804,7 +804,7 @@
   }
 
   .influence-text {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
     line-height: 1.55;
     margin: 0 12px 12px;
@@ -820,14 +820,14 @@
 
   .weight-name {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     flex: 1;
   }
 
   .weight-delta {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--pos);
   }
 
@@ -861,7 +861,7 @@
 
   .case-when {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
@@ -886,7 +886,7 @@
 
   .conf-pct {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--amb);
   }
 
@@ -905,7 +905,7 @@
 
   .model-guess {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.1em;
   }
@@ -942,13 +942,13 @@
     border: 0.5px solid var(--g3);
     color: var(--g7);
     border-radius: 3px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-family: 'JetBrains Mono', monospace;
     cursor: pointer;
   }
 
   .why-text {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
     line-height: 1.6;
     margin: 0 0 16px;
@@ -973,7 +973,7 @@
     display: flex;
     justify-content: space-between;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     margin-top: 4px;
   }
 
@@ -1011,7 +1011,7 @@
 
   .rule-n {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.2em;
   }
@@ -1038,7 +1038,7 @@
   .rule-dot {
     font-family: 'JetBrains Mono', monospace;
     color: var(--g5);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     flex-shrink: 0;
   }
 
@@ -1046,7 +1046,7 @@
     display: flex;
     padding: 5px 0;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
 
   .version-row.border-b {
@@ -1095,7 +1095,7 @@
 
   .rj-verdict {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
   }
 
@@ -1109,7 +1109,7 @@
   .neg-text { color: var(--neg); }
 
   .rj-reason {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
     line-height: 1.5;
   }
@@ -1125,7 +1125,7 @@
     border: 0.5px solid var(--amb-d);
     color: var(--amb);
     border-radius: 3px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     font-family: 'JetBrains Mono', monospace;
     cursor: pointer;
@@ -1137,7 +1137,7 @@
     border: 0.5px solid var(--g4);
     color: var(--g7);
     border-radius: 3px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-family: 'JetBrains Mono', monospace;
     cursor: pointer;
   }
@@ -1200,7 +1200,7 @@
 
   .bar-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
@@ -1212,7 +1212,7 @@
     padding: 10px 12px;
     background: var(--g2);
     border-radius: 4px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     line-height: 1.55;
   }
@@ -1230,13 +1230,13 @@
 
   .feature-name {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
   }
 
   .feature-weight {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g9);
     font-weight: 600;
   }
@@ -1259,7 +1259,7 @@
   /* ── Shared utilities ──────────────────────────────────────────────── */
   .label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.14em;
     flex: 1;
@@ -1267,7 +1267,7 @@
 
   .action-link {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--amb);
     letter-spacing: 0.1em;
     background: none;
@@ -1293,7 +1293,7 @@
   }
 
   .section-desc {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     line-height: 1.5;
     margin: 0 0 16px;
@@ -1313,7 +1313,7 @@
     background: var(--g2);
     border: 0.5px solid var(--g4);
     border-radius: 3px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.04em;
@@ -1339,6 +1339,6 @@
 
   .mono-sm {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
 </style>

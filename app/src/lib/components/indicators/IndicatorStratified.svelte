@@ -130,7 +130,7 @@
   }
 
   .label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--g6, rgba(255, 255, 255, 0.5));
@@ -139,7 +139,7 @@
   .legend {
     display: inline-flex;
     gap: 10px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
@@ -167,12 +167,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, rgba(255, 255, 255, 0.38));
   }
 
   .div-badge {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 3px 6px;
     margin-top: 4px;
     background: color-mix(in oklab, var(--amb, #f0b847) 18%, transparent);

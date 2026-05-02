@@ -102,7 +102,7 @@
     margin: 0 auto 6px;
   }
   .sheet-title {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.16em;
     color: var(--g8, #cec9c4);

@@ -146,18 +146,18 @@
     margin-bottom: 8px;
   }
   .pcb-title {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     color: rgba(196,202,214,0.5);
   }
   .pcb-total {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(196,202,214,0.7);
     margin-left: auto;
   }
   .pcb-share {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 2px 6px;
     border-radius: 3px;
     border: 1px solid rgba(255,255,255,0.1);
@@ -183,7 +183,7 @@
     gap: 6px;
   }
   .pcb-label {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.02em;
     text-align: right;
@@ -200,12 +200,12 @@
     transition: width 0.4s ease;
   }
   .pcb-pct {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     text-align: right;
   }
   .pcb-count {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(196,202,214,0.4);
   }
 
@@ -239,7 +239,7 @@
   }
 
   .pcb-empty {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(196,202,214,0.3);
     text-align: center;
     padding: 12px 0;

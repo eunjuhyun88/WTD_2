@@ -118,7 +118,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     margin-bottom: 4px;
@@ -126,7 +126,7 @@
   }
   .hm-label { font-weight: 600; }
 
-  .hm-legend { display: inline-flex; gap: 6px; align-items: center; font-size: 8px; opacity: 0.7; }
+  .hm-legend { display: inline-flex; gap: 6px; align-items: center; font-size: var(--ui-text-xs); opacity: 0.7; }
   .leg-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 2px; }
   .dot-long  { background: var(--pos, #4fb872); }
   .dot-short { background: var(--neg, #d66c7a); }
@@ -144,7 +144,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, rgba(255, 255, 255, 0.38));
   }
 </style>

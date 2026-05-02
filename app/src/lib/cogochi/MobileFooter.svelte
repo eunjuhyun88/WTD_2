@@ -55,7 +55,7 @@
     background: var(--g1);
     border-top: 1px solid var(--g4);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
   }
 
@@ -67,7 +67,7 @@
   .mf-link {
     color: var(--g5);
     text-decoration: none;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-family: inherit;
     letter-spacing: 0.08em;
     transition: color 0.12s;

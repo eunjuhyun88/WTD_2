@@ -751,7 +751,7 @@
     color: rgba(250, 247, 235, 0.55);
     flex: 1;
   }
-  .capture-toggle-arrow { font-size: 10px; color: rgba(250,247,235,0.3); }
+  .capture-toggle-arrow { font-size: var(--ui-text-xs); color: rgba(250,247,235,0.3); }
   .capture-grid { padding: 0 16px 12px; }
   .capture-grid {
     display: grid;

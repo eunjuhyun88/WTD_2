@@ -81,7 +81,7 @@
   .sort-tabs { display: flex; gap: 2px; }
   .sort-tab {
     padding: 3px 8px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6, #888);
     background: var(--g1, #111);
     border: 1px solid var(--g3, #2a2a2a);

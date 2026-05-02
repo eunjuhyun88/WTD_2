@@ -77,7 +77,7 @@
     flex: 1;
     padding: 0 6px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     background: transparent;
     border-bottom: 2px solid transparent;
@@ -98,7 +98,7 @@
   }
 
   .count {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     font-weight: 400;
   }
@@ -116,7 +116,7 @@
     align-items: center;
     gap: 8px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
