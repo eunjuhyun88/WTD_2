@@ -555,6 +555,65 @@
     }
   }
 
+  // ── Drag-to-save action handlers (W-0374 Phase D-6) ────────────────────────
+  async function handleRangeSaveCapture() {
+    const captureId = await chartSaveMode.save({
+      symbol,
+      tf,
+      phase: 'GENERAL',
+    });
+    if (captureId) {
+      // Range mode exits automatically after save succeeds
+      // chartSaveMode listeners handle the UI reset
+    }
+  }
+
+  function handleRangeSendToAI() {
+    const state = chartSaveMode.snapshot();
+    if (!state.anchorA || !state.anchorB) return;
+
+    // Format range selection for AI context
+    const startTime = new Date(state.anchorA * 1000).toISOString();
+    const endTime = new Date(state.anchorB * 1000).toISOString();
+    const barCount = (state.anchorB - state.anchorA) / (tfMinutes(tf) * 60);
+
+    const rangeContext = `Selected range: ${startTime} to ${endTime} (~${Math.round(barCount)} bars on ${tf})`;
+
+    shellStore.updateTabState((ts) => ({
+      ...ts,
+      chat: [
+        ...(ts.chat || []),
+        { role: 'user' as const, text: rangeContext },
+      ],
+    }));
+
+    // Keep range mode active for further refinement
+  }
+
+  function handleRangeAnalyze() {
+    const state = chartSaveMode.snapshot();
+    if (!state.anchorA || !state.anchorB) return;
+
+    // Send analysis context to AI panel (similar to Send to AI but focused on analysis)
+    const startTime = new Date(state.anchorA * 1000).toISOString();
+    const endTime = new Date(state.anchorB * 1000).toISOString();
+    const barCount = (state.anchorB - state.anchorA) / (tfMinutes(tf) * 60);
+
+    const analysisContext = `Analyze this range: ${startTime} to ${endTime} (~${Math.round(barCount)} bars on ${tf}). What patterns, support/resistance, and trading opportunities do you see?`;
+
+    shellStore.updateTabState((ts) => ({
+      ...ts,
+      chat: [
+        ...(ts.chat || []),
+        { role: 'user' as const, text: analysisContext },
+      ],
+    }));
+  }
+
+  function handleRangeCancel() {
+    chartSaveMode.exitRangeMode();
+  }
+
   // ── Price line manager (verdict / liq / whale) ─────────────────────────────
   let priceLineMgr = new PriceLineManager();
 
@@ -1788,7 +1847,15 @@
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
       <div class="layer2-topright">
-        <RangeModeToast active={$chartSaveMode.active} anchorASet={$chartSaveMode.anchorA !== null} />
+        <RangeModeToast
+          active={$chartSaveMode.active}
+          anchorASet={$chartSaveMode.anchorA !== null}
+          rangeComplete={$chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
+          onSaveCapture={handleRangeSaveCapture}
+          onSendToAI={handleRangeSendToAI}
+          onAnalyze={handleRangeAnalyze}
+          onCancel={handleRangeCancel}
+        />
         <PhaseBadge phase={null} />
       </div>
     </div>
