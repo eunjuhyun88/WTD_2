@@ -140,15 +140,15 @@
   /* D-10 verdict pill + freshness */
   .verdict-pill {
     display: inline-block;
-    padding: 1px 5px;
+    padding: 1px 6px;
     margin-left: 3px;
-    font-size: var(--ui-text-xs);
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.1em;
     border-radius: 2px;
     border: 0.5px solid var(--g4);
     background: var(--g2);
-    color: var(--g8);
+    color: var(--amb, #f5a623);
   }
   .verdict-pill.vp-long  { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 40%, transparent); }
   .verdict-pill.vp-short { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 40%, transparent); }

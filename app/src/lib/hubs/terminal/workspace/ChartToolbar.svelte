@@ -1,33 +1,22 @@
 <script lang="ts">
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
 
-  let { tf = '1h', onTfChange, showExport = true, drawingMode = false, onToggleDrawing } = $props();
+  let { tf = '1h', onTfChange, drawingMode = false, onToggleDrawing } = $props();
 
   function handleTfChange(newTf: string) {
-    if (onTfChange) {
-      onTfChange(newTf);
-    }
-  }
-
-  function handleExport() {
-    // Export chart data as CSV (placeholder)
-    console.log('Export chart data');
+    if (onTfChange) onTfChange(newTf);
   }
 </script>
 
 <div class="chart-toolbar">
-  <div class="tf-selector">
-    <label for="tf-select">Timeframe:</label>
-    <select
-      id="tf-select"
-      value={tf}
-      onchange={(e) => handleTfChange((e.target as HTMLSelectElement).value)}
-      class="tf-dropdown"
-    >
-      {#each TIMEFRAMES as t}
-        <option value={t}>{t}</option>
-      {/each}
-    </select>
+  <div class="tf-strip">
+    {#each TIMEFRAMES as t}
+      <button
+        class="tf-btn"
+        class:active={tf === t}
+        onclick={() => handleTfChange(t)}
+      >{t}</button>
+    {/each}
   </div>
 
   <div class="toolbar-spacer"></div>
@@ -37,97 +26,71 @@
     class:active={drawingMode}
     onclick={onToggleDrawing}
     title={drawingMode ? 'Disable drawing' : 'Enable drawing (D)'}
-  >
-    ✏️
-  </button>
-
-  {#if showExport}
-    <button class="export-btn" onclick={handleExport} title="Export chart data">
-      📊
-    </button>
-  {/if}
+  >DRAW</button>
 </div>
 
 <style>
   .chart-toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
+    gap: 4px;
+    padding: 4px 8px;
     background: rgba(19, 23, 34, 0.8);
     border-bottom: 1px solid rgba(42, 46, 57, 0.9);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 12px;
+    font-size: var(--ui-text-xs);
+    flex-shrink: 0;
   }
 
-  .tf-selector {
+  .tf-strip {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 1px;
   }
 
-  label {
-    color: rgba(177, 181, 189, 0.7);
-    user-select: none;
-  }
-
-  .tf-dropdown {
-    background: rgba(42, 46, 57, 0.6);
-    color: rgba(177, 181, 189, 0.85);
-    border: 1px solid rgba(100, 150, 200, 0.3);
-    border-radius: 4px;
-    padding: 4px 8px;
+  .tf-btn {
+    padding: 2px 5px;
+    height: 22px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
     font-family: inherit;
-    font-size: inherit;
+    font-size: var(--ui-text-xs);
+    font-weight: 600;
+    color: rgba(177, 181, 189, 0.6);
     cursor: pointer;
-    transition: border-color 0.2s;
+    transition: color 0.08s, border-color 0.08s;
+    white-space: nowrap;
+  }
+  .tf-btn:hover { color: rgba(177, 181, 189, 0.9); }
+  .tf-btn.active {
+    color: rgba(100, 200, 255, 0.9);
+    border-bottom-color: rgba(100, 200, 255, 0.7);
   }
 
-  .tf-dropdown:hover {
-    border-color: rgba(100, 150, 200, 0.6);
-  }
-
-  .tf-dropdown:focus {
-    outline: none;
-    border-color: rgba(100, 200, 255, 0.8);
-  }
-
-  .toolbar-spacer {
-    flex: 1;
-  }
+  .toolbar-spacer { flex: 1; }
 
   .draw-btn {
     background: none;
-    border: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
     color: rgba(177, 181, 189, 0.7);
     cursor: pointer;
-    padding: 4px 8px;
-    font-size: 14px;
+    padding: 2px 8px;
+    font-family: inherit;
+    font-size: var(--ui-text-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
     transition: all 0.2s;
-    border-radius: 3px;
   }
-
   .draw-btn:hover {
     color: rgba(177, 181, 189, 0.95);
+    border-color: rgba(100, 150, 200, 0.4);
     background: rgba(100, 150, 200, 0.1);
   }
-
   .draw-btn.active {
     color: rgba(100, 200, 255, 0.9);
+    border-color: rgba(100, 200, 255, 0.5);
     background: rgba(100, 150, 200, 0.2);
-  }
-
-  .export-btn {
-    background: none;
-    border: none;
-    color: rgba(177, 181, 189, 0.7);
-    cursor: pointer;
-    padding: 4px 8px;
-    font-size: 14px;
-    transition: color 0.2s;
-  }
-
-  .export-btn:hover {
-    color: rgba(177, 181, 189, 0.95);
   }
 </style>

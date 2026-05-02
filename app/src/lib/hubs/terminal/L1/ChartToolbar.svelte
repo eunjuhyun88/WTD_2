@@ -117,17 +117,17 @@
   </button>
 
   <button class="tb-btn" onclick={() => dispatch('chart_snapshot')} title="Snapshot (D-6)">
-    <span class="tb-glyph">📷</span><span class="tb-text">Snap</span>
+    <span class="tb-text">Snap</span>
   </button>
 
   <span class="tb-spacer"></span>
 
   <button class="tb-btn" onclick={onSettings ?? onIndicator} title="Chart settings">
-    <span class="tb-glyph">⚙</span>
+    <span class="tb-text">Set</span>
   </button>
 
   <button class="tb-btn tb-primary" onclick={startSave} title="Save range (B)">
-    <span class="tb-glyph">💾</span><span class="tb-text">Save</span>
+    <span class="tb-text">Save</span>
   </button>
 </div>
 
