@@ -2422,6 +2422,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/alpha/scroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alpha Scroll
+         * @description Scroll segment analysis: indicator snapshot + anomaly flags + similar segments.
+         *
+         *     Trigger: chart scroll event stops on a time range.
+         *     Returns segment analysis + alpha composite score + top-K similar historical windows.
+         *     Cache: 5min (same symbol+from+to+tf).
+         *     Timeout: 3s.
+         */
+        get: operations["get_alpha_scroll_alpha_scroll_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alpha/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alpha Scan
+         * @description Compute Alpha composite scores for a list of symbols or the full universe.
+         *
+         *     ?symbols=ETHUSDT,BTCUSDT  — specific symbols
+         *     ?universe=all             — full 3-source alpha universe
+         *     Returns scores sorted descending.
+         */
+        get: operations["get_alpha_scan_alpha_scan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/refinement/stats": {
         parameters: {
             query?: never;
@@ -9993,6 +10042,77 @@ export interface operations {
                 "application/json": components["schemas"]["_FindBody"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alpha_scroll_alpha_scroll_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                from_ts: string;
+                to_ts: string;
+                timeframe?: string;
+                top_k?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alpha_scan_alpha_scan_get: {
+        parameters: {
+            query?: {
+                symbols?: string | null;
+                universe?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
