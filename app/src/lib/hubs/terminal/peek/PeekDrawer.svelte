@@ -225,12 +225,12 @@
   }
   .tab-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
   }
   .tab-hint {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.32);
     white-space: nowrap;
     overflow: hidden;
@@ -239,7 +239,7 @@
   .tab.active .tab-hint { color: rgba(247,242,234,0.55); }
   .tab-count {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 8px;
@@ -257,7 +257,7 @@
   }
   .hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.28);
     letter-spacing: 0.06em;
   }
@@ -268,7 +268,7 @@
     border-radius: 3px;
     width: 20px;
     height: 20px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     cursor: pointer;
     display: flex;
     align-items: center;

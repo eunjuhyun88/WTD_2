@@ -44,14 +44,14 @@
   }
 
   .metric-tile span {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(247,242,234,0.38);
   }
 
   .metric-tile strong {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.9);
     white-space: nowrap;
     overflow: hidden;

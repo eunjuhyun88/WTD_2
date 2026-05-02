@@ -307,7 +307,7 @@
     padding: 6px 4px;
   }
 
-  .rail--folded :global(.sym-name) { font-size: 9px; }
+  .rail--folded :global(.sym-name) { font-size: var(--ui-text-xs); }
 
   .fold-btn {
     background: none;
@@ -327,7 +327,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px 4px;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -340,7 +340,7 @@
   }
 
   .section-label { font-weight: 600; }
-  .section-count { font-size: 8px; color: var(--g6); }
+  .section-count { font-size: var(--ui-text-xs); color: var(--g6); }
 
   .section-actions {
     display: flex;
@@ -363,7 +363,7 @@
     background: transparent;
     border: none;
     border-bottom: 0.5px solid var(--g3);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-family: inherit;
     color: var(--g7);
     cursor: pointer;
@@ -388,7 +388,7 @@
 
   .empty {
     padding: 6px 10px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.08em;
   }
@@ -412,7 +412,7 @@
     border-bottom: 0.5px solid var(--g3);
     color: var(--g8);
     font-family: inherit;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     cursor: pointer;
     text-align: left;
     transition: background 0.1s;
@@ -444,7 +444,7 @@
   .alert-exchange {
     color: var(--g6);
     flex-shrink: 0;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     text-transform: lowercase;
     letter-spacing: 0.02em;
   }
@@ -452,7 +452,7 @@
   .alert-time {
     margin-left: auto;
     color: var(--g5);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
   }

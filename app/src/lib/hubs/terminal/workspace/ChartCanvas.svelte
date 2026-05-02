@@ -422,7 +422,7 @@
     font-weight: 600;
     border-radius: 2px;
     padding: 1px 5px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
 
   :global(.tv-lightweight-charts) {

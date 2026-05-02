@@ -172,7 +172,7 @@
     margin-left: 1px;
   }
   .ticker-caret {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--tv-text-2, rgba(209,212,220,0.4));
     margin-left: 4px;
     transition: color 100ms;
@@ -220,7 +220,7 @@
   .view-tab {
     padding: 4px 9px;
     font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     color: rgba(209,212,220,0.38);
@@ -245,7 +245,7 @@
   .mode-seg {
     padding: 4px 9px;
     font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     background: transparent;
@@ -274,7 +274,7 @@
     background: rgba(255,255,255,0.025);
     color: var(--tv-text-1, rgba(209,212,220,0.72));
     font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.04em;
     cursor: pointer;
@@ -303,7 +303,7 @@
     background: rgba(255,255,255,0.025);
     color: var(--tv-text-1, rgba(209,212,220,0.72));
     font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.04em;
     cursor: pointer;
@@ -320,7 +320,7 @@
     border-color: rgba(75,158,253,0.3);
     color: var(--tv-blue, #4B9EFD);
   }
-  .markets-label { font-size: 10px; }
+  .markets-label { font-size: var(--ui-text-xs); }
 
   @media (max-width: 1023px) { .mode-pill { display: none; } }
 

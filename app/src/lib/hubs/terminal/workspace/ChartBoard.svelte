@@ -2153,13 +2153,13 @@
   }
   .tv-context-pill em {
     font-style: normal;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(177, 181, 189, 0.46);
   }
   .tv-context-pill strong {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     color: rgba(239, 242, 247, 0.88);
   }
@@ -2175,7 +2175,7 @@
   .tv-context-toggle {
     flex-shrink: 0;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(177, 181, 189, 0.52);
@@ -2209,7 +2209,7 @@
     color: rgba(255,255,255,0.4);
     border-radius: 3px;
     cursor: pointer;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .pulse {
     width: 5px; height: 5px; border-radius: 50%;
@@ -2217,7 +2217,7 @@
     animation: pulse 1.4s ease-in-out infinite;
   }
   @keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:1} }
-  .state-text { font-size: 10px; }
+  .state-text { font-size: var(--ui-text-xs); }
 
   /* ── Panes (main chart flexes; sub-panes fixed — matches lightweight-charts) ── */
   .chart-stack {
@@ -2381,7 +2381,7 @@
     flex-shrink: 0;
     padding: 2px 8px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(177, 181, 189, 0.58);
     background: rgba(19, 23, 34, 0.66);
     border-top: 1px solid rgba(42, 46, 57, 0.55);
@@ -2395,7 +2395,7 @@
     flex-wrap: nowrap;
   }
   .pane-hint {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 500;
     letter-spacing: 0.04em;
     color: rgba(255, 255, 255, 0.38);
@@ -2463,7 +2463,7 @@
   .depth-ask span,
   .liq-labels small {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
   .strip-head span {
     color: rgba(247,242,234,0.6);
@@ -2576,7 +2576,7 @@
     }
     /* Mobile indicator pane adjustments (W-0114 Phase A) */
     .pane-label {
-      font-size: 9px;
+      font-size: var(--ui-text-xs);
       margin-bottom: 3px;
     }
     .pane-vol {
@@ -2594,6 +2594,6 @@
   }
 
   @media (max-width: 425px) {
-    .pane-label { font-size: 8px; margin-bottom: 2px; }
+    .pane-label { font-size: var(--ui-text-xs); margin-bottom: 2px; }
   }
 </style>

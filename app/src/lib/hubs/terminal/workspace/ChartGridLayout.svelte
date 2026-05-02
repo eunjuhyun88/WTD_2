@@ -213,7 +213,7 @@
   }
 
   .toolbar-label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.25);
     letter-spacing: 0.08em;
     margin-right: 4px;

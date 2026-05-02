@@ -320,14 +320,14 @@
   }
   .inbox-title {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     color: rgba(247,242,234,0.7);
   }
   .inbox-count {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 1px 6px;
     border-radius: 8px;
     background: rgba(99,179,237,0.15);
@@ -341,7 +341,7 @@
     border-radius: 3px;
     padding: 3px 8px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.05em;
     cursor: pointer;
@@ -416,7 +416,7 @@
     color: rgba(247,242,234,1);
   }
   .card-pattern {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.45);
     font-family: var(--sc-font-mono, monospace);
     max-width: 120px;
@@ -426,7 +426,7 @@
   }
   .card-phase {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 3px;
@@ -439,11 +439,11 @@
 
   .card-tf {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.4);
   }
   .card-age {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.3);
     margin-left: auto;
   }
@@ -459,7 +459,7 @@
   }
   .card-entry {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.5);
   }
   .card-pnl {
@@ -473,7 +473,7 @@
   .pnl-neutral { color: rgba(247,242,234,0.4); }
 
   .card-note {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.4);
     font-style: italic;
     border-left: 2px solid rgba(255,255,255,0.1);
@@ -491,7 +491,7 @@
     border-radius: 3px;
     border: 1px solid transparent;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
@@ -550,14 +550,14 @@
   }
   .section-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     color: rgba(247,242,234,0.4);
   }
   .section-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 1px 5px;
     border-radius: 6px;
     background: rgba(255,255,255,0.06);
@@ -567,7 +567,7 @@
   .section-empty {
     flex: none;
     padding: 8px 12px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .watch-hit-card {
@@ -577,7 +577,7 @@
   .watch-hit-badge {
     margin-left: auto;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(131,188,255,0.7);
   }
 
@@ -588,7 +588,7 @@
   .recent-verdict {
     margin-left: auto;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 3px;

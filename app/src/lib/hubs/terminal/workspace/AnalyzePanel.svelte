@@ -411,13 +411,13 @@
   }
   .analyze-action-k {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.14em;
     color: var(--brand);
     flex-shrink: 0;
   }
   .analyze-action-t {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
   }
 
@@ -431,7 +431,7 @@
     border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
   }
-  .prop-l { font-size: 7px; color: var(--g6); letter-spacing: 0.14em; width: 44px; }
+  .prop-l { font-size: var(--ui-text-xs); color: var(--g6); letter-spacing: 0.14em; width: 44px; }
   .prop-v { font-size: 14px; color: var(--g9); font-weight: 600; }
   .prop-cell.tone-neg .prop-v { color: var(--neg); }
   .prop-cell.tone-pos .prop-v { color: var(--pos); }
@@ -527,7 +527,7 @@
   }
   .workspace-kicker {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: var(--brand);
     letter-spacing: 0.2em;
     font-weight: 800;
@@ -574,7 +574,7 @@
   .phase-node.active .phase-dot { background: var(--amb); box-shadow: 0 0 0 4px var(--amb-dd); }
   .phase-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     letter-spacing: 0.07em;
   }
@@ -603,7 +603,7 @@
     margin-bottom: 8px;
   }
   .workspace-panel-copy {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     line-height: 1.4;
     text-align: right;
@@ -639,11 +639,11 @@
     min-height: 12px;
     gap: 5px;
     color: var(--g7);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
   .dom-head {
     color: var(--g5);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.14em;
   }
   .dom-row.mid {
@@ -707,12 +707,12 @@
     border-radius: 3px;
     overflow: hidden;
     color: var(--g7);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     background: rgba(255,255,255,0.014);
   }
   .footprint-head {
     color: var(--g5);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     background: transparent;
   }
@@ -746,7 +746,7 @@
   }
   .heat-price {
     color: var(--g5);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
@@ -775,7 +775,7 @@
     border: 0.5px dashed var(--g4);
     border-radius: 6px;
     color: var(--g5);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     text-align: center;
     text-transform: uppercase;
@@ -796,7 +796,7 @@
     border-radius: 4px;
     background: var(--g0);
     color: var(--g7);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
   .evidence-table-row.header {
     min-height: 22px;
@@ -836,18 +836,18 @@
   .compare-card:hover { border-color: #7aa2e0; background: var(--g2); }
   .compare-label {
     grid-area: label;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
   }
   .compare-value {
     grid-area: value;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: #7aa2e0;
   }
   .compare-note {
     grid-area: note;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
   .workspace-primary-action {
@@ -859,7 +859,7 @@
     background: color-mix(in srgb, #7aa2e0 10%, var(--g0));
     color: #9bbcf0;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     cursor: pointer;
   }
@@ -880,7 +880,7 @@
     background: var(--g0);
     color: var(--g8);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.05em;
     cursor: pointer;
   }

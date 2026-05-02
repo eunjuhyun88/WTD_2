@@ -25,12 +25,13 @@
     blocks_triggered?: string[];
   }
 
+  // Quant workflow order: Research → Pattern → Verdict → Decision → Judge
   const TABS: Array<{ id: RightPanelTab; label: string }> = [
-    { id: 'decision', label: 'DEC' },
-    { id: 'pattern',  label: 'PAT' },
-    { id: 'verdict',  label: 'VER' },
-    { id: 'research', label: 'RES' },
-    { id: 'judge',    label: 'JDG' },
+    { id: 'research',  label: 'Research'  },
+    { id: 'pattern',   label: 'Pattern'   },
+    { id: 'verdict',   label: 'Verdict'   },
+    { id: 'decision',  label: 'Decision'  },
+    { id: 'judge',     label: 'Judge'     },
   ];
 
   const DRAWER_TITLE: Record<NonNullable<TabState['drawerKind']>, string> = {
@@ -458,9 +459,9 @@
   border: none;
   border-bottom: 2px solid transparent;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.03em;
   color: var(--g5, #3d3830);
   cursor: pointer;
   background: transparent;
@@ -483,7 +484,7 @@
   cursor: pointer;
   background: transparent;
   border: none;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   transition: color 0.08s;
 }
 .expand-btn:hover { color: var(--g7, #9d9690); }
@@ -501,7 +502,7 @@
   border-radius: 2px;
   color: var(--g8, #cec9c4);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   padding: 4px 8px;
   outline: none;
   box-sizing: border-box;
@@ -546,7 +547,7 @@
   border-radius: 2px;
   color: var(--g5, #3d3830);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
+  font-size: var(--ui-text-xs);
   cursor: pointer;
   transition: color 0.07s, border-color 0.07s;
 }
@@ -567,7 +568,7 @@
 }
 .drawer-placeholder p {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   color: var(--g5, #3d3830);
   line-height: 1.5;
   margin: 0;

@@ -1,3 +1,3 @@
-import { redirect } from '@sveltejs/kit';
-export const load = () => redirect(301, '/cogochi');
+// Terminal hub — served at /terminal (canonical URL)
+// /cogochi redirects here
 

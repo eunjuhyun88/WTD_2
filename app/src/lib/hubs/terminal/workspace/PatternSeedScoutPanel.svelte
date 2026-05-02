@@ -339,7 +339,7 @@
   }
   .seed-kicker {
     margin: 0;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: rgba(190,212,255,0.72);
@@ -351,7 +351,7 @@
   }
   .seed-meta {
     margin: 0;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.42);
   }
   .seed-close {
@@ -371,7 +371,7 @@
     align-content: start;
   }
   .seed-label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(247,242,234,0.5);
@@ -397,7 +397,7 @@
     gap: 6px;
   }
   .chip {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.74);
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 999px;
@@ -467,7 +467,7 @@
     color: rgba(247,242,234,0.9);
   }
   .candidate-source {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     border-radius: 999px;
     padding: 2px 7px;
@@ -480,7 +480,7 @@
   }
   .candidate-score {
     margin-left: auto;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(131,188,255,0.95);
   }
   .candidate-summary {
@@ -492,7 +492,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .candidate-match {
     color: rgba(167,243,208,0.95);
@@ -506,7 +506,7 @@
     flex-wrap: wrap;
     gap: 2px;
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(214,231,255,0.8);
   }
   .phase-node {
@@ -527,7 +527,7 @@
     font-family: var(--sc-font-mono);
   }
   .layer-badge {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     border-radius: 3px;
     padding: 2px 6px;
     border: 1px solid;
@@ -548,7 +548,7 @@
     background: rgba(251,146,60,0.07);
   }
   .candidate-window {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.3);
     margin-left: auto;
   }
@@ -587,7 +587,7 @@
   }
   .judge-done {
     margin-left: auto;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(74,222,128,0.7);
   }
 
@@ -611,7 +611,7 @@
   }
   .gate-badge {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.06em;
     border-radius: 3px;
@@ -627,7 +627,7 @@
   }
   .gate-path {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.4);
     margin-left: auto;
   }
@@ -638,14 +638,14 @@
   }
   .gate-metric {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.75);
     display: flex;
     align-items: baseline;
     gap: 3px;
   }
   .gate-metric-label {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     color: rgba(247,242,234,0.38);
     letter-spacing: 0.05em;
@@ -657,7 +657,7 @@
   }
   .gate-chip {
     font-family: var(--sc-font-mono);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     border-radius: 3px;
     padding: 2px 5px;
     border: 1px solid rgba(248,113,113,0.25);
@@ -675,7 +675,7 @@
   }
   .gate-reason {
     margin: 0;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(252,165,165,0.7);
     line-height: 1.4;
   }

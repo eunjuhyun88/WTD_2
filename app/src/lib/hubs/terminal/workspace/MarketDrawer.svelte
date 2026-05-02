@@ -128,7 +128,7 @@
 
   .drawer-title {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;

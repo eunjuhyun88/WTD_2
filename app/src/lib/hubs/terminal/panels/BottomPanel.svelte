@@ -213,7 +213,7 @@
   .bp-tab {
     padding: 6px 12px;
     font-family: var(--fm);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     letter-spacing: 1.5px;
     color: rgba(255,255,255,.3);
@@ -233,7 +233,7 @@
     background: rgba(232,150,125,.04);
   }
   .bp-badge {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     background: var(--yel);
     color: #000;
     padding: 1px 4px;
@@ -255,7 +255,7 @@
     font-weight: 900;
   }
   .bp-collapse {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     background: none;
     border: none;
     color: rgba(255,255,255,.3);
@@ -291,7 +291,7 @@
   .bp-row-closed { opacity: .4; }
 
   .bp-dir {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     padding: 2px 5px;
     border-radius: 3px;
@@ -302,7 +302,7 @@
   .bp-dir.long { color: var(--grn); border-color: rgba(0,255,136,.3); background: rgba(0,255,136,.08); }
   .bp-dir.short { color: var(--red); border-color: rgba(255,45,85,.3); background: rgba(255,45,85,.08); }
 
-  .bp-pair { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.7); }
+  .bp-pair { font-size: var(--ui-text-xs); font-weight: 700; color: rgba(255,255,255,.7); }
   .bp-src {
     font-size: 6px;
     color: rgba(255,255,255,.25);
@@ -311,24 +311,24 @@
     border-radius: 3px;
   }
   .bp-conf {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--cyan);
     font-weight: 700;
   }
-  .bp-entry { font-size: 8px; color: rgba(255,255,255,.4); }
+  .bp-entry { font-size: var(--ui-text-xs); color: rgba(255,255,255,.4); }
   .bp-pnl-val {
     font-family: var(--fd);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     min-width: 45px;
     text-align: right;
   }
-  .bp-time { font-size: 7px; color: rgba(255,255,255,.2); }
+  .bp-time { font-size: var(--ui-text-xs); color: rgba(255,255,255,.2); }
   .bp-expire { color: var(--ora); }
 
   .bp-action-btn {
     font-family: var(--fm);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     letter-spacing: .5px;
     padding: 3px 6px;
@@ -360,13 +360,13 @@
   .bp-empty {
     padding: 20px;
     text-align: center;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,.2);
     letter-spacing: 1px;
   }
   .bp-section-lbl {
     font-family: var(--fm);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     letter-spacing: 2px;
     color: rgba(255,255,255,.25);
@@ -383,7 +383,7 @@
     width: 100%;
     padding: 4px;
     font-family: var(--fm);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,.2);
     background: none;
     border: none;
@@ -395,6 +395,6 @@
   /* Activity */
   .bp-act-row { gap: 8px; }
   .bp-act-icon { font-size: 11px; }
-  .bp-act-text { font-size: 8px; flex: 1; }
+  .bp-act-text { font-size: var(--ui-text-xs); flex: 1; }
 
 </style>

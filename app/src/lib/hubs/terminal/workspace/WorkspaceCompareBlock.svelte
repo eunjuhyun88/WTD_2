@@ -734,7 +734,7 @@
   .hero-subline,
   .sidepanel-title {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(176, 205, 228, 0.62);
@@ -754,7 +754,7 @@
     flex-wrap: wrap;
     gap: 8px;
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.56);
   }
 
@@ -767,7 +767,7 @@
     border: 1px solid currentColor;
     background: rgba(255, 255, 255, 0.04);
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -803,7 +803,7 @@
     padding: 0 10px;
     border-radius: 999px;
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(247, 242, 234, 0.56);
@@ -834,7 +834,7 @@
     border: 1px solid rgba(39, 63, 86, 0.78);
     background: rgba(7, 16, 28, 0.78);
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(176, 205, 228, 0.74);
@@ -929,7 +929,7 @@
   .compare-card-preview-strip,
   .compare-preview-card {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.72);
   }
 
@@ -959,7 +959,7 @@
 
   .compare-preview-kicker,
   .compare-preview-score {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
@@ -1049,7 +1049,7 @@
     left: 6px;
     max-width: calc(100% - 12px);
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     white-space: nowrap;
@@ -1100,7 +1100,7 @@
   .hero-metric span,
   .stack-tags span {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.5);
   }
 
@@ -1194,7 +1194,7 @@
     cursor: default;
     color: rgba(247, 242, 234, 0.5);
     text-transform: uppercase;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
   }
 
@@ -1222,7 +1222,7 @@
 
   .compare-footnote {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.48);
   }
 

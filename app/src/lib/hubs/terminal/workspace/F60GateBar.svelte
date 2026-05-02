@@ -114,7 +114,7 @@
   }
 
   .badge {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 2px 6px;
     border-radius: 3px;
     font-weight: 700;
@@ -146,7 +146,7 @@
 
   .bar-label {
     width: 56px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--text-muted, #8888aa);
     flex-shrink: 0;
   }
@@ -176,7 +176,7 @@
   .bar-value {
     width: 48px;
     text-align: right;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-variant-numeric: tabular-nums;
     color: var(--text, #ccccdd);
     flex-shrink: 0;

@@ -295,7 +295,7 @@
     justify-content: center;
     border-radius: 2px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0;
     color: #000;
@@ -304,7 +304,7 @@
 
   .tab-symbol {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--g8);
@@ -313,13 +313,13 @@
 
   .tab-tf {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     flex-shrink: 0;
   }
 
   .tab-title {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -353,7 +353,7 @@
     border-radius: 2px;
     background: transparent;
     border: none;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     cursor: pointer;
     color: var(--g5);
     transition: color 0.1s, background 0.1s;
@@ -412,7 +412,7 @@
     border: 1px solid color-mix(in srgb, var(--amb) 22%, transparent);
     color: var(--amb);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     cursor: pointer;
     transition: background 0.12s;

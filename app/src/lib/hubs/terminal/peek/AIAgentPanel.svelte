@@ -250,8 +250,8 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 7px 10px 5px; border-bottom: 1px solid rgba(255,255,255,0.05);
   }
-  .aap-title { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.25); }
-  .aap-ctx { font-size: 9px; color: rgba(255,255,255,0.4); }
+  .aap-title { font-size: var(--ui-text-xs); font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.25); }
+  .aap-ctx { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.4); }
   .aap-range {
     width: 100%; padding: 6px 10px; display: flex; align-items: center; gap: 6px;
     background: rgba(255,255,255,0.02); border: none; border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -259,14 +259,14 @@
   }
   .aap-range:hover:not(.has-range) { background: rgba(255,255,255,0.05); }
   .aap-range.has-range { cursor: default; }
-  .range-hint { font-size: 9px; color: rgba(255,255,255,0.35); font-family: var(--sc-font-mono, monospace); }
-  .range-label { font-size: 9px; color: rgba(34,171,148,0.8); font-weight: 700; font-family: var(--sc-font-mono, monospace); }
-  .range-bars { font-size: 9px; color: rgba(255,255,255,0.4); font-family: var(--sc-font-mono, monospace); }
+  .range-hint { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.35); font-family: var(--sc-font-mono, monospace); }
+  .range-label { font-size: var(--ui-text-xs); color: rgba(34,171,148,0.8); font-weight: 700; font-family: var(--sc-font-mono, monospace); }
+  .range-bars { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.4); font-family: var(--sc-font-mono, monospace); }
   .aap-prompt-row { display: flex; gap: 4px; padding: 6px 8px; }
   .aap-prompt {
     flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
     border-radius: 3px; padding: 4px 7px; font-family: var(--sc-font-mono, monospace);
-    font-size: 10px; color: rgba(255,255,255,0.75); outline: none;
+    font-size: var(--ui-text-xs); color: rgba(255,255,255,0.75); outline: none;
   }
   .aap-prompt:focus { border-color: rgba(255,255,255,0.18); }
   .aap-prompt::placeholder { color: rgba(255,255,255,0.2); }
@@ -277,10 +277,10 @@
   }
   .aap-analyze-btn:hover:not(:disabled) { background: rgba(34,171,148,0.22); }
   .aap-analyze-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-  .aap-error { padding: 4px 10px; font-size: 10px; color: #f23645; font-family: var(--sc-font-mono, monospace); }
+  .aap-error { padding: 4px 10px; font-size: var(--ui-text-xs); color: #f23645; font-family: var(--sc-font-mono, monospace); }
   .aap-loading {
     display: flex; align-items: center; gap: 8px; padding: 12px 10px;
-    font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs); color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace);
   }
   .pulse {
     width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.3);
@@ -295,19 +295,19 @@
   .aap-phase[data-color='bull'] .phase-label { color: #22ab94; }
   .aap-phase[data-color='bear'] .phase-label { color: #f23645; }
   .aap-phase[data-color='dim'] .phase-label { color: rgba(255,255,255,0.5); }
-  .phase-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-  .phase-conf { font-size: 9px; color: rgba(255,199,80,0.7); }
+  .phase-label { font-size: var(--ui-text-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .phase-conf { font-size: var(--ui-text-xs); color: rgba(255,199,80,0.7); }
   .aap-signals { padding: 4px 8px; }
   .sig-row { display: flex; align-items: baseline; gap: 4px; padding: 1px 0; }
   .sig-dot { font-size: 14px; line-height: 1; color: rgba(255,255,255,0.3); flex-shrink: 0; }
   .sig-dot[data-s='bull'] { color: #22ab94; }
   .sig-dot[data-s='bear'] { color: #f23645; }
   .sig-dot[data-s='warn'] { color: #efc050; }
-  .sig-label { font-size: 10px; color: rgba(255,255,255,0.65); flex-shrink: 0; }
-  .sig-note { font-size: 9px; color: rgba(255,255,255,0.3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sig-label { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.65); flex-shrink: 0; }
+  .sig-note { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .aap-thesis { padding: 4px 10px; border-top: 1px solid rgba(255,255,255,0.04); }
-  .thesis-line { font-size: 10px; color: rgba(255,255,255,0.55); margin: 2px 0; line-height: 1.45; }
-  .aap-summary { padding: 6px 10px; font-size: 10px; color: rgba(255,255,255,0.5); line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.04); }
+  .thesis-line { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.55); margin: 2px 0; line-height: 1.45; }
+  .aap-summary { padding: 6px 10px; font-size: var(--ui-text-xs); color: rgba(255,255,255,0.5); line-height: 1.5; border-top: 1px solid rgba(255,255,255,0.04); }
   .aap-judge { display: flex; align-items: center; gap: 3px; padding: 6px 10px; border-top: 1px solid rgba(255,255,255,0.05); }
   .judge-btn {
     width: 26px; height: 22px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.10);
@@ -322,11 +322,11 @@
   .aap-save-btn {
     margin: 0 8px 8px; width: calc(100% - 16px); padding: 6px;
     background: rgba(34,171,148,0.12); border: 1px solid rgba(34,171,148,0.3);
-    border-radius: 3px; font-family: var(--sc-font-mono, monospace); font-size: 10px;
+    border-radius: 3px; font-family: var(--sc-font-mono, monospace); font-size: var(--ui-text-xs);
     font-weight: 700; color: #22ab94; cursor: pointer; letter-spacing: 0.08em; transition: background 0.1s;
   }
   .aap-save-btn:hover:not(:disabled) { background: rgba(34,171,148,0.22); }
   .aap-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .aap-saved { margin: 0 8px 8px; padding: 6px 10px; font-size: 10px; color: rgba(34,171,148,0.8); background: rgba(34,171,148,0.06); border-radius: 3px; text-align: center; font-family: var(--sc-font-mono, monospace); }
-  .aap-empty { padding: 16px 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: rgba(255,255,255,0.2); text-align: center; }
+  .aap-saved { margin: 0 8px 8px; padding: 6px 10px; font-size: var(--ui-text-xs); color: rgba(34,171,148,0.8); background: rgba(34,171,148,0.06); border-radius: 3px; text-align: center; font-family: var(--sc-font-mono, monospace); }
+  .aap-empty { padding: 16px 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: var(--ui-text-xs); color: rgba(255,255,255,0.2); text-align: center; }
 </style>

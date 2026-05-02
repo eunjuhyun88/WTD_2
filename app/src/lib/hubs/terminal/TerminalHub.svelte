@@ -463,7 +463,7 @@
     background: var(--amb-d);
     border: 1px solid var(--amb);
     color: var(--amb);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 3px 10px;
     border-radius: 4px;
     pointer-events: none;
@@ -477,7 +477,7 @@
     border: 1px solid var(--g5);
     border-radius: 2px;
     padding: 0 3px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
   }
 

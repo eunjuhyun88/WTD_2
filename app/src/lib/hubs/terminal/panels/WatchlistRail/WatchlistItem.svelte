@@ -139,7 +139,7 @@
   }
 
   .sym-price {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g9);
     letter-spacing: 0.01em;
     font-variant-numeric: tabular-nums;
@@ -152,7 +152,7 @@
   }
 
   .sym-change {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
   }
@@ -162,7 +162,7 @@
   .sparkline { display: block; flex-shrink: 0; }
 
   .sym-loading {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     animation: blink 1.2s infinite;
   }

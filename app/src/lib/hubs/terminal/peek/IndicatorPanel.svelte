@@ -220,22 +220,22 @@
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
   .ind-sym { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.65); letter-spacing: 0.06em; }
-  .ind-pwin { font-size: 10px; color: rgba(255,199,80,0.8); }
+  .ind-pwin { font-size: var(--ui-text-xs); color: rgba(255,199,80,0.8); }
   .ind-section { border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 4px; }
   .ind-section-label {
-    font-size: 8px; font-weight: 700; letter-spacing: 0.14em;
+    font-size: var(--ui-text-xs); font-weight: 700; letter-spacing: 0.14em;
     color: rgba(255,255,255,0.25); padding: 6px 10px 3px; text-transform: uppercase;
   }
   .ind-row { display: grid; grid-template-columns: 1fr auto 16px; align-items: center; padding: 2px 10px; gap: 4px; }
   .ind-row--sub { grid-template-columns: 1fr; padding: 1px 10px 3px; }
-  .ind-name { font-size: 10px; color: rgba(255,255,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ind-name { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ind-val { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.80); text-align: right; white-space: nowrap; }
   .ind-val[data-state='bull'] { color: #22ab94; }
   .ind-val[data-state='bear'] { color: #f23645; }
   .ind-val[data-state='warn'] { color: #efc050; }
-  .ind-badge { font-size: 9px; text-align: center; color: rgba(255,255,255,0.25); }
+  .ind-badge { font-size: var(--ui-text-xs); text-align: center; color: rgba(255,255,255,0.25); }
   .ind-badge[data-state='bull'] { color: #22ab94; }
   .ind-badge[data-state='bear'] { color: #f23645; }
   .ind-badge[data-state='warn'] { color: #efc050; }
-  .ind-sub { font-size: 9px; color: rgba(255,255,255,0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ind-sub { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.28); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

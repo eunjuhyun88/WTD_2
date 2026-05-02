@@ -537,7 +537,7 @@
     font-weight: 600;
     border-radius: 2px;
     padding: 1px 5px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .leg-chip.dashed {
     background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.2) 0 3px, transparent 3px 6px);

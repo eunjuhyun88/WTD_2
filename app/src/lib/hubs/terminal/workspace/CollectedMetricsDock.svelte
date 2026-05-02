@@ -70,7 +70,7 @@
   }
   .metric-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -86,7 +86,7 @@
   }
   .metric-sub {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     line-height: 1.2;
     color: rgba(177, 181, 189, 0.42);
     display: -webkit-box;

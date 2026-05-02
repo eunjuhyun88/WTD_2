@@ -57,7 +57,7 @@
     letter-spacing: 0.04em;
   }
   .header-subject small {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(247,242,234,0.38);
@@ -83,13 +83,13 @@
   }
   .header-badge em {
     font-style: normal;
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(247,242,234,0.42);
   }
   .header-badge strong {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.88);
   }
   .header-badge[data-tone='bull'] strong { color: #8fdd9d; }

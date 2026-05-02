@@ -547,7 +547,7 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
-  .ai-title { font-size: 9px; color: var(--g7); letter-spacing: 0.12em; }
+  .ai-title { font-size: var(--ui-text-xs); color: var(--g7); letter-spacing: 0.12em; }
   .spacer { flex: 1; }
   .loading {
     font-size: 12px;
@@ -577,7 +577,7 @@
   /* Welcome */
   .welcome { display: flex; flex-direction: column; gap: 6px; }
   .wl-section {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.2em;
     margin-top: 8px;
@@ -597,7 +597,7 @@
     background: var(--g2);
     border: 1px solid var(--g5);
     border-radius: 3px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     line-height: 1.4;
     cursor: pointer;
@@ -621,7 +621,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -639,7 +639,7 @@
   }
 
   .card-badge {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 2px 6px;
     border-radius: 2px;
     background: var(--g3);
@@ -661,7 +661,7 @@
     list-style: disc;
     margin: 0 0 6px;
     padding-left: 16px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     font-family: 'Geist', sans-serif;
     line-height: 1.5;
@@ -670,7 +670,7 @@
   .card-levels {
     display: flex;
     gap: 8px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.04em;
   }
   .level-entry { color: #22AB94; }
@@ -694,7 +694,7 @@
     border-bottom: 0.5px solid var(--g4);
     color: var(--g8);
     font-family: inherit;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     text-align: left;
     cursor: pointer;
     transition: background 0.1s;
@@ -707,7 +707,7 @@
     border-left: 2px solid var(--brand);
   }
   .scan-active {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--brand);
   }
   .scan-sym {
@@ -715,11 +715,11 @@
     color: var(--g9);
   }
   .scan-sig {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
   .scan-conf {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--brand);
   }
 
@@ -727,7 +727,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: #22AB94;
     border-color: #22AB9466;
     background: #22AB9408;
@@ -737,7 +737,7 @@
   }
 
   .card--info {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     font-family: 'Geist', sans-serif;
   }
@@ -778,8 +778,8 @@
     align-items: center;
     gap: 5px;
   }
-  .context-hint { font-size: 8px; color: var(--g5); letter-spacing: 0.08em; }
-  .enter-hint { font-size: 7px; color: var(--g5); }
+  .context-hint { font-size: var(--ui-text-xs); color: var(--g5); letter-spacing: 0.08em; }
+  .enter-hint { font-size: var(--ui-text-xs); color: var(--g5); }
   .send-btn {
     padding: 3px 9px;
     border-radius: 3px;
@@ -787,7 +787,7 @@
     color: var(--g5);
     border: 1px solid var(--g5);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.08em;
     cursor: pointer;

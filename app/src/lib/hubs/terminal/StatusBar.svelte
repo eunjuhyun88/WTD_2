@@ -123,7 +123,7 @@
     background: var(--g1);
     border-top: 1px solid var(--g5);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     letter-spacing: 0.04em;
   }
@@ -139,7 +139,7 @@
   .mode-btn {
     padding: 2px 10px;
     border-radius: 2px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     background: transparent;
     color: var(--g7);
     letter-spacing: 0.1em;
@@ -192,7 +192,7 @@
     display: inline-block;
     padding: 1px 5px;
     margin-left: 3px;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     border-radius: 2px;

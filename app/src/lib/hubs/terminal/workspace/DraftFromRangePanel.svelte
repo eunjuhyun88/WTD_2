@@ -158,7 +158,7 @@
   }
 
   .draft-error {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(248, 113, 113, 0.85);
     padding: 4px 6px;
     background: rgba(248, 113, 113, 0.08);
@@ -171,7 +171,7 @@
     flex-wrap: wrap;
   }
   .meta-chip {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 2px 8px;
     border-radius: 8px;
     background: rgba(34, 211, 238, 0.12);
@@ -195,7 +195,7 @@
     font-family: var(--sc-font-mono, monospace);
   }
   .feat-key {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: rgba(247, 242, 234, 0.45);

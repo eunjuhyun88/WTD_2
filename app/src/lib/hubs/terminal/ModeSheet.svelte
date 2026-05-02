@@ -90,7 +90,7 @@
   .ms-title {
     padding: 4px 16px 12px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.14em;
   }
@@ -135,7 +135,7 @@
   }
   .ms-sub {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
   }
 
@@ -148,7 +148,7 @@
 
   .ms-lock {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     background: var(--g2);
     padding: 2px 6px;

@@ -159,7 +159,7 @@
     letter-spacing: 0.01em;
   }
   .pib-chip small {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding-left: 2px;
   }
   .pib-chip[data-tone='bull'] small { color: #4ade80; }

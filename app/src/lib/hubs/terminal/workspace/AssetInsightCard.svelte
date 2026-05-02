@@ -68,7 +68,7 @@
 
   .card-top { display: flex; align-items: center; justify-content: space-between; }
   .symbol { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 700; color: var(--sc-text-0); letter-spacing: 0.04em; }
-  .tf-row { display: flex; align-items: center; gap: 4px; font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600; }
+  .tf-row { display: flex; align-items: center; gap: 4px; font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); font-weight: 600; }
   .sep { color: rgba(255,255,255,0.2); }
 
   .price-row { display: flex; align-items: baseline; gap: 8px; }
@@ -76,9 +76,9 @@
   .chg { font-family: var(--sc-font-mono); font-size: 11px; font-weight: 600; }
 
   .metrics-row { display: flex; gap: 4px; flex-wrap: wrap; }
-  .chip { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); padding: 2px 5px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 3px; }
+  .chip { font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); color: var(--sc-text-2); padding: 2px 5px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 3px; }
 
-  .verdict-line { margin: 0; font-size: 10px; color: var(--sc-text-1); line-height: 1.4; display: flex; align-items: flex-start; gap: 5px; }
-  .bias-dot { font-size: 8px; flex-shrink: 0; margin-top: 2px; }
-  .action-line { margin: 0; font-family: var(--sc-font-mono); font-size: 9px; color: #89d39a; padding: 3px 6px; background: rgba(74,222,128,0.05); border: 1px solid rgba(74,222,128,0.08); border-radius: 3px; }
+  .verdict-line { margin: 0; font-size: var(--ui-text-xs); color: var(--sc-text-1); line-height: 1.4; display: flex; align-items: flex-start; gap: 5px; }
+  .bias-dot { font-size: var(--ui-text-xs); flex-shrink: 0; margin-top: 2px; }
+  .action-line { margin: 0; font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); color: #89d39a; padding: 3px 6px; background: rgba(74,222,128,0.05); border: 1px solid rgba(74,222,128,0.08); border-radius: 3px; }
 </style>

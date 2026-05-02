@@ -656,7 +656,7 @@
   .tv-label,
   .asset-side-title {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(176, 205, 228, 0.62);
@@ -680,7 +680,7 @@
   .asset-summary span,
   .asset-ribbon span {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.56);
   }
 
@@ -701,7 +701,7 @@
     background: transparent;
     color: rgba(247, 242, 234, 0.56);
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
@@ -800,7 +800,7 @@
     left: 6px;
     max-width: calc(100% - 12px);
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -873,7 +873,7 @@
   .preview-row-token,
   .preview-row-state {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -932,7 +932,7 @@
     background: rgba(255, 255, 255, 0.04);
     color: rgba(247, 242, 234, 0.68);
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .preview-row-list {
@@ -1004,7 +1004,7 @@
   .micro-card span,
   .signal-row span {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.5);
   }
 
@@ -1039,7 +1039,7 @@
 
   .ml-ensemble-badge {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -1059,7 +1059,7 @@
 
   .ml-label {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.5);
   }
 
@@ -1078,7 +1078,7 @@
 
   .ml-blocks-label {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(247, 242, 234, 0.42);
@@ -1096,7 +1096,7 @@
 
   .ml-chip {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 3px 7px;
     border-radius: 999px;
     white-space: nowrap;
@@ -1117,7 +1117,7 @@
   .ml-untrained-note {
     margin: 0;
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.35);
     line-height: 1.5;
   }
@@ -1125,7 +1125,7 @@
   /* headline badges */
   .headline-ensemble {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 800;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -1189,7 +1189,7 @@
     }
 
     .chart-highlight-label {
-      font-size: 8px;
+      font-size: var(--ui-text-xs);
     }
   }
 
@@ -1230,12 +1230,12 @@
     margin-top: 4px;
   }
   .engine-blocks-label {
-    font-size: 8px; font-weight: 700; letter-spacing: .8px;
+    font-size: var(--ui-text-xs); font-weight: 700; letter-spacing: .8px;
     color: rgba(255,255,255,.25);
     flex-shrink: 0; margin-right: 2px;
   }
   .engine-block-chip {
-    font-size: 8px; font-weight: 600; letter-spacing: .4px;
+    font-size: var(--ui-text-xs); font-weight: 600; letter-spacing: .4px;
     padding: 2px 6px;
     border-radius: 3px;
     background: rgba(173,202,124,.12);
@@ -1249,9 +1249,9 @@
   }
   .engine-blocks-quiet { opacity: .55; }
   .engine-blocks-none {
-    font-size: 8px; color: rgba(255,255,255,.3);
+    font-size: var(--ui-text-xs); color: rgba(255,255,255,.3);
   }
   .engine-pwin-inline {
-    font-size: 9px; font-weight: 700; margin-left: 4px;
+    font-size: var(--ui-text-xs); font-weight: 700; margin-left: 4px;
   }
 </style>
