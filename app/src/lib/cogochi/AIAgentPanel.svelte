@@ -80,7 +80,9 @@
           alpha_score: alphScore ?? null,
         };
       } else if (cmd === 'scan') {
-        body.context = { top_n: 5 };
+        const scanRes = await fetch('/api/cogochi/alpha/scan?universe=all');
+        const scanData = scanRes.ok ? (await scanRes.json() as { scores?: unknown[] }) : {};
+        body.context = { scores: scanData.scores ?? [], top_n: 5 };
       } else if (cmd === 'similar') {
         body.context = {
           symbol: args || symbol,

@@ -214,14 +214,13 @@ async def explain(req: ExplainRequest) -> AgentResponse:
     llm_verdict = _extract_verdict(text)
     latency = int((time.monotonic() - t0) * 1000)
 
-    loop = asyncio.get_event_loop()
-    loop.call_soon(
+    asyncio.ensure_future(asyncio.to_thread(
         _log_interaction,
         "explain",
         {"symbol": req.symbol, "has_alpha": req.alpha_score is not None},
         text, latency, cfg.provider, None, req.user_id,
         llm_verdict, len(headlines), risk_news,
-    )
+    ))
     return AgentResponse(text=text, cmd="explain", latency_ms=latency, provider=cfg.provider)
 
 
@@ -244,14 +243,13 @@ async def alpha_scan(req: AlphaScanRequest) -> AgentResponse:
     )
     latency = int((time.monotonic() - t0) * 1000)
 
-    loop = asyncio.get_event_loop()
-    loop.call_soon(
+    asyncio.ensure_future(asyncio.to_thread(
         _log_interaction,
         "scan",
         {"top_n": req.top_n, "symbols": [s.get("symbol") for s in top]},
         text, latency, cfg.provider, None, req.user_id,
         None, 0, False,
-    )
+    ))
     return AgentResponse(text=text, cmd="scan", latency_ms=latency, provider=cfg.provider)
 
 
@@ -287,12 +285,11 @@ async def similar(req: SimilarRequest) -> AgentResponse:
     )
     latency = int((time.monotonic() - t0) * 1000)
 
-    loop = asyncio.get_event_loop()
-    loop.call_soon(
+    asyncio.ensure_future(asyncio.to_thread(
         _log_interaction,
         "similar",
         {"symbol": req.symbol, "n_segments": len(sim.similar_segments), "confidence": sim.confidence},
         text, latency, cfg.provider, None, req.user_id,
         None, 0, False,
-    )
+    ))
     return AgentResponse(text=text, cmd="similar", latency_ms=latency, provider=cfg.provider)
