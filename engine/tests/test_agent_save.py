@@ -155,4 +155,9 @@ def test_save_log_verdict_mapping(client, monkeypatch):
 
     body = {**_SAVE_BODY, "decision": {"verdict": "bearish", "entry": 3000.0, "stop": 3050.0, "target": 2900.0}}
     client.post("/agent/save", json=body)
+    # asyncio.ensure_future fires background thread; poll until task completes (max 1s)
+    import time
+    deadline = time.monotonic() + 1.0
+    while not logged and time.monotonic() < deadline:
+        time.sleep(0.01)
     assert logged == ["sell"]
