@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`5eaad02c` — HEAD (2026-05-02) — CURRENT.md SHA sync (#883 merged)
+`dc5be617` — HEAD (2026-05-02) — fix(W-0378): asyncio.to_thread + universe scores (#886 merged)
 
 ---
 
