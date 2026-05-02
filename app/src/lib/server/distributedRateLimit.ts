@@ -204,3 +204,22 @@ export async function checkDistributedRateLimit(args: {
     return false;
   }
 }
+
+// ── Named limiter instances (W-0364) ─────────────────────────────────────────
+// Convenience wrappers over checkDistributedRateLimit for common scopes.
+
+export const scanLimiterDistributed = {
+  check: (key: string) => checkDistributedRateLimit({ scope: 'scan', key, windowMs: 60_000, max: 6, allowInfraFallback: true }),
+};
+
+export const engineProxyLimiterDistributed = {
+  check: (key: string) => checkDistributedRateLimit({ scope: 'engine', key, windowMs: 60_000, max: 60, allowInfraFallback: true }),
+};
+
+export const analyzeLimiterDistributed = {
+  check: (key: string) => checkDistributedRateLimit({ scope: 'analyze', key, windowMs: 60_000, max: 18, allowInfraFallback: true }),
+};
+
+export const marketMicrostructureLimiterDistributed = {
+  check: (key: string) => checkDistributedRateLimit({ scope: 'microstructure', key, windowMs: 60_000, max: 90, allowInfraFallback: true }),
+};
