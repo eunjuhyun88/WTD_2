@@ -440,6 +440,29 @@ async def save(req: SaveRequest) -> SaveResponse:
     )
     latency = int((time.monotonic() - t0) * 1000)
 
+    # Mirror to SQLite CaptureStore so outcome_resolver can pick it up
+    if not result.get("dup_of"):
+        def _mirror_capture() -> None:
+            try:
+                from capture.store import CaptureStore
+                from capture.types import CaptureRecord
+                import time as _time
+                store = CaptureStore()
+                store.save(CaptureRecord(
+                    capture_id=result["capture_id"],
+                    user_id=req.user_id,
+                    symbol=req.symbol,
+                    pattern_slug=req.decision.get("pattern_slug", "agent_save"),
+                    timeframe=req.timeframe,
+                    captured_at_ms=int(_time.time() * 1000),
+                    status="pending_outcome",
+                    feature_snapshot=req.snapshot,
+                    block_scores=req.decision,
+                ))
+            except Exception as _exc:
+                log.debug("save: capture mirror failed (non-fatal): %s", _exc)
+        asyncio.ensure_future(asyncio.to_thread(_mirror_capture))
+
     verdict_to_llm = {"bullish": "buy", "bearish": "sell", "neutral": "watch"}
     llm_verdict = verdict_to_llm.get(req.decision.get("verdict", "neutral"), "watch")
 
