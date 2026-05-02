@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { openWalletModal } from '$lib/stores/walletModalStore';
+  import { track } from '$lib/analytics';
   import HomeFinalCta from '../components/home/HomeFinalCta.svelte';
   import HomeHero from '../components/home/HomeHero.svelte';
   import SiteFooter from '../components/home/SiteFooter.svelte';
@@ -66,6 +67,7 @@
   }
 
   function openPath(path: string, cta: string) {
+    track('cta_click', { cta_id: cta, target: path });
     trackHomeFunnel('hero_cta_click', 'click', { cta, target: path });
     void goto(path);
   }
@@ -125,6 +127,7 @@
 
     requestAnimationFrame(() => {
       mounted = true;
+      track('page_view', { route: '/' });
       trackHomeFunnel('hero_view', 'view', { story: 'clean-hierarchy-immediate-start' });
     });
 

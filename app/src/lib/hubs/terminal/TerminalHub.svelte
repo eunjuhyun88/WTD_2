@@ -31,8 +31,11 @@
   import IndicatorLibrary from './sheets/IndicatorLibrary.svelte';
   import DrawingRail from './panels/DrawingRail.svelte';
   import type { DrawingTool } from './shell.store';
+  import CommandPalette from '$lib/shared/panels/CommandPalette.svelte';
+  import { track } from '$lib/analytics';
 
   let paletteOpen = $state(false);
+  let paletteQ = $state('');
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
   let symbolPickerOpen = $state(false);
@@ -119,7 +122,7 @@
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       // Cmd+B / Cmd+L removed: WatchlistRail + AIPanel are always visible on desktop.
-      if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); paletteOpen = !paletteOpen; }
+      if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); paletteOpen = !paletteOpen; if (paletteOpen) track('cmdpalette_open', { trigger: 'keyboard_p' }); }
       if (mod && e.key.toLowerCase() === 't') { e.preventDefault(); shellStore.openTab({ kind: 'trade', title: 'new session' }); }
       if (mod && e.key.toLowerCase() === 'w') {
         const st = get(shellStore);
@@ -177,7 +180,8 @@
       }
       if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        desktopSymbolPickerOpen = true;
+        paletteOpen = !paletteOpen;
+        if (paletteOpen) track('cmdpalette_open', { trigger: 'keyboard' });
       }
       // ctrl+1/2/3: mode switch (modifier avoids conflict with TF shortcuts)
       if (mod && e.key === '1') { e.preventDefault(); shellStore.switchMode('trade'); }
@@ -455,6 +459,15 @@
   <!-- Pattern Library overlay (modal) — only on desktop -->
   {#if $viewportTier.tier !== 'MOBILE'}
     <PatternLibraryPanelAdapter />
+  {/if}
+
+  <!-- CommandPalette — ⌘K / ⌘P -->
+  {#if paletteOpen}
+    <CommandPalette
+      q={paletteQ}
+      onClose={() => { paletteOpen = false; paletteQ = ''; }}
+      onChange={(v) => { paletteQ = v; }}
+    />
   {/if}
 </div>
 
