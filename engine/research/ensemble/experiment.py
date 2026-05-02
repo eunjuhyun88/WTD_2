@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 
-from .tracker import ExperimentTracker
+from research.artifacts.tracker import ExperimentTracker
 
 log = logging.getLogger("engine.research.experiment")
 

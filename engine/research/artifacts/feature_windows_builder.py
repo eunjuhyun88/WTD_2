@@ -31,7 +31,7 @@ import pandas as pd
 
 from scanner.feature_calc import compute_features_table, MIN_HISTORY_BARS
 from .feature_windows import FeatureWindowStore, FEATURE_WINDOW_STORE, get_all_feature_window_stores
-from .signal_derivations import derive_all_signals
+from research.signal_derivations import derive_all_signals
 
 log = logging.getLogger("engine.research.feature_windows_builder")
 

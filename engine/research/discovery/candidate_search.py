@@ -35,9 +35,9 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from .feature_windows import CandidateWindow, FeatureWindowStore, FEATURE_WINDOW_STORE, SIGNAL_COLUMNS, get_feature_window_store
-from .query_transformer import PhaseQuery, SearchQuerySpec
-from .similarity_ranker import RankedCandidate, rank_candidates
+from research.artifacts.feature_windows import CandidateWindow, FeatureWindowStore, FEATURE_WINDOW_STORE, SIGNAL_COLUMNS, get_feature_window_store
+from research.discovery.query_transformer import PhaseQuery, SearchQuerySpec
+from research.ensemble.similarity_ranker import RankedCandidate, rank_candidates
 
 log = logging.getLogger("engine.research.candidate_search")
 

@@ -35,8 +35,8 @@ import os
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from .feature_windows import CandidateWindow
-from .query_transformer import PhaseQuery, SearchQuerySpec
+from research.artifacts.feature_windows import CandidateWindow
+from research.discovery.query_transformer import PhaseQuery, SearchQuerySpec
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Weights (sum to 1.0)

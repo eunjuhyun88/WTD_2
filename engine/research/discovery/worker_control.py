@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable
 
-from .state_store import (
+from research.artifacts.state_store import (
     ResearchDisposition,
     ResearchMemoryKind,
     ResearchRun,

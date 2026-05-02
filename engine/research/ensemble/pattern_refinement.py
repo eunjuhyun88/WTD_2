@@ -14,10 +14,10 @@ from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE
 
-from .eval_protocol import walk_forward_eval
-from .objectives import PatternResearchObjective, derive_pattern_research_objective
-from .state_store import ResearchRun, ResearchStateStore
-from .worker_control import (
+from research.validation.eval_protocol import walk_forward_eval
+from research.validation.objectives import PatternResearchObjective, derive_pattern_research_objective
+from research.artifacts.state_store import ResearchRun, ResearchStateStore
+from research.discovery.worker_control import (
     ResearchJobResult,
     ResearchJobSpec,
     ResearchMemoryInput,
