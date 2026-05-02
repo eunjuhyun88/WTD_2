@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`32c62dd6` — HEAD (2026-05-02) — W-0386-B merged: core_loop spine + pipeline facade (#881)
+`f430db6d` — HEAD (2026-05-02) — W-0384+W-0378 Ph1 merged: alpha discovery + AI agent LLM + Exa news (#871)
 
 ---
 
