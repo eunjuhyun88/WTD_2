@@ -68,6 +68,9 @@
   import FloatingNoteButton from '../../chart/FloatingNoteButton.svelte';
   // ── W-0374: Drawing mode state ─────────────────────────────────────────────
   import { shellStore, activeDrawingMode } from '$lib/cogochi/shell.store';
+  // ── W-0374 Phase D-4: IndicatorLibrary drawer ──────────────────────────────
+  import IndicatorLibrary from '$lib/cogochi/components/IndicatorLibrary.svelte';
+  import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -170,6 +173,9 @@
   // ── W-0289: Drawing tools ──────────────────────────────────────────────────
   let drawingActiveTool   = $state<DrawingToolType>('cursor');
   let drawingMgr: DrawingManager | null = null;
+
+  // ── W-0374 Phase D-4: IndicatorLibrary drawer ────────────────────────────
+  let indicatorLibraryOpen = $state(false);
 
   // ── W-0358: Chart Notes ───────────────────────────────────────────────────
   $effect(() => { chartNotesStore.loadNotes(symbol, tf); });
@@ -1544,6 +1550,14 @@
     removeChartIndicator(key);
   }
 
+  /** W-0374 Phase D-4: Add indicator from IndicatorLibrary drawer. */
+  function handleAddIndicator(indicator: IndicatorDef) {
+    if (indicator.tier === 'A' && indicator.engineKey) {
+      toggleChartIndicator(indicator.engineKey as IndicatorKey);
+    }
+    indicatorLibraryOpen = false;
+  }
+
   onMount(() => {
     const onWin = () => {
       viewportWidth = containerEl?.offsetWidth ?? window.innerWidth;
@@ -1729,6 +1743,8 @@
     onEmaTfChange={(t) => { emaTf = t; }}
     drawingMode={$activeDrawingMode}
     onToggleDrawingMode={() => shellStore.toggleDrawingMode()}
+    {indicatorLibraryOpen}
+    onToggleIndicatorLibrary={() => { indicatorLibraryOpen = !indicatorLibraryOpen; }}
   />
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
@@ -1758,6 +1774,13 @@
         }}
         onClearAll={() => drawingMgr?.clearAll()}
         onDeleteSelected={() => drawingMgr?.deleteSelected()}
+      />
+    {/if}
+
+    <!-- W-0374 Phase D-4: IndicatorLibrary drawer -->
+    {#if indicatorLibraryOpen}
+      <IndicatorLibrary
+        onAddIndicator={handleAddIndicator}
       />
     {/if}
 
