@@ -66,6 +66,8 @@
   // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
   import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
   import FloatingNoteButton from '../../chart/FloatingNoteButton.svelte';
+  // ── W-0374: Drawing mode state ─────────────────────────────────────────────
+  import { shellStore, activeDrawingMode } from '$lib/cogochi/shell.store';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -166,7 +168,6 @@
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
 
   // ── W-0289: Drawing tools ──────────────────────────────────────────────────
-  let drawingToolsVisible = $state(false);
   let drawingActiveTool   = $state<DrawingToolType>('cursor');
   let drawingMgr: DrawingManager | null = null;
 
@@ -538,6 +539,13 @@
   function handleRangeModeKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape' && $chartSaveMode.active) {
       chartSaveMode.exitRangeMode();
+    }
+  }
+
+  function handleDrawingModeKeydown(e: KeyboardEvent) {
+    if ((e.key === 'd' || e.key === 'D') && !$chartSaveMode.active) {
+      e.preventDefault();
+      shellStore.toggleDrawingMode();
     }
   }
 
@@ -1546,6 +1554,8 @@
     saveModeUnsubscribe = chartSaveMode.subscribe(handleSaveModeChange);
     // ESC exits range-mode without capturing pointer events
     window.addEventListener('keydown', handleRangeModeKeydown);
+    // D key toggles drawing mode (W-0374)
+    window.addEventListener('keydown', handleDrawingModeKeydown);
     // Initial viewport width
     onWin();
     return () => {
@@ -1556,6 +1566,7 @@
     saveModeUnsubscribe?.();
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleRangeModeKeydown);
+      window.removeEventListener('keydown', handleDrawingModeKeydown);
     }
     disconnectWS();
     destroyCharts();
@@ -1688,8 +1699,13 @@
   data-surface={surfaceStyle}
 >
 
-  <!-- ── ChartToolbar (TF selector + export) ────── -->
-  <ChartToolbar {tf} onTfChange={selectTf} />
+  <!-- ── ChartToolbar (TF selector + export + drawing mode) ────── -->
+  <ChartToolbar
+    {tf}
+    onTfChange={selectTf}
+    drawingMode={$activeDrawingMode}
+    onToggleDrawing={() => shellStore.toggleDrawingMode()}
+  />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
   <ChartBoardHeader
@@ -1711,8 +1727,8 @@
     onToggleStudy={(id) => toggleStudy(id)}
     onSaveSetup={handleSaveSetup}
     onEmaTfChange={(t) => { emaTf = t; }}
-    drawingToolsVisible={drawingToolsVisible}
-    onToggleDrawingTools={() => { drawingToolsVisible = !drawingToolsVisible; }}
+    drawingMode={$activeDrawingMode}
+    onToggleDrawingMode={() => shellStore.toggleDrawingMode()}
   />
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
@@ -1733,7 +1749,7 @@
     </div>
   {:else}
     <!-- W-0289: Drawing toolbar (left of chart) -->
-    {#if drawingToolsVisible}
+    {#if $activeDrawingMode}
       <DrawingToolbar
         activeTool={drawingActiveTool}
         onSelectTool={(t) => {
@@ -1767,7 +1783,7 @@
     -->
     <div class="pane-main multi-pane-host" bind:this={mainEl}>
       <!-- W-0289: Drawing overlay canvas -->
-      {#if drawingToolsVisible && drawingMgr}
+      {#if $activeDrawingMode && drawingMgr}
         <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
       {/if}
       <!--
