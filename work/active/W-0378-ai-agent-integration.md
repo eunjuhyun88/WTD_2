@@ -23,7 +23,7 @@ Jin이 AIAgentPanel Command Bar에 `/scan ETH`, `/similar`, `/explain`, `/judge`
 | D | `app/src/routes/api/terminal/research/+server.ts` (389줄) | LLM 호출 0건, 100% 휴리스틱(`detectPhase()`) | Phase 1 |
 | E | `/api/terminal/scan` | LLM 해석 없음, alpha composite 엔드포인트 부재 | Phase 2 |
 | F | `engine/search/similar.py:run_similar_search()` | 점수만 반환, 자연어 설명 없음 | Phase 3 |
-| G | `app/src/components/terminal/peek/AIAgentPanel.svelte` | 명령어 파서 없음 | Phase 1 |
+| G | `app/src/lib/cogochi/AIAgentPanel.svelte` | 명령어 파서 없음 | Phase 1 |
 | H | `engine/scoring/trainer_trigger.py` | APScheduler 미배선, weight 버전 관리 없음 | Phase 4 |
 
 ---
@@ -839,7 +839,7 @@ train_lgbm_job (04:00 + 500개 threshold)
 Phase 1:
   engine/api/routes/agent.py               # 신규 — /explain 엔드포인트
   app/src/routes/api/terminal/agent/dispatch/+server.ts  # 신규 — BFF
-  app/src/components/terminal/peek/AIAgentPanel.svelte   # Command Bar 추가
+  app/src/lib/cogochi/AIAgentPanel.svelte   # Command Bar 추가
   engine/api/main.py                       # agent router 등록
   app/supabase/migrations/044_agent_interactions.sql     # 신규 테이블
   engine/tests/test_agent_explain.py       # 신규 (≥5 tests)
@@ -850,7 +850,7 @@ Phase 2:
 
 Phase 3:
   engine/api/routes/agent.py               # /similar 추가
-  app/src/components/terminal/peek/AIAgentPanel.svelte   # /similar context 연결
+  app/src/lib/cogochi/AIAgentPanel.svelte   # /similar context 연결
   engine/tests/test_agent_similar.py       # 신규 (≥3 tests)
 
 Phase 4:

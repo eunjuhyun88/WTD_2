@@ -16,6 +16,7 @@
 |---|---|---|
 | `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟢 Phase D-6 ✅ — Phase D-7 AIAgentPanel 5탭 + Drawer next |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
+| `W-0380-bloomberg-ux-phase-d7-gap-closure` | P1 | 🟡 Design Draft — D-7a/b/c 3 sub-PR |
 
 ---
 
