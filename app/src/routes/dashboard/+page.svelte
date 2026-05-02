@@ -549,7 +549,7 @@
     color: var(--g5);
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .kimchi-value {
@@ -562,11 +562,11 @@
   .kimchi-value.kim-hot { color: var(--amb, #d6a347); }
   .kimchi-value.kim-cold { color: #38bdf8; }
 
-  .kimchi-arrow { font-size: 10px; margin-left: 2px; }
+  .kimchi-arrow { font-size: var(--ui-text-xs); margin-left: 2px; }
 
   .kimchi-hint {
     color: var(--g5);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     margin-left: 4px;
   }
 
