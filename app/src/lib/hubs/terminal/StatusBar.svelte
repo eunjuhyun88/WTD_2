@@ -1,9 +1,7 @@
 <script lang="ts">
   interface Props {
-    mode: 'trade' | 'train' | 'flywheel';
     verdicts: number;
     modelDelta: number;
-    onSwitchMode: (mode: 'trade' | 'train' | 'flywheel') => void;
     sidebarVisible: boolean;
     /** D-10: latest verdict label, e.g. "LONG" / "SHORT" / "WAIT" / null. */
     lastVerdictKind?: 'LONG' | 'SHORT' | 'WAIT' | null;
@@ -12,15 +10,9 @@
   }
 
   const {
-    mode, verdicts, modelDelta, onSwitchMode, sidebarVisible,
+    verdicts, modelDelta, sidebarVisible,
     lastVerdictKind = null, lastUpdatedAt = null,
   }: Props = $props();
-
-  const modes = [
-    { id: 'trade', label: 'TRADE', color: 'var(--brand)' },
-    { id: 'train', label: 'TRAIN', color: 'var(--amb)' },
-    { id: 'flywheel', label: 'FLYWHEEL', color: '#7aa2e0' },
-  ];
 
   function getTime(): string {
     const now = new Date();
@@ -48,20 +40,6 @@
 </script>
 
 <div class="status-bar">
-  <div class="mode-selector">
-    {#each modes as m (m.id)}
-      <button
-        class="mode-btn"
-        class:active={mode === m.id}
-        style:--mode-color={m.color}
-        onclick={() => onSwitchMode(m.id as any)}
-      >
-        {m.label}
-      </button>
-    {/each}
-  </div>
-
-  <span class="divider">│</span>
   <span class="status-item">
     <span class="dot"></span>
     scanner live · 300 sym · 14s
@@ -126,34 +104,6 @@
     font-size: var(--ui-text-xs);
     color: var(--g7);
     letter-spacing: 0.04em;
-  }
-
-  .mode-selector {
-    display: flex;
-    gap: 1px;
-    background: var(--g2);
-    border-radius: 3px;
-    padding: 1px;
-  }
-
-  .mode-btn {
-    padding: 2px 10px;
-    border-radius: 2px;
-    font-size: var(--ui-text-xs);
-    background: transparent;
-    color: var(--g7);
-    letter-spacing: 0.1em;
-    font-weight: 400;
-    cursor: pointer;
-    border: 0.5px solid transparent;
-    transition: all 0.15s;
-  }
-
-  .mode-btn.active {
-    background: var(--g0);
-    color: var(--mode-color);
-    font-weight: 600;
-    border-color: color-mix(in srgb, var(--mode-color) 27%, transparent);
   }
 
   .divider {
