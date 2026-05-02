@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-02
+# CURRENT — 2026-05-03
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -25,31 +25,21 @@
 
 ## main SHA
 
-`97493957` — HEAD (2026-05-03) — W-0389 Phase 1 font fix (#929)
+`dfe79a9f` — origin/main (2026-05-03) — feat(W-0364): Upstash distributed rate limiter + engine SWR cache (#933)
 
 ---
 
 ## 활성 Work Items
 
-| Work Item | Priority | 상태 | PR |
-|---|---|---|---|
-| `W-A108-verification-framework` | P0 | 🔵 CI running (lock fix pushed) | [#926](https://github.com/eunjuhyun88/WTD_2/pull/926) |
-| `W-0389-ux-visual-typography-restructure` | P1 | 🔵 Ph2-6 on #926 branch | — |
-| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft | — |
-
-완료 (이번 세션):
-- W-0380 ✅ #927 merged — dead handlers 제거 + aiQueryRouter 34 tests
-- W-0386 ✅ #928 merged — scheduler 347 / pipeline 118 / imports 12
-- W-0389 Ph1 ✅ #929 merged — font-size 357→0 violations
-- W-0389 Ph2 ✅ TopBar already complete (H/L/Vol + mode segmented + TF 11px)
-- W-0389 Ph3 ✅ AIAgentPanel badges + ChartToolbar emoji→text (0 emoji, 0 select)
-- W-0389 Ph4 ✅ StatusBar verdict pill 12px bold amber
-- W-0389 Ph5 ✅ Dashboard 4 sections + /lab/health 신설
-- W-0389 Ph6 ✅ stylelint 0 violations (AC1 ✅)
+| Work Item | Priority | 상태 |
+|---|---|---|
+| `W-0388-eslint-hub-boundaries` | P2 | 🟡 Design Draft |
+| `W-0390-quant-ux-data-layer` | P2 | 🟡 Design Draft |
+| `W-0371-tv-chart-import-gateway` | P2 | 🟡 Design Draft |
 
 ---
 
-## Wave 5 실행 계획 (2026-05-02)
+## Wave 5 실행 계획 (2026-05-03)
 
 ```
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
@@ -68,19 +58,25 @@
 완료:  W-0387 ✅ — /agent/judge + /agent/save AI agent LLM verdict + idempotent capture (#904)
 완료:  W-0370 ✅ — strategy live signals engine API + frontend (#915)
 완료:  fix(cogochi) ✅ — TerminalHub 마운트 + MobileBottomNav 터미널 제외 (#922)
-즉시:  W-0389 — UX visual typography restructure (PRODUCT-DESIGN-PAGES-V2.md P-02 기반)
-추후:  W-0304 per-pane indicator
+완료:  W-0380 ✅ — dead handlers 제거 + aiQueryRouter 34 tests (#927)
+완료:  W-0386 ✅ — scheduler/pipeline/imports code shrink (#928)
+완료:  W-0389 ✅ — UX visual typography restructure (#929, #931)
+완료:  W-A108 ✅ — verification framework CI gates + 13 typography tests (#926)
+완료:  W-0364 ✅ — Upstash distributed rate limiter + engine SWR cache (#933)
+완료:  W-0304 ✅ — per-pane indicator store + ChartPane paneId prop (#934)
+즉시:  W-0390 — quant UX data layer (SignalFeed Phase 2 배지 + chart pane indicator wiring)
 ```
 
 ---
 
-## 핵심 lesson (A099/A100/A101 세션)
+## 핵심 lesson (wizardly-lederberg 세션)
 
 - **spec/NAMING.md 필독**: 병렬 브랜치 naming conflict 방지 — `analyze`/`scan` 금지, `verdict`/`research` 사용
 - **Contract CI CURRENT.md sync**: active table에 나열된 work item 파일이 실제로 존재해야 함
 - **Contract CI 필수 섹션**: Owner / Facts / Canonical Files / Assumptions / Next Steps / Handoff Checklist 전부 있어야 통과
 - **W-0372 Phase A lock-in**: /cogochi = Terminal hub 핵심, /terminal → redirect. 5-Hub 확정
 - **에이전트 락 테이블**: 파일 수준 충돌 방지 — 내 락 범위 외 파일 수정 금지
+- **stash pop 후 CURRENT.md 재확인**: rebase 후 stash pop이 파일을 되돌릴 수 있음
 
 ---
 
@@ -93,11 +89,10 @@
 
 ---
 
-## 다음 실행 — W-0389 UX Visual Typography
+## 다음 실행 — W-0390 Quant UX Data Layer
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0389-ux-visual-typography-restructure.md
-cat work/active/PRODUCT-DESIGN-PAGES-V2.md
-# P-02 /cogochi 스펙 기준 미구현 항목 파악 후 구현
+cat work/active/W-0390-quant-ux-data-layer.md
+# SignalFeed.svelte Phase 2 배지 UI + pane indicator wiring
 ```
