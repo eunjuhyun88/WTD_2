@@ -6,7 +6,7 @@ Execution rules for humans and coding agents.
 
 ## 문서 지도 — 전체 문서 구조 + 읽기 순서
 
-### 필수 4단계 (모든 에이전트, skip 금지)
+### 필수 6단계 (모든 에이전트, skip 금지)
 
 | 순서 | 파일 | 목적 | 확인 항목 |
 |---|---|---|---|
@@ -14,6 +14,8 @@ Execution rules for humans and coding agents.
 | 2 | `work/active/CURRENT.md` | 지금 뭐 해야 하나, 에이전트 락 테이블 | 락 테이블 내 파일 겹침 여부 |
 | 3 | `spec/NAMING.md` | 이름 계약서 | 탭명·SHELL_KEY·파일경로 |
 | 4 | `work/log/` 최신 파일 | 직전 에이전트가 뭘 했나 | 마지막 entry SHA + 락 해제 목록 |
+| 5 | `spec/PRIORITIES.md` | Wave 우선순위 + **Frozen 항목** — Frozen 발견 시 즉시 중단 | Frozen 목록 + 현재 P0/P1 |
+| 6 | 도메인 sub-file | 건드리는 경로 기준: `agents/engine.md` or `agents/app.md` | 도메인 게이트 + API 계약 |
 
 ### 도메인 게이트 (건드리는 경로 기준, 추가 로드)
 
