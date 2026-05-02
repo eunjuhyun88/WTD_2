@@ -59,7 +59,7 @@ app/src/routes/patterns/formula/+page.svelte
 
 ---
 
-## Facts (실측 기반)
+## Facts
 
 1. `blocked_candidates` 테이블 — migration 044 (`app/supabase/migrations/044_blocked_candidates.sql`). `forward_*` 컬럼 존재, 모두 NULL.
 2. `filter_reason` ENUM — 현재 9개 코드 (below_min_conviction, timing_conflict, regime_mismatch, heat_too_high, insufficient_liquidity, spread_too_wide, duplicate_signal, conflicting_signals, stale_context). 이번 5개 추가.
