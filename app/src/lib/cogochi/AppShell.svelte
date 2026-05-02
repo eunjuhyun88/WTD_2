@@ -87,8 +87,8 @@
     const workspaceMode = searchParams?.get('m');
     const workspacePanel = searchParams?.get('panel');
     const targetPanel =
-      workspacePanel === 'scan' || workspacePanel === 'judge' || workspacePanel === 'analyze'
-        ? workspacePanel : 'analyze';
+      workspacePanel === 'research' || workspacePanel === 'judge' || workspacePanel === 'verdict'
+        ? workspacePanel : 'verdict';
 
     if (workspaceMode === 'detail') {
       if (get(viewportTier).tier === 'MOBILE') {
@@ -186,8 +186,8 @@
           updateTabState={(updater) => shellStore.updateTabState(updater)}
           symbol={mobileSymbol}
           timeframe={mobileTF}
-          mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : $mobileMode.active === 'chart' ? 'chart' : 'analyze'}
-          setMobileView={(v) => mobileMode.setActive(v === 'analyze' ? 'detail' : v)}
+          mobileView={$mobileMode.active === 'scan' ? 'research' : $mobileMode.active === 'judge' ? 'judge' : $mobileMode.active === 'chart' ? 'chart' : 'verdict'}
+          setMobileView={(v) => mobileMode.setActive(v === 'verdict' ? 'detail' : v === 'research' ? 'scan' : v as 'chart' | 'judge')}
           setMobileSymbol={(s) => (mobileSymbol = s)}
         />
       {/if}
@@ -321,7 +321,7 @@
                   timeframe: $activeTabState.timeframe ?? '4h',
                   patternSlug: null,
                 });
-                shellStore.setRightPanelTab('analyze');
+                shellStore.setRightPanelTab('verdict');
                 chartSaveMode.exitRangeMode();
               }}
             />

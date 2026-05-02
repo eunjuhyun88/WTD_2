@@ -9,8 +9,8 @@ import {
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
-// v2 migration: verdict→analyze, research→scan
-export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
+// v3 migration: analyze→verdict, scan→research
+export type RightPanelTab = 'decision' | 'pattern' | 'verdict' | 'research' | 'judge';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 
 export interface WorkspacePanelRect {
@@ -30,7 +30,7 @@ export interface TabState {
   chat: Array<{ role: 'user' | 'assistant'; text: string }>;
   peekOpen: boolean;
   peekHeight: number;
-  drawerTab: 'analyze' | 'scan' | 'judge';
+  drawerTab: 'verdict' | 'research' | 'judge';
   workspaceOrder: WorkspacePanelId[];
   workspaceCollapsed: Partial<Record<WorkspacePanelId, boolean>>;
   workspaceLayout: Record<WorkspacePanelId, WorkspacePanelRect>;
@@ -165,7 +165,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   chat: [],
   peekOpen: false,
   peekHeight: 56,
-  drawerTab: 'analyze',
+  drawerTab: 'verdict',
   workspaceOrder: ['analyze', 'scan', 'judge'],
   workspaceCollapsed: { scan: true, judge: true },
   workspaceLayout: FRESH_WORKSPACE_LAYOUT(),
@@ -211,11 +211,11 @@ const makeDefault = (): ShellState => ({
   decisionBundle: null,
 });
 
-const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
+const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge']);
 function migrateRightPanelTab(raw: unknown): RightPanelTab {
-  // v1→v2: verdict→analyze, research→scan
-  if (raw === 'verdict') return 'analyze';
-  if (raw === 'research') return 'scan';
+  // v2→v3: analyze→verdict, scan→research (also covers v1 names)
+  if (raw === 'analyze' || raw === 'verdict_old') return 'verdict';
+  if (raw === 'scan' || raw === 'research_old') return 'research';
   if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
   return 'decision';
 }
@@ -269,7 +269,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v9'; // v9: RightPanelTab migration (verdict→analyze, research→scan)
+const SHELL_KEY = 'cogochi_shell_v10'; // v10: RightPanelTab migration (analyze→verdict, scan→research)
 
 function createShellStore() {
   let initial: ShellState;
@@ -660,6 +660,7 @@ function createShellStore() {
       set(makeDefault());
       if (typeof window !== 'undefined') {
         localStorage.removeItem(SHELL_KEY);
+        localStorage.removeItem('cogochi_shell_v9');
         localStorage.removeItem('cogochi_shell_v6');
         localStorage.removeItem('cogochi_shell_v5');
       }
