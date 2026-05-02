@@ -13,12 +13,14 @@
     open?: boolean;
     onClose?: () => void;
     onExternalOpen?: (url: string, label: string) => void;
+    onAddIndicator?: (indicator: IndicatorDef) => void;
   }
 
   let {
     open = false,
     onClose,
     onExternalOpen,
+    onAddIndicator,
   }: Props = $props();
 
   let query = $state('');
@@ -42,6 +44,10 @@
   const engineCount = $derived(INDICATOR_REGISTRY.filter((i) => i.tier === 'A').length);
 
   function handleIndicatorClick(ind: IndicatorDef) {
+    if (onAddIndicator) {
+      onAddIndicator(ind);
+      return;
+    }
     if (ind.tier === 'A' && ind.engineKey) {
       const key = ind.engineKey as IndicatorKey;
       const active = $chartIndicators[key];

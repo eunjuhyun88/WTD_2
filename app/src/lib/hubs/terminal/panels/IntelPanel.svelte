@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Headline } from '$lib/data/warroom';
-  import VerdictCard from '../workspace/VerdictCard.svelte';
+  import VerdictCard from '../../../shared/panels/VerdictCard.svelte';
   import { communityPosts, hydrateCommunityPosts, likeCommunityPost } from '$lib/stores/communityStore';
   import { openTrades, closeQuickTrade, hydrateQuickTrades } from '$lib/stores/quickTradeStore';
   import { activePairState } from '$lib/stores/activePairStore';
