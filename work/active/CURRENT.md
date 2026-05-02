@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`71e2ab64` — HEAD (2026-05-02) — Phase D-9 merged: AI overlay shapes + pattern skeleton + decision auto-refresh (#870)
+`f430db6d` — HEAD (2026-05-02) — W-0384+W-0378 Ph1 merged: alpha discovery + AI agent LLM + Exa news (#871)
 
 ---
 
