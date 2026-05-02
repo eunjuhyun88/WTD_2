@@ -56,6 +56,7 @@
   let sourceCapture = $state<PatternCaptureRecord | null>(null);
   let captureHydrationState = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
   let captureHydrationError = $state<string | null>(null);
+  let captureOpen = $state(false);
 
   let klines = $state<BinanceKline[]>([]);
   let chartMarkers = $state<ChartMarker[]>([]);
@@ -333,36 +334,39 @@
   <div class="surface-scroll-body">
     {#if captureHydrationState !== 'idle' || sourceCapture}
       <section class="surface-card soft source-capture-shell">
-        <div class="surface-section-head">
-          <div>
-            <span class="surface-kicker">Source Capture</span>
-            <h2>터미널에서 저장한 검토 구간</h2>
-          </div>
-          <span class="surface-chip">{captureHydrationState === 'loading' ? 'Hydrating…' : sourceCapture ? 'Capture attached' : 'Awaiting capture'}</span>
-        </div>
-
-        {#if captureHydrationState === 'error'}
-          <p class="capture-error">캡처를 랩에 불러오지 못했습니다: {captureHydrationError}</p>
-        {:else if sourceCapture}
-          <div class="capture-grid">
-            <div>
-              <strong>{sourceCapture.symbol}</strong>
-              <small>{sourceCapture.timeframe.toUpperCase()} · {sourceCapture.triggerOrigin}</small>
+        <button class="capture-toggle" onclick={() => (captureOpen = !captureOpen)}>
+          <span class="surface-kicker">Source Capture</span>
+          {#if sourceCapture}
+            <span class="capture-summary">{sourceCapture.symbol} · {sourceCapture.timeframe.toUpperCase()} · {sourceCapture.decision.verdict ?? 'unrated'}</span>
+          {:else}
+            <span class="capture-summary">{captureHydrationState === 'loading' ? 'Hydrating…' : 'Awaiting capture'}</span>
+          {/if}
+          <span class="capture-toggle-arrow">{captureOpen ? '▲' : '▼'}</span>
+        </button>
+        {#if captureOpen}
+          {#if captureHydrationState === 'error'}
+            <p class="capture-error">캡처를 랩에 불러오지 못했습니다: {captureHydrationError}</p>
+          {:else if sourceCapture}
+            <div class="capture-grid">
+              <div>
+                <strong>{sourceCapture.symbol}</strong>
+                <small>{sourceCapture.timeframe.toUpperCase()} · {sourceCapture.triggerOrigin}</small>
+              </div>
+              <div>
+                <strong>{sourceCapture.reason ?? 'capture'}</strong>
+                <small>{new Date(sourceCapture.updatedAt).toLocaleString()}</small>
+              </div>
+              <div>
+                <strong>{sourceCapture.decision.verdict ?? 'unrated'}</strong>
+                <small>평가 방향 seed</small>
+              </div>
+              <div>
+                <a href={`/cogochi?symbol=${encodeURIComponent(sourceCapture.symbol)}`}>터미널로 돌아가기 →</a>
+              </div>
             </div>
-            <div>
-              <strong>{sourceCapture.reason ?? 'capture'}</strong>
-              <small>{new Date(sourceCapture.updatedAt).toLocaleString()}</small>
-            </div>
-            <div>
-              <strong>{sourceCapture.decision.verdict ?? 'unrated'}</strong>
-              <small>평가 방향 seed</small>
-            </div>
-            <div>
-              <a href={`/cogochi?symbol=${encodeURIComponent(sourceCapture.symbol)}`}>터미널로 돌아가기 →</a>
-            </div>
-          </div>
-          {#if sourceCapture.note}
-            <p class="capture-note">{sourceCapture.note}</p>
+            {#if sourceCapture.note}
+              <p class="capture-note">{sourceCapture.note}</p>
+            {/if}
           {/if}
         {/if}
       </section>
@@ -428,13 +432,13 @@
 
         <div class="tab-bar" class:tab-bar-4={mode === 'auto'}>
           {#if mode === 'auto'}
-            <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>챌린지</button>
-            <button class="tab" class:active={activeTab === 'result'} onclick={() => activeTab = 'result'}>런 결과</button>
-            <button class="tab" class:active={activeTab === 'refinement'} onclick={() => activeTab = 'refinement'}>리더보드</button>
-            <button class="tab" class:active={activeTab === 'pattern-run'} onclick={() => activeTab = 'pattern-run'}>패턴 런</button>
+            <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>Strategy</button>
+            <button class="tab" class:active={activeTab === 'result'} onclick={() => activeTab = 'result'}>Results</button>
+            <button class="tab" class:active={activeTab === 'refinement'} onclick={() => activeTab = 'refinement'}>Refinement</button>
+            <button class="tab" class:active={activeTab === 'pattern-run'} onclick={() => activeTab = 'pattern-run'}>Pattern Run</button>
           {:else}
-            <button class="tab" class:active={activeTab === 'order'} onclick={() => activeTab = 'order'}>리플레이</button>
-            <button class="tab" class:active={activeTab === 'trades'} onclick={() => activeTab = 'trades'}>로그</button>
+            <button class="tab" class:active={activeTab === 'order'} onclick={() => activeTab = 'order'}>Replay</button>
+            <button class="tab" class:active={activeTab === 'trades'} onclick={() => activeTab = 'trades'}>Trade Log</button>
           {/if}
         </div>
 
@@ -725,7 +729,30 @@
   }
   .source-capture-shell {
     margin-bottom: 16px;
+    padding: 0;
+    overflow: hidden;
   }
+  .capture-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.08s;
+  }
+  .capture-toggle:hover { background: rgba(255,255,255,0.02); }
+  .capture-summary {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 12px;
+    color: rgba(250, 247, 235, 0.55);
+    flex: 1;
+  }
+  .capture-toggle-arrow { font-size: var(--ui-text-xs); color: rgba(250,247,235,0.3); }
+  .capture-grid { padding: 0 16px 12px; }
   .capture-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

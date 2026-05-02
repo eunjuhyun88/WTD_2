@@ -244,7 +244,7 @@
   .wl {
     display: flex;
     gap: 2px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--text-secondary, #888);
   }
   .win { color: #4ade80; }

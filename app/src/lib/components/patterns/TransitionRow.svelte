@@ -44,11 +44,11 @@
     text-decoration: none;
   }
   .td-sym a:hover { color: #63b3ed; }
-  .td-slug { color: rgba(255,255,255,0.3); font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .td-phase { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .td-slug { color: rgba(255,255,255,0.3); font-size: var(--ui-text-xs); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .td-phase { font-size: var(--ui-text-xs); text-transform: uppercase; letter-spacing: 0.05em; }
   .td-phase.from { color: #94a3b8; }
   .td-phase.to   { color: #4ade80; }
   .td-arrow { color: rgba(255,255,255,0.2); padding: 6px 2px; }
   .td-conf { color: rgba(255,255,255,0.5); }
-  .td-time { color: rgba(255,255,255,0.25); font-size: 10px; }
+  .td-time { color: rgba(255,255,255,0.25); font-size: var(--ui-text-xs); }
 </style>

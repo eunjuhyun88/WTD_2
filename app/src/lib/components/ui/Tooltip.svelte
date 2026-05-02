@@ -152,7 +152,7 @@
 
   .tooltip-sublabel {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 400;
     letter-spacing: 0.02em;
     line-height: 1.4;

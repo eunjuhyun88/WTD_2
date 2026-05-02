@@ -124,7 +124,7 @@
   }
 
   .kp-stale-icon {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: #f59e0b;
   }
 

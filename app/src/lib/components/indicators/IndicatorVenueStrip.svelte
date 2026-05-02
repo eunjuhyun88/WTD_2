@@ -103,7 +103,7 @@
 <style>
   .strip {
     font-family: var(--sc-font-mono, ui-monospace, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     line-height: 1.2;
     color: var(--g9, rgba(255, 255, 255, 0.85));
     padding: 6px 10px;
@@ -118,14 +118,14 @@
   }
 
   .label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--g6, rgba(255, 255, 255, 0.5));
   }
 
   .div-badge {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 1px 5px;
     border-radius: 2px;
     background: color-mix(in oklab, var(--amb, #f0b847) 14%, transparent);
@@ -157,7 +157,7 @@
   .venue {
     letter-spacing: 0.03em;
     text-transform: capitalize;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: inherit;
   }
 
@@ -181,7 +181,7 @@
   .val {
     text-align: right;
     font-variant-numeric: tabular-nums;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .mini {
@@ -197,7 +197,7 @@
 
   .empty {
     color: var(--g5);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 8px 0;
     text-align: center;
   }

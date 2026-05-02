@@ -160,7 +160,7 @@
   .fb-send:not(:disabled):hover { opacity: 0.85; }
 
   .fb-sent { font-size: 12px; color: #4ade80; font-family: var(--sc-font-mono, monospace); text-align: center; padding: 8px 0; }
-  .fb-err  { font-size: 10px; color: #f87171; font-family: var(--sc-font-mono, monospace); margin: 0; }
+  .fb-err  { font-size: var(--ui-text-xs); color: #f87171; font-family: var(--sc-font-mono, monospace); margin: 0; }
 
   @media (max-width: 640px) {
     .fb-wrap { bottom: 72px; right: 16px; }

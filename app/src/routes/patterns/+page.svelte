@@ -151,6 +151,8 @@
     symbolFilter ? transitions.filter((t) => t.symbol === symbolFilter) : transitions
   );
 
+  let verdictInboxOpen = $state(false);
+
   let refreshInterval: ReturnType<typeof setInterval>;
   onMount(() => {
     loadAll();
@@ -202,9 +204,11 @@
         {scanning ? 'Scanning…' : 'Run Scan'}
       </button>
       <button class="surface-button-secondary" onclick={() => goto('/patterns/lifecycle')}>Lifecycle</button>
-      <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
-      <a class="surface-sublink" href="/patterns/filter-drag" data-testid="patterns-filter-drag-link">Filter Drag →</a>
-      <a class="surface-sublink" href="/patterns/formula" data-testid="patterns-formula-link">Formula →</a>
+      <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Terminal</button>
+      <div class="topbar-tertiary">
+        <a class="tertiary-link" href="/patterns/filter-drag" data-testid="patterns-filter-drag-link">Filter Drag</a>
+        <a class="tertiary-link" href="/patterns/formula" data-testid="patterns-formula-link">Formula</a>
+      </div>
     </div>
   </header>
 
@@ -297,8 +301,7 @@
               <p>{symbolFilter} — 활성 상태 없음</p>
             </div>
           {:else}
-            <!-- Desktop table -->
-            <div class="surface-card states-shell desktop-only">
+            <div class="surface-card states-shell">
               <div class="states-table">
                 <div class="table-header">
                   <span>심볼</span>
@@ -320,20 +323,6 @@
                   </div>
                 {/each}
               </div>
-            </div>
-            <!-- Mobile card grid -->
-            <div class="mobile-cards-grid mobile-only">
-              {#each filteredStates as s}
-                <PatternCard
-                  symbol={s.symbol}
-                  patternId={s.patternId}
-                  phase={s.phaseIdx}
-                  phaseId={s.phaseId}
-                  phaseLabel={s.phaseLabel}
-                  enteredAt={s.enteredAt}
-                  barsInPhase={s.barsInPhase}
-                />
-              {/each}
             </div>
           {/if}
         </div>
@@ -450,8 +439,17 @@
         {/if}
       </section>
 
-      <!-- Verdict Inbox — flywheel axis 3 -->
-      <VerdictInboxSection />
+      <!-- Verdict Inbox — collapsible, default closed -->
+      <section class="surface-grid">
+        <button class="verdict-inbox-toggle" onclick={() => (verdictInboxOpen = !verdictInboxOpen)}>
+          <span class="surface-kicker">Flywheel</span>
+          <span class="verdict-inbox-label">Verdict Inbox</span>
+          <span class="verdict-inbox-arrow">{verdictInboxOpen ? '▲' : '▼'}</span>
+        </button>
+        {#if verdictInboxOpen}
+          <VerdictInboxSection />
+        {/if}
+      </section>
     {/if}
   </div>
 </div>
@@ -463,18 +461,50 @@
     align-items: flex-start;
   }
 
-  .surface-sublink {
-    align-self: center;
-    padding: 4px 10px;
-    color: var(--amb, #f5a623);
+  .topbar-tertiary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+  }
+  .tertiary-link {
+    padding: 3px 8px;
+    color: rgba(250, 247, 235, 0.35);
     font-size: 11px;
     text-decoration: none;
-    text-transform: uppercase;
     letter-spacing: 0.04em;
-    border: 1px solid var(--amb, #f5a623);
+    border: 0.5px solid rgba(250, 247, 235, 0.12);
     border-radius: 2px;
+    font-family: var(--font-mono, monospace);
+    transition: color 0.1s, border-color 0.1s;
   }
-  .surface-sublink:hover { background: rgba(245, 166, 35, 0.12); }
+  .tertiary-link:hover { color: rgba(250, 247, 235, 0.7); border-color: rgba(250, 247, 235, 0.3); }
+
+  .verdict-inbox-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(249, 216, 194, 0.06);
+    padding: 10px 0;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.08s;
+  }
+  .verdict-inbox-toggle:hover { background: rgba(255,255,255,0.02); }
+  .verdict-inbox-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(250, 247, 235, 0.65);
+    flex: 1;
+  }
+  .verdict-inbox-arrow {
+    font-size: var(--ui-text-xs);
+    color: rgba(250, 247, 235, 0.3);
+  }
 
   .page-loading,
   .page-error,
@@ -493,7 +523,7 @@
   .pulse { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:.2} 50%{opacity:1} }
   .page-error { color: #f87171; }
-  .error-detail { font-size: 10px; color: rgba(248,113,113,0.6); max-width: 400px; text-align: center; }
+  .error-detail { font-size: var(--ui-text-xs); color: rgba(248,113,113,0.6); max-width: 400px; text-align: center; }
   .patterns-lower {
     align-items: start;
   }
@@ -507,7 +537,7 @@
   .cand-top { display: flex; align-items: center; justify-content: space-between; }
   .cand-sym { font-family: var(--sc-font-mono, monospace); font-size: 16px; font-weight: 700; color: #fff; }
   .accum-chip { color: #26a69a; border-color: rgba(38,166,154,0.28); background: rgba(38,166,154,0.08); }
-  .cand-meta { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace); }
+  .cand-meta { display: flex; justify-content: space-between; font-size: var(--ui-text-xs); color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace); }
   .cand-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
   .compact-action { min-height: 34px; padding: 0 12px; font-size: 0.8rem; }
   .compact-action.valid { color: #26a69a; border-color: rgba(38,166,154,0.28); }
@@ -524,8 +554,8 @@
     background: rgba(255,255,255,0.03);
     border-bottom: 1px solid rgba(255,255,255,0.06);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 0.08em;
+    font-size: 11px;
+    letter-spacing: 0.06em;
     color: rgba(255,255,255,0.25);
   }
   .table-row {
@@ -540,9 +570,9 @@
   .table-row.highlight { background: rgba(38,166,154,0.04); }
   .row-sym a { font-family: var(--sc-font-mono, monospace); font-size: 12px; font-weight: 700; color: #fff; text-decoration: none; }
   .row-sym a:hover { color: #63b3ed; }
-  .row-pattern { font-size: 10px; color: rgba(255,255,255,0.35); font-family: var(--sc-font-mono, monospace); }
-  .row-phase { font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 700; color: var(--phase-color); }
-  .row-time, .row-candles { font-family: var(--sc-font-mono, monospace); font-size: 10px; color: rgba(255,255,255,0.3); }
+  .row-pattern { font-size: 11px; color: rgba(255,255,255,0.35); font-family: var(--sc-font-mono, monospace); }
+  .row-phase { font-family: var(--sc-font-mono, monospace); font-size: 11px; font-weight: 700; color: var(--phase-color); }
+  .row-time, .row-candles { font-family: var(--sc-font-mono, monospace); font-size: 11px; color: rgba(255,255,255,0.3); }
 
   .section-head-right { display: flex; align-items: center; gap: 8px; }
 
@@ -552,22 +582,13 @@
     border-radius: 4px;
     color: rgba(255,255,255,0.7);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 3px 6px;
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
   }
   .sym-filter:focus { outline: none; border-color: rgba(255,255,255,0.25); }
-
-  .desktop-only { display: block; }
-  .mobile-only  { display: none; }
-
-  .mobile-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 8px;
-  }
 
   .transitions-shell { padding: 0; overflow: hidden; overflow-x: auto; }
   .transitions-table {
@@ -579,7 +600,7 @@
   .transitions-table th {
     padding: 6px 8px;
     text-align: left;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     color: rgba(255,255,255,0.25);
     border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -619,9 +640,8 @@
 
   @media (max-width: 640px) {
     .cand-actions { flex-wrap: wrap; }
-    .desktop-only { display: none; }
-    .mobile-only  { display: grid; }
     .hide-sm { display: none; }
-    .transitions-table { font-size: 10px; }
+    .transitions-table { font-size: var(--ui-text-xs); }
+    .table-header, .table-row { grid-template-columns: 64px 1fr 100px 60px 44px; }
   }
 </style>

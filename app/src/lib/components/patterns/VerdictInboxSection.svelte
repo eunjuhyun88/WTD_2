@@ -279,7 +279,7 @@
   }
   .card-phase {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.4);
     padding: 2px 6px;
     border: 1px solid rgba(255,255,255,0.12);
@@ -288,7 +288,7 @@
   .card-time {
     margin-left: auto;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.25);
   }
 
@@ -300,7 +300,7 @@
     font-size: 11px;
   }
   .card-outcome.muted { color: rgba(255,255,255,0.2); }
-  .outcome-res { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; }
+  .outcome-res { font-weight: 700; text-transform: uppercase; font-size: var(--ui-text-xs); letter-spacing: 0.06em; }
   .outcome-res.win  { color: #26a69a; }
   .outcome-res.loss { color: #ef5350; }
   .outcome-stat { color: rgba(255,255,255,0.35); }
