@@ -2059,6 +2059,10 @@
     z-index: 1;
   }
 
+  @media (max-width: 768px) {
+    .chart-board { min-height: 0; border-radius: 0; border: none; }
+  }
+
   /* ── TF scroll (ChartToolbar) ── */
   .tf-scroll {
     display: flex;

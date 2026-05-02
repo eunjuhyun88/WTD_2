@@ -84,6 +84,26 @@
     z-index: 10;
   }
 
+  @media (max-width: 768px) {
+    .drawing-toolbar {
+      flex-direction: row;
+      width: 100%;
+      height: 36px;
+      border-right: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 4px 8px;
+      gap: 2px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .drawing-toolbar::-webkit-scrollbar { display: none; }
+    .toolbar-divider {
+      width: 1px;
+      height: 20px;
+      margin: 0 4px;
+    }
+  }
+
   .tool-btn {
     width: 26px;
     height: 26px;

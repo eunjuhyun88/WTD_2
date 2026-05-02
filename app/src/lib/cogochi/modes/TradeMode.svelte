@@ -55,6 +55,19 @@
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
+
+  // Mobile swipe gesture
+  const MOBILE_VIEWS = ['chart', 'verdict', 'research', 'judge'] as const;
+  type MobileViewType = typeof MOBILE_VIEWS[number];
+  let swipeStartX = 0;
+  function onSwipeStart(e: TouchEvent) { swipeStartX = e.touches[0].clientX; }
+  function onSwipeEnd(e: TouchEvent) {
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    if (Math.abs(dx) < 48 || !mobileView || !setMobileView) return;
+    const idx = MOBILE_VIEWS.indexOf(mobileView as MobileViewType);
+    if (dx < 0 && idx < MOBILE_VIEWS.length - 1) setMobileView(MOBILE_VIEWS[idx + 1]);
+    else if (dx > 0 && idx > 0) setMobileView(MOBILE_VIEWS[idx - 1]);
+  }
   // Chart indicator toggles — backed by chartIndicators store (persisted, also LLM-controllable)
   const showOI      = $derived($chartIndicators.oi);
   const showFunding = $derived($chartIndicators.derivatives);
@@ -1130,7 +1143,7 @@
       {/each}
     </div>
     {#if mobileView !== 'chart'}
-    <div class="mobile-panel">
+    <div class="mobile-panel" ontouchstart={onSwipeStart} ontouchend={onSwipeEnd}>
       {#if mobileView === 'verdict'}
         {#if chartLoading}
           <div class="mobile-loading">
