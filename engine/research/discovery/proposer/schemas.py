@@ -74,4 +74,4 @@ class ChangeProposal(BaseModel):
 class ProposalBatch(BaseModel):
     """Batch of proposals from a single track."""
 
-    proposals: list[ChangeProposal] = Field(..., min_items=1, max_items=20)
+    proposals: list[ChangeProposal] = Field(..., min_length=1, max_length=20)
