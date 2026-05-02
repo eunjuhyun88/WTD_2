@@ -11,12 +11,15 @@
    */
   import { onMount } from 'svelte';
   import ChartBoard from './ChartBoard.svelte';
+  import { setActivePane } from '$lib/stores/paneIndicators';
 
   interface Props {
     /** Initial / controlled symbol */
     symbol: string;
     /** Initial / controlled timeframe */
     tf: string;
+    /** Unique pane ID for per-pane indicator isolation (W-0304) */
+    paneId?: number;
     /** Whether this pane is the active (focused) pane */
     active?: boolean;
     /** Whether the close button is visible (hidden when only 1 pane) */
@@ -38,6 +41,7 @@
   let {
     symbol: initialSymbol,
     tf: initialTf,
+    paneId = 0,
     active = false,
     closeable = true,
     onSymbolChange,
@@ -91,7 +95,10 @@
   }
 
   function handlePaneClick() {
-    if (!active) onActivate?.();
+    if (!active) {
+      setActivePane(paneId);
+      onActivate?.();
+    }
   }
 </script>
 
