@@ -12,6 +12,70 @@ eunjuhyun88 — PR1(engine), PR2(engine worker), PR3(app UI).
 
 ---
 
+## Goal
+
+`blocked_candidates` 테이블(migration 044)의 `forward_1h/4h/24h/72h` 컬럼을 실제 시장가격으로 채우고, `formula_evidence` 집계 테이블을 매일 갱신하여, "이 필터가 얼마나 많은 실제 수익 기회를 차단했는가"(drag_score)를 데이터로 측정한다. W-0378 AI Agent 명령 실행 시 `watch_only` 이벤트도 캡처한다.
+
+---
+
+## Scope
+
+```
+engine/supabase/migrations/047_formula_evidence.sql
+engine/research/blocked_candidate_store.py    # emit_blocked_candidate() + list_unresolved()
+engine/scanner/jobs/blocked_candidate_resolver.py  # 72h forward P&L 채우기
+engine/scanner/jobs/formula_evidence_materializer.py  # 매일 drag_score 집계
+engine/scheduler.py                           # 두 job APScheduler 등록
+engine/tests/test_blocked_candidate_resolver.py
+app/src/routes/lab/counterfactual/+page.svelte
+app/src/routes/patterns/formula/+page.svelte
+app/src/routes/patterns/filter-drag/+page.svelte
+```
+
+---
+
+## Non-Goals
+
+- `decision_events` 신규 테이블 생성 (기존 `blocked_candidates` 확장으로 충분)
+- 실시간 WebSocket 스트리밍 (daily materializer + polling으로 충분)
+- ML 재학습 트리거 (formula_evidence는 조회 전용 집계)
+- W-0379 autoresearch와 연동 (독립 실행 가능)
+
+---
+
+## Canonical Files
+
+```
+engine/supabase/migrations/047_formula_evidence.sql
+engine/research/blocked_candidate_store.py
+engine/scanner/jobs/blocked_candidate_resolver.py
+engine/scanner/jobs/formula_evidence_materializer.py
+engine/scheduler.py                           # APScheduler 등록 지점
+app/src/routes/lab/counterfactual/+page.svelte
+app/src/routes/patterns/formula/+page.svelte
+```
+
+---
+
+## Facts
+
+1. `blocked_candidates` 테이블은 migration 044에서 생성됨 (W-0382). `forward_1h/4h/24h/72h` 컬럼 존재하나 모두 NULL.
+2. `filter_reason` ENUM은 현재 9개 코드. 이번 work item에서 5개 추가 (migration 047).
+3. 최신 migration 번호: `046_ensemble_rounds.sql` → 이번 migration = `047`.
+4. `formula_evidence` 테이블은 신규 생성 (기존 없음). `drag_score = blocked_winner_rate × avg_missed_pnl`.
+5. blocked_candidate_resolver는 APScheduler 1h 간격. formula_evidence_materializer는 daily 03:30 UTC.
+6. `pattern_outcomes`의 실제 exit_return_pct와 `blocked_candidates.forward_24h` ≥ 50bps 비교로 `winner` 판정.
+
+---
+
+## Open Questions
+
+1. `blocked_candidates`에 `source` 컬럼 추가 필요 여부 (`engine` vs `ai_agent`). 현재 미존재 — migration 047에 포함 예정.
+2. `formula_evidence` compute 주기: daily 03:30 UTC vs. 매 resolve 후 incremental. 현재: daily batch.
+3. W-0378 watch_only emit 시점: agent 명령 dispatch 직후 vs. LLM 응답 완료 후. 현재 설계: dispatch 직후.
+
+---
+
 ## 목적 (Why this exists)
 
 ### 핵심 질문
@@ -435,7 +499,7 @@ Response: blocked_candidates rows, forward_* 포함, 최신순 정렬
 - D2: `formula_evidence`는 read-only materialized view 대신 실제 테이블(매일 INSERT)로 구현. UI가 시계열 히스토리를 볼 수 있어야 하기 때문.
 - D3: "winner" 판정 기준 = forward_24h >= 50bps (env로 오버라이드 가능). 24h를 주 기준으로 사용하는 이유: 1h는 노이즈가 많고, 72h는 채워지는 데 너무 오래 걸림.
 
-## Next Steps (after merge)
+## Next Steps
 
 - drag_score가 높은 필터 룰을 W-0379 autoresearch proposer의 입력으로 사용 (별도 설계)
 - AI Agent `/judge` 명령에서 formula_evidence를 컨텍스트로 주입 (W-0378 Phase 3)

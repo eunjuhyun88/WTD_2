@@ -12,6 +12,63 @@ eunjuhyun88 — backend PR1 (engine) + PR2 (app + API).
 
 ---
 
+## Goal
+
+`(symbol, time_range)` 입력 → Alpha 합성 점수(OI/funding/buy%/김프/Binance Alpha 리스트 5-module) + 과거 유사구간 상위 10개 + forward P&L을 단일 API 응답으로 반환. 차트 스크롤 이벤트에서 트리거되어 오른쪽 drawer에 즉시 표시. W-0378 AI Agent의 `/scan` `/similar` 명령의 내부 엔진이 된다.
+
+---
+
+## Scope
+
+```
+engine/alpha/__init__.py
+engine/alpha/composite_score.py       # Alpha 합성 점수 (Module A~F)
+engine/alpha/universe_seed.py         # 3-source universe merge
+engine/alpha/scroll_segment.py        # 구간 indicator snapshot + anomaly
+engine/alpha/scroll_similar_compose.py # scroll → similar pipeline
+engine/api/routes/alpha.py            # /alpha/scroll + /alpha/scan 엔드포인트 추가
+engine/tests/test_alpha_composite.py  # Unit tests 8개
+app/src/lib/components/scroll/ScrollAnalysisDrawer.svelte
+app/src/lib/components/scroll/ScrollAnalysisCard.svelte
+app/src/lib/stores/scrollAnalysis.ts
+app/src/routes/api/alpha/scroll/+server.ts
+```
+
+---
+
+## Non-Goals
+
+- 새 similarity 엔진 작성 (기존 `engine/search/similar.py` 재사용)
+- 실시간 WebSocket 스트리밍 (polling으로 충분)
+- Upbit/Bithumb 장애 시 에러 반환 (Module D skip = score 0 처리)
+- TradingView 공식 API 연동 (차트 스크롤 이벤트는 SvelteKit store 기반)
+
+---
+
+## Canonical Files
+
+```
+engine/alpha/composite_score.py       # 핵심 점수 계산 로직
+engine/alpha/scroll_segment.py        # 구간 분석
+engine/alpha/scroll_similar_compose.py # similar 파이프라인
+engine/api/routes/alpha.py            # API 진입점
+engine/search/similar.py              # 재사용 (수정 없음)
+app/src/lib/components/scroll/ScrollAnalysisDrawer.svelte
+```
+
+---
+
+## Facts
+
+- `engine/search/similar.py` 3-Layer (feature L1 + LCS phase + ML p_win, 가중치 0.60/0.30/0.10) 이미 존재 — 재사용.
+- `engine/api/routes/alpha.py` `/alpha/world-model`, `/alpha/token/{symbol}` 이미 존재 — 엔드포인트 2개 추가.
+- Binance Alpha 공식 토큰 리스트 엔드포인트: `https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list` (HTML 레퍼런스 실측).
+- `scan_signal_outcomes` 테이블에서 forward P&L 조회 (W-0377 Break B 수리 후 데이터 있음).
+- Upbit REST: `GET /v1/ticker?markets=KRW-{base}` — 서버사이드 fetch, CORS 없음.
+- 모든 외부 fetch는 `asyncio.gather` 병렬 실행 목표: cold ≤ 800ms, cache hit ≤ 80ms.
+
+---
+
 ## 목적 (Why this exists)
 
 현재 알파 탐색은 2단계(scan → outcome) 구조라 사용자가 차트를 스크롤해도 "지금 이 구간이 얼마나 이상한지"를 즉시 알 수 없다. 유사구간 검색도 AI Agent 명령어로만 호출 가능하고 응답이 느리다.
@@ -445,7 +502,7 @@ function close(): void
 - D2: 유사구간 파이프라인은 `engine/search/similar.py` 직접 재사용 — 새 엔진 작성 금지.
 - D3: Alpha 합성 점수 모듈은 독립 함수(pure function) — IO 없음, mock 없이 unit test 가능.
 
-## Next Steps (after merge)
+## Next Steps
 
 1. W-0378 Phase 1에서 `/alpha/scan` + `/alpha/scroll`을 AI Agent 명령 라우터에 연결
 2. 김프 시그널을 scan_signal_events에 feature column으로 추가 (W-0385 이후)
