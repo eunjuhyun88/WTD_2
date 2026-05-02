@@ -1,5 +1,5 @@
 # Inventory — 자동 생성 (tools/refresh_inventory.sh)
-# 마지막 갱신: 2026-05-02
+# 마지막 갱신: 2026-05-03
 # 이 파일을 직접 편집하지 말 것 — 다음 갱신 시 덮어씌워짐
 
 ## Slash Commands

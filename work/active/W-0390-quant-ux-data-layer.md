@@ -177,7 +177,7 @@ BTC/USDT  $95,123  +1.24%
 - [ ] AC13: vitest snapshot 5개 (TopBar/StatusBar/WatchlistRail/CommandPalette/Dashboard) PASS
 - [ ] AC14: 5개 PR merged + CURRENT.md SHA 업데이트
 
-## Facts (grep 실측)
+## Facts
 
 - `engine/api/routes/score_thread.py:87`: `funding_rate` float 존재
 - `engine/api/routes/patterns.py:401`: `funding_rate_last` 집계 존재

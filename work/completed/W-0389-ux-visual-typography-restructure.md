@@ -180,7 +180,7 @@ RIGHT: [● TRADE ▾]  [Pro]  [⚙]
 - [ ] AC12: vitest snapshot 7개 PASS
 - [ ] AC13: 7개 PR merged + CURRENT.md SHA 업데이트
 
-## Facts
+## Facts (grep 실측)
 
 - sub-11px 위반: 86 files / 730 occurrences
 - 최다 위반: IntelPanel.svelte(52), TradeMode.svelte(34), TrainMode.svelte(28)
