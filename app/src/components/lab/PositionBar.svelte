@@ -121,7 +121,7 @@
     border-radius: 4px;
     color: rgba(255 255 255 / 0.5);
     padding: 3px 8px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     cursor: pointer;
     transition: all 0.15s;
   }
@@ -150,7 +150,7 @@
   .close-btn:hover { background: rgba(207, 127, 143, 0.25); }
 
   .bar-progress {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.25);
   }
 </style>

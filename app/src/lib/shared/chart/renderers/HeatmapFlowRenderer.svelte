@@ -348,7 +348,7 @@
 		border: 1px solid rgba(39, 63, 86, 0.78);
 		padding: 4px 8px;
 		font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		background: rgba(8, 19, 32, 0.88);
 		color: rgba(158, 188, 214, 0.7);
 	}
@@ -375,7 +375,7 @@
 	}
 	.hfc-stage-chip em {
 		font-style: normal;
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: rgba(122, 156, 185, 0.72);
@@ -417,7 +417,7 @@
 		right: 8px;
 		transform: translateY(-50%);
 		font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		color: rgba(180, 206, 228, 0.74);
 	}
 	.hfc-time-rail {
@@ -428,7 +428,7 @@
 	}
 	.hfc-time-label {
 		font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		color: rgba(122, 156, 185, 0.72);
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
@@ -454,7 +454,7 @@
 	}
 	.hfc-track-label {
 		font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		letter-spacing: 1px;
 		text-transform: uppercase;
 		color: rgba(122, 156, 185, 0.72);

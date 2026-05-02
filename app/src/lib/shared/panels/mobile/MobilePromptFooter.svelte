@@ -103,7 +103,7 @@
 
   .result-kicker {
     font-family: var(--sc-font-mono);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -182,7 +182,7 @@
 
   .sending-dot {
     color: #fbbf24;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     animation: pulse 0.8s infinite;
   }
 

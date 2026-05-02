@@ -184,7 +184,7 @@
   /* ── App mark ── */
   .app-mark {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.18em;
     color: var(--sc-text-3, rgba(247, 242, 234, 0.38));
@@ -210,7 +210,7 @@
 
   .step-num {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     color: var(--sc-accent, #FF6B35);

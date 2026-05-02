@@ -101,7 +101,7 @@
   .dim {
     color: var(--g6);
     font-weight: 400;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .spacer {
@@ -118,7 +118,7 @@
     border: 0.5px solid var(--g4);
     border-radius: 4px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     color: var(--g6);
     cursor: pointer;

@@ -235,7 +235,7 @@
 
   .stat-label {
     font-family: var(--sc-font-body);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.35);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -297,7 +297,7 @@
   }
 
   .wf-col-label {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.35);
   }
 
@@ -350,7 +350,7 @@
 
   .ct-h-name, .ct-h {
     font-family: var(--sc-font-body);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.25);
     text-transform: uppercase;
     letter-spacing: 0.04em;

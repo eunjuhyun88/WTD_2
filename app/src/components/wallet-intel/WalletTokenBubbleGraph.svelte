@@ -77,13 +77,13 @@
   }
 
   .bubble-value {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.62);
     text-align: center;
   }
 
   .bubble-type {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: rgba(255, 255, 255, 0.44);

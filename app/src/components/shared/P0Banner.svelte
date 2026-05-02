@@ -87,7 +87,7 @@
 
   .p0-recommendation {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     color: #fff;
@@ -101,7 +101,7 @@
 
   .p0-time {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.72);
     flex-shrink: 0;
   }

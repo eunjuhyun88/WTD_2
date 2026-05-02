@@ -56,7 +56,7 @@
     font-family: var(--sc-font-mono);
     font-weight: 700;
     color: var(--sc-text-1);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
 
   .msg {
@@ -66,7 +66,7 @@
     animation: sc-pulse 1.4s ease-in-out infinite;
   }
 
-  .size-sm .msg { font-size: 10px; }
+  .size-sm .msg { font-size: var(--ui-text-xs); }
   .size-md .msg { font-size: 11px; }
   .size-lg .msg { font-size: 13px; }
 

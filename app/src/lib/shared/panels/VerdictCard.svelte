@@ -67,16 +67,16 @@
     font-size: 15px; font-weight: 900; color: #fff;
     letter-spacing: -.5px; font-family: var(--fd, var(--fm)); flex-shrink: 0;
   }
-  .vc-pair { font-size: 10px; color: rgba(255,255,255,.4); letter-spacing: .4px; flex-shrink: 0; }
-  .vc-meta { font-size: 9px; color: rgba(255,255,255,.25); flex-shrink: 0; }
+  .vc-pair { font-size: var(--ui-text-xs); color: rgba(255,255,255,.4); letter-spacing: .4px; flex-shrink: 0; }
+  .vc-meta { font-size: var(--ui-text-xs); color: rgba(255,255,255,.25); flex-shrink: 0; }
   .vc-reason {
-    font-size: 9px; color: rgba(255,255,255,.35);
+    font-size: var(--ui-text-xs); color: rgba(255,255,255,.35);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     flex: 1; min-width: 0;
   }
-  .vc-model { font-size: 7px; color: rgba(255,255,255,.18); flex-shrink: 0; white-space: nowrap; }
+  .vc-model { font-size: var(--ui-text-xs); color: rgba(255,255,255,.18); flex-shrink: 0; white-space: nowrap; }
   .vc-exec {
-    font-size: 8px; font-weight: 800; letter-spacing: .8px;
+    font-size: var(--ui-text-xs); font-weight: 800; letter-spacing: .8px;
     padding: 2px 8px; border: 1px solid rgba(0,230,118,.4);
     border-radius: 3px; background: rgba(0,230,118,.1); color: #00e676;
     cursor: pointer; flex-shrink: 0; transition: background .12s;

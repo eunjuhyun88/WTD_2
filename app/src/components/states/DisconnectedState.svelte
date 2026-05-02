@@ -48,12 +48,12 @@
     align-items: center;
     gap: 5px;
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3);
   }
 
   .dc-dot {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-bias-bear);
     animation: sc-pulse 2s ease-in-out infinite;
   }
@@ -69,7 +69,7 @@
     cursor: pointer;
     color: var(--sc-text-2);
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     text-decoration: underline;
     padding: 0;
   }
@@ -108,7 +108,7 @@
   }
 
   .dc-hint {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(248, 113, 113, 0.5);
     margin: 0;
   }
@@ -122,7 +122,7 @@
     border-radius: 4px;
     color: var(--sc-bias-bear);
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     padding: 5px 10px;
     cursor: pointer;

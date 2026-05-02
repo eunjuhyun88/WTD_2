@@ -624,14 +624,14 @@ button {
   background: var(--g0); flex-shrink: 0; height: 34px;
   font-family: 'JetBrains Mono', monospace;
 }
-.tm-act-step { font-size: 7px; color: var(--amb); letter-spacing: 0.22em; }
+.tm-act-step { font-size: var(--ui-text-xs); color: var(--amb); letter-spacing: 0.22em; }
 .tm-act-div { width: 1px; height: 12px; background: var(--g4); }
 .tm-act-sym { font-size: 12px; color: var(--g9); font-weight: 600; }
-.tm-act-tf { font-size: 9px; color: var(--g6); }
-.tm-act-dir { font-size: 9px; color: var(--brand); font-weight: 600; }
-.tm-act-pat { font-size: 9px; color: var(--g6); }
+.tm-act-tf { font-size: var(--ui-text-xs); color: var(--g6); }
+.tm-act-dir { font-size: var(--ui-text-xs); color: var(--brand); font-weight: 600; }
+.tm-act-pat { font-size: var(--ui-text-xs); color: var(--g6); }
 .tm-act-alpha {
-  font-size: 10px; color: var(--amb); font-weight: 600;
+  font-size: var(--ui-text-xs); color: var(--amb); font-weight: 600;
   padding: 2px 7px; background: var(--g2); border-radius: 3px;
 }
 .tm-act-cols { flex: 1; display: flex; min-height: 0; overflow: hidden; }
@@ -647,7 +647,7 @@ button {
 }
 .tm-past-header {
   display: flex; align-items: center; gap: 8px;
-  font-family: 'JetBrains Mono', monospace; font-size: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: var(--ui-text-xs);
   letter-spacing: 0.14em; margin-bottom: 8px;
 }
 .tm-past-title { color: var(--amb); font-weight: 600; }
@@ -660,19 +660,19 @@ button {
   transition: all 0.12s; text-align: left;
 }
 .tm-past-card:hover { background: var(--g2); border-color: var(--g4); }
-.tm-past-sym { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--g9); font-weight: 500; }
+.tm-past-sym { font-family: 'JetBrains Mono', monospace; font-size: var(--ui-text-xs); color: var(--g9); font-weight: 500; }
 .tm-past-pnl { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; }
-.tm-past-sim { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); }
+.tm-past-sim { font-family: 'JetBrains Mono', monospace; font-size: var(--ui-text-xs); color: var(--g5); }
 
 /* Group 3: after-col / after-empty / bias-* */
 .tm-after-col { flex: 1.2; min-width: 0; }
 .tm-after-empty {
   flex: 1; display: flex; align-items: center; justify-content: center;
   padding: 10px; border: 0.5px dashed var(--g4); border-radius: 3px;
-  font-size: 10px; color: var(--g5); text-align: center; line-height: 1.5;
+  font-size: var(--ui-text-xs); color: var(--g5); text-align: center; line-height: 1.5;
 }
 .tm-bias-box {
-  padding: 5px 8px; border-radius: 3px; font-size: 9px; line-height: 1.5;
+  padding: 5px 8px; border-radius: 3px; font-size: var(--ui-text-xs); line-height: 1.5;
 }
 .tm-bias-good { background: var(--pos-dd); border: 0.5px solid var(--pos-d); color: var(--pos); }
 .tm-bias-warn { background: var(--amb-dd); border: 0.5px solid var(--amb-d); color: var(--amb); }
@@ -692,7 +692,7 @@ button {
   padding: 2px 3px;
   border-radius: 3px;
   color: var(--g7);
-  font-size: 8px;
+  font-size: var(--ui-text-xs);
   background: rgba(255,255,255,0.012);
 }
 .tm-tape-row.buy { color: var(--pos); background: rgba(74,187,142,0.035); }
@@ -742,7 +742,7 @@ button {
 .tm-ledger-label,
 .tm-ledger-note {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 7px;
+  font-size: var(--ui-text-xs);
   color: var(--g5);
   letter-spacing: 0.1em;
   text-transform: uppercase;

@@ -171,7 +171,7 @@
     background: rgba(255, 255, 255, 0.04);
     color: var(--sc-text-2, rgba(255,255,255,0.5));
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     cursor: pointer;
@@ -251,7 +251,7 @@
 
   .row-symbol {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3, rgba(255,255,255,0.3));
     text-transform: uppercase;
   }

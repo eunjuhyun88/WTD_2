@@ -73,7 +73,7 @@
   }
 
   .stale-age {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(251, 191, 36, 0.6);
     margin: 0;
   }

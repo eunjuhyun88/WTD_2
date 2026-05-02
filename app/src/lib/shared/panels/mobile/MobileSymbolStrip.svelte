@@ -157,7 +157,7 @@
 
   .tf-chip {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--sc-text-3, rgba(255,255,255,0.4));

@@ -161,7 +161,7 @@
     background: var(--red);
     color: #fff;
     font-family: var(--fm);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     min-width: 18px;
     height: 18px;
@@ -239,7 +239,7 @@
   }
   .tray-action {
     font-family: var(--fm);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 1px;
     color: var(--dim);
@@ -282,7 +282,7 @@
     text-align: center;
     padding: 30px 14px;
     font-family: var(--fm);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--dim);
     letter-spacing: 1px;
   }
@@ -334,7 +334,7 @@
   }
   .notif-title {
     font-family: var(--fm);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     letter-spacing: 1px;
     color: var(--fg-strong);
@@ -344,21 +344,21 @@
   }
   .notif-time {
     font-family: var(--fm);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: var(--dim);
     flex-shrink: 0;
     margin-left: auto;
   }
   .notif-body {
     font-family: var(--fm);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--fg-medium);
     line-height: var(--lh-relaxed);
     word-wrap: break-word;
   }
 
   .notif-dismiss {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--dim);
     background: none;
     border: none;

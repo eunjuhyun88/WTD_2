@@ -135,7 +135,7 @@
     50% { opacity: 0.3; transform: scale(0.7); }
   }
   .verdict-label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 1px;
     color: rgba(240, 237, 228, 0.5);
@@ -148,27 +148,27 @@
     flex-wrap: wrap;
   }
   .verdict-pair {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     color: #F0EDE4;
     letter-spacing: .5px;
   }
   .verdict-sep {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(240,237,228,.2);
   }
   .verdict-meta {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(240, 237, 228, 0.4);
     letter-spacing: 0.5px;
   }
   .verdict-time {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(240, 237, 228, 0.25);
     margin-left: auto;
   }
   .verdict-chevron {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(240, 237, 228, 0.25);
   }
   /* Expanded detail */
@@ -178,7 +178,7 @@
     border-top: 1px solid rgba(232, 150, 125, 0.08);
   }
   .verdict-summary {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(240, 237, 228, 0.6);
     line-height: 1.5;
     margin: 0 0 6px;
@@ -192,13 +192,13 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .va-name {
     color: rgba(240, 237, 228, 0.4);
     min-width: 68px;
     text-transform: uppercase;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.5px;
   }

@@ -116,7 +116,7 @@
 
   .tf-btn {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.04em;
     color: rgba(247, 242, 234, 0.45);
@@ -164,7 +164,7 @@
 
   .btn-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     color: rgba(247, 242, 234, 0.55);
     letter-spacing: 0.04em;
@@ -174,7 +174,7 @@
   /* Indicators */
   .indicator-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(131, 188, 255, 0.9);
     background: rgba(131, 188, 255, 0.12);
     border-radius: 2px;
@@ -185,7 +185,7 @@
 
   /* Save Setup */
   .save-btn .save-icon {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(131, 188, 255, 0.7);
   }
 

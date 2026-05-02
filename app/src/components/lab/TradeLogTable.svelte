@@ -128,7 +128,7 @@
   justify-content: center;
   padding: 32px 16px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: var(--g5);
 }
 
@@ -136,7 +136,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
 }
 
 thead tr {
@@ -151,7 +151,7 @@ th {
   padding: 0 8px;
   height: 24px;
   text-align: left;
-  font-size: 8px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--g6);
@@ -188,11 +188,11 @@ td {
 }
 
 /* Columns */
-.col-num { color: var(--g5); font-size: 9px; width: 28px; }
-.col-price { color: var(--g8); font-size: 10px; }
-.col-hold { color: var(--g7); font-size: 9px; }
+.col-num { color: var(--g5); font-size: var(--ui-text-xs); width: 28px; }
+.col-price { color: var(--g8); font-size: var(--ui-text-xs); }
+.col-hold { color: var(--g7); font-size: var(--ui-text-xs); }
 .col-pnl { font-weight: 700; font-size: 11px; }
-.col-r { font-size: 9px; }
+.col-r { font-size: var(--ui-text-xs); }
 
 /* Side badge */
 .side-badge {
@@ -201,7 +201,7 @@ td {
   padding: 0 5px;
   height: 16px;
   border-radius: 2px;
-  font-size: 8px;
+  font-size: var(--ui-text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -221,7 +221,7 @@ td.muted { color: var(--g6); }
 
 /* Exit tag */
 .exit-tag {
-  font-size: 8px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
 }

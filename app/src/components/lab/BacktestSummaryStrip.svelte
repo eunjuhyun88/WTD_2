@@ -87,7 +87,7 @@
 
 .lbl {
   font-family: var(--font-mono);
-  font-size: 7px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   letter-spacing: 0.12em;
   color: var(--g6);

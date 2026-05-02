@@ -142,7 +142,7 @@
   .tenors {
     display: flex;
     justify-content: space-between;
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: var(--g4, rgba(255,255,255,0.28));
     letter-spacing: 0.02em;
     margin-top: 1px;

@@ -219,8 +219,8 @@
   .sel-item.disabled { opacity: 0.35; cursor: not-allowed; }
   .sel-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .sel-dot.empty { border: 1px solid var(--g4, #444); }
-  .sel-slug { font-size: 10px; color: var(--g7, #bbb); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sel-sharpe { font-size: 9px; color: var(--g5, #666); font-variant-numeric: tabular-nums; }
+  .sel-slug { font-size: var(--ui-text-xs); color: var(--g7, #bbb); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sel-sharpe { font-size: var(--ui-text-xs); color: var(--g5, #666); font-variant-numeric: tabular-nums; }
 
   .chart-panel { display: flex; flex-direction: column; gap: 12px; }
   .chart-empty { font-size: 12px; color: var(--g5, #666); padding: 80px 0; text-align: center; }
@@ -230,7 +230,7 @@
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
     padding: 6px 12px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     gap: 4px;
   }
   .st-header { color: var(--g5, #666); text-transform: uppercase; background: var(--g1, #0e0e0e); border-bottom: 1px solid var(--g3, #2a2a2a); }

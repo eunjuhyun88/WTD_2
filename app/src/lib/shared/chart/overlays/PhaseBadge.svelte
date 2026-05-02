@@ -80,7 +80,7 @@
 
   .phase-name {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -89,7 +89,7 @@
 
   .phase-conf {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.55);
   }
 </style>

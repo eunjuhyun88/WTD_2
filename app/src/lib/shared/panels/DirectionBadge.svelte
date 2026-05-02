@@ -82,15 +82,15 @@
 
   .dir-badge.xs {
     padding: 2px 5px;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
   .dir-badge.sm {
     padding: 3px 7px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .dir-badge.md {
     padding: 4px 9px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .db-arrow,

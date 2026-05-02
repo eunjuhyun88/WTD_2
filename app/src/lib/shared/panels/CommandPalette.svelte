@@ -160,7 +160,7 @@
 
   .section {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.14em;
     width: 60px;
@@ -175,7 +175,7 @@
 
   .hint {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     padding: 2px 6px;
     background: var(--g2);

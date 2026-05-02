@@ -137,7 +137,7 @@
 
   .token-chip small {
     color: rgba(255, 255, 255, 0.48);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .event-row {

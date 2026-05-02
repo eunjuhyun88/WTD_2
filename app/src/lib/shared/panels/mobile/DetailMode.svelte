@@ -243,7 +243,7 @@
   }
 
   .breadcrumb-tf {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3, rgba(255,255,255,0.3));
     font-weight: 600;
   }
@@ -318,7 +318,7 @@
 
   .confidence-chip {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 4px;
@@ -415,7 +415,7 @@
 
   .ev-metric {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     color: var(--sc-text-2, rgba(255,255,255,0.5));
     letter-spacing: 0.05em;
@@ -454,7 +454,7 @@
   /* Shared labels */
   .section-label {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -507,7 +507,7 @@
 
   .conc-label {
     font-family: var(--sc-font-mono);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;

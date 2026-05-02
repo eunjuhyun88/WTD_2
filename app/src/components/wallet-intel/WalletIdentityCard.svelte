@@ -132,7 +132,7 @@
 
   .meta-chip span {
     display: block;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: rgba(255, 255, 255, 0.45);

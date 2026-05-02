@@ -173,7 +173,7 @@
 	.cw-signal-badge,
 	.cw-note span {
 		font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		font-weight: 700;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
@@ -253,7 +253,7 @@
 
 	.cw-signal-badge small {
 		font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		color: rgba(247, 242, 234, 0.56);
 	}
 

@@ -188,7 +188,7 @@
     gap: 12px;
   }
   .ds { display: flex; flex-direction: column; gap: 2px; }
-  .ds span { font-size: 10px; color: var(--g5, #666); text-transform: uppercase; }
+  .ds span { font-size: var(--ui-text-xs); color: var(--g5, #666); text-transform: uppercase; }
   .ds strong { font-size: 14px; font-weight: 700; color: var(--g9, #f0f0f0); font-variant-numeric: tabular-nums; }
   .drill-warn {
     margin-top: 12px;

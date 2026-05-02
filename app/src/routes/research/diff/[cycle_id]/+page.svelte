@@ -321,7 +321,7 @@
 	}
 
 	.metric .label {
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: var(--g6);
@@ -369,7 +369,7 @@
 	}
 
 	.layer-desc {
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		color: var(--g6);
 	}
 
@@ -396,7 +396,7 @@
 	}
 
 	.failure-reason {
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		color: var(--neg);
 		background: var(--neg-d);
 		padding: 6px 8px;
@@ -410,7 +410,7 @@
 		border-radius: 3px;
 		overflow-x: auto;
 		font-family: var(--font-mono, ui-monospace);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		line-height: 1.5;
 		color: var(--g7);
 		margin: 0;

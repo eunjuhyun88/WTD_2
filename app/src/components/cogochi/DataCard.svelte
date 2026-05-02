@@ -76,7 +76,7 @@
 
   .dc-title {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 1.5px;
     color: var(--sc-text-3, rgba(247,242,234,0.52));
@@ -100,7 +100,7 @@
 
   .dc-sub {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3, rgba(247,242,234,0.52));
     margin-top: 3px;
     letter-spacing: 0.3px;
