@@ -54,7 +54,7 @@
   <!-- Strategy picker -->
   <div class="tb-group" class:open={showStratPicker}>
     <button class="tb-btn strat-btn" onclick={() => { showStratPicker = !showStratPicker; showCyclePicker = false; }}>
-      <span class="tb-label">{activeStrategy?.name ?? '챌린지 선택'}</span>
+      <span class="tb-label">{activeStrategy?.name ?? 'Select Strategy'}</span>
       <span class="tb-ver">{activeStrategy ? `v${activeStrategy.version}` : ''}</span>
       <span class="tb-arrow">▾</span>
     </button>
@@ -68,8 +68,8 @@
           </button>
         {/each}
         <div class="dd-sep"></div>
-        <button class="dd-item add" onclick={() => { onNewStrategy(); showStratPicker = false; }}>+ 새 챌린지</button>
-        <button class="dd-item add" onclick={() => { onImport(); showStratPicker = false; }}>임포트</button>
+        <button class="dd-item add" onclick={() => { onNewStrategy(); showStratPicker = false; }}>+ New Strategy</button>
+        <button class="dd-item add" onclick={() => { onImport(); showStratPicker = false; }}>Import</button>
       </div>
     {/if}
   </div>
@@ -79,7 +79,7 @@
   <!-- Cycle picker -->
   <div class="tb-group" class:open={showCyclePicker}>
     <button class="tb-btn" onclick={() => { showCyclePicker = !showCyclePicker; showStratPicker = false; }}>
-      <span class="tb-label">{cycleCount}개 사이클</span>
+      <span class="tb-label">{cycleCount} Cycles</span>
       <span class="tb-arrow">▾</span>
     </button>
     {#if showCyclePicker}
@@ -101,8 +101,8 @@
 
   <!-- Mode toggle -->
   <div class="mode-toggle">
-    <button class="mode-btn" class:active={mode === 'auto'} onclick={mode === 'manual' ? onToggleMode : undefined}>자동</button>
-    <button class="mode-btn" class:active={mode === 'manual'} onclick={mode === 'auto' ? onToggleMode : undefined}>수동</button>
+    <button class="mode-btn" class:active={mode === 'auto'} onclick={mode === 'manual' ? onToggleMode : undefined}>Auto</button>
+    <button class="mode-btn" class:active={mode === 'manual'} onclick={mode === 'auto' ? onToggleMode : undefined}>Manual</button>
   </div>
 
   <div class="tb-sep"></div>
@@ -126,7 +126,7 @@
       {:else}
         ▶
       {/if}
-      실행
+      Run
     </button>
   {:else}
     <button class="run-btn next-bar" onclick={onNextBar}>

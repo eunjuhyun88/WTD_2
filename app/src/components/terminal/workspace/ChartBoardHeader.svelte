@@ -138,7 +138,7 @@
 
     <div class="tv-actions">
       <!-- Chart type selector -->
-      <div class="mode-switch" role="group" aria-label="차트 타입">
+      <div class="mode-switch" role="group" aria-label="Chart type">
         {#each [
           { mode: 'candle', label: 'Candles' },
           { mode: 'heikin', label: 'HA' },
@@ -156,7 +156,7 @@
       </div>
 
       <!-- Price scale mode selector -->
-      <div class="scale-btns" role="group" aria-label="가격 스케일 모드">
+      <div class="scale-btns" role="group" aria-label="Price scale mode">
         {#each [
           { mode: 'normal', label: 'Auto' },
           { mode: 'log', label: 'Log' },
@@ -296,7 +296,7 @@
           class="capture-save-btn drawing-toggle"
           class:active={drawingMode}
           onclick={onToggleDrawingMode}
-          title={drawingMode ? '드로잉 도구 닫기' : '드로잉 도구 열기'}
+          title={drawingMode ? 'Close drawing tools' : 'Open drawing tools'}
           aria-pressed={drawingMode}
         >✏</button>
       {/if}
@@ -316,7 +316,7 @@
           class="capture-open-btn"
           href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}&autorun=1`}
         >
-          이거 찾아줘 →
+          Analyze →
         </a>
       {/if}
     </div>

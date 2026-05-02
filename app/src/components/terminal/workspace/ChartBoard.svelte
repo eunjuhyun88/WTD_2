@@ -2064,7 +2064,7 @@
 <!-- Toast: saved confirmation -->
 {#if savedCaptureId}
   <div class="save-toast">
-    ✓ 캡처 저장됨 — <a href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}&autorun=1`} class="toast-link">이거 찾아줘 →</a>
+    ✓ Capture saved — <a href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}&autorun=1`} class="toast-link">Analyze →</a>
   </div>
 {/if}
 

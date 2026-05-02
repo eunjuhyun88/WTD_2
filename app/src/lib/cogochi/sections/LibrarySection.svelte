@@ -8,10 +8,10 @@
   const { onOpenTab }: Props = $props();
 
   const suggestions = [
-    { text: 'OI 급증 후 번지대 3시간 · accumulation', tag: 'tradoor_v2', matches: 8 },
-    { text: 'real_dump 후 higher-lows + funding 플립', tag: 'ptb', matches: 5 },
-    { text: 'VWAP reclaim + CVD 양전환', tag: 'vwap', matches: 11 },
-    { text: 'BB squeeze 해제 · 15m', tag: 'squeeze', matches: 3 },
+    { text: 'OI spike + range 3h · accumulation', tag: 'tradoor_v2', matches: 8 },
+    { text: 'real_dump + higher-lows + funding flip', tag: 'ptb', matches: 5 },
+    { text: 'VWAP reclaim + CVD positive flip', tag: 'vwap', matches: 11 },
+    { text: 'BB squeeze release · 15m', tag: 'squeeze', matches: 3 },
   ];
 
   const items = [];

@@ -34,7 +34,7 @@
         <button
           class="st-close"
           type="button"
-          aria-label="닫기"
+          aria-label="Close"
           onclick={() => systemToasts.dismiss(toast.id)}
         >✕</button>
       </div>

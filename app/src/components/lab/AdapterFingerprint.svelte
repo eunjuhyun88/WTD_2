@@ -53,30 +53,30 @@
 
     <div class="afp-meta-grid">
       <div class="afp-meta-row">
-        <span class="afp-meta-label">훈련</span>
+        <span class="afp-meta-label">Training</span>
         <span class="afp-meta-value">{fmtTrainedAt(version.trainedAt)}</span>
       </div>
       <div class="afp-meta-row">
-        <span class="afp-meta-label">비용</span>
+        <span class="afp-meta-label">Cost</span>
         <span class="afp-meta-value">${version.cost.toFixed(3)}</span>
       </div>
       <div class="afp-meta-row">
-        <span class="afp-meta-label">피드백</span>
-        <span class="afp-meta-value">{version.feedbackCount}개</span>
+        <span class="afp-meta-label">Feedback</span>
+        <span class="afp-meta-value">{version.feedbackCount} items</span>
       </div>
       <div class="afp-meta-row">
-        <span class="afp-meta-label">적중률</span>
+        <span class="afp-meta-label">Hit Rate</span>
         <span class="afp-meta-value afp-positive">{version.hitRate}%</span>
       </div>
       {#if version.deltaPct > 0}
         <div class="afp-meta-row">
           <span class="afp-meta-label">val gate</span>
-          <span class="afp-meta-value afp-positive">+{version.deltaPct}%p 통과 ✓ (배포됨)</span>
+          <span class="afp-meta-value afp-positive">+{version.deltaPct}%p Pass ✓ (Deployed)</span>
         </div>
       {/if}
     </div>
 
-    <div class="afp-section-label">Learned Patterns (weight 변화 Top {weightChanges.length})</div>
+    <div class="afp-section-label">Learned Patterns (Top {weightChanges.length} weight changes)</div>
 
     <div class="afp-weights">
       {#each weightChanges as w}

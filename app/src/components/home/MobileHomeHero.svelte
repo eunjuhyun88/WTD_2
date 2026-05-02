@@ -59,9 +59,9 @@
   }
 
   const LOOP_STEPS = [
-    { num: '01', label: 'Capture', desc: '차트에서 셋업 저장', emphasized: false },
-    { num: '02', label: 'Scan',    desc: '유사한 장면 자동 탐지', emphasized: false },
-    { num: '03', label: 'Judge',   desc: '판단을 기록하면 다음 기회가 먼저 온다', emphasized: true },
+    { num: '01', label: 'Capture', desc: 'Save a setup from the chart', emphasized: false },
+    { num: '02', label: 'Scan',    desc: 'Auto-detect similar setups', emphasized: false },
+    { num: '03', label: 'Judge',   desc: 'Record your verdict — and the next opportunity comes first', emphasized: true },
   ] as const;
 </script>
 
@@ -70,8 +70,8 @@
   <div class="thesis-block">
     <h1 class="thesis-h1">Markets move on.<br/>Your judgment<br/>should stay.</h1>
     <p class="thesis-sub">
-      Cogochi는 트레이더가 셋업을 판단하는 방식을 저장하고,
-      비슷한 순간이 돌아올 때 가장 먼저 불러옵니다.
+      Cogochi saves the way you judge setups,
+      and surfaces them first when a similar moment comes back.
     </p>
   </div>
 
@@ -85,7 +85,7 @@
         value={inputText}
         oninput={handleInput}
         onkeydown={handleKeydown}
-        placeholder="btc 4h 되돌림 후 돌파"
+        placeholder="btc 4h retest breakout"
         autocomplete="off"
         autocorrect="off"
         spellcheck={false}
@@ -93,7 +93,7 @@
     </div>
 
     <button type="submit" class="cta-primary">
-      터미널 열기
+      Open Terminal
     </button>
 
     <button
@@ -101,7 +101,7 @@
       class="cta-secondary"
       onclick={() => void goto('/lab')}
     >
-      Lab에서 전략 평가 보기
+      View strategy evaluation in Lab
     </button>
   </form>
 

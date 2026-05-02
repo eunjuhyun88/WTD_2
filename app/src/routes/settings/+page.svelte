@@ -112,13 +112,13 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: '안녕',
+          message: 'Hello',
           greeting: true,
           runtimeConfig: { mode: aiMode, provider: aiProvider, apiKey: aiApiKey, ollamaModel: aiOllamaModel, ollamaEndpoint: aiOllamaEndpoint },
           locale: settings.language === 'kr' ? 'ko-KR' : 'en-US',
         }),
       });
-      if (!res.ok || !res.body) { testResult = '연결 실패'; return; }
+      if (!res.ok || !res.body) { testResult = 'Connection failed'; return; }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
@@ -138,9 +138,9 @@
           } catch {}
         }
       }
-      if (!text) testResult = '✓ 연결됨';
+      if (!text) testResult = '✓ Connected';
     } catch (e: any) {
-      testResult = '오류: ' + (e.message || '알 수 없음');
+      testResult = 'Error: ' + (e.message || 'Unknown');
     } finally {
       testLoading = false;
     }
@@ -225,8 +225,8 @@
 
       <div class="setting-row">
         <div class="sr-info">
-          <div class="sr-label">모드</div>
-          <div class="sr-desc">DOUNI 인사이트 생성 방식</div>
+          <div class="sr-label">Mode</div>
+          <div class="sr-desc">DOUNI insight generation method</div>
         </div>
         <div class="mode-btns">
           {#each ['TERMINAL', 'HEURISTIC', 'OLLAMA', 'API'] as m}
@@ -239,13 +239,13 @@
 
       <div class="mode-desc-row">
         {#if aiMode === 'TERMINAL'}
-          <p>데이터 터미널만 — AI 없음. Bloomberg 스타일 원시 데이터.</p>
+          <p>Data terminal only — no AI. Bloomberg-style raw data.</p>
         {:else if aiMode === 'HEURISTIC'}
-          <p>템플릿 합성 — LLM 없이 구조화된 스냅샷 요약. 가장 가벼운 백업 모드.</p>
+          <p>Template synthesis — structured snapshot summary without LLM. Lightest fallback mode.</p>
         {:else if aiMode === 'OLLAMA'}
-          <p>로컬 Ollama — 내 컴퓨터에서 실행. 프라이버시 완전 보장.</p>
+          <p>Local Ollama — runs on your machine. Full privacy.</p>
         {:else}
-          <p>전체 AI 분석 — 저장된 개인 키가 있으면 우선 사용하고, 없으면 서버에 설정된 provider로 실행.</p>
+          <p>Full AI analysis — uses your saved personal key if available, otherwise falls back to the server-configured provider.</p>
         {/if}
       </div>
 
@@ -253,10 +253,10 @@
         <div class="setting-row">
           <div class="sr-info">
             <div class="sr-label">Provider</div>
-            <div class="sr-desc">Groq 무료 · 빠름 (추천)</div>
+            <div class="sr-desc">Groq free · fast (recommended)</div>
           </div>
           <select class="sr-select" bind:value={aiProvider} onchange={saveAiConfig}>
-            <option value="groq">Groq (무료)</option>
+            <option value="groq">Groq (free)</option>
             <option value="cerebras">Cerebras</option>
             <option value="mistral">Mistral</option>
             <option value="openrouter">OpenRouter</option>
@@ -267,7 +267,7 @@
         <div class="setting-row">
           <div class="sr-info">
             <div class="sr-label">API Key</div>
-            <div class="sr-desc">선택사항 · 있으면 localStorage 저장 후 개인 키를 우선 사용</div>
+            <div class="sr-desc">Optional · if provided, saved to localStorage and used first</div>
           </div>
           <input
             type="password"
@@ -282,8 +282,8 @@
       {#if aiMode === 'OLLAMA'}
         <div class="setting-row">
           <div class="sr-info">
-            <div class="sr-label">엔드포인트</div>
-            <div class="sr-desc">Ollama 서버 주소</div>
+            <div class="sr-label">Endpoint</div>
+            <div class="sr-desc">Ollama server address</div>
           </div>
           <input
             type="text"
@@ -296,8 +296,8 @@
 
         <div class="setting-row">
           <div class="sr-info">
-            <div class="sr-label">모델</div>
-            <div class="sr-desc">설치된 Ollama 모델명</div>
+            <div class="sr-label">Model</div>
+            <div class="sr-desc">Installed Ollama model name</div>
           </div>
           <input
             type="text"
@@ -312,11 +312,11 @@
       {#if aiMode !== 'TERMINAL'}
         <div class="setting-row">
           <div class="sr-info">
-            <div class="sr-label">테스트</div>
-            <div class="sr-desc">DOUNI에게 인사 메시지 전송</div>
+            <div class="sr-label">Test</div>
+            <div class="sr-desc">Send greeting message to DOUNI</div>
           </div>
           <button class="test-btn" onclick={testAi} disabled={testLoading}>
-            {testLoading ? '...' : '테스트'}
+            {testLoading ? '...' : 'Test'}
           </button>
         </div>
         {#if testResult}
@@ -394,7 +394,7 @@
           <div class="sr-desc">Interface language</div>
         </div>
         <select class="sr-select" bind:value={settings.language} onchange={() => updateSetting('language', settings.language)}>
-          <option value="kr">한국어</option>
+          <option value="kr">Korean</option>
           <option value="en">English</option>
         </select>
       </div>
@@ -454,7 +454,7 @@
       <div class="setting-row tg-row">
         <div class="sr-info">
           <div class="sr-label">Telegram Bot</div>
-          <div class="sr-desc">패턴 알림을 Telegram으로 수신</div>
+          <div class="sr-desc">Receive pattern alerts via Telegram</div>
         </div>
         <TelegramConnectWidget />
       </div>

@@ -71,7 +71,7 @@
         <h1 class="surface-title">Lifecycle</h1>
       </div>
       <p class="surface-subtitle">
-        Draft, candidate, object, archived 상태를 같은 운영 화면에서 관리합니다.
+        Manage draft, candidate, object, and archived states from a single operations view.
       </p>
     </div>
 
@@ -118,17 +118,17 @@
     {#if loading}
       <section class="surface-card page-state">
         <span class="pulse"></span>
-        <span>라이프사이클 로딩 중…</span>
+        <span>Loading lifecycle…</span>
       </section>
     {:else if error}
       <section class="surface-card page-state error-state">
-        <p>엔진 연결 실패</p>
+        <p>Engine connection failed</p>
         <p class="error-detail">{error}</p>
         <button class="surface-button-secondary" onclick={loadLifecycle}>Retry</button>
       </section>
     {:else if filteredEntries.length === 0}
       <section class="surface-card page-state">
-        <p>{filter === 'all' ? '패턴이 없습니다.' : `${filter} 상태 패턴이 없습니다.`}</p>
+        <p>{filter === 'all' ? 'No patterns found.' : `No patterns in ${filter} status.`}</p>
       </section>
     {:else}
       <section class="lifecycle-grid" aria-label="Pattern lifecycle list">

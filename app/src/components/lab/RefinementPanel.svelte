@@ -89,9 +89,9 @@
   }
 
   function decayLabel(decay: string | null): string {
-    if (!decay || decay === 'stable') return '안정';
-    if (decay === 'improving') return '개선중';
-    return '감쇄';
+    if (!decay || decay === 'stable') return 'Stable';
+    if (decay === 'improving') return 'Improving';
+    return 'Decaying';
   }
 
   function isLoading(tab: 'leaderboard' | 'suggestions'): boolean {
@@ -106,7 +106,7 @@
       class:active={activeTab === 'leaderboard'}
       onclick={() => { activeTab = 'leaderboard'; }}
     >
-      리더보드
+      Leaderboard
       {#if lbState === 'ready'}
         <span class="tab-badge">{leaderboard.filter(r => r.total > 0).length}</span>
       {/if}
@@ -116,7 +116,7 @@
       class:active={activeTab === 'suggestions'}
       onclick={() => { activeTab = 'suggestions'; }}
     >
-      개선 제안
+      Improvement Suggestions
       {#if sgState === 'ready' && suggestions.length > 0}
         <span class="tab-badge warn">{suggestions.length}</span>
       {/if}
@@ -128,27 +128,27 @@
       {#if lbState === 'loading'}
         <div class="state-empty">
           <div class="spinner"></div>
-          <p class="state-text">리더보드 로딩 중…</p>
+          <p class="state-text">Loading leaderboard…</p>
         </div>
       {:else if lbState === 'error'}
         <div class="state-empty">
-          <p class="state-error">엔진 연결 실패: {lbError}</p>
-          <button class="retry-btn" onclick={loadLeaderboard}>재시도</button>
+          <p class="state-error">Engine connection failed: {lbError}</p>
+          <button class="retry-btn" onclick={loadLeaderboard}>Retry</button>
         </div>
       {:else if lbState === 'empty'}
         <div class="state-empty">
           <div class="empty-icon">📊</div>
-          <p class="state-text">패턴 데이터가 없습니다.<br/>터미널에서 JUDGE를 통해 데이터를 누적해주세요.</p>
+          <p class="state-text">No pattern data available.<br/>Accumulate data via JUDGE in the terminal.</p>
         </div>
       {:else if lbState === 'ready'}
         <div class="lb-table">
           <div class="lb-header">
-            <span>패턴</span>
-            <span class="right">건수</span>
-            <span class="right">승률</span>
+            <span>Pattern</span>
+            <span class="right">Count</span>
+            <span class="right">Win%</span>
             <span class="right">EV</span>
-            <span class="right">최근30일</span>
-            <span class="center">추세</span>
+            <span class="right">Last 30d</span>
+            <span class="center">Trend</span>
           </div>
           {#each leaderboard as row (row.slug)}
             <div class="lb-row" class:no-data={row.total === 0}>
@@ -173,17 +173,17 @@
       {#if sgState === 'loading'}
         <div class="state-empty">
           <div class="spinner"></div>
-          <p class="state-text">개선 제안 생성 중…</p>
+          <p class="state-text">Generating improvement suggestions…</p>
         </div>
       {:else if sgState === 'error'}
         <div class="state-empty">
-          <p class="state-error">엔진 연결 실패: {sgError}</p>
-          <button class="retry-btn" onclick={loadSuggestions}>재시도</button>
+          <p class="state-error">Engine connection failed: {sgError}</p>
+          <button class="retry-btn" onclick={loadSuggestions}>Retry</button>
         </div>
       {:else if sgState === 'empty'}
         <div class="state-empty">
           <div class="empty-icon">✅</div>
-          <p class="state-text">개선이 필요한 패턴이 없습니다.<br/>모든 패턴이 기준치 이상으로 운용되고 있습니다.</p>
+          <p class="state-text">No patterns need improvement.<br/>All patterns are performing above threshold.</p>
         </div>
       {:else if sgState === 'ready'}
         <div class="suggestion-list">
@@ -192,7 +192,7 @@
               <div class="sg-head">
                 <span class="sg-slug">{sg.pattern_slug.replace(/_/g, ' ')}</span>
                 <div class="sg-meta">
-                  <span class="sg-rate">{fmtRate(sg.success_rate)} 승률</span>
+                  <span class="sg-rate">{fmtRate(sg.success_rate)} Win Rate</span>
                   {#if sg.expected_value != null}
                     <span class="sg-ev {evClass(sg.expected_value)}">EV {fmtPct(sg.expected_value)}</span>
                   {/if}

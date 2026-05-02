@@ -61,10 +61,10 @@
         {#if ver.deltaPct === 0}
           <div class="adp-version-sublabel">(baseline)</div>
         {:else}
-          <div class="adp-version-sublabel">피드백 {ver.feedbackCount}</div>
+          <div class="adp-version-sublabel">Feedback {ver.feedbackCount}</div>
         {/if}
         <div class="adp-divider"></div>
-        <div class="adp-stat-label">적중률</div>
+        <div class="adp-stat-label">Hit Rate</div>
         <div class="adp-stat-value">{fmtHitRate(ver.hitRate)}</div>
         {#if ver.deltaPct > 0}
           <div class="adp-delta adp-delta-pos">{fmtDelta(ver.deltaPct)}</div>
@@ -82,7 +82,7 @@
       class="adp-compare-btn"
       onclick={() => (showCaseDiffs = !showCaseDiffs)}
     >
-      {showCaseDiffs ? '▲ 비교 닫기' : `[${baseline.version} vs ${evolved[0].version} 비교 보기]`}
+      {showCaseDiffs ? '▲ Close comparison' : `[${baseline.version} vs ${evolved[0].version} Compare]`}
     </button>
   {/if}
 
@@ -90,13 +90,12 @@
   {#if showCaseDiffs && caseDiffs.length > 0}
     <div class="adp-cases">
       <p class="adp-cases-summary">
-        같은 패턴에 대해 {baseline?.version}과 {evolved[0]?.version}이 다르게 반응한
-        {caseDiffs.length}개 케이스 발견
+        Found {caseDiffs.length} cases where {baseline?.version} and {evolved[0]?.version} responded differently to the same pattern
       </p>
       {#each caseDiffs as c, i}
         <div class="adp-case-card">
           <div class="adp-case-head">
-            <span class="adp-case-num">[예시 {i + 1}]</span>
+            <span class="adp-case-num">[Example {i + 1}]</span>
             <span class="adp-case-scenario">{c.scenario}</span>
           </div>
           <div class="adp-case-rows">

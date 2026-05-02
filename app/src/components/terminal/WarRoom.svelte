@@ -569,7 +569,7 @@
       if (res.warning) console.warn('[WarRoom] Scan warning:', res.warning);
     } catch (err) {
       console.error('[WarRoom] Agent scan error:', err);
-      scanError = err instanceof Error ? err.message : '스캔 중 오류가 발생했습니다.';
+      scanError = err instanceof Error ? err.message : 'An error occurred during scan.';
     } finally {
       scanRunning = false;
       if (scanQueued) {

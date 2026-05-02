@@ -29,10 +29,10 @@
   let activeFilter = $state<FilterChip>('all');
 
   const FILTER_CHIPS: { id: FilterChip; label: string }[] = [
-    { id: 'all',     label: '전체' },
-    { id: 'bullish', label: '상승' },
-    { id: 'bearish', label: '하락' },
-    { id: 'volume',  label: '거래량' },
+    { id: 'all',     label: 'All' },
+    { id: 'bullish', label: 'Rising' },
+    { id: 'bearish', label: 'Falling' },
+    { id: 'volume',  label: 'Volume' },
   ];
 
   const filteredRows = $derived((() => {
@@ -77,7 +77,7 @@
       class="refresh-btn"
       onclick={onRefresh}
       disabled={loading}
-      aria-label="새로고침"
+      aria-label="Refresh"
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <polyline points="23 4 23 10 17 10"/>
@@ -91,24 +91,24 @@
     {#if loading && filteredRows.length === 0}
       <MobileEmptyState
         icon="refresh"
-        headline="시장 데이터 로딩 중"
-        subline="잠시만 기다려 주세요."
+        headline="Loading market data"
+        subline="Please wait."
         primaryCta={{
-          label: '새로고침',
+          label: 'Refresh',
           onClick: () => onRefresh?.(),
         }}
       />
     {:else if filteredRows.length === 0}
       <MobileEmptyState
         icon="search"
-        headline="조건에 맞는 심볼 없음"
-        subline="필터를 바꾸거나 전체 목록을 다시 불러오세요."
+        headline="No symbols match"
+        subline="Change the filter or reload the full list."
         primaryCta={{
-          label: '필터 초기화',
+          label: 'Reset filter',
           onClick: () => { activeFilter = 'all'; },
         }}
         secondaryCta={{
-          label: '새로고침',
+          label: 'Refresh',
           onClick: () => onRefresh?.(),
         }}
       />
@@ -117,7 +117,7 @@
         <button
           class="market-row"
           onclick={() => selectSymbol(row.symbol)}
-          aria-label="{row.base} 선택"
+          aria-label="Select {row.base}"
         >
           <div class="row-left">
             <span class="row-base">{row.base}</span>

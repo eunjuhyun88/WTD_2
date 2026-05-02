@@ -142,9 +142,9 @@
   {#if !series || (series.strategy.length === 0 && series.btcHold.length === 0)}
     <div class="empty-state">
       {#if !series}
-        <span class="empty-hint">백테스트를 실행하면 equity curve가 여기에 표시됩니다</span>
+        <span class="empty-hint">Run a backtest to display the equity curve here</span>
       {:else}
-        <span class="empty-hint">진입 조건을 충족한 거래가 없습니다</span>
+        <span class="empty-hint">No trades matched the entry conditions</span>
       {/if}
     </div>
   {/if}

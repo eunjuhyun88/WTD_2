@@ -130,7 +130,7 @@
 
   {#if !verdict && !isLoading && !isStreaming}
     <div class="hud-empty">
-      <p class="hud-empty-text">분석 결과 없음</p>
+      <p class="hud-empty-text">No analysis results</p>
       <button class="hud-empty-btn" onclick={() => onAction?.(`Analyze ${sym}`)}>
         Analyze {sym} →
       </button>

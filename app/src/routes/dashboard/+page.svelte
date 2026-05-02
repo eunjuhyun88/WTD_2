@@ -146,12 +146,12 @@
   function timeSince(ms: number): string {
     const diff = Date.now() - ms;
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return '방금';
-    if (mins < 60) return `${mins}분 전`;
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}시간 전`;
+    if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
-    return `${days}일 전`;
+    return `${days}d ago`;
   }
 
   function goToLab(strategyId: string) {
@@ -174,7 +174,7 @@
       <span class="surface-kicker">Home</span>
       <div class="dashboard-title-stack">
         <h1 class="surface-title">My Workspace</h1>
-        <span class="dashboard-workbar-note">지갑 · 패스포트 · 활성 포지션 한눈에</span>
+        <span class="dashboard-workbar-note">Wallet · Passport · Active positions at a glance</span>
       </div>
     </div>
     <div class="surface-stats dashboard-workbar-stats">
@@ -216,7 +216,7 @@
         <span class="home-wallet-chain">{wallet.chain ?? 'ARB'}</span>
       {:else}
         <span class="home-wallet-dot home-wallet-dot--off"></span>
-        <button class="home-wallet-connect" onclick={() => openWalletModal()}>지갑 연결</button>
+        <button class="home-wallet-connect" onclick={() => openWalletModal()}>Connect Wallet</button>
       {/if}
     </div>
 
@@ -239,12 +239,12 @@
           <span class="home-pp-label">W/L</span>
           <strong>{passport.wins}/{passport.losses}</strong>
         </div>
-        <a href="/passport" class="home-pp-link">상세 →</a>
+        <a href="/passport" class="home-pp-link">Details →</a>
       </div>
     {:else if wallet.connected}
-      <div class="home-passport home-passport--loading">Passport 로딩 중…</div>
+      <div class="home-passport home-passport--loading">Loading Passport…</div>
     {:else}
-      <div class="home-passport home-passport--empty">지갑 연결 후 Passport 표시</div>
+      <div class="home-passport home-passport--empty">Connect wallet to view Passport</div>
     {/if}
   </section>
 
@@ -265,15 +265,15 @@
     <div class="surface-section-head">
       <div>
         <span class="surface-kicker">My Challenges</span>
-        <h2>저장된 세팅</h2>
+        <h2>Saved Setups</h2>
       </div>
       <span class="surface-chip">{strategies.length} saved</span>
     </div>
 
     {#if strategies.length === 0}
       <div class="surface-card empty-card">
-        <p>아직 저장된 챌린지가 없습니다.</p>
-        <button class="surface-button" onclick={() => goto('/cogochi')}>Terminal에서 시작</button>
+        <p>No saved setups yet.</p>
+        <button class="surface-button" onclick={() => goto('/cogochi')}>Start from Terminal</button>
       </div>
     {:else}
       <div class="challenge-grid">
@@ -316,7 +316,7 @@
                 <span class="surface-meta">{cyclesTested(entry)}/{MARKET_CYCLES.length} cycles</span>
               </div>
             {:else}
-              <p class="untested-copy">아직 첫 검증 전입니다. Lab에서 실행하세요.</p>
+              <p class="untested-copy">Not yet validated. Run from Lab.</p>
             {/if}
 
             <div class="challenge-footer">

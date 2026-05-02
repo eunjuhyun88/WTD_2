@@ -3,7 +3,7 @@
     title: string;
     description?: string;
   }
-  const { title, description = 'PC 환경에서 준비 중입니다.' }: Props = $props();
+  const { title, description = 'Available on desktop.' }: Props = $props();
 </script>
 
 <div class="page-cover">

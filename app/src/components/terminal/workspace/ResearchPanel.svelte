@@ -180,10 +180,10 @@
         } else if (res.status === 401) {
           canSave = false;
         } else {
-          analysisError = 'AI 분석 오류 — 다시 시도해주세요';
+          analysisError = 'AI analysis error — please try again';
         }
       } catch {
-        if (!signal.aborted) analysisError = 'AI 분석 오류';
+        if (!signal.aborted) analysisError = 'AI analysis error';
       }
 
       step = 'searching';
@@ -215,7 +215,7 @@
     searchError = null;
 
     try {
-      const thesis = thesisText || `${sym} ${tf.toUpperCase()} 패턴`;
+      const thesis = thesisText || `${sym} ${tf.toUpperCase()} pattern`;
       const res = await fetch('/api/terminal/pattern-seed/match', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -235,10 +235,10 @@
         const data = await res.json();
         candidates = (data.candidates ?? []).slice(0, 10);
       } else {
-        searchError = '엔진 검색 불가 — 저장 후 재시도';
+        searchError = 'Engine search unavailable — retry after saving';
       }
     } catch {
-      if (!signal?.aborted) searchError = '검색 연결 오류';
+      if (!signal?.aborted) searchError = 'Search connection error';
     } finally {
       searchLoading = false;
       if (step === 'searching') step = 'ready';
@@ -275,7 +275,7 @@
       });
 
       if (!record) {
-        saveError = '저장 실패 — 다시 시도해주세요';
+        saveError = 'Save failed — please try again';
         step = 'ready';
         return;
       }
@@ -289,7 +289,7 @@
 
       onSaved(record.id);
     } catch (e) {
-      saveError = e instanceof Error ? e.message : '저장 오류';
+      saveError = e instanceof Error ? e.message : 'Save error';
       step = 'ready';
     }
   }
@@ -308,7 +308,7 @@
   }
 
   function fmtTime(ts: number): string {
-    return new Date(ts * 1000).toLocaleString('ko-KR', {
+    return new Date(ts * 1000).toLocaleString('en-US', {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
     });
   }
@@ -338,23 +338,23 @@
         {#if viewport}
           <span class="range-hint">
             {fmtTime(viewport.timeFrom)} → {fmtTime(viewport.timeTo)}
-            &nbsp;·&nbsp; {viewport.barCount}봉
+            &nbsp;·&nbsp; {viewport.barCount} bars
           </span>
         {/if}
       </div>
-      <button class="close-btn" onclick={onClose} aria-label="닫기">✕</button>
+      <button class="close-btn" onclick={onClose} aria-label="Close">✕</button>
     </div>
 
     <div class="panel-body">
 
-      <!-- Col A: AI 분석 결과 -->
+      <!-- Col A: AI analysis result -->
       <div class="col col-analysis">
-        <p class="col-label">AI 자동 분석</p>
+        <p class="col-label">AI Auto Analysis</p>
 
         {#if step === 'analyzing'}
           <div class="loading-row">
             <span class="spinner"></span>
-            <span>OI / 펀딩 / 차트 분석 중…</span>
+            <span>Analyzing OI / funding / chart…</span>
           </div>
         {:else if analysisError}
           <p class="err-inline">{analysisError}</p>
@@ -365,7 +365,7 @@
             style="border-color: {phaseMeta?.color ?? 'rgba(255,255,255,0.12)'}; background: {phaseMeta?.color ?? 'rgba(255,255,255,0.04)'};"
           >
             <span class="phase-name">{phaseMeta?.koLabel ?? detectedPhase}</span>
-            <span class="phase-conf">{Math.round(phaseConfidence * 100)}% 확신</span>
+            <span class="phase-conf">{Math.round(phaseConfidence * 100)}% confidence</span>
           </div>
 
           <!-- Phase meaning -->
@@ -404,17 +404,17 @@
 
           <!-- Indicator injection status -->
           <div class="indicator-status">
-            <span class:loaded={oiBars.length > 0}>OI {oiBars.length > 0 ? `${oiBars.length}봉` : '없음'}</span>
-            <span class:loaded={fundingBars.length > 0}>펀딩 {fundingBars.length > 0 ? `${fundingBars.length}봉` : '없음'}</span>
+            <span class:loaded={oiBars.length > 0}>OI {oiBars.length > 0 ? `${oiBars.length} bars` : 'none'}</span>
+            <span class:loaded={fundingBars.length > 0}>Funding {fundingBars.length > 0 ? `${fundingBars.length} bars` : 'none'}</span>
           </div>
         {/if}
 
         <!-- User note -->
         <div class="note-section">
-          <p class="col-label" style="margin-top:12px;">메모 추가 (선택)</p>
+          <p class="col-label" style="margin-top:12px;">Add note (optional)</p>
           <textarea
             class="note-input"
-            placeholder="AI 분석에 추가할 내용 — 예: 세력 숏 누르기 패턴, BTC 횡보 중, 펀딩 0.05% → −0.02%"
+            placeholder="Additional context for AI analysis — e.g. smart money short squeeze pattern, BTC sideways, funding 0.05% → −0.02%"
             bind:value={noteDraft}
             rows={3}
             disabled={step === 'saving' || step === 'saved'}
@@ -422,28 +422,28 @@
         </div>
       </div>
 
-      <!-- Col B: 유사 패턴 + Outcome -->
+      <!-- Col B: Similar patterns + Outcome -->
       <div class="col col-results">
         <div class="col-label-row">
-          <p class="col-label">유사 패턴</p>
+          <p class="col-label">Similar Patterns</p>
           {#if searchLoading}
             <span class="spinner small"></span>
           {:else}
-            <span class="result-count">{candidates.length}건</span>
+            <span class="result-count">{candidates.length} results</span>
           {/if}
         </div>
 
         {#if step === 'analyzing'}
-          <div class="results-placeholder">분석 완료 후 검색 시작</div>
+          <div class="results-placeholder">Search starts after analysis completes</div>
         {:else if searchLoading && candidates.length === 0}
           <div class="loading-row">
             <span class="spinner"></span>
-            <span>엔진에서 비슷한 패턴 검색 중…</span>
+            <span>Searching engine for similar patterns…</span>
           </div>
         {:else if searchError && candidates.length === 0}
           <div class="results-placeholder err">{searchError}</div>
         {:else if candidates.length === 0}
-          <div class="results-placeholder">검색 결과 없음</div>
+          <div class="results-placeholder">No results found</div>
         {:else}
           <div class="candidate-list">
             {#each candidates as c}
@@ -462,10 +462,10 @@
                   <div class="cand-top">
                     <strong class="cand-sym">{c.symbol.replace('USDT', '')}</strong>
                     {#if c.startTs}
-                      <span class="cand-ts">{new Date(c.startTs).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
+                      <span class="cand-ts">{new Date(c.startTs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                     {/if}
                     <span class="cand-score" class:high={c.score >= 70} class:mid={c.score >= 40 && c.score < 70}>
-                      {c.score}점
+                      {c.score}pts
                     </span>
                     {#if c.closeReturnPct != null}
                       <span class="cand-outcome" class:outcome-up={c.closeReturnPct > 0.5} class:outcome-down={c.closeReturnPct < -0.5}>
@@ -495,7 +495,7 @@
             class="research-btn"
             onclick={() => { step = 'searching'; void runEngineSearch(); }}
           >
-            다시 검색
+            Search again
           </button>
         {/if}
       </div>
@@ -509,14 +509,14 @@
 
       {#if step === 'saved'}
         <div class="saved-row">
-          <span class="saved-badge">✓ 저장됨</span>
-          <button class="close-after-save-btn" onclick={onClose}>닫기</button>
+          <span class="saved-badge">✓ Saved</span>
+          <button class="close-after-save-btn" onclick={onClose}>Close</button>
         </div>
       {:else}
-        <button class="cancel-btn" onclick={onClose} disabled={step === 'saving'}>취소</button>
+        <button class="cancel-btn" onclick={onClose} disabled={step === 'saving'}>Cancel</button>
         {#if !canSave && step !== 'analyzing'}
-          <a href="/auth/login" class="login-save-btn" title="로그인 후 저장 가능">
-            🔒 로그인 후 저장
+          <a href="/auth/login" class="login-save-btn" title="Login to save">
+            🔒 Login to save
           </a>
         {:else}
           <button
@@ -524,7 +524,7 @@
             onclick={handleSave}
             disabled={step === 'analyzing' || step === 'saving' || !viewport || !canSave}
           >
-            {step === 'saving' ? '저장 중…' : '패턴 저장 →'}
+            {step === 'saving' ? 'Saving…' : 'Save Pattern →'}
           </button>
         {/if}
       {/if}

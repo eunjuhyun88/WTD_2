@@ -46,7 +46,7 @@
   const operators: ConditionBlock['operator'][] = ['gt', 'lt', 'gte', 'lte'];
 
   const trailingTypes: { value: ExitConfig['trailingType']; label: string }[] = [
-    { value: 'none', label: '없음' },
+    { value: 'none', label: 'None' },
     { value: 'atr', label: 'ATR' },
     { value: 'percent', label: '%' },
   ];
@@ -55,7 +55,7 @@
 <div class="builder">
   <!-- Direction -->
   <div class="section">
-    <div class="section-label">방향</div>
+    <div class="section-label">Direction</div>
     <div class="direction-row">
       {#each [['long', 'Long'], ['short', 'Short'], ['both', 'Both']] as [val, label]}
         <button
@@ -72,12 +72,12 @@
   <!-- Entry Conditions -->
   <div class="section">
     <div class="section-header">
-      <span class="section-label">진입 조건</span>
+      <span class="section-label">Entry Conditions</span>
       <span class="section-badge">{strategy.entryConditions.filter((c: ConditionBlock) => c.enabled).length}</span>
     </div>
 
     {#if strategy.entryConditions.length === 0}
-      <div class="empty-hint">조건을 추가해서 전략을 구성하세요</div>
+      <div class="empty-hint">Add conditions to build your strategy</div>
     {/if}
 
     <div class="cond-list">
@@ -107,7 +107,7 @@
               max={def?.max}
               oninput={(e) => onUpdateCondition(i, { value: parseFloat((e.target as HTMLInputElement).value) || 0 })}
             />
-            <button class="cond-remove" onclick={() => onRemoveCondition(i)} title="제거">×</button>
+            <button class="cond-remove" onclick={() => onRemoveCondition(i)} title="Remove">×</button>
           </div>
           {#if def}
             <div class="cond-range">
@@ -129,7 +129,7 @@
     <!-- Add condition -->
     <div class="add-area">
       <button class="add-btn" onclick={() => { showAddMenu = !showAddMenu; addMenuCategory = null; }}>
-        + 조건 추가
+        + Add Condition
       </button>
 
       {#if showAddMenu}
@@ -154,7 +154,7 @@
 
   <!-- Exit Config -->
   <div class="section">
-    <div class="section-label">청산 설정</div>
+    <div class="section-label">Exit Config</div>
     <div class="exit-grid">
       <div class="exit-row">
         <span class="exit-label">TP</span>
@@ -215,10 +215,10 @@
 
   <!-- Risk Config -->
   <div class="section">
-    <div class="section-label">리스크</div>
+    <div class="section-label">Risk</div>
     <div class="exit-grid">
       <div class="exit-row">
-        <span class="exit-label">사이즈</span>
+        <span class="exit-label">Size</span>
         <input
           class="exit-input"
           type="number"
@@ -231,7 +231,7 @@
         <span class="exit-unit">%</span>
       </div>
       <div class="exit-row">
-        <span class="exit-label">동시</span>
+        <span class="exit-label">Max</span>
         <input
           class="exit-input"
           type="number"
@@ -241,10 +241,10 @@
           value={strategy.riskConfig.maxConcurrentPositions}
           oninput={(e) => onUpdateRisk({ maxConcurrentPositions: parseInt((e.target as HTMLInputElement).value) || 1 })}
         />
-        <span class="exit-unit">개</span>
+        <span class="exit-unit">pos</span>
       </div>
       <div class="exit-row">
-        <span class="exit-label">일 손실</span>
+        <span class="exit-label">Daily Loss</span>
         <input
           class="exit-input"
           type="number"

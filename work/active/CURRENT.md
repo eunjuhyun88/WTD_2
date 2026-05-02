@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`dc5be617` — HEAD (2026-05-02) — fix(W-0378): asyncio.to_thread + universe scores (#886 merged)
+`efc13630` — HEAD (2026-05-02) — [W-0386-C] research/ 4-subpackage 분해 (#892 merged)
 
 ---
 

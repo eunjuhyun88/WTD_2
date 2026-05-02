@@ -148,7 +148,7 @@
     <button
       class="parser-btn"
       onclick={() => { parserOpen = true; }}
-      title="자유 텍스트 메모로 패턴 만들기 (AI Parser)"
+      title="Create a pattern from free text memo (AI Parser)"
     >📝 Memo → Pattern</button>
     <button class="reload-btn" onclick={load} disabled={loading} title="Reload">↺</button>
   </div>

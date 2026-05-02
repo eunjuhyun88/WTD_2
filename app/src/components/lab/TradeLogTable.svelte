@@ -60,7 +60,7 @@
 <div class="trade-log">
   {#if trades.length === 0}
     <div class="empty">
-      <span>진입 조건을 충족한 거래 없음</span>
+      <span>No trades matched the entry conditions</span>
     </div>
   {:else}
     <table role="table" aria-label="Trade log">

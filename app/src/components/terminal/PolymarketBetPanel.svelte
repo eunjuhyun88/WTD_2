@@ -60,7 +60,7 @@
 
     const ws = $walletStore;
     if (!ws.connected || !ws.address) {
-      errorMsg = '지갑을 먼저 연결해주세요.';
+      errorMsg = 'Please connect your wallet first.';
       step = 'error';
       return;
     }
@@ -74,7 +74,7 @@
 
       const onPolygon = await ensurePolygonChain(providerKey);
       if (!onPolygon) {
-        errorMsg = 'Polygon 체인 전환이 거부되었습니다.';
+        errorMsg = 'Polygon chain switch was rejected.';
         step = 'error';
         return;
       }
@@ -89,7 +89,7 @@
       });
 
       if (!prepared) {
-        errorMsg = '주문 준비 실패. 마켓이 비활성일 수 있습니다.';
+        errorMsg = 'Order preparation failed. Market may be inactive.';
         step = 'error';
         return;
       }
@@ -114,7 +114,7 @@
           // Do Polymarket auth flow
           const authOk = await doPolymarketAuth(providerKey, ws.address);
           if (!authOk) {
-            errorMsg = 'Polymarket 인증 실패.';
+            errorMsg = 'Polymarket authentication failed.';
             step = 'error';
             return;
           }
@@ -124,13 +124,13 @@
             signature,
           });
           if (!retryResult?.ok) {
-            errorMsg = '주문 제출 실패.';
+            errorMsg = 'Order submission failed.';
             step = 'error';
             return;
           }
           resultOrderId = retryResult.clobOrderId;
         } else {
-          errorMsg = '주문 제출 실패.';
+          errorMsg = 'Order submission failed.';
           step = 'error';
           return;
         }
@@ -156,7 +156,7 @@
 
       step = 'done';
     } catch (err: any) {
-      errorMsg = err?.message ?? '알 수 없는 오류';
+      errorMsg = err?.message ?? 'Unknown error';
       step = 'error';
     }
   }
@@ -274,30 +274,30 @@
     {:else if step === 'signing'}
       <div class="bet-status">
         <div class="status-spinner"></div>
-        <p>지갑에서 서명을 확인하세요...</p>
+        <p>Confirm the signature in your wallet...</p>
         <p class="status-sub">Sign the order in your wallet</p>
       </div>
 
     {:else if step === 'submitting'}
       <div class="bet-status">
         <div class="status-spinner"></div>
-        <p>주문 제출 중...</p>
+        <p>Submitting order...</p>
         <p class="status-sub">Submitting to Polymarket</p>
       </div>
 
     {:else if step === 'done'}
       <div class="bet-status success">
         <span class="status-icon">✓</span>
-        <p>주문 제출 완료!</p>
+        <p>Order submitted!</p>
         <p class="status-sub">{direction} ${amountNum} USDC @ {effectivePrice.toFixed(2)}</p>
-        <button class="bet-submit" on:click={handleClose}>닫기</button>
+        <button class="bet-submit" on:click={handleClose}>Close</button>
       </div>
 
     {:else if step === 'error'}
       <div class="bet-status error">
         <span class="status-icon">✕</span>
         <p>{errorMsg}</p>
-        <button class="bet-submit" on:click={() => { step = 'input'; }}>다시 시도</button>
+        <button class="bet-submit" on:click={() => { step = 'input'; }}>Try Again</button>
       </div>
     {/if}
   </div>

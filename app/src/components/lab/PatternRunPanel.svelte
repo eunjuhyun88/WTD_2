@@ -155,22 +155,22 @@
   {#if panelState === 'loading' && !account}
     <div class="panel-empty">
       <div class="loader"></div>
-      <p>로딩 중...</p>
+      <p>Loading...</p>
     </div>
   {:else if panelState === 'error' && !account}
     <div class="panel-empty">
       <p class="err-txt">{errorMsg}</p>
-      <button class="btn-ghost" onclick={load}>재시도</button>
+      <button class="btn-ghost" onclick={load}>Retry</button>
     </div>
   {:else if !account && !showCreateForm}
     <div class="panel-empty">
-      <p>INTERNAL_RUN 계정이 없습니다.</p>
-      <p class="sub-txt">패턴 진입 신호를 자동으로 시뮬레이션합니다.</p>
-      <button class="btn-primary" onclick={() => { showCreateForm = true; }}>계정 생성</button>
+      <p>No INTERNAL_RUN account found.</p>
+      <p class="sub-txt">Automatically simulates pattern entry signals.</p>
+      <button class="btn-primary" onclick={() => { showCreateForm = true; }}>Create Account</button>
     </div>
   {:else if showCreateForm}
     <div class="create-form">
-      <h3>INTERNAL_RUN 계정 생성</h3>
+      <h3>Create INTERNAL_RUN Account</h3>
       <div class="field">
         <label>TP (bps)</label>
         <input type="number" bind:value={formTpBps} min="50" max="2000" />
@@ -182,24 +182,24 @@
         <span class="field-hint">{(formSlBps / 100).toFixed(1)}%</span>
       </div>
       <div class="field">
-        <label>TTL (분)</label>
+        <label>TTL (min)</label>
         <input type="number" bind:value={formTtlMin} min="5" max="1440" />
       </div>
       <div class="field">
-        <label>전략 필터 <span class="optional">(선택)</span></label>
+        <label>Strategy Filter <span class="optional">(optional)</span></label>
         <input type="text" bind:value={formStrategyId} placeholder="wtd.tradoor-oi-reversal-v1" />
       </div>
       <div class="field">
-        <label>심볼</label>
+        <label>Symbols</label>
         <input type="text" bind:value={formSymbols} placeholder="BTC,ETH,SOL" />
       </div>
       {#if errorMsg}
         <p class="err-txt">{errorMsg}</p>
       {/if}
       <div class="form-actions">
-        <button class="btn-ghost" onclick={() => { showCreateForm = false; errorMsg = null; }}>취소</button>
+        <button class="btn-ghost" onclick={() => { showCreateForm = false; errorMsg = null; }}>Cancel</button>
         <button class="btn-primary" onclick={createAccount} disabled={panelState === 'creating'}>
-          {panelState === 'creating' ? '생성 중...' : '생성'}
+          {panelState === 'creating' ? 'Creating...' : 'Create'}
         </button>
       </div>
     </div>
@@ -223,17 +223,17 @@
         </div>
         <div class="progress-labels">
           <span>${account.initial_balance.toLocaleString()}</span>
-          <span class="goal-label">목표 ${(account.initial_balance + account.profit_goal).toLocaleString()}</span>
+          <span class="goal-label">Target ${(account.initial_balance + account.profit_goal).toLocaleString()}</span>
         </div>
       </div>
 
       <div class="equity-stats">
         <div class="stat">
-          <span class="stat-label">실현 PnL</span>
+          <span class="stat-label">Realized PnL</span>
           <span class="stat-val {pnlClass(account.realized_pnl)}">{fmtPnl(account.realized_pnl)}</span>
         </div>
         <div class="stat">
-          <span class="stat-label">미실현 PnL</span>
+          <span class="stat-label">Unrealized PnL</span>
           <span class="stat-val {pnlClass(account.unrealized_pnl)}">{fmtPnl(account.unrealized_pnl)}</span>
         </div>
         <div class="stat">
@@ -257,7 +257,7 @@
     {#if openPositions.length > 0}
       <div class="section">
         <div class="section-head">
-          <span class="section-title">오픈 포지션</span>
+          <span class="section-title">Open Positions</span>
           <span class="count-badge">{openPositions.length}</span>
         </div>
         <div class="positions-list">
@@ -268,7 +268,7 @@
                 <span class="side side-{pos.side.toLowerCase()}">{pos.side}</span>
               </div>
               <div class="pos-right">
-                <span class="pos-entry">진입 ${pos.entry_px.toFixed(2)}</span>
+                <span class="pos-entry">Entry ${pos.entry_px.toFixed(2)}</span>
                 <span class="pos-pnl {pnlClass(pos.unrealized_pnl)}">{fmtPnl(pos.unrealized_pnl)}</span>
               </div>
             </div>
@@ -277,21 +277,21 @@
       </div>
     {:else}
       <div class="section">
-        <div class="section-head"><span class="section-title">오픈 포지션</span></div>
-        <p class="empty-txt">없음</p>
+        <div class="section-head"><span class="section-title">Open Positions</span></div>
+        <p class="empty-txt">None</p>
       </div>
     {/if}
 
     <!-- Recent pattern fires -->
     <div class="section">
       <div class="section-head">
-        <span class="section-title">최근 패턴 파이어</span>
+        <span class="section-title">Recent Pattern Fires</span>
         {#if panelState === 'loading'}
           <div class="mini-loader"></div>
         {/if}
       </div>
       {#if recentFires.length === 0}
-        <p class="empty-txt">아직 파이어 없음 — 패턴 스캔 대기 중</p>
+        <p class="empty-txt">No fires yet — waiting for pattern scan</p>
       {:else}
         <div class="fires-list">
           {#each recentFires as fire}

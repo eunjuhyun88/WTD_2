@@ -249,10 +249,10 @@
   let dexChainFilter = 'all';
 
   const TREND_BASIS: Record<TrendTab, string> = {
-    picks: 'Source: /api/terminal/opportunity-scan · 기준: 모멘텀/거래량/소셜/매크로/온체인 복합 점수',
-    hot: 'Source: CMC trending/latest (fallback: volume_24h desc) + LunarCrush 상위 10개 소셜 보강',
-    gainers: 'Source: CMC gainers-losers 24h (fallback: listings %24h 정렬)',
-    dex: 'Source: DexScreener boosts top + profiles latest · chain:address dedup · token market 메타 보강',
+    picks: 'Source: /api/terminal/opportunity-scan · Criteria: momentum/volume/social/macro/onchain composite score',
+    hot: 'Source: CMC trending/latest (fallback: volume_24h desc) + LunarCrush top 10 social boost',
+    gainers: 'Source: CMC gainers-losers 24h (fallback: listings %24h sort)',
+    dex: 'Source: DexScreener boosts top + profiles latest · chain:address dedup · token market meta boost',
   };
 
   // ═══ Opportunity Scanner (TOP PICKS) ═══
@@ -701,7 +701,7 @@
   async function executeShadowTrade() {
     if (shadowExecLoading) return;
     if (!shadowDecision || !shadowDecision.enforced.shouldExecute) {
-      shadowExecError = '실행 게이트를 통과한 상태가 아닙니다.';
+      shadowExecError = 'Execution gate not cleared.';
       shadowExecMessage = '';
       return;
     }
@@ -718,7 +718,7 @@
       const currentPrice = Number(prices[token] ?? prices.BTC ?? 0);
 
       if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
-        throw new Error('현재가를 확인할 수 없습니다. 차트 로딩 후 다시 시도하세요.');
+        throw new Error('Unable to read current price. Try again after the chart loads.');
       }
 
       const response = await fetch('/api/terminal/intel-agent-shadow/execute', {
@@ -738,16 +738,16 @@
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload?.ok) {
-        throw new Error(apiErrorMessage(payload, `실행 실패 (${response.status})`));
+        throw new Error(apiErrorMessage(payload, `Execution failed (${response.status})`));
       }
 
       await hydrateQuickTrades(true);
       const dir = String(payload?.data?.dir ?? '').toUpperCase();
-      shadowExecMessage = `${dir || 'TRADE'} 실행 완료 · ${pair} @ ${currentPrice.toLocaleString()}`;
+      shadowExecMessage = `${dir || 'TRADE'} executed · ${pair} @ ${currentPrice.toLocaleString()}`;
       shadowExecError = '';
       await fetchIntelPolicy();
     } catch (error: any) {
-      shadowExecError = typeof error?.message === 'string' ? error.message : 'Shadow 실행 중 오류가 발생했습니다.';
+      shadowExecError = typeof error?.message === 'string' ? error.message : 'An error occurred during shadow execution.';
       shadowExecMessage = '';
     } finally {
       shadowExecLoading = false;
@@ -1208,11 +1208,11 @@
               {#if trendSubTab === 'picks'}
                 <div class="picks-panel">
                   {#if picksLoading}
-                    <div class="trend-loading">⏳ 멀티-에셋 스캔 중... ({topPicks.length > 0 ? '갱신' : '분석'})</div>
+                    <div class="trend-loading">⏳ Scanning multi-asset... ({topPicks.length > 0 ? 'Refreshing' : 'Analyzing'})</div>
                   {:else if topPicks.length > 0}
                     <!-- Macro regime banner -->
                     <div class="picks-macro" class:risk-on={macroRegime === 'risk-on'} class:risk-off={macroRegime === 'risk-off'}>
-                      매크로: <strong>{macroRegime === 'risk-on' ? '🟢 RISK-ON' : macroRegime === 'risk-off' ? '🔴 RISK-OFF' : '🟡 NEUTRAL'}</strong>
+                      Macro: <strong>{macroRegime === 'risk-on' ? '🟢 RISK-ON' : macroRegime === 'risk-off' ? '🔴 RISK-OFF' : '🟡 NEUTRAL'}</strong>
                       {#if picksScanTime > 0}<span class="picks-time">({(picksScanTime / 1000).toFixed(1)}s)</span>{/if}
                     </div>
 
@@ -1270,10 +1270,10 @@
 
                     <!-- Rescan button -->
                     <button class="picks-rescan" on:click={() => { picksLoaded = false; fetchTopPicks(); }}>
-                      🔄 다시 스캔
+                      🔄 Rescan
                     </button>
                   {:else}
-                    <div class="trend-empty">🎯 PICKS 탭을 누르면 자동으로 트렌딩 코인을 분석합니다</div>
+                    <div class="trend-empty">🎯 Click the PICKS tab to automatically analyze trending coins</div>
                   {/if}
                 </div>
 
@@ -1439,8 +1439,8 @@
 
                     <div class="oc-card">
                       <div class="oc-card-lbl">🐋 WHALE</div>
-                      <div class="oc-card-val" style="color:{wBullish ? '#22c55e' : '#ef4444'}">{onchainData.whale.count}건</div>
-                      <div class="oc-card-sub" style="color:{wBullish ? '#22c55e' : '#ef4444'}">{wBullish ? '순매수' : '순매도'} {fmtUsd(Math.abs(wNet))}</div>
+                      <div class="oc-card-val" style="color:{wBullish ? '#22c55e' : '#ef4444'}">{onchainData.whale.count} txns</div>
+                      <div class="oc-card-sub" style="color:{wBullish ? '#22c55e' : '#ef4444'}">{wBullish ? 'Net Buy' : 'Net Sell'} {fmtUsd(Math.abs(wNet))}</div>
                     </div>
 
                     <div class="oc-card">
@@ -1561,10 +1561,10 @@
             {#if $positionsError}
               <div class="pos-sync-error-msg">
                 <div class="pos-sync-error-text">
-                  <span class="pos-sync-error-title">포지션 동기화에 실패했습니다</span>
+                  <span class="pos-sync-error-title">Position sync failed</span>
                   <span class="pos-sync-error-body">{$positionsError}</span>
                   {#if useDemoPositions}
-                    <span class="pos-sync-error-note">연결 복구 전까지 데모 포지션을 표시합니다.</span>
+                    <span class="pos-sync-error-note">Showing demo positions until connection is restored.</span>
                   {/if}
                 </div>
                 <div class="pos-sync-error-actions">
@@ -1666,7 +1666,7 @@
               <div class="pos-empty-state">
                 <span class="pos-empty-icon">📊</span>
                 <span class="pos-empty-txt">NO OPEN POSITIONS</span>
-                <span class="pos-empty-sub">War Room 시그널을 차트에 적용하거나 바로 포지션을 생성할 수 있습니다.</span>
+                <span class="pos-empty-sub">Apply War Room signals to the chart, or create a position directly.</span>
                 <div class="pos-empty-actions">
                   <button class="pos-empty-btn primary" on:click={() => showGmxPanel = true}>OPEN PERP</button>
                   <button class="pos-empty-btn" on:click={() => { posView = 'markets'; }}>BROWSE MARKETS</button>

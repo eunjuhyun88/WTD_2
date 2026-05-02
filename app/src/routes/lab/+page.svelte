@@ -294,7 +294,7 @@
   function handleClosePosition() { manualPosition = null; chartPriceLines = []; }
 </script>
 
-<PageCover title="LAB" description="준비 중입니다." />
+<PageCover title="LAB" description="Coming soon." />
 
 <svelte:head>
   <title>Lab — Cogochi</title>
@@ -345,7 +345,7 @@
         </button>
         {#if captureOpen}
           {#if captureHydrationState === 'error'}
-            <p class="capture-error">캡처를 랩에 불러오지 못했습니다: {captureHydrationError}</p>
+            <p class="capture-error">Failed to load capture into Lab: {captureHydrationError}</p>
           {:else if sourceCapture}
             <div class="capture-grid">
               <div>
@@ -358,10 +358,10 @@
               </div>
               <div>
                 <strong>{sourceCapture.decision.verdict ?? 'unrated'}</strong>
-                <small>평가 방향 seed</small>
+                <small>Evaluation direction seed</small>
               </div>
               <div>
-                <a href={`/cogochi?symbol=${encodeURIComponent(sourceCapture.symbol)}`}>터미널로 돌아가기 →</a>
+                <a href={`/cogochi?symbol=${encodeURIComponent(sourceCapture.symbol)}`}>Back to Terminal →</a>
               </div>
             </div>
             {#if sourceCapture.note}
@@ -377,7 +377,7 @@
       <div class="surface-section-head">
         <div>
           <span class="surface-kicker">Run Controls</span>
-          <h2>챌린지 선택과 실행</h2>
+          <h2>Select & Run Challenge</h2>
         </div>
         <span class="surface-chip">{mode === 'auto' ? 'Auto mode' : 'Manual mode'}</span>
       </div>
@@ -407,7 +407,7 @@
         <div class="workspace-head">
           <div>
             <span class="surface-kicker">Replay Canvas</span>
-            <h2>시장 구간 위에서 결과 읽기</h2>
+            <h2>Read Results Over Market Zone</h2>
           </div>
           <span class="surface-chip">{interval}</span>
         </div>
@@ -426,7 +426,7 @@
         <div class="workspace-head tabs-head">
           <div>
             <span class="surface-kicker">Context</span>
-            <h2>{mode === 'auto' ? '챌린지와 런 결과' : '리플레이와 로그'}</h2>
+            <h2>{mode === 'auto' ? 'Challenge & Run Results' : 'Replay & Log'}</h2>
           </div>
         </div>
 
@@ -476,7 +476,7 @@
             <div class="manual-order">
               <div class="manual-hero">
                 <span class="surface-meta">Quick Replay</span>
-                <p>현재 바를 기준으로 롱/숏을 열고 한 바씩 전개한다.</p>
+                <p>Open long/short at current bar and advance one bar at a time.</p>
               </div>
               <div class="order-buttons">
                 <button
@@ -523,11 +523,11 @@
 
               {#if manualPosition}
                 <div class="manual-stats">
-                  <div><span class="surface-meta">방향</span><strong>{manualPosition.direction.toUpperCase()}</strong></div>
-                  <div><span class="surface-meta">진입가</span><strong>{manualPosition.entryPrice.toFixed(0)}</strong></div>
-                  <div><span class="surface-meta">현재가</span><strong>{manualPosition.currentPrice.toFixed(0)}</strong></div>
+                  <div><span class="surface-meta">Direction</span><strong>{manualPosition.direction.toUpperCase()}</strong></div>
+                  <div><span class="surface-meta">Entry</span><strong>{manualPosition.entryPrice.toFixed(0)}</strong></div>
+                  <div><span class="surface-meta">Current</span><strong>{manualPosition.currentPrice.toFixed(0)}</strong></div>
                   <div>
-                    <span class="surface-meta">미실현</span>
+                    <span class="surface-meta">Unrealized</span>
                     <strong class={manualPosition.pnlPercent >= 0 ? 'surface-value-positive' : 'surface-value-negative'}>
                       {manualPosition.pnlPercent >= 0 ? '+' : ''}{manualPosition.pnlPercent.toFixed(2)}%
                     </strong>
@@ -538,7 +538,7 @@
           {:else if activeTab === 'trades'}
             <div class="trades-empty">
               <span class="surface-meta">Manual Log</span>
-              <p>수동 리플레이 로그는 여기서 확인한다.</p>
+              <p>Manual replay log shown here.</p>
             </div>
           {/if}
         </div>

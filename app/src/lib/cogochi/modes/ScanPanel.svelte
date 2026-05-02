@@ -64,7 +64,7 @@
       <div class="scan-prog-track">
         <div class="scan-prog-fill" style:width="{scanProgress}%"></div>
       </div>
-      <span class="scan-meta anim">유사 패턴 탐색 중...</span>
+      <span class="scan-meta anim">Searching for similar patterns...</span>
     {:else}
       <span class="scan-label">SIMILAR NOW</span>
       <span class="scan-title">{scanCandidates.length} candidates</span>
@@ -97,7 +97,7 @@
           <span class="sc-alpha" style:color={sc}>α{x.alpha}</span>
           <button
             class="sc-open"
-            title="새 탭에서 열기"
+            title="Open in new tab"
             onclick={(e) => {
               e.stopPropagation();
               onOpenTradeTab(x);
@@ -127,11 +127,11 @@
     <div class="tm-past-header">
       <span class="tm-past-title">★ SAVED · {pastCaptures.length}</span>
       <span class="spacer"></span>
-      <span class="tm-past-hint">저장된 셋업</span>
+      <span class="tm-past-hint">Saved setups</span>
     </div>
     <div class="tm-past-cards">
       {#if pastCaptures.length === 0}
-        <span class="past-empty">저장된 셋업 없음 — 차트에서 Save Setup으로 추가</span>
+        <span class="past-empty">No saved setups — add via Save Setup from chart</span>
       {:else}
         {#each pastCaptures as s (s.capture_id)}
           {@const sym = s.symbol.replace('USDT','').replace('PERP','')}

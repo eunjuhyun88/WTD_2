@@ -39,12 +39,12 @@
 
   // Phase labels matching TRADOOR pattern phases
   const PHASE_LABELS = [
-    { id: 'FAKE_DUMP',     label: 'Phase 0 — Fake Dump',     desc: '가짜 덤프, OI 미동, 매도 안 함' },
-    { id: 'ARCH_ZONE',     label: 'Phase 1 — Arch Zone',     desc: '반등 후 옆걸음, BB 좁아짐' },
-    { id: 'REAL_DUMP',     label: 'Phase 2 — Real Dump',     desc: 'OI 급등 + 거래량 폭발 덤프' },
-    { id: 'ACCUMULATION',  label: 'Phase 3 — Accumulation',  desc: '진입 구간: Higher lows + Funding flip' },
-    { id: 'BREAKOUT',      label: 'Phase 4 — Breakout',      desc: '돌파: OI 재급등 + 가격 돌파' },
-    { id: 'GENERAL',       label: 'General Setup',            desc: '특정 페이즈 없는 일반 셋업' },
+    { id: 'FAKE_DUMP',     label: 'Phase 0 — Fake Dump',     desc: 'Fake dump, OI unchanged, no real selling' },
+    { id: 'ARCH_ZONE',     label: 'Phase 1 — Arch Zone',     desc: 'Sideways after bounce, BB narrowing' },
+    { id: 'REAL_DUMP',     label: 'Phase 2 — Real Dump',     desc: 'OI spike + volume explosion dump' },
+    { id: 'ACCUMULATION',  label: 'Phase 3 — Accumulation',  desc: 'Entry zone: Higher lows + Funding flip' },
+    { id: 'BREAKOUT',      label: 'Phase 4 — Breakout',      desc: 'Breakout: OI re-spike + price breakout' },
+    { id: 'GENERAL',       label: 'General Setup',            desc: 'General setup without specific phase' },
   ];
 
   let selectedPhase = $state('REAL_DUMP');
@@ -67,7 +67,7 @@
 
   // Format timestamp for display
   const displayTime = $derived(
-    new Date(timestamp * 1000).toLocaleString('ko-KR', {
+    new Date(timestamp * 1000).toLocaleString('en-US', {
       month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit',
       hour12: false,
@@ -183,11 +183,11 @@
         <span class="modal-meta">{tf.toUpperCase()} · {displayTime}</span>
         {#if viewportPreview}
           <span class="viewport-hint"
-            >창 구간 {viewportPreview.barCount}봉 · {viewportPreview.tf}{#if viewportPreview.anchorTime}
-              · 앵커 {new Date(viewportPreview.anchorTime * 1000).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}{/if}</span
+            >Window {viewportPreview.barCount} bars · {viewportPreview.tf}{#if viewportPreview.anchorTime}
+              · Anchor {new Date(viewportPreview.anchorTime * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}{/if}</span
           >
         {:else}
-          <span class="viewport-hint viewport-hint--warning">정확한 차트 구간을 먼저 선택해야 저장됩니다.</span>
+          <span class="viewport-hint viewport-hint--warning">You must select an exact chart range before saving.</span>
         {/if}
       </div>
       <button class="close-btn" onclick={onClose} aria-label="Close">✕</button>
@@ -195,7 +195,7 @@
 
     <!-- Phase selector -->
     <div class="section">
-      <p class="section-label">캔들 페이즈 선택</p>
+      <p class="section-label">Select candle phase</p>
       {#if canSavePatternCapture}
         <div class="capture-context">
           <span>ENGINE CAPTURE</span>
@@ -219,10 +219,10 @@
 
     <!-- Notes -->
     <div class="section">
-      <p class="section-label">메모 (선택)</p>
+      <p class="section-label">Note (optional)</p>
       <textarea
         class="note-input"
-        placeholder="긴 기준문도 그대로 넣어도 됨. 예: 저점 MC 100M 이하, 고점 대비 -90% 이내, SNS 활동 유지, 최근 락업/소각 이벤트..."
+        placeholder="Long criteria text is fine too. e.g. Bottom MC below 100M, within -90% of ATH, active social presence, recent lock-up/burn event..."
         bind:value={note}
         rows={6}
       ></textarea>
@@ -230,11 +230,11 @@
 
     <div class="section">
       <div class="section-heading">
-        <p class="section-label">비슷한 저장 캡처</p>
-        <span class="section-meta">{similarLoading ? '탐색 중…' : `${similarMatches.length}건`}</span>
+        <p class="section-label">Similar saved captures</p>
+        <span class="section-meta">{similarLoading ? 'Searching…' : `${similarMatches.length} results`}</span>
       </div>
       {#if similarMatches.length === 0}
-        <div class="similar-empty">메모와 현재 차트 구간을 같이 써서 저장된 캡처 중 비슷한 구조를 미리 보여줍니다.</div>
+        <div class="similar-empty">Shows similar structures from saved captures based on your note and current chart range.</div>
       {:else}
         <div class="similar-list">
           {#each similarMatches as match}
@@ -248,12 +248,12 @@
                 {#if match.record.reason}
                   <span>{match.record.reason}</span>
                 {/if}
-                <span>{new Date(match.record.createdAt).toLocaleDateString('ko-KR')}</span>
+                <span>{new Date(match.record.createdAt).toLocaleDateString('en-US')}</span>
               </div>
               <div class="similar-breakdown">
-                <span>차트 {Math.round(match.breakdown.chart * 100)}</span>
-                <span>텍스트 {Math.round(match.breakdown.text * 100)}</span>
-                <span>페이즈 {Math.round(match.breakdown.phase * 100)}</span>
+                <span>Chart {Math.round(match.breakdown.chart * 100)}</span>
+                <span>Text {Math.round(match.breakdown.text * 100)}</span>
+                <span>Phase {Math.round(match.breakdown.phase * 100)}</span>
               </div>
               {#if match.record.note}
                 <p class="similar-note">{match.record.note}</p>
@@ -270,9 +270,9 @@
 
     <!-- Actions -->
     <div class="modal-actions">
-      <button class="cancel-btn" onclick={onClose}>취소</button>
+      <button class="cancel-btn" onclick={onClose}>Cancel</button>
       <button class="save-btn" onclick={handleSave} disabled={saving || !canSubmitSave}>
-        {saving ? '저장 중…' : '셋업 저장 →'}
+        {saving ? 'Saving…' : 'Save Setup →'}
       </button>
     </div>
 

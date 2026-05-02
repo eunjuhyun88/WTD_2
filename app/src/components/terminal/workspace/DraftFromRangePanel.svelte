@@ -44,7 +44,7 @@
       draft = result;
       onDraftReceived?.(result);
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Draft 추출 실패';
+      error = e instanceof Error ? e.message : 'Draft extraction failed';
       draft = null;
     } finally {
       loading = false;

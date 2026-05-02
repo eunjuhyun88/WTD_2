@@ -94,7 +94,7 @@
     </header>
     <div class="alert-rows">
       {#if alerts.length === 0}
-        <p class="empty">스캐너 알림 없음. 15분마다 갱신.</p>
+        <p class="empty">No scanner alerts. Refreshes every 15 minutes.</p>
       {:else}
         {#each alerts.slice(0, 12) as a}
           <button
@@ -124,7 +124,7 @@
   <!-- Right: similar past setups -->
   <section class="similar">
     <header>
-      <h3>유사 셋업 <small>{activeSymbol ? `· ${activeSymbol.replace(/USDT$/, '')}` : ''}</small></h3>
+      <h3>Similar Setups <small>{activeSymbol ? `· ${activeSymbol.replace(/USDT$/, '')}` : ''}</small></h3>
       <div class="view-toggle">
         <button class:on={view === 'grid'} onclick={() => view = 'grid'}>Grid</button>
         <button class:on={view === 'table'} onclick={() => view = 'table'}>Table</button>
@@ -132,9 +132,9 @@
     </header>
 
     {#if loadingSimilar}
-      <p class="empty">유사 셋업 검색 중…</p>
+      <p class="empty">Searching for similar setups…</p>
     {:else if similar.length === 0}
-      <p class="empty">저장된 유사 셋업 없음. 판정을 기록하면 여기 누적됨.</p>
+      <p class="empty">No saved similar setups. Record verdicts to build your history.</p>
     {:else if view === 'grid'}
       <div class="grid">
         {#each similar.slice(0, 12) as rec}

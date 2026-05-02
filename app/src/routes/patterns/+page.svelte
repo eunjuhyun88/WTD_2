@@ -135,9 +135,9 @@
   // ── Helpers ────────────────────────────────────────────────────────────────
   function sinceHours(iso: string): string {
     const diff = (Date.now() - new Date(iso).getTime()) / 1000 / 60;
-    if (diff < 60)  return `${Math.round(diff)}m 전`;
-    if (diff < 1440) return `${Math.round(diff / 60)}h 전`;
-    return `${Math.round(diff / 1440)}d 전`;
+    if (diff < 60)  return `${Math.round(diff)}m ago`;
+    if (diff < 1440) return `${Math.round(diff / 60)}h ago`;
+    return `${Math.round(diff / 1440)}d ago`;
   }
 
   function fmtPct(value: number | null | undefined, digits = 0): string {
@@ -216,14 +216,14 @@
     {#if loading}
       <section class="surface-card page-loading">
         <span class="pulse"></span>
-        <span>패턴 데이터 로딩 중…</span>
+        <span>Loading pattern data…</span>
       </section>
 
     {:else if error}
       <section class="surface-card page-error">
-        <p>⚠ 엔진 연결 실패 — Python 엔진이 실행 중인지 확인하세요</p>
+        <p>⚠ Engine connection failed — make sure the Python engine is running</p>
         <p class="error-detail">{error}</p>
-        <button class="surface-button-secondary" onclick={loadAll}>재시도</button>
+        <button class="surface-button-secondary" onclick={loadAll}>Retry</button>
       </section>
 
     {:else}
@@ -238,7 +238,7 @@
 
         {#if accumulationCount === 0}
           <div class="surface-card empty-card">
-            <p>현재 ACCUMULATION 진입 후보 없음 — 15분마다 스캔</p>
+            <p>No ACCUMULATION entry candidates — scan runs every 15 min</p>
           </div>
         {:else}
           <div class="candidate-grid">
@@ -251,7 +251,7 @@
                 </div>
                 <div class="cand-meta">
                   <span>{cand.patternId.replace(/_/g,' ')}</span>
-                  <span>{cand.enteredAt ? sinceHours(cand.enteredAt) : '진입 시간 미상'}</span>
+                  <span>{cand.enteredAt ? sinceHours(cand.enteredAt) : 'Entry time unknown'}</span>
                 </div>
                 <div class="cand-actions">
                   <a class="surface-button-ghost compact-action" href="/cogochi?symbol={cand.symbol}">Open Chart</a>
@@ -274,7 +274,7 @@
           <div class="surface-section-head">
             <div>
               <span class="surface-kicker">Live States</span>
-              <h2>전체 심볼 상태</h2>
+              <h2>All Symbol States</h2>
             </div>
             <div class="section-head-right">
               <select
@@ -283,32 +283,32 @@
                 onchange={(e) => setSymbolFilter((e.target as HTMLSelectElement).value)}
                 aria-label="Filter by symbol"
               >
-                <option value="">전체 심볼</option>
+                <option value="">All symbols</option>
                 {#each symbolOptions as sym}
                   <option value={sym}>{sym.replace('USDT', '')}</option>
                 {/each}
               </select>
-              <span class="surface-chip">활성 {filteredStates.length}개</span>
+              <span class="surface-chip">{filteredStates.length} active</span>
             </div>
           </div>
 
           {#if states.length === 0}
             <div class="surface-card empty-card">
-              <p>추적 중인 심볼 없음 — 스캔을 실행하면 상태가 채워집니다</p>
+              <p>No tracked symbols — run a scan to populate states</p>
             </div>
           {:else if filteredStates.length === 0}
             <div class="surface-card empty-card">
-              <p>{symbolFilter} — 활성 상태 없음</p>
+              <p>{symbolFilter} — no active states</p>
             </div>
           {:else}
             <div class="surface-card states-shell">
               <div class="states-table">
                 <div class="table-header">
-                  <span>심볼</span>
-                  <span>패턴</span>
-                  <span>현재 페이즈</span>
-                  <span>진입 시간</span>
-                  <span>캔들 수</span>
+                  <span>Symbol</span>
+                  <span>Pattern</span>
+                  <span>Current Phase</span>
+                  <span>Entry Time</span>
+                  <span>Candles</span>
                 </div>
                 {#each filteredStates as s}
                   {@const meta = phaseMetaFor(s.phaseId, s.phaseLabel, s.phaseIdx)}
@@ -331,7 +331,7 @@
           <div class="surface-section-head">
             <div>
               <span class="surface-kicker">Pattern Stats</span>
-              <h2>성과와 준비도</h2>
+              <h2>Performance & Readiness</h2>
             </div>
             <span class="surface-chip">{stats.length} patterns</span>
           </div>
@@ -341,13 +341,13 @@
               <div class="surface-card stat-card">
                 <span class="stat-name">{s.pattern_slug.replace(/_/g,' ')}</span>
                 <div class="stat-row">
-                  <span class="stat-label">적중률</span>
+                  <span class="stat-label">Hit Rate</span>
                   <span class="stat-value {(s.hit_rate ?? 0) >= 0.6 ? 'good' : (s.hit_rate ?? 0) >= 0.4 ? 'mid' : 'bad'}">
                     {fmtPct(s.hit_rate)}
                   </span>
                 </div>
                 <div class="stat-row">
-                  <span class="stat-label">평균 수익 / 손실</span>
+                  <span class="stat-label">Avg Gain / Loss</span>
                   <span class="stat-value">
                     {s.avg_gain_pct != null ? `+${fmtPct(s.avg_gain_pct, 1)}` : '—'}
                     {#if s.avg_loss_pct != null}
@@ -357,14 +357,14 @@
                 </div>
                 {#if s.expected_value != null}
                   <div class="stat-row">
-                    <span class="stat-label">기대값</span>
+                    <span class="stat-label">Expected Value</span>
                     <span class="stat-value {s.expected_value >= 0 ? 'good' : 'bad'}">
                       {s.expected_value >= 0 ? '+' : ''}{fmtPct(s.expected_value, 2)}
                     </span>
                   </div>
                 {/if}
                 <div class="stat-row">
-                  <span class="stat-label">총 인스턴스</span>
+                  <span class="stat-label">Total Instances</span>
                   <span class="stat-value">{s.total_instances}</span>
                 </div>
                 {#if s.ml_shadow}
@@ -377,7 +377,7 @@
                     </span>
                   </div>
                   <div class="stat-row">
-                    <span class="stat-label">학습 준비</span>
+                    <span class="stat-label">Training Ready</span>
                     <span class="stat-value" class:good={mlReady} class:mid={!mlReady && mlUsable >= 10} class:bad={!mlReady && mlUsable < 10}>
                       {mlReady ? 'Ready' : 'Shadow'}
                     </span>
@@ -388,7 +388,7 @@
             {/each}
             {#if stats.length === 0}
               <div class="surface-card empty-card">
-                <p>아직 판정 데이터 없음 — VALID/INVALID 판정이 쌓이면 통계가 생성됩니다</p>
+                <p>No verdict data yet — statistics appear once VALID/INVALID verdicts accumulate</p>
               </div>
             {/if}
           </div>
@@ -400,13 +400,13 @@
         <div class="surface-section-head">
           <div>
             <span class="surface-kicker">Transitions</span>
-            <h2>최근 페이즈 전이</h2>
+            <h2>Recent Phase Transitions</h2>
           </div>
           <span class="surface-chip">{filteredTransitions.length} records</span>
         </div>
         {#if filteredTransitions.length === 0}
           <div class="surface-card empty-card">
-            <p>아직 기록된 전이 없음</p>
+            <p>No transitions recorded yet</p>
           </div>
         {:else}
           <div class="surface-card transitions-shell">

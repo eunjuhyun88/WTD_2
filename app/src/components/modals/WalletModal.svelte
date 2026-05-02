@@ -377,7 +377,7 @@
 
 {#if state.showWalletModal}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="지갑 연결" tabindex="-1" onclick={handleOverlayClick} onkeydown={handleKeydown}>
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Connect Wallet" tabindex="-1" onclick={handleOverlayClick} onkeydown={handleKeydown}>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="wallet-panel" role="document" bind:this={panelEl} onclick={(e) => e.stopPropagation()}>
 
