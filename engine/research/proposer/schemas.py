@@ -1,11 +1,11 @@
 # backward-compat shim: research.proposer.schemas → research.discovery.proposer.schemas
+import sys as _sys
 import importlib as _il
-_target = _il.import_module("research.discovery.proposer.schemas")
 
-def __getattr__(name):
-    try:
-        return getattr(_target, name)
-    except AttributeError:
-        raise AttributeError(f"module 'research.proposer.schemas' has no attribute {name!r}")
+_canonical = "research.discovery.proposer.schemas"
+_alias = "research.proposer.schemas"
+
+_target = _il.import_module(_canonical)
+_sys.modules[_alias] = _target
 
 from research.discovery.proposer.schemas import *  # noqa: F401, F403
