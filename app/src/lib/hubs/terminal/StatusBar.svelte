@@ -29,6 +29,37 @@
     return () => clearInterval(interval);
   });
 
+  // BTC FR + Kimchi live data (30s poll)
+  let btcFR      = $state<number | null>(null);
+  let kimchiPct  = $state<number | null>(null);
+
+  const frClass     = $derived(btcFR === null ? '' : btcFR > 0 ? 'fr-long' : 'fr-short');
+  const kimchiClass = $derived(kimchiPct === null ? '' : kimchiPct > 1.5 ? 'kim-hot' : kimchiPct < -0.5 ? 'kim-cold' : '');
+
+  async function fetchMarketData() {
+    try {
+      const [frRes, kimRes] = await Promise.allSettled([
+        fetch('/api/market/funding?symbol=BTCUSDT&limit=2'),
+        fetch('/api/market/kimchi-premium'),
+      ]);
+      if (frRes.status === 'fulfilled' && frRes.value.ok) {
+        const d = await frRes.value.json() as { bars: { delta: number }[] };
+        const bars = d.bars ?? [];
+        if (bars.length > 0) btcFR = bars[bars.length - 1].delta;
+      }
+      if (kimRes.status === 'fulfilled' && kimRes.value.ok) {
+        const d = await kimRes.value.json() as { ok: boolean; data: { premium_pct: number } };
+        if (d.ok) kimchiPct = d.data.premium_pct;
+      }
+    } catch { /* silent */ }
+  }
+
+  $effect(() => {
+    fetchMarketData();
+    const t = setInterval(fetchMarketData, 30_000);
+    return () => clearInterval(t);
+  });
+
   const freshnessSec = $derived(
     lastUpdatedAt == null ? null : Math.max(0, Math.floor((nowMs - lastUpdatedAt) / 1000)),
   );
@@ -49,6 +80,20 @@
   <span class="status-item" title="Cumulative verdict count (AGREE/DISAGREE)">
     verdicts <strong>{verdicts}</strong>
   </span>
+
+  {#if btcFR !== null}
+    <span class="divider">│</span>
+    <span class="status-item" title="BTC funding rate">
+      BTC FR <strong class={frClass}>{btcFR > 0 ? '+' : ''}{(btcFR * 100).toFixed(3)}%</strong>
+    </span>
+  {/if}
+
+  {#if kimchiPct !== null}
+    <span class="divider">│</span>
+    <span class="status-item kimchi-sb" title="Kimchi Premium (Upbit/Binance BTC spread)">
+      Kim <strong class={kimchiClass}>{kimchiPct > 0 ? '+' : ''}{kimchiPct.toFixed(2)}%</strong>
+    </span>
+  {/if}
 
   <span class="divider">│</span>
   <span class="status-item" title="Actual profit deviation vs. model prediction">
@@ -157,6 +202,13 @@
   .fresh-good  { color: var(--pos); }
   .fresh-warn  { color: var(--amb, #d6a347); }
   .fresh-stale { color: var(--neg); }
+
+  .fr-long  { color: var(--amb, #d6a347); }
+  .fr-short { color: #38bdf8; }
+  .kim-hot  { color: var(--amb, #d6a347); }
+  .kim-cold { color: #38bdf8; }
+
+  @media (max-width: 1279px) { .kimchi-sb { display: none; } }
 
   .spacer {
     flex: 1;

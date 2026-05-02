@@ -6,12 +6,23 @@
     tick: MiniTickerUpdate | undefined;
     spark: number[];
     active: boolean;
+    focused?: boolean;
     folded: boolean;
+    fr?: number | null;
+    alphaScore?: number | null;
     onSelect: (sym: string) => void;
     onRemove: (sym: string) => void;
   }
 
-  let { sym, tick, spark, active, folded, onSelect, onRemove }: Props = $props();
+  let { sym, tick, spark, active, focused = false, folded, fr = null, alphaScore = null, onSelect, onRemove }: Props = $props();
+
+  const frClass = $derived(fr === null ? '' : fr > 0 ? 'fr-long' : 'fr-short');
+
+  // 8-segment discrete alpha bar: ████████░░
+  function alphaBar(score: number): string {
+    const filled = Math.round(score * 8);
+    return '█'.repeat(filled) + '░'.repeat(8 - filled);
+  }
 
   function shortName(s: string) { return s.replace(/USDT$/, ''); }
 
@@ -41,6 +52,7 @@
     type="button"
     class="symbol-row"
     class:active
+    class:focused
     onclick={() => onSelect(sym)}
     title={sym}
   >
@@ -66,6 +78,16 @@
               </svg>
             {/if}
           </span>
+          {#if alphaScore !== null || fr !== null}
+            <span class="sym-quant">
+              {#if alphaScore !== null}
+                <span class="alpha-bar" title="Alpha score {(alphaScore * 100).toFixed(0)}%">{alphaBar(alphaScore)}</span>
+              {/if}
+              {#if fr !== null}
+                <span class="sym-fr {frClass}" title="Funding rate">{fr > 0 ? '+' : ''}{(fr * 100).toFixed(3)}%</span>
+              {/if}
+            </span>
+          {/if}
         {:else}
           <span class="sym-loading">…</span>
         {/if}
@@ -109,6 +131,12 @@
     color: var(--g9);
     border-left: 2px solid var(--brand);
     padding-left: 8px;
+  }
+
+  .symbol-row.focused:not(.active) {
+    background: rgba(255,255,255,0.04);
+    outline: 1px solid var(--g4);
+    outline-offset: -1px;
   }
 
   .del-btn {
@@ -160,6 +188,29 @@
   .sym-change.dn { color: #F23645; }
 
   .sparkline { display: block; flex-shrink: 0; }
+
+  .sym-quant {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 1px;
+  }
+
+  .alpha-bar {
+    font-size: var(--ui-text-xs);
+    letter-spacing: -0.5px;
+    color: var(--brand);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sym-fr {
+    font-size: var(--ui-text-xs);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .fr-long  { color: var(--amb, #d6a347); }
+  .fr-short { color: #38bdf8; }
 
   .sym-loading {
     font-size: var(--ui-text-xs);
