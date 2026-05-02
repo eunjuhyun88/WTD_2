@@ -67,7 +67,9 @@ jobs:
 
       - name: Check zero Pydantic deprecation warnings
         run: |
-          COUNT=$(uv run pytest tests/research/test_autoresearch_runner.py -q --tb=no 2>&1 | grep -c "PydanticDeprecatedSince20" || echo 0)
+          RAW=$(uv run pytest tests/research/test_autoresearch_runner.py -q --tb=no 2>&1)
+          COUNT=$(echo "$RAW" | grep -c "PydanticDeprecatedSince20" || true)
+          COUNT=$(echo "$COUNT" | tr -d ' \n')
           echo "PydanticDeprecatedSince20 warnings: $COUNT"
           [ "$COUNT" -eq "0" ] || (echo "❌ Found $COUNT Pydantic deprecation warnings — fix before merge" && exit 1)
 
@@ -96,7 +98,9 @@ jobs:
 
       - name: Stylelint font-size gate (≤ 400 violations)
         run: |
-          COUNT=$(pnpm stylelint 2>&1 | grep -c "declaration-property" || echo 0)
+          RAW=$(pnpm stylelint 2>&1)
+          COUNT=$(echo "$RAW" | grep -c "declaration-property" || true)
+          COUNT=$(echo "$COUNT" | tr -d ' \n')
           echo "font-size violations: $COUNT (budget 400)"
           [ "$COUNT" -le "400" ] || (echo "❌ font violations $COUNT > 400 — run W-0389" && exit 1)
 

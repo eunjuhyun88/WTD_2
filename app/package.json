@@ -135,7 +135,6 @@
 		"mk:health": "../tools/mk.sh health-check && echo 'Memory health OK'"
 	},
 	"devDependencies": {
-		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/adapter-vercel": "^6.3.3",
