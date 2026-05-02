@@ -25,16 +25,27 @@
 
 ## main SHA
 
-`a5dff7c6` — HEAD (2026-05-02) — chore: CURRENT.md SHA c130b860 — TerminalHub 마운트 (#922) + 세션 로그 (#923)
+`97493957` — HEAD (2026-05-03) — W-0389 Phase 1 font fix (#929)
 
 ---
 
 ## 활성 Work Items
 
-| Work Item | Priority | 상태 |
-|---|---|---|
-| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-0389-ux-visual-typography-restructure` | P1 | 🟡 Design Draft |
+| Work Item | Priority | 상태 | PR |
+|---|---|---|---|
+| `W-A108-verification-framework` | P0 | 🔵 CI running (lock fix pushed) | [#926](https://github.com/eunjuhyun88/WTD_2/pull/926) |
+| `W-0389-ux-visual-typography-restructure` | P1 | 🔵 Ph2-6 on #926 branch | — |
+| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft | — |
+
+완료 (이번 세션):
+- W-0380 ✅ #927 merged — dead handlers 제거 + aiQueryRouter 34 tests
+- W-0386 ✅ #928 merged — scheduler 347 / pipeline 118 / imports 12
+- W-0389 Ph1 ✅ #929 merged — font-size 357→0 violations
+- W-0389 Ph2 ✅ TopBar already complete (H/L/Vol + mode segmented + TF 11px)
+- W-0389 Ph3 ✅ AIAgentPanel badges + ChartToolbar emoji→text (0 emoji, 0 select)
+- W-0389 Ph4 ✅ StatusBar verdict pill 12px bold amber
+- W-0389 Ph5 ✅ Dashboard 4 sections + /lab/health 신설
+- W-0389 Ph6 ✅ stylelint 0 violations (AC1 ✅)
 
 ---
 

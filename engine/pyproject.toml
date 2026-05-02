@@ -55,6 +55,7 @@ markers = [
 dev = [
     "pytest>=9.0.3",
     "import-linter>=2.1",
+    "pytest-benchmark>=4.0",
 ]
 
 [tool.importlinter]

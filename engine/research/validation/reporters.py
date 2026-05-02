@@ -5,7 +5,7 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Any, Literal
 
-from engine.research.validation.costs import CostModel, BINANCE_PERP_TAKER_15BPS_V1
+from .costs import CostModel, BINANCE_PERP_TAKER_15BPS_V1
 
 
 PromotionLevel = Literal["catalog", "research_candidate", "validated", "f60_publishable", "deprecated"]

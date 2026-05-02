@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 from pipeline import ResearchPipeline
 from verification.types import PaperVerificationResult
 
