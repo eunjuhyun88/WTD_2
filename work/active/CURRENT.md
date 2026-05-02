@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`97493957` — HEAD (2026-05-03) — W-0389 Phase 1 font fix (#929)
+`84567609` — HEAD (2026-05-03) — W-A108 verification framework (#926)
 
 ---
 
@@ -33,8 +33,6 @@
 
 | Work Item | Priority | 상태 | PR |
 |---|---|---|---|
-| `W-A108-verification-framework` | P0 | 🔵 CI running (lock fix pushed) | [#926](https://github.com/eunjuhyun88/WTD_2/pull/926) |
-| `W-0389-ux-visual-typography-restructure` | P1 | 🔵 Ph2-6 on #926 branch | — |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft | — |
 
 완료 (이번 세션):
@@ -46,6 +44,7 @@
 - W-0389 Ph4 ✅ StatusBar verdict pill 12px bold amber
 - W-0389 Ph5 ✅ Dashboard 4 sections + /lab/health 신설
 - W-0389 Ph6 ✅ stylelint 0 violations (AC1 ✅)
+- W-A108 ✅ #926 merged — CI gates (quality-gates.yml) + perf suite + stylelint + 13 typography tests
 
 ---
 
