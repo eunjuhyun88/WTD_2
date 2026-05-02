@@ -45,7 +45,7 @@ grep -n "SHELL_KEY\|cogochi_shell_v" app/src/lib/cogochi/shell.store.ts | head -
 |---|---|
 | DrawerSlide | `app/src/lib/cogochi/components/DrawerSlide.svelte` |
 | IndicatorLibrary | `app/src/lib/cogochi/components/IndicatorLibrary.svelte` |
-| DrawingToolbar | `app/src/lib/cogochi/components/DrawingToolbar.svelte` |
+| DrawingToolbar | `app/src/components/terminal/workspace/DrawingToolbar.svelte` |
 | AIAgentPanel | `app/src/lib/cogochi/AIAgentPanel.svelte` |
 | TradeMode | `app/src/lib/cogochi/modes/TradeMode.svelte` |
 | AnalyzePanel | `app/src/lib/cogochi/modes/AnalyzePanel.svelte` |

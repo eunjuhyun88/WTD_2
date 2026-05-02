@@ -5,6 +5,8 @@
 # E-2: W-#### 충돌 (같은 번호 다른 파일)
 # E-3: CURRENT.md 활성표 listed인데 파일 없음 (validator 위반)
 # E-4: HEAD vs origin/main 차이 (rebase/merge 권장)
+# E-5: 핵심 doc 파일에서 언급된 app/ engine/ 경로가 실제 존재하는지 검증
+# E-6: work/log/ 미해결 🚨 doc-fix 태그 수거
 #
 # Usage: ./tools/check_drift.sh [--strict]
 #   --strict: WARN > 0이면 exit 1 (CI/hook용)
@@ -75,6 +77,38 @@ if [ -n "$MISSING" ]; then
   echo "⚠ E-3: CURRENT.md 활성표 listed인데 파일 없음:"
   echo "$MISSING" | tr ' ' '\n' | grep -v '^$' | sed 's/^/    /'
   WARN=$((WARN + 1))
+fi
+
+# E-5: 핵심 doc 파일 경로 유효성 (backtick 안 app/ engine/ 경로)
+# - 와일드카드 (*, **) 포함 경로 skip — 패턴이지 파일명이 아님
+# - Default Exclude Scope 항목 skip — 의도적으로 없는 경로
+# - build/, .svelte-kit/, node_modules/ 계열 skip
+DOC_FILES=("AGENTS.md" "agents/app.md" "agents/engine.md" "spec/NAMING.md")
+EXCLUDE_PATTERN='build/|\.svelte-kit|node_modules|_archive|__pycache__|\.pytest_cache|data_cache'
+for doc in "${DOC_FILES[@]}"; do
+  [ -f "$doc" ] || continue
+  while IFS= read -r fpath; do
+    # 와일드카드 포함 경로 skip
+    echo "$fpath" | grep -qE '\*|\?' && continue
+    # 의도적 제외 경로 skip
+    echo "$fpath" | grep -qE "$EXCLUDE_PATTERN" && continue
+    if [ ! -e "$fpath" ]; then
+      echo "⚠ E-5: $doc 언급 경로 없음: '$fpath'"
+      WARN=$((WARN + 1))
+    fi
+  done < <(grep -oE '`(app|engine)/[^` ]+`' "$doc" 2>/dev/null | tr -d '`' | sort -u)
+done
+
+# E-6: work/log/ 미해결 doc-fix 태그
+if [ -d "work/log" ]; then
+  OPEN_FIXES=$(grep -rn "🚨 doc-fix" work/log/ 2>/dev/null | grep -v "✅" || true)
+  if [ -n "$OPEN_FIXES" ]; then
+    COUNT=$(echo "$OPEN_FIXES" | wc -l | tr -d ' ')
+    echo "⚠ E-6: 미해결 doc-fix ${COUNT}건 (work/log/ 확인 후 수정 + ✅ 표시):"
+    echo "$OPEN_FIXES" | head -3 | sed 's/^/    /'
+    [ "$COUNT" -gt 3 ] && echo "    ... (총 ${COUNT}건)"
+    WARN=$((WARN + 1))
+  fi
 fi
 
 if [ "$WARN" = "0" ]; then

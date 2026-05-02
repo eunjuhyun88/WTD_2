@@ -22,7 +22,7 @@ Execution rules for humans and coding agents.
 | `app/src/` | `CLAUDE.md` → `agents/app.md` |
 | `engine/` | `CLAUDE.md` → `agents/engine.md` |
 | worktree/PR/멀티에이전트 | `agents/coordination.md` |
-| `app/src/lib/cogochi/**` | `docs/product/PRODUCT-DESIGN-PAGES-V2.md` 추가 |
+| `app/src/lib/cogochi/**` | `work/active/PRODUCT-DESIGN-PAGES-V2.md` 추가 |
 
 ### 제약 확인 (새 기능 시작 전만)
 
@@ -35,12 +35,12 @@ Execution rules for humans and coding agents.
 
 | 파일 | 언제 읽는가 |
 |---|---|
-| `docs/product/PRODUCT-DESIGN-PAGES-V2.md` | cogochi/ UX 변경 시 |
-| `docs/product/PTRACK.md` | 패턴 엔진 실적 추적 관련 작업 시 |
-| `-1_PRODUCT_PRD.md` | 전체 제품 요구사항 확인 시 |
-| `docs/domains/*.md` | 해당 기술 도메인 진입 시 |
-| `docs/decisions/*.md` | 관련 아키텍처 결정 검토 시 |
-| `docs/runbooks/*.md` | 배포·장애 대응 시 |
+| `work/active/PRODUCT-DESIGN-PAGES-V2.md` | cogochi/ UX 변경 시 |
+| `work/active/PTRACK.md` | 패턴 엔진 실적 추적 관련 작업 시 |
+| `docs/live/PRD.md` | 전체 제품 요구사항 확인 시 |
+| `docs/design/` | 아키텍처·설계 문서 (MASTER_ARCHITECTURE 등) |
+| `docs/decisions/` | 아키텍처 결정 기록 (ADR, 번호 결정) |
+| `docs/runbooks/` | 배포·장애 대응 |
 
 ### 상태·운영 (필요 시만)
 
