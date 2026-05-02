@@ -207,7 +207,7 @@
   }
   h3 {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -216,13 +216,13 @@
   }
   h3 small {
     font-weight: 400;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.4);
     letter-spacing: 0;
   }
   .sub {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.32);
   }
   .empty {
@@ -274,7 +274,7 @@
   }
   .a-tf {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 1px 5px;
     background: rgba(255,255,255,0.06);
     border-radius: 2px;
@@ -282,14 +282,14 @@
   }
   .a-pwin {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.45);
     margin-left: auto;
   }
   .a-pwin.good { color: var(--sc-good, #adca7c); }
   .a-time {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.35);
   }
   .a-blocks {
@@ -299,7 +299,7 @@
   }
   .chip {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 1px 5px;
     background: rgba(251,191,36,0.08);
     border: 1px solid rgba(251,191,36,0.2);
@@ -317,7 +317,7 @@
   }
   .view-toggle button {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 3px 8px;
     background: transparent;
     border: none;
@@ -372,12 +372,12 @@
   }
   .t-tf {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.5);
   }
   .t-out {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     margin-left: auto;
     color: rgba(247,242,234,0.7);
@@ -389,7 +389,7 @@
     align-items: center;
     gap: 6px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .t-verdict {
     padding: 1px 5px;
@@ -413,7 +413,7 @@
     width: 100%;
     border-collapse: collapse;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   thead {
     position: sticky;

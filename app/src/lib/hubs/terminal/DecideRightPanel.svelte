@@ -82,7 +82,7 @@
     border-radius: 3px;
     border: 1px solid transparent;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -108,7 +108,7 @@
     border-radius: 3px;
     border: 1px solid var(--g5, #3d3830);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6, #706a62);
     cursor: pointer;
     transition: all 0.1s;

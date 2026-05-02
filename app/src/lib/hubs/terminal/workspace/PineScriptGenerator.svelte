@@ -258,7 +258,7 @@
   }
   .pine-subtitle {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.36);
   }
   .pine-close {
@@ -307,7 +307,7 @@
   }
   .pine-hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.22);
   }
   .pine-generate-btn {
@@ -343,7 +343,7 @@
   }
   .pine-examples-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -357,7 +357,7 @@
   }
   .pine-chip {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 3px 8px;
     border-radius: 3px;
     border: 1px solid rgba(255,255,255,0.10);
@@ -409,7 +409,7 @@
   }
   .pine-provider-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 1px 6px;
     border-radius: 3px;
     background: rgba(255,255,255,0.06);
@@ -435,7 +435,7 @@
   }
   .pine-script-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.32);
@@ -444,7 +444,7 @@
 
   .pine-action-btn {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     padding: 4px 10px;
     border-radius: 4px;
@@ -466,7 +466,7 @@
     background: rgba(0,0,0,0.35);
     padding: 12px;
     font-family: 'IBM Plex Mono', 'Fira Code', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     line-height: 1.55;
     color: rgba(255,255,255,0.80);
     overflow-x: auto;
@@ -490,7 +490,7 @@
   }
   .pine-note-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     color: rgba(255,255,255,0.28);
@@ -503,7 +503,7 @@
   /* Re-generate */
   .pine-regen-btn {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 6px 12px;
     border-radius: 4px;
     border: 1px solid rgba(255,255,255,0.10);

@@ -246,7 +246,7 @@
   }
   .hud-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -262,7 +262,7 @@
   }
   .hud-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     padding: 2px 8px;
     border-radius: 3px;
@@ -296,7 +296,7 @@
   }
   .hud-empty-btn {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 6px 14px;
     border: 1px solid rgba(255,255,255,0.14);
     border-radius: 4px;
@@ -325,7 +325,7 @@
 
   .card-eyebrow {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -368,7 +368,7 @@
   }
   .state-conf-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -382,7 +382,7 @@
   }
   .state-rr {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     color: rgba(255,199,80,0.82);
@@ -409,7 +409,7 @@
   }
   .lv-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -417,7 +417,7 @@
   }
   .lv-val {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     color: rgba(255,255,255,0.82);
     letter-spacing: 0.02em;
@@ -428,7 +428,7 @@
   /* Card 2: Evidence */
   .ev-empty {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.22);
   }
   .ev-row {
@@ -442,7 +442,7 @@
     border-top: 1px solid rgba(255,255,255,0.05);
   }
   .ev-icon {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-family: var(--sc-font-mono, monospace);
   }
   .ev-row[data-tone='good'] .ev-icon { color: #22ab94; }
@@ -451,7 +451,7 @@
   .ev-row[data-tone='dim']  .ev-icon { color: rgba(255,255,255,0.28); }
 
   .ev-metric {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.60);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -459,7 +459,7 @@
   }
   .ev-val {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     color: rgba(255,255,255,0.82);
     white-space: nowrap;
@@ -478,13 +478,13 @@
     border-top: 1px solid rgba(255,255,255,0.05);
   }
   .risk-icon {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: #efc050;
     font-family: var(--sc-font-mono, monospace);
     margin-top: 1px;
   }
   .risk-text {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.55);
     line-height: 1.35;
   }
@@ -505,7 +505,7 @@
     background: rgba(255,255,255,0.03);
     color: rgba(255,255,255,0.62);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     cursor: pointer;
@@ -533,7 +533,7 @@
     border-style: dashed;
     border-color: rgba(255,255,255,0.08);
     color: rgba(255,255,255,0.35);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-align: center;
   }
   .action-btn.workspace-toggle:hover:not(:disabled) {

@@ -296,7 +296,7 @@
     justify-content: space-between;
     align-items: center;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .char-count {
     color: rgba(247, 242, 234, 0.45);
@@ -369,7 +369,7 @@
   .draft-section h3 {
     margin: 0 0 6px 0;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: rgba(247, 242, 234, 0.5);
@@ -412,7 +412,7 @@
   }
   .phase-musts {
     color: rgba(247, 242, 234, 0.5);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .signals-grid {
     display: flex;
@@ -427,14 +427,14 @@
   }
   .signals-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(247, 242, 234, 0.4);
     min-width: 64px;
   }
   .sig-chip {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 2px 8px;
     border-radius: 8px;
     border: 1px solid transparent;

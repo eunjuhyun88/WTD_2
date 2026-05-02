@@ -18,7 +18,7 @@
 <style>
   .action-strip { display: flex; flex-wrap: wrap; gap: 6px; }
   .action-tag {
-    font-family: var(--sc-font-mono); font-size: 10px; padding: 3px 10px;
+    font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); padding: 3px 10px;
     border-radius: 3px; border: 1px solid;
   }
   .primary { border-color: #4ade80; color: #4ade80; background: rgba(74,222,128,0.06); }

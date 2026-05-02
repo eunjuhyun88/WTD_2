@@ -227,7 +227,7 @@
 
   .sps-quote {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
   }
 

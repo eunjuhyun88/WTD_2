@@ -166,7 +166,7 @@
     border: 0.5px solid var(--g4, rgba(255,255,255,0.15));
     color: var(--g7, rgba(255,255,255,0.6));
     border-radius: 4px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.04em;
     cursor: pointer;
     transition: background 0.1s, color 0.1s;
@@ -185,7 +185,7 @@
     min-width: 40px;
   }
   .wsp-chev {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
   }
   .wsp-menu {
@@ -201,7 +201,7 @@
     z-index: 100;
   }
   .wsp-header {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     color: var(--g5);
     padding: 4px 8px 3px;
@@ -217,7 +217,7 @@
     border: none;
     color: var(--g8);
     cursor: pointer;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-family: inherit;
     letter-spacing: 0.02em;
     border-radius: 3px;
@@ -231,12 +231,12 @@
     display: inline-block;
     width: 10px;
     text-align: center;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
   }
   .wsp-name { flex: 1; }
   .wsp-tag.builtin {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     padding: 1px 4px;
     background: var(--g2);
@@ -248,7 +248,7 @@
     border: none;
     color: var(--g5);
     cursor: pointer;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 0 3px;
     line-height: 1;
   }
@@ -271,7 +271,7 @@
     color: var(--g9);
     padding: 3px 6px;
     font-family: inherit;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     border-radius: 3px;
     outline: none;
   }
@@ -282,7 +282,7 @@
     background: var(--g2);
     color: var(--g8);
     font-family: inherit;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.05em;
     border-radius: 3px;
     cursor: pointer;

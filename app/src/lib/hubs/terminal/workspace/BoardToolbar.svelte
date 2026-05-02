@@ -83,7 +83,7 @@
 
   .board-name {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -100,7 +100,7 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.08);
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-2);
   }
 
@@ -129,7 +129,7 @@
     cursor: pointer;
     color: var(--sc-text-2);
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     transition: all var(--sc-duration-fast);
   }
@@ -157,7 +157,7 @@
 
   .toolbar-btn {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;

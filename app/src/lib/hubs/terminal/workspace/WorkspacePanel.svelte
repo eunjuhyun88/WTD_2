@@ -161,7 +161,7 @@
 
   .ws-pane-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     color: rgba(255,255,255,0.28);
@@ -169,14 +169,14 @@
   }
   .ws-sym-tag {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     color: rgba(255,255,255,0.55);
     flex-shrink: 0;
   }
   .ws-verdict-tag {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     padding: 1px 5px;
@@ -189,7 +189,7 @@
 
   .ws-conf {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,199,80,0.72);
     flex-shrink: 0;
   }
@@ -209,7 +209,7 @@
     border-radius: 3px;
     border: 1px solid rgba(255,255,255,0.10);
     background: transparent;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.35);
     cursor: pointer;
     transition: all 0.08s;
@@ -226,7 +226,7 @@
 
   .judge-saved {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(34,171,148,0.72);
     flex-shrink: 0;
   }
@@ -247,7 +247,7 @@
   }
   .ws-empty-text {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.20);
   }
 
@@ -259,14 +259,14 @@
     min-width: max-content;
     width: 100%;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   /* Column headers */
   .ev-col-head {
     padding: 3px 6px;
     background: rgba(255,255,255,0.03);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -292,10 +292,10 @@
 
   .ev-metric { color: rgba(255,255,255,0.55); }
   .ev-val    { color: rgba(255,255,255,0.85); font-weight: 700; }
-  .ev-why    { color: rgba(255,255,255,0.38); font-size: 9px; }
+  .ev-why    { color: rgba(255,255,255,0.38); font-size: var(--ui-text-xs); }
 
   .ev-state { justify-content: center; }
-  .ev-glyph { font-size: 9px; font-weight: 700; }
+  .ev-glyph { font-size: var(--ui-text-xs); font-weight: 700; }
   .ev-state[data-s='pass'] .ev-glyph { color: #22ab94; }
   .ev-state[data-s='fail'] .ev-glyph { color: #f23645; }
   .ev-state[data-s='warn'] .ev-glyph { color: #efc050; }

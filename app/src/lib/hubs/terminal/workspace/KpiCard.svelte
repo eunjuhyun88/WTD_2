@@ -100,14 +100,14 @@
     justify-content: space-between;
     gap: 6px;
   }
-  .top { font-size: 9px; }
-  .bottom { font-size: 9px; }
+  .top { font-size: var(--ui-text-xs); }
+  .bottom { font-size: var(--ui-text-xs); }
 
   .label {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(177, 181, 189, 0.65);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .value {
     font-size: 14px;
@@ -133,7 +133,7 @@
   }
   .delta {
     color: rgba(177, 181, 189, 0.7);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     white-space: nowrap;
   }
   .kpi-card[data-tone='bull'] .delta { color: #4ade80; }

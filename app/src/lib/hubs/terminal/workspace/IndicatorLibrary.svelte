@@ -296,7 +296,7 @@
   }
   .lib-count {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.30);
   }
   .lib-close {
@@ -308,7 +308,7 @@
     width: 26px;
     height: 26px;
     cursor: pointer;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -361,7 +361,7 @@
   }
   .lib-filter-btn {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     padding: 3px 8px;
@@ -401,7 +401,7 @@
 
   .lib-flat-count {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: rgba(255,255,255,0.25);
@@ -426,7 +426,7 @@
   .lib-group-icon { font-size: 12px; }
   .lib-group-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -434,7 +434,7 @@
   }
   .lib-group-count {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.20);
     margin-left: auto;
   }
@@ -495,7 +495,7 @@
 
   .ind-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 800;
     letter-spacing: 0.08em;
     padding: 1px 5px;
@@ -508,7 +508,7 @@
 
   .ind-source {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.22);
     border: 1px solid rgba(255,255,255,0.07);
     padding: 1px 4px;
@@ -516,7 +516,7 @@
   }
 
   .ind-desc {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.42);
     line-height: 1.35;
     overflow: hidden;
@@ -526,7 +526,7 @@
   .ind-row.hovered .ind-desc { white-space: normal; }
 
   .ind-why {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.55);
     line-height: 1.4;
     font-style: italic;
@@ -542,12 +542,12 @@
     margin-top: 3px;
   }
   .sig-bull {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(34,171,148,0.80);
     font-family: var(--sc-font-mono, monospace);
   }
   .sig-bear {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(242,54,69,0.80);
     font-family: var(--sc-font-mono, monospace);
   }
@@ -560,13 +560,13 @@
     flex-shrink: 0;
   }
   .ind-pop {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 1px;
     color: rgba(255,255,255,0.18);
     white-space: nowrap;
   }
   .ind-active-dot {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: #4b9efd;
     animation: lib-pulse 1.5s ease-in-out infinite;
   }
@@ -586,7 +586,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.30);
     font-family: var(--sc-font-mono, monospace);
   }

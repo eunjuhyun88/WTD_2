@@ -175,7 +175,7 @@
   }
 
   .result-count {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
@@ -208,7 +208,7 @@
     background: transparent;
     border: 1px solid var(--g3);
     border-radius: 3px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     cursor: pointer;
     transition: all 0.2s;
@@ -275,7 +275,7 @@
     padding: 2px 4px;
     background: var(--g3);
     border-radius: 2px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
   }
 
@@ -311,7 +311,7 @@
     align-items: center;
     gap: 6px;
     margin-bottom: 6px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
 
   .category-badge {
@@ -330,7 +330,7 @@
 
   .item-desc {
     margin: 0 0 6px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     line-height: 1.3;
     color: var(--g7);
   }
@@ -342,7 +342,7 @@
     color: var(--g0);
     border: none;
     border-radius: 3px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;

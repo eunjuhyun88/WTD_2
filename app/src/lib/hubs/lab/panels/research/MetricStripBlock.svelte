@@ -98,7 +98,7 @@
   }
   .metric-label {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 1px;
     color: var(--sc-text-3, rgba(247, 242, 234, 0.52));
@@ -106,7 +106,7 @@
   }
   .metric-tag {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-warn, #f2d193);
   }
   .metric-current {
@@ -147,7 +147,7 @@
   .cmp-key,
   .cmp-value {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
   }
   .metric-note {

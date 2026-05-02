@@ -96,7 +96,7 @@
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.08);
     background: rgba(255,255,255,0.03);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(247,242,234,0.62);
@@ -123,11 +123,11 @@
     border-radius: 999px;
     padding: 2px 6px;
     cursor: pointer;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
 
   .rail-mode {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(247,242,234,0.4);
@@ -141,7 +141,7 @@
 
   .rail-width-indicator {
     margin-left: auto;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.28);
   }
 

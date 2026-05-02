@@ -492,7 +492,7 @@
   .cg-track-label,
   .cg-hud-head {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     line-height: 1;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -550,7 +550,7 @@
   }
 
   .cg-level-tag {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }

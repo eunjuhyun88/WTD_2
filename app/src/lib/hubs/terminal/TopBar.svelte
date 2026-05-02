@@ -109,7 +109,7 @@
   color: var(--g9);
 }
 .sym-arrow {
-  font-size: 7px;
+  font-size: var(--ui-text-xs);
   color: var(--g6);
   margin-top: 1px;
 }
@@ -135,7 +135,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--g6);
@@ -166,7 +166,7 @@
 }
 .price-chg {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -184,7 +184,7 @@
   background: transparent;
   border: none;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--g6);

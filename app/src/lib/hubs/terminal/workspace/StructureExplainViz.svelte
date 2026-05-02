@@ -132,13 +132,13 @@
   }
   .se-title {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: rgba(247, 242, 234, 0.45);
   }
   .se-sub {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     line-height: 1.3;
     color: rgba(247, 242, 234, 0.42);
   }
@@ -152,7 +152,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 8px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.55);
   }
   .se-score {
@@ -164,7 +164,7 @@
     color: rgba(207, 127, 143, 0.95);
   }
   .se-score.subtle {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     opacity: 0.85;
   }
   .se-oi-ratio {
@@ -174,7 +174,7 @@
   }
   .se-phase {
     margin: 4px 0 6px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.75);
   }
   .phase-rail {
@@ -208,7 +208,7 @@
     color: rgba(247, 242, 234, 0.88);
   }
   .phase-caption {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.35);
   }
   .event-chips {
@@ -219,7 +219,7 @@
   }
   .ev-chip {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 2px 6px;
     border-radius: 2px;
     background: rgba(255, 255, 255, 0.04);
@@ -238,7 +238,7 @@
   }
   .se-hint {
     margin: 6px 0 0;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     line-height: 1.35;
     color: rgba(247, 242, 234, 0.38);
   }
@@ -263,18 +263,18 @@
   }
   .mtf-tf {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.4);
   }
   .mtf-phase {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.72);
     line-height: 1.2;
     word-break: break-word;
   }
   .mtf-sc {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(173, 202, 124, 0.9);
   }
   .mtf-sc[data-sign='-'] {
@@ -285,7 +285,7 @@
   }
   .oi-zones {
     display: flex;
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.28);
     margin-bottom: 3px;
   }

@@ -73,7 +73,7 @@
   .news-label {
     flex-shrink: 0;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     color: rgba(255,255,255,0.22);
@@ -122,7 +122,7 @@
 
   .news-title {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(209,212,220,0.58);
     letter-spacing: 0.01em;
   }
@@ -130,7 +130,7 @@
 
   .news-age {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.22);
     flex-shrink: 0;
   }

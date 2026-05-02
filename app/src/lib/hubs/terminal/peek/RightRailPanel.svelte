@@ -231,7 +231,7 @@
   }
   .rail-mode {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.40);
@@ -247,7 +247,7 @@
   }
   .rail-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     padding: 2px 7px;
     border-radius: 3px;
@@ -270,7 +270,7 @@
   .rail-back {
     margin-left: auto;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     background: transparent;
     border: 1px solid rgba(255,255,255,0.12);
     color: rgba(255,255,255,0.48);
@@ -307,20 +307,20 @@
   .scan-card.bearish .sc-dir { color: #f87171; }
   .sc-left  { display: flex; flex-direction: column; gap: 2px; min-width: 56px; }
   .sc-sym   { font-family: var(--sc-font-mono, monospace); font-size: 12px; font-weight: 700; color: #fff; }
-  .sc-venue { font-size: 9px; color: rgba(255,255,255,0.30); font-family: var(--sc-font-mono, monospace); }
-  .sc-price { font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.70); }
+  .sc-venue { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.30); font-family: var(--sc-font-mono, monospace); }
+  .sc-price { font-family: var(--sc-font-mono, monospace); font-size: var(--ui-text-xs); font-weight: 600; color: rgba(255,255,255,0.70); }
   .sc-right { display: flex; flex-direction: column; gap: 2px; flex: 1; align-items: flex-end; }
   .sc-top-row { display: flex; align-items: center; gap: 5px; }
-  .sc-dir   { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.48); }
-  .sc-chg   { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; }
+  .sc-dir   { font-family: var(--sc-font-mono, monospace); font-size: var(--ui-text-xs); font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.48); }
+  .sc-chg   { font-family: var(--sc-font-mono, monospace); font-size: var(--ui-text-xs); font-weight: 700; }
   .sc-chg.chg-up { color: #22ab94; }
   .sc-chg.chg-dn { color: #f23645; }
   .sc-meta-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-  .sc-fr    { font-family: var(--sc-font-mono, monospace); font-size: 8px; font-weight: 600; color: rgba(255,255,255,0.38); letter-spacing: 0.04em; }
+  .sc-fr    { font-family: var(--sc-font-mono, monospace); font-size: var(--ui-text-xs); font-weight: 600; color: rgba(255,255,255,0.38); letter-spacing: 0.04em; }
   .sc-fr.fr-high { color: rgba(242,54,69,0.82); }
   .sc-fr.fr-neg  { color: rgba(34,171,148,0.82); }
-  .sc-reason  { font-size: 9px; color: rgba(255,255,255,0.38); text-align: right; line-height: 1.2; }
-  .sc-loading { font-size: 9px; color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
+  .sc-reason  { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.38); text-align: right; line-height: 1.2; }
+  .sc-loading { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
   @keyframes sc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
   .scan-detail { flex: 1; min-height: 0; overflow: hidden; }

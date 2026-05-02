@@ -24,7 +24,7 @@
   .why-panel { display: flex; flex-direction: column; gap: 8px; }
   .section { display: flex; flex-direction: column; gap: 4px; }
   .label {
-    font-family: var(--sc-font-mono); font-size: 10px; font-weight: 600;
+    font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase; color: var(--sc-text-2);
   }
   .against .label { color: #fbbf24; }
@@ -34,7 +34,7 @@
     display: flex; flex-wrap: wrap; gap: 4px;
   }
   .against-list li {
-    font-family: var(--sc-font-mono); font-size: 10px; color: #fbbf24;
+    font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); color: #fbbf24;
     padding: 2px 8px; border: 1px solid rgba(251,191,36,0.3);
     border-radius: 3px;
   }

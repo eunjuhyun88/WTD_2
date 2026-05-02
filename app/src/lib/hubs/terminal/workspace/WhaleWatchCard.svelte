@@ -116,7 +116,7 @@
   }
   .whale-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.35);
@@ -124,7 +124,7 @@
   .whale-sym {
     margin-left: auto;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.22);
   }
   .whale-spinner {
@@ -141,7 +141,7 @@
   .whale-empty {
     padding: 6px 8px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.20);
   }
 
@@ -153,13 +153,13 @@
     padding: 3px 8px;
     border-bottom: 1px solid rgba(255,255,255,0.025);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .whale-row:last-child { border-bottom: none; }
   .whale-row:hover { background: rgba(255,255,255,0.025); }
 
   .whale-dir {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     width: 10px;
     flex-shrink: 0;
     color: rgba(255,255,255,0.3);
@@ -174,7 +174,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .whale-addr:hover { color: #4b9efd; text-decoration: underline; }
 
@@ -194,7 +194,7 @@
 
   .whale-liq {
     flex-shrink: 0;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,199,80,0.55);
     white-space: nowrap;
   }

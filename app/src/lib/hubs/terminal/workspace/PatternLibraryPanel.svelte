@@ -93,8 +93,8 @@
   .rows { overflow-y: auto; padding: 8px; display: grid; gap: 4px; }
   .row { width: 100%; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; background: rgba(255,255,255,0.02); padding: 8px; display: flex; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
   .row strong { font-family: var(--sc-font-mono); font-size: 11px; color: rgba(247,242,234,0.88); }
-  .row small { display: block; font-family: var(--sc-font-mono); font-size: 9px; color: rgba(247,242,234,0.42); }
+  .row small { display: block; font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); color: rgba(247,242,234,0.42); }
   .right { text-align: right; }
-  .right span { font-family: var(--sc-font-mono); font-size: 10px; color: rgba(131,188,255,0.8); text-transform: uppercase; }
+  .right span { font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); color: rgba(131,188,255,0.8); text-transform: uppercase; }
   .empty { margin: 12px; font-size: 12px; color: rgba(247,242,234,0.45); }
 </style>

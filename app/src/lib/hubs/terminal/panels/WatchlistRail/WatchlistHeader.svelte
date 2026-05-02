@@ -90,7 +90,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px 4px;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -103,7 +103,7 @@
   }
 
   .section-label { font-weight: 600; }
-  .section-count { font-size: 8px; color: var(--g6); }
+  .section-count { font-size: var(--ui-text-xs); color: var(--g6); }
 
   .section-actions {
     display: flex;
@@ -145,7 +145,7 @@
     border-radius: 4px;
     color: var(--g9);
     font-family: inherit;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 3px 6px;
     outline: none;
     text-transform: uppercase;
@@ -171,7 +171,7 @@
 
   .add-error {
     padding: 2px 8px 4px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: #F23645;
     letter-spacing: 0.04em;
     flex-shrink: 0;

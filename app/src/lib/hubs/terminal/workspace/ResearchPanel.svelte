@@ -583,7 +583,7 @@
   }
   .tf-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     padding: 2px 6px;
     background: rgba(255, 255, 255, 0.07);
@@ -592,7 +592,7 @@
   }
   .range-hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(94, 234, 212, 0.7);
   }
   .close-btn {
@@ -631,7 +631,7 @@
 
   .col-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     color: rgba(255, 255, 255, 0.25);
     margin: 0;
@@ -644,7 +644,7 @@
   }
   .result-count {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.4);
   }
 
@@ -691,7 +691,7 @@
   }
   .phase-conf {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.45);
   }
   .phase-meaning {
@@ -735,12 +735,12 @@
   }
   .signal-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.75);
   }
   .signal-val {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.45);
   }
 
@@ -769,7 +769,7 @@
   }
   .indicator-status span {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.25);
     padding: 2px 6px;
     background: rgba(255, 255, 255, 0.03);
@@ -878,13 +878,13 @@
   }
   .cand-ts {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.3);
     margin-left: 4px;
   }
   .cand-outcome {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.3);
     margin-left: auto;
   }
@@ -897,7 +897,7 @@
   .cand-summary {
     margin: 0;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.5);
     line-height: 1.4;
   }
@@ -908,7 +908,7 @@
   }
   .sig-tag {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     padding: 2px 5px;
     background: rgba(38, 166, 154, 0.1);
     border: 1px solid rgba(38, 166, 154, 0.25);
@@ -923,7 +923,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.5);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 5px 10px;
     border-radius: 4px;
     cursor: pointer;
@@ -948,7 +948,7 @@
     flex: 1;
     margin: 0;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: #f87171;
   }
   .saved-row {

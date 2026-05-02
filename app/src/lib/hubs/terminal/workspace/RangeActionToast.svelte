@@ -184,13 +184,13 @@
     background: var(--g0);
   }
   .rt-title {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.16em;
     color: var(--g9);
   }
   .rt-meta {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
   .rt-close {
@@ -247,14 +247,14 @@
 
   .rt-glyph { font-size: 14px; line-height: 1; }
   .rt-label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
 
   .rt-msg {
     padding: 6px 10px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     border-top: 0.5px solid var(--g3);
   }
   .rt-msg.error { color: var(--neg); }
@@ -273,7 +273,7 @@
     align-items: center;
     gap: 8px;
     padding: 5px 10px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .rt-result:hover { background: var(--g2); }
   .rt-result-label {
@@ -284,10 +284,10 @@
   }
   .rt-result-sim {
     color: var(--g6);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .rt-result-outcome {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     padding: 1px 4px;

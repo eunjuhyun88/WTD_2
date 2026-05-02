@@ -196,7 +196,7 @@
   }
 
   .tf-badge {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.4);
     padding: 1px 4px;
     border-radius: 3px;
@@ -223,7 +223,7 @@
     border: none;
     color: rgba(255, 255, 255, 0.2);
     cursor: pointer;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 2px 4px;
     border-radius: 3px;
     line-height: 1;

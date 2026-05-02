@@ -102,14 +102,14 @@
   }
 
   .summary-label {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(247,242,234,0.42);
   }
 
   .summary-value {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.9);
     line-height: 1.1;
     white-space: nowrap;
@@ -118,7 +118,7 @@
   }
 
   .summary-meta {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.36);
     white-space: nowrap;
     overflow: hidden;
@@ -136,7 +136,7 @@
 
   .summary-copy {
     margin: 0;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.62);
     line-height: 1.25;
   }
@@ -166,14 +166,14 @@
 
   .summary-pill em {
     font-style: normal;
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: rgba(247,242,234,0.4);
   }
 
   .summary-pill strong {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.86);
   }
 

@@ -36,7 +36,7 @@
     background: transparent;
     cursor: pointer;
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--cat);
     transition: background 0.15s;
   }
@@ -53,5 +53,5 @@
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
   .row span:first-child { color: var(--sc-text-2); }
   .mono { font-family: var(--sc-font-mono); }
-  .link { display: block; margin-top: 6px; color: #38bdf8; font-size: 10px; }
+  .link { display: block; margin-top: 6px; color: #38bdf8; font-size: var(--ui-text-xs); }
 </style>

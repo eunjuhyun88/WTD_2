@@ -402,7 +402,7 @@
 
   .save-strip__eyebrow {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(131, 188, 255, 0.78);
@@ -442,7 +442,7 @@
   .save-strip__pill,
   .save-strip__hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 4px 7px;
     border-radius: 999px;
     border: 1px solid rgba(131, 188, 255, 0.22);

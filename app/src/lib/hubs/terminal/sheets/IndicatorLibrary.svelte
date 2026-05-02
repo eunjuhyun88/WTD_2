@@ -258,13 +258,13 @@
     flex-shrink: 0;
   }
   .lib-title {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.16em;
     color: var(--g9);
   }
   .lib-count {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
   .lib-close {
@@ -339,7 +339,7 @@
     border: none;
     color: var(--g6);
     font-family: inherit;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     text-align: left;
     cursor: default;
@@ -350,7 +350,7 @@
   .lib-section-arrow {
     width: 8px;
     color: var(--g5);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     flex-shrink: 0;
   }
   .lib-section-label {
@@ -360,7 +360,7 @@
   .lib-section-count {
     margin-left: auto;
     color: var(--g5);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
 
   .lib-list {
@@ -381,7 +381,7 @@
     border-left: 2px solid transparent;
     color: var(--g7);
     font-family: inherit;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     text-align: left;
     cursor: pointer;
     transition: background 0.08s, color 0.08s;
@@ -417,7 +417,7 @@
   }
   .lib-row-family,
   .lib-row-arch {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     text-transform: lowercase;
     letter-spacing: 0.04em;
@@ -425,14 +425,14 @@
   }
   .lib-row-check {
     color: var(--brand);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .lib-empty {
     padding: 24px 12px;
     text-align: center;
     color: var(--g5);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
   }
 </style>

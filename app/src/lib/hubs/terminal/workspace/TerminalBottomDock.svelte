@@ -183,7 +183,7 @@
     background: rgba(255,255,255,0.03);
     color: var(--tv-text-1, rgba(209,212,220,0.58));
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     cursor: pointer;
@@ -212,7 +212,7 @@
   }
   .dock-parse-hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--tv-blue, #4B9EFD);
     opacity: 0.80;
     flex-shrink: 0;
@@ -266,7 +266,7 @@
   }
   .dock-send:disabled { opacity: 0.35; cursor: not-allowed; }
   .dock-pulse {
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     color: var(--tv-amber, #EFC050);
     animation: dock-pulse 0.7s ease-in-out infinite;
   }
@@ -286,7 +286,7 @@
   }
   .dock-response-kicker {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -318,7 +318,7 @@
     border-radius: 999px;
     background: rgba(255,255,255,0.05);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--tv-text-1);
   }
   .dock-file-chip button {

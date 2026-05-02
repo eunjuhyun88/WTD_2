@@ -30,7 +30,7 @@
     align-items: center;
     gap: 4px;
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 500;
     letter-spacing: 0.05em;
     text-transform: uppercase;

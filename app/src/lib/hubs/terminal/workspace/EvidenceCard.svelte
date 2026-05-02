@@ -79,7 +79,7 @@
   }
   .metric {
     font-family: var(--sc-font-mono);
-    font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em;
+    font-size: var(--ui-text-xs); text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--sc-text-2);
   }
   .value {
@@ -88,7 +88,7 @@
     color: var(--state-color);
   }
   .interp {
-    font-size: 9px; color: var(--sc-text-2);
+    font-size: var(--ui-text-xs); color: var(--sc-text-2);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 </style>

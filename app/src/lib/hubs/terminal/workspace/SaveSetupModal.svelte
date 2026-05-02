@@ -324,12 +324,12 @@
   .modal-quote { font-weight: 400; color: rgba(255,255,255,0.3); font-size: 12px; }
   .modal-meta {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.35);
   }
   .viewport-hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(94, 234, 212, 0.75);
     margin-top: 2px;
   }
@@ -358,7 +358,7 @@
   }
   .section-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.25);
     margin: 0;
@@ -371,7 +371,7 @@
   }
   .section-meta {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.38);
   }
 
@@ -385,19 +385,19 @@
   }
   .capture-context span {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     color: rgba(74, 222, 128, 0.7);
     letter-spacing: 0.1em;
   }
   .capture-context strong {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: #4ade80;
   }
   .capture-context small {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.35);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -431,7 +431,7 @@
   }
   .phase-btn.selected .phase-name { color: #26a69a; }
   .phase-desc {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.3);
   }
 
@@ -489,7 +489,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.45);
     font-family: var(--sc-font-mono, monospace);
   }
@@ -510,7 +510,7 @@
     margin: 0;
     padding: 0 16px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: #f87171;
   }
 
