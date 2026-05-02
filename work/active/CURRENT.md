@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`d893dbe5` — HEAD (2026-05-02) — /닫기 sweep 21 items + inventory refresh (#911)
+`325370db` — HEAD (2026-05-02) — /닫기 sweep 21 items + inventory refresh (#911)
 
 ---
 
