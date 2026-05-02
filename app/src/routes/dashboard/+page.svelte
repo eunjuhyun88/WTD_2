@@ -204,6 +204,87 @@
 
   <div class="surface-scroll-body">
 
+  <!-- ── Section 1: Portfolio Strip (64px) ── -->
+  <div class="trader-strip portfolio-strip">
+    <div class="ts-item">
+      <span class="ts-label">Day P&L</span>
+      <span class="ts-value" class:pos={passport && passport.winRate >= 50} class:neg={passport && passport.winRate < 50}>
+        {passport ? (passport.winRate >= 50 ? '+' : '') + passport.winRate.toFixed(1) + '%' : '—'}
+      </span>
+    </div>
+    <span class="ts-sep">│</span>
+    <div class="ts-item">
+      <span class="ts-label">Win</span>
+      <span class="ts-value" class:pos={passport && passport.winRate >= 55}>
+        {passport ? `${passport.wins}/${passport.wins + passport.losses} (${passport.winRate.toFixed(0)}%)` : '—'}
+      </span>
+    </div>
+    <span class="ts-sep">│</span>
+    <div class="ts-item">
+      <span class="ts-label">Max DD</span>
+      <span class="ts-value neg">—</span>
+    </div>
+  </div>
+
+  <!-- ── Section 2: Today KPIs (80px) ── -->
+  <div class="trader-strip kpi-strip">
+    <div class="kpi-item">
+      <span class="kpi-num">{watchingCaptures.length + pendingVerdicts.length}</span>
+      <span class="kpi-label">Captures</span>
+    </div>
+    <div class="kpi-item">
+      <span class="kpi-num">{pendingVerdicts.length}</span>
+      <span class="kpi-label">Pending</span>
+    </div>
+    <div class="kpi-item">
+      <span class="kpi-num" class:pos={passport && passport.winRate >= 55}>{passport ? passport.winRate.toFixed(0) + '%' : '—'}</span>
+      <span class="kpi-label">Win Rate</span>
+    </div>
+    <div class="kpi-item">
+      <span class="kpi-num">{passport ? passport.totalLp.toLocaleString() : '—'}</span>
+      <span class="kpi-label">LP</span>
+    </div>
+  </div>
+
+  <!-- ── Section 3+4: Watching | Scanner 50/50 ── -->
+  <div class="trader-split-row">
+    <div class="split-pane">
+      <div class="split-pane-header">Watching</div>
+      {#if watchingLoading}
+        <p class="split-empty">Loading…</p>
+      {:else if watchingCaptures.length === 0}
+        <p class="split-empty">No active watches</p>
+      {:else}
+        {#each watchingCaptures.slice(0, 6) as cap}
+          <div class="split-row-item">
+            <span class="split-sym">{cap.symbol}</span>
+            <span class="split-slug">{cap.pattern_slug || '—'}</span>
+            <span class="split-pnl" class:pos={cap.pnl_pct != null && cap.pnl_pct >= 0} class:neg={cap.pnl_pct != null && cap.pnl_pct < 0}>
+              {cap.pnl_pct != null ? (cap.pnl_pct >= 0 ? '+' : '') + cap.pnl_pct.toFixed(1) + '%' : 'watching'}
+            </span>
+          </div>
+        {/each}
+      {/if}
+    </div>
+    <div class="split-divider"></div>
+    <div class="split-pane">
+      <div class="split-pane-header">Scanner</div>
+      {#if topOpportunities.length === 0}
+        <p class="split-empty">No signals</p>
+      {:else}
+        {#each topOpportunities.slice(0, 6) as opp}
+          <div class="split-row-item">
+            <span class="split-sym">{opp.symbol}</span>
+            <span class="split-score">{opp.totalScore.toFixed(2)}</span>
+            <span class="split-tier" class:pos={opp.direction === 'long'} class:neg={opp.direction === 'short'}>
+              {opp.direction}
+            </span>
+          </div>
+        {/each}
+      {/if}
+    </div>
+  </div>
+
   <!-- Wallet + Passport strip -->
   <section class="home-profile-strip">
     <div class="home-wallet">
@@ -332,6 +413,127 @@
 </div>
 
 <style>
+  /* ── Trader Strips ── */
+  .trader-strip {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    background: var(--g1, #0c0a09);
+    border-bottom: 1px solid var(--g3, #1c1918);
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .portfolio-strip { height: 64px; }
+
+  .ts-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .ts-label {
+    font-size: var(--ui-text-xs);
+    color: var(--g5, #3d3830);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .ts-value {
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--g8, #cec9c4);
+  }
+  .ts-value.pos { color: var(--pos, #22AB94); }
+  .ts-value.neg { color: var(--neg, #F23645); }
+  .ts-sep { color: var(--g4, #272320); font-size: 14px; }
+
+  .kpi-strip { height: 80px; gap: 24px; }
+  .kpi-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .kpi-num {
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--g9, #eceae8);
+  }
+  .kpi-num.pos { color: var(--pos, #22AB94); }
+  .kpi-label {
+    font-size: var(--ui-text-xs);
+    color: var(--g5, #3d3830);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .trader-split-row {
+    display: flex;
+    min-height: 160px;
+    max-height: 240px;
+    border-bottom: 1px solid var(--g3, #1c1918);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs);
+  }
+  .split-pane {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    overflow-y: auto;
+  }
+  .split-pane-header {
+    font-size: var(--ui-text-xs);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--g6, #6b6460);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .split-divider {
+    width: 1px;
+    background: var(--g3, #1c1918);
+    flex-shrink: 0;
+  }
+  .split-row-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--g2, #131110);
+  }
+  .split-sym {
+    font-weight: 700;
+    color: var(--g8, #cec9c4);
+    min-width: 60px;
+  }
+  .split-slug {
+    flex: 1;
+    color: var(--g5, #3d3830);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .split-score {
+    color: var(--amb, #f5a623);
+    font-variant-numeric: tabular-nums;
+  }
+  .split-tier, .split-pnl {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 50px;
+    text-align: right;
+  }
+  .split-tier.pos, .split-pnl.pos { color: var(--pos, #22AB94); }
+  .split-tier.neg, .split-pnl.neg { color: var(--neg, #F23645); }
+  .split-empty {
+    color: var(--g5, #3d3830);
+    font-size: var(--ui-text-xs);
+    margin: 0;
+    padding: 8px 0;
+  }
+
   /* Home Profile Strip */
   .home-profile-strip {
     display: flex;
