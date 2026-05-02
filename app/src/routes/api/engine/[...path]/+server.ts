@@ -22,7 +22,7 @@
 import { error, json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
-import { engineProxyLimiter } from '$lib/server/rateLimit';
+import { engineProxyLimiterDistributed } from '$lib/server/distributedRateLimit';
 import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
 
 // PUT/DELETE are not currently permitted on the engine proxy
@@ -127,11 +127,11 @@ export const GET: RequestHandler = ({ request, params }) => {
   return proxy(request, params.path);
 };
 
-export const POST: RequestHandler = ({ request, params, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, params, getClientAddress }) => {
   if (!isAllowedPath(params.path, 'POST')) {
     return json({ error: 'Not found' }, { status: 404 });
   }
-  if (isHeavyPath(params.path) && !engineProxyLimiter.check(getClientAddress())) {
+  if (isHeavyPath(params.path) && !(await engineProxyLimiterDistributed.check(getClientAddress()))) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
   return proxy(request, params.path);
