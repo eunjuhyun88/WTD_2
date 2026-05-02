@@ -73,6 +73,10 @@
     drawingMode?: boolean;
     /** W-0374: Toggle drawing mode */
     onToggleDrawingMode?: () => void;
+    /** W-0374 Phase D-4: Whether IndicatorLibrary drawer is open */
+    indicatorLibraryOpen?: boolean;
+    /** W-0374 Phase D-4: Toggle IndicatorLibrary drawer */
+    onToggleIndicatorLibrary?: () => void;
   }
 
   let {
@@ -96,6 +100,8 @@
     onEmaTfChange,
     drawingMode = false,
     onToggleDrawingMode,
+    indicatorLibraryOpen = false,
+    onToggleIndicatorLibrary = () => {},
   }: Props = $props();
 
   let studiesPanelOpen = $state(false);
@@ -293,6 +299,16 @@
           title={drawingMode ? '드로잉 도구 닫기' : '드로잉 도구 열기'}
           aria-pressed={drawingMode}
         >✏</button>
+      {/if}
+      <!-- W-0374 Phase D-4: Indicator Library toggle -->
+      {#if onToggleIndicatorLibrary}
+        <button
+          class="capture-save-btn indicator-toggle"
+          class:active={indicatorLibraryOpen}
+          onclick={onToggleIndicatorLibrary}
+          title={indicatorLibraryOpen ? 'Hide indicators' : 'Show indicators'}
+          aria-pressed={indicatorLibraryOpen}
+        >📊</button>
       {/if}
       <button class="capture-save-btn" onclick={onSaveSetup} aria-label="Save current visible range">
         Save Setup
