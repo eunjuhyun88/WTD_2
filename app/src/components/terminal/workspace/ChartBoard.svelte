@@ -1747,8 +1747,8 @@
 
   $effect(() => {
     if (!mainChart) return;
-    const off1 = mainChart.timeScale().subscribeVisibleLogicalRangeChange(recomputeAIShapes);
-    return () => off1();
+    mainChart.timeScale().subscribeVisibleLogicalRangeChange(recomputeAIShapes);
+    return () => mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(recomputeAIShapes);
   });
 
   $effect(() => {
