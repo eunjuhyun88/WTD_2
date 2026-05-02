@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`d893dbe5` — HEAD (2026-05-02) — /닫기 sweep 21 items + inventory refresh (#911)
+`c76743d3` — HEAD (2026-05-02) — fix(terminal): remove duplicate mode selector from StatusBar (#920)
 
 ---
 
@@ -33,7 +33,6 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0370-strategy-live-signals` | P1 | 🔵 구현 중 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
@@ -55,8 +54,9 @@
 완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
 완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
 완료:  W-0387 ✅ — /agent/judge + /agent/save AI agent LLM verdict + idempotent capture (#904)
-즉시:  W-0370 Phase 1 — GET /patterns/{slug}/signals engine API (signal_event_store + patterns route)
-추후:  W-0370 Phase 2 — frontend signal badges on strategy cards
+완료:  W-0370 Phase 1 ✅ — GET /patterns/{slug}/signals engine API (#915)
+완료:  W-0389 ✅ — terminal refactor + typography pass 730 subs + TopBar H/L/Vol (#910 #920)
+즉시:  W-0370 Phase 2 — frontend signal badges on strategy cards (SignalFeed.svelte)
 추후:  W-0304 per-pane indicator (after W-0370 complete)
 ```
 
