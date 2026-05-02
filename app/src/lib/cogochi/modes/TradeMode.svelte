@@ -42,9 +42,9 @@
     updateTabState: (updater: (ts: TabState) => TabState) => void;
     symbol?: string;
     timeframe?: string;
-    mobileView?: 'chart' | 'analyze' | 'scan' | 'judge';
+    mobileView?: 'chart' | 'verdict' | 'research' | 'judge';
     workMode?: ShellWorkMode;
-    setMobileView?: (v: 'chart' | 'analyze' | 'scan' | 'judge') => void;
+    setMobileView?: (v: 'chart' | 'verdict' | 'research' | 'judge') => void;
     setMobileSymbol?: (sym: string) => void;
     onSymbolTap?: () => void;
     onTFChange?: (tf: string) => void;
@@ -235,14 +235,14 @@
   // Helper: open analyze view (mobile or desktop drawer) when the user clicks the peek chip.
   function openAnalyze() {
     if (mobileView !== undefined && setMobileView) {
-      setMobileView('analyze');
+      setMobileView('verdict');
       return;
     }
-    // Desktop: open peek + switch drawer tab to analyze.
-    updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'analyze' }));
+    // Desktop: open peek + switch drawer tab to verdict.
+    updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'verdict' }));
   }
 
-  function openWorkspaceTab(tab: 'analyze' | 'scan' | 'judge') {
+  function openWorkspaceTab(tab: 'verdict' | 'research' | 'judge') {
     if (mobileView !== undefined && setMobileView) {
       setMobileView(tab);
       return;
@@ -255,7 +255,7 @@
   }
 
   function openCompareWorkspace() {
-    openWorkspaceTab('scan');
+    openWorkspaceTab('research');
   }
 
   function openJudgeWorkspace() {
@@ -300,7 +300,7 @@
   const peekOpen = $derived(tabState.peekOpen);
   const drawerTab = $derived(tabState.drawerTab);
   const peekHeight = $derived(tabState.peekHeight);
-  const analyzeDetailOpen = $derived(peekOpen && drawerTab === 'analyze');
+  const analyzeDetailOpen = $derived(peekOpen && drawerTab === 'verdict');
   let sidebarAnalyzeDockCollapsed = $state(true);
   let microstructureView = $state<'candle' | 'heatmap' | 'footprint'>('heatmap');
 
@@ -330,7 +330,7 @@
     updateTabState(s => ({ ...s, peekOpen: v }));
   }
 
-  function setDrawerTab(tab: 'analyze' | 'scan' | 'judge') {
+  function setDrawerTab(tab: 'verdict' | 'research' | 'judge') {
     updateTabState(s => ({ ...s, drawerTab: tab }));
   }
 
@@ -1116,7 +1116,7 @@
       {/if}
     </div>
     <div class="mobile-tab-strip" role="tablist" aria-label="Analysis tabs">
-      {#each (['chart', 'analyze', 'scan', 'judge'] as const) as t}
+      {#each (['chart', 'verdict', 'research', 'judge'] as const) as t}
         <button
           class="mts-tab"
           class:active={mobileView === t}
@@ -1125,13 +1125,13 @@
           aria-selected={mobileView === t}
           tabindex={mobileView === t ? 0 : -1}
         >
-          {t === 'chart' ? '01 CHART' : t === 'analyze' ? '02 ANL' : t === 'scan' ? '03 SCAN' : '04 JUDGE'}
+          {t === 'chart' ? '01 CHART' : t === 'verdict' ? '02 VER' : t === 'research' ? '03 RES' : '04 JUDGE'}
         </button>
       {/each}
     </div>
     {#if mobileView !== 'chart'}
     <div class="mobile-panel">
-      {#if mobileView === 'analyze'}
+      {#if mobileView === 'verdict'}
         {#if chartLoading}
           <div class="mobile-loading">
             <div class="ml-spinner"></div>
@@ -1178,7 +1178,7 @@
             {/each}
           {/if}
         {/if}
-      {:else if mobileView === 'scan'}
+      {:else if mobileView === 'research'}
         {#if confluence}
           <div style="padding: 4px 0;">
             <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
@@ -1546,7 +1546,7 @@
 
         <!-- Drawer content -->
         <div class="drawer-content">
-          {#if drawerTab === 'analyze'}
+          {#if drawerTab === 'verdict'}
             <AnalyzePanel
               data={{
                 direction: analyzeDetailDirection,
@@ -1572,7 +1572,7 @@
               }}
               state={{ microstructureView }}
             />
-          {:else if drawerTab === 'scan'}
+          {:else if drawerTab === 'research'}
             <ScanPanel
               data={{
                 confluence,

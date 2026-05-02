@@ -9,9 +9,8 @@ import {
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
-// v4 migration (W-0375 Phase 3): research→decision, verdict→judge.
-// New tab set aligns with TradeMode panels: AI / ANL / SCN / JDG / PAT.
-export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
+// v3 migration: analyze→verdict, scan→research (Phase D-7 5-tab: DEC/PAT/VER/RES/JDG)
+export type RightPanelTab = 'decision' | 'pattern' | 'verdict' | 'research' | 'judge';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D';
 export type ChartActiveMode = 'idle' | 'drawing' | 'save-range';
@@ -42,7 +41,7 @@ export interface TabState {
   chat: Array<{ role: 'user' | 'assistant'; text: string }>;
   peekOpen: boolean;
   peekHeight: number;
-  drawerTab: 'analyze' | 'scan' | 'judge';
+  drawerTab: 'verdict' | 'research' | 'judge';
   workspaceOrder: WorkspacePanelId[];
   workspaceCollapsed: Partial<Record<WorkspacePanelId, boolean>>;
   workspaceLayout: Record<WorkspacePanelId, WorkspacePanelRect>;
@@ -56,6 +55,7 @@ export interface TabState {
   rightPanelExpanded: boolean;
   drawerOpen: boolean;
   drawerKind: 'evidence-grid' | 'why-panel' | 'pattern-library' | 'verdict-card' | 'research-full' | 'judge-full' | null;
+  drawingMode: boolean;
 }
 
 export interface Tab {
@@ -179,7 +179,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   chat: [],
   peekOpen: false,
   peekHeight: 56,
-  drawerTab: 'analyze',
+  drawerTab: 'verdict',
   workspaceOrder: ['analyze', 'scan', 'judge'],
   workspaceCollapsed: { scan: true, judge: true },
   workspaceLayout: FRESH_WORKSPACE_LAYOUT(),
@@ -193,6 +193,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   rightPanelExpanded: false,
   drawerOpen: false,
   drawerKind: null,
+  drawingMode: false,
 });
 
 const makeDefault = (): ShellState => ({
@@ -226,11 +227,11 @@ const makeDefault = (): ShellState => ({
   drawingTool: 'cursor',
 });
 
-const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
+const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge']);
 function migrateRightPanelTab(raw: unknown): RightPanelTab {
-  // v3→v4 (W-0375 Phase 3): research→decision, verdict→judge
-  if (raw === 'research') return 'decision';
-  if (raw === 'verdict') return 'judge';
+  // v2→v3: analyze→verdict, scan→research (also covers v1 names)
+  if (raw === 'analyze') return 'verdict';
+  if (raw === 'scan') return 'research';
   if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
   return 'decision';
 }
@@ -286,7 +287,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v11'; // v11 (W-0375 P3): RightPanelTab → decision/analyze/scan/judge/pattern
+const SHELL_KEY = 'cogochi_shell_v12'; // v12: RightPanelTab → decision/pattern/verdict/research/judge (D-7)
 
 function createShellStore() {
   let initial: ShellState;
@@ -685,7 +686,9 @@ function createShellStore() {
       set(makeDefault());
       if (typeof window !== 'undefined') {
         localStorage.removeItem(SHELL_KEY);
+        localStorage.removeItem('cogochi_shell_v11');
         localStorage.removeItem('cogochi_shell_v10');
+        localStorage.removeItem('cogochi_shell_v9');
         localStorage.removeItem('cogochi_shell_v6');
         localStorage.removeItem('cogochi_shell_v5');
       }
@@ -698,6 +701,7 @@ export const shellStore = createShellStore();
 // Derived stores
 export const activeTab = derived(shellStore, $st => $st.tabs.find(t => t.id === $st.activeTabId) || $st.tabs[0]);
 export const activeMode = derived(activeTab, $tab => $tab?.mode || 'trade');
+export const activeDrawingMode = derived(shellStore, $st => $st.chartActiveMode === 'drawing');
 export const activeTabState = derived(activeTab, $tab => $tab?.tabState || FRESH_TAB_STATE());
 export const allVerdicts = derived(shellStore, $st =>
   Object.assign({}, ...$st.tabs.map(t => t.tabState?.verdicts || {}))

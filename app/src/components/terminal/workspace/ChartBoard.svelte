@@ -66,6 +66,9 @@
   // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
   import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
   import FloatingNoteButton from '../../chart/FloatingNoteButton.svelte';
+  import { shellStore, activeDrawingMode } from '$lib/cogochi/shell.store';
+  import IndicatorLibrary from '$lib/cogochi/components/IndicatorLibrary.svelte';
+  import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -166,9 +169,13 @@
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
 
   // ── W-0289: Drawing tools ──────────────────────────────────────────────────
-  let drawingToolsVisible = $state(false);
-  let drawingActiveTool   = $state<DrawingToolType>('cursor');
+  let drawingActiveTool     = $state<DrawingToolType>('cursor');
+  let drawingToolsVisible   = $state(false);
   let drawingMgr: DrawingManager | null = null;
+
+  const onToggleDrawingTools = () => { drawingToolsVisible = !drawingToolsVisible; shellStore.setDrawingTool(drawingToolsVisible ? 'trendLine' : 'cursor'); };
+
+  let indicatorLibraryOpen = $state(false);
 
   // ── W-0358: Chart Notes ───────────────────────────────────────────────────
   $effect(() => { chartNotesStore.loadNotes(symbol, tf); });
@@ -539,6 +546,45 @@
     if (e.key === 'Escape' && $chartSaveMode.active) {
       chartSaveMode.exitRangeMode();
     }
+  }
+
+  function handleDrawingModeKeydown(e: KeyboardEvent) {
+    if ((e.key === 'd' || e.key === 'D') && !$chartSaveMode.active) {
+      e.preventDefault();
+      shellStore.setDrawingTool('trendLine');
+    }
+  }
+
+  async function handleRangeSaveCapture() {
+    await chartSaveMode.save({ symbol, tf, phase: 'GENERAL' });
+  }
+
+  function handleRangeSendToAI() {
+    const state = chartSaveMode.snapshot();
+    if (!state.anchorA || !state.anchorB) return;
+    const t0 = new Date(state.anchorA * 1000).toISOString();
+    const t1 = new Date(state.anchorB * 1000).toISOString();
+    const bars = Math.round((state.anchorB - state.anchorA) / (tfMinutes(tf) * 60));
+    shellStore.updateTabState((ts) => ({
+      ...ts,
+      chat: [...(ts.chat || []), { role: 'user' as const, text: `Selected range: ${t0} to ${t1} (~${bars} bars on ${tf})` }],
+    }));
+  }
+
+  function handleRangeAnalyze() {
+    const state = chartSaveMode.snapshot();
+    if (!state.anchorA || !state.anchorB) return;
+    const t0 = new Date(state.anchorA * 1000).toISOString();
+    const t1 = new Date(state.anchorB * 1000).toISOString();
+    const bars = Math.round((state.anchorB - state.anchorA) / (tfMinutes(tf) * 60));
+    shellStore.updateTabState((ts) => ({
+      ...ts,
+      chat: [...(ts.chat || []), { role: 'user' as const, text: `Analyze this range: ${t0} to ${t1} (~${bars} bars on ${tf}). What patterns, support/resistance, and trading opportunities do you see?` }],
+    }));
+  }
+
+  function handleRangeCancel() {
+    chartSaveMode.exitRangeMode();
   }
 
   // ── Price line manager (verdict / liq / whale) ─────────────────────────────
@@ -1536,6 +1582,14 @@
     removeChartIndicator(key);
   }
 
+  /** W-0374 Phase D-4: Add indicator from IndicatorLibrary drawer. */
+  function handleAddIndicator(indicator: IndicatorDef) {
+    if (indicator.tier === 'A' && indicator.engineKey) {
+      toggleChartIndicator(indicator.engineKey as IndicatorKey);
+    }
+    indicatorLibraryOpen = false;
+  }
+
   onMount(() => {
     const onWin = () => {
       viewportWidth = containerEl?.offsetWidth ?? window.innerWidth;
@@ -1546,6 +1600,8 @@
     saveModeUnsubscribe = chartSaveMode.subscribe(handleSaveModeChange);
     // ESC exits range-mode without capturing pointer events
     window.addEventListener('keydown', handleRangeModeKeydown);
+    // D key toggles drawing mode (W-0374)
+    window.addEventListener('keydown', handleDrawingModeKeydown);
     // Initial viewport width
     onWin();
     return () => {
@@ -1556,6 +1612,7 @@
     saveModeUnsubscribe?.();
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleRangeModeKeydown);
+      window.removeEventListener('keydown', handleDrawingModeKeydown);
     }
     disconnectWS();
     destroyCharts();
@@ -1677,7 +1734,6 @@
     }
   });
 
-
 </script>
 
 <div
@@ -1688,8 +1744,13 @@
   data-surface={surfaceStyle}
 >
 
-  <!-- ── ChartToolbar (TF selector + export) ────── -->
-  <ChartToolbar {tf} onTfChange={selectTf} />
+  <!-- ── ChartToolbar (TF selector + export + drawing mode) ────── -->
+  <ChartToolbar
+    {tf}
+    onTfChange={selectTf}
+    drawingMode={$activeDrawingMode}
+    onToggleDrawing={() => shellStore.setDrawingTool('trendLine')}
+  />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
   <ChartBoardHeader
@@ -1711,8 +1772,10 @@
     onToggleStudy={(id) => toggleStudy(id)}
     onSaveSetup={handleSaveSetup}
     onEmaTfChange={(t) => { emaTf = t; }}
-    drawingToolsVisible={drawingToolsVisible}
-    onToggleDrawingTools={() => { drawingToolsVisible = !drawingToolsVisible; }}
+    drawingMode={drawingToolsVisible}
+    onToggleDrawingMode={onToggleDrawingTools}
+    {indicatorLibraryOpen}
+    onToggleIndicatorLibrary={() => { indicatorLibraryOpen = !indicatorLibraryOpen; }}
   />
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
@@ -1733,7 +1796,7 @@
     </div>
   {:else}
     <!-- W-0289: Drawing toolbar (left of chart) -->
-    {#if drawingToolsVisible}
+    {#if $activeDrawingMode}
       <DrawingToolbar
         activeTool={drawingActiveTool}
         onSelectTool={(t) => {
@@ -1745,11 +1808,26 @@
       />
     {/if}
 
+    <!-- W-0374 Phase D-4: IndicatorLibrary drawer -->
+    {#if indicatorLibraryOpen}
+      <IndicatorLibrary
+        onAddIndicator={handleAddIndicator}
+      />
+    {/if}
+
     <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
       <div class="layer2-topright">
-        <RangeModeToast active={$chartSaveMode.active} anchorASet={$chartSaveMode.anchorA !== null} />
+        <RangeModeToast
+          active={$chartSaveMode.active}
+          anchorASet={$chartSaveMode.anchorA !== null}
+          rangeComplete={$chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
+          onSaveCapture={handleRangeSaveCapture}
+          onSendToAI={handleRangeSendToAI}
+          onAnalyze={handleRangeAnalyze}
+          onCancel={handleRangeCancel}
+        />
         <PhaseBadge phase={null} />
       </div>
     </div>
@@ -1767,7 +1845,7 @@
     -->
     <div class="pane-main multi-pane-host" bind:this={mainEl}>
       <!-- W-0289: Drawing overlay canvas -->
-      {#if drawingToolsVisible && drawingMgr}
+      {#if $activeDrawingMode && drawingMgr}
         <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
       {/if}
       <!--

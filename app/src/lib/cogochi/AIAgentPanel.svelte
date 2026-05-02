@@ -1,13 +1,16 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { shellStore, activeRightPanelTab, activeTabState } from './shell.store';
-  import type { RightPanelTab } from './shell.store';
+  import type { RightPanelTab, TabState } from './shell.store';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import AIPanel from './AIPanel.svelte';
   import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
-  import ScanGrid from '../../components/terminal/peek/ScanGrid.svelte';
   import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
+  import DecisionHUDAdapter from './DecisionHUDAdapter.svelte';
+  import DrawerSlide from './components/DrawerSlide.svelte';
+  import { routeQuery } from './aiQueryRouter';
 
-  // ── Shared engine capture shape ───────────────────────────────────────────
+  // ── Types ─────────────────────────────────────────────────────────────────
   interface EngineCapture {
     capture_id: string;
     symbol: string;
@@ -20,23 +23,22 @@
     blocks_triggered?: string[];
   }
 
-  interface AlertRow {
-    id: string;
-    symbol: string;
-    timeframe: string;
-    blocks_triggered: string[];
-    p_win: number | null;
-    created_at: string;
-    preview?: { price?: number; rsi14?: number; funding_rate?: number; regime?: string };
-  }
-
   const TABS: Array<{ id: RightPanelTab; label: string }> = [
-    { id: 'decision', label: 'AI'  },
-    { id: 'analyze',  label: 'ANL' },
-    { id: 'scan',     label: 'SCN' },
-    { id: 'judge',    label: 'JDG' },
+    { id: 'decision', label: 'DEC' },
     { id: 'pattern',  label: 'PAT' },
+    { id: 'verdict',  label: 'VER' },
+    { id: 'research', label: 'RES' },
+    { id: 'judge',    label: 'JDG' },
   ];
+
+  const DRAWER_TITLE: Record<NonNullable<TabState['drawerKind']>, string> = {
+    'evidence-grid':   'EVIDENCE',
+    'why-panel':       'WHY',
+    'pattern-library': 'PATTERN LIBRARY',
+    'verdict-card':    'VERDICT DETAIL',
+    'research-full':   'RESEARCH',
+    'judge-full':      'JUDGE HISTORY',
+  };
 
   interface Message { role: 'user' | 'assistant'; text: string; }
   interface Props {
@@ -48,10 +50,53 @@
   }
   let { messages = [], onSend, onSelectSymbol, symbol = 'BTCUSDT', timeframe = '4h' }: Props = $props();
 
-  const activeTab = $derived($activeRightPanelTab);
-  const expanded  = $derived($activeTabState.rightPanelExpanded ?? false);
+  const activeTab  = $derived($activeRightPanelTab);
+  const expanded   = $derived($activeTabState.rightPanelExpanded ?? false);
+  const drawerOpen = $derived($activeTabState.drawerOpen);
+  const drawerKind = $derived($activeTabState.drawerKind);
 
-  // ── Shared helper ─────────────────────────────────────────────────────────
+  // ── AI Search ─────────────────────────────────────────────────────────────
+  let searchQuery = $state('');
+  let searchEl = $state<HTMLInputElement | null>(null);
+
+  function handleSearchKey(e: KeyboardEvent) {
+    if (e.key === 'Enter') submitSearch();
+  }
+
+  function submitSearch() {
+    const q = searchQuery.trim();
+    if (!q) return;
+    const action = routeQuery(q);
+    if (action) {
+      if (action.type === 'set-tab') {
+        shellStore.setRightPanelTab(action.tab);
+      } else if (action.type === 'toggle-drawing') {
+        shellStore.setDrawingTool('trendLine');
+      } else if (action.type === 'analyze') {
+        shellStore.setRightPanelTab('research');
+      } else if (action.type === 'pattern-recall') {
+        shellStore.setRightPanelTab('pattern');
+      } else if (action.type === 'open-whale-data') {
+        shellStore.setRightPanelTab('verdict');
+      } else {
+        window.dispatchEvent(new CustomEvent('cogochi:ai-query', { detail: action }));
+      }
+    }
+    searchQuery = '';
+  }
+
+  onMount(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey && e.key === 'l') {
+        e.preventDefault();
+        searchEl?.focus();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  });
+
+  // ── PAT tab ───────────────────────────────────────────────────────────────
   function capToPatternRecord(cap: EngineCapture): PatternCaptureRecord {
     const ts = cap.captured_at_ms
       ? new Date(cap.captured_at_ms).toISOString()
@@ -84,11 +129,10 @@
     shellStore.setRightPanelTab('decision');
   }
 
-  // ── PAT tab ───────────────────────────────────────────────────────────────
-  let patternRecords    = $state<PatternCaptureRecord[]>([]);
-  let patternLoading    = $state(false);
-  let patternLoaded     = $state(false);
-  let patternFilter     = $state('');
+  let patternRecords       = $state<PatternCaptureRecord[]>([]);
+  let patternLoading       = $state(false);
+  let patternLoaded        = $state(false);
+  let patternFilter        = $state('');
   let patternVerdictFilter = $state<'all' | 'bullish' | 'bearish'>('all');
   let patternSelectedIdx   = $state(-1);
 
@@ -136,53 +180,6 @@
 
   $effect(() => { if (activeTab === 'pattern') void loadPatterns(); });
 
-  // ── SCN tab ───────────────────────────────────────────────────────────────
-  let scanAlerts        = $state<AlertRow[]>([]);
-  let scanSimilar       = $state<PatternCaptureRecord[]>([]);
-  let scanLoadingSimilar = $state(false);
-  let scanAlertsLoaded  = $state(false);
-
-  function capToAlertRow(cap: EngineCapture): AlertRow {
-    return {
-      id: cap.capture_id,
-      symbol: cap.symbol,
-      timeframe: cap.timeframe,
-      blocks_triggered: cap.blocks_triggered ?? (cap.pattern_slug ? [cap.pattern_slug] : []),
-      p_win: cap.p_win ?? null,
-      created_at: cap.captured_at_ms
-        ? new Date(cap.captured_at_ms).toISOString()
-        : new Date().toISOString(),
-    };
-  }
-
-  async function loadScanAlerts() {
-    if (scanAlertsLoaded) return;
-    try {
-      const res = await fetch('/api/captures?trigger_origin=scanner&limit=50');
-      if (!res.ok) return;
-      const data = await res.json() as { captures?: EngineCapture[] };
-      scanAlerts = (data.captures ?? []).map(capToAlertRow);
-      scanAlertsLoaded = true;
-    } catch { /* leave empty */ }
-  }
-
-  async function loadScanSimilar(sym: string) {
-    scanLoadingSimilar = true;
-    try {
-      const res = await fetch(`/api/captures?symbol=${encodeURIComponent(sym)}&limit=20`);
-      if (!res.ok) return;
-      const data = await res.json() as { captures?: EngineCapture[] };
-      scanSimilar = (data.captures ?? []).map(capToPatternRecord);
-    } catch { /* leave empty */ } finally { scanLoadingSimilar = false; }
-  }
-
-  $effect(() => {
-    if (activeTab === 'scan') {
-      void loadScanAlerts();
-      void loadScanSimilar(symbol);
-    }
-  });
-
   // ── JDG tab ───────────────────────────────────────────────────────────────
   let judgeCaptures = $state<PatternCaptureRecord[]>([]);
   let judgeSaving   = $state(false);
@@ -213,9 +210,13 @@
 
   $effect(() => { if (activeTab === 'judge' && !judgeLoaded) void loadJudgeCaptures(); });
 
-  // ── Expand toggle ─────────────────────────────────────────────────────────
+  // ── Expand + Drawer ───────────────────────────────────────────────────────
   function toggleExpand() {
     shellStore.updateTabState(s => ({ ...s, rightPanelExpanded: !s.rightPanelExpanded }));
+  }
+
+  function openMoreDrawer(kind: TabState['drawerKind']) {
+    shellStore.openDrawer(kind);
   }
 </script>
 
@@ -236,50 +237,32 @@
     >{expanded ? '⤡' : '⤢'}</button>
   </div>
 
+  <!-- ── AI Search ── -->
+  <div class="ai-search-bar">
+    <input
+      class="ai-search-input"
+      placeholder="AI search… (⌘L)"
+      bind:value={searchQuery}
+      bind:this={searchEl}
+      onkeydown={handleSearchKey}
+    />
+  </div>
+
   <!-- ── Tab content ── -->
   <div class="tab-content">
 
     {#if activeTab === 'decision'}
-      <!-- AI — chat + indicator overlay -->
-      <AIPanel
-        {messages}
-        onSend={onSend}
-        {symbol}
-        {timeframe}
-        onSelectSymbol={onSelectSymbol}
-        onClose={() => {}}
-      />
-
-    {:else if activeTab === 'analyze'}
-      <!-- ANL — Verdict inbox: watch hits / review / recent closed -->
-      <VerdictInboxPanel
-        onVerdictSubmit={(captureId, _verdict) => shellStore.selectVerdict(captureId)}
-      />
-
-    {:else if activeTab === 'scan'}
-      <!-- SCN — Scanner alerts + similar pattern grid -->
-      <ScanGrid
-        alerts={scanAlerts}
-        similar={scanSimilar}
-        activeSymbol={symbol}
-        loadingSimilar={scanLoadingSimilar}
-        onOpenCapture={openCapture}
-      />
-
-    {:else if activeTab === 'judge'}
-      <!-- JDG — Trade judgment: immediate verdict + recent + re-label -->
-      <JudgePanel
-        {symbol}
-        {timeframe}
-        captures={judgeCaptures}
-        saving={judgeSaving}
-        onSaveJudgment={handleSaveJudgment}
-        onOpenCapture={openCapture}
-      />
+      <div class="tab-inner">
+        <div class="tab-scroll">
+          <DecisionHUDAdapter />
+        </div>
+        <div class="more-btn">
+          <button onclick={() => openMoreDrawer('evidence-grid')}>Evidence →</button>
+        </div>
+      </div>
 
     {:else if activeTab === 'pattern'}
-      <!-- PAT — Pattern capture history with filter chips + keyboard nav -->
-      <div class="pat-panel">
+      <div class="tab-inner">
         <div class="pat-search-row">
           <input
             class="pat-search"
@@ -333,11 +316,104 @@
             {/each}
           {/if}
         </div>
+        <div class="more-btn">
+          <button onclick={() => openMoreDrawer('pattern-library')}>Library →</button>
+        </div>
+      </div>
+
+    {:else if activeTab === 'verdict'}
+      <div class="tab-inner">
+        <div class="tab-scroll">
+          <VerdictInboxPanel
+            onVerdictSubmit={(captureId, _verdict) => shellStore.selectVerdict(captureId)}
+          />
+        </div>
+        <div class="more-btn">
+          <button onclick={() => openMoreDrawer('verdict-card')}>Detail →</button>
+        </div>
+      </div>
+
+    {:else if activeTab === 'research'}
+      <div class="tab-inner">
+        <div class="tab-scroll">
+          <AIPanel
+            {messages}
+            onSend={onSend}
+            {symbol}
+            {timeframe}
+            onSelectSymbol={onSelectSymbol}
+            onClose={() => {}}
+          />
+        </div>
+        <div class="more-btn">
+          <button onclick={() => openMoreDrawer('research-full')}>Full →</button>
+        </div>
+      </div>
+
+    {:else if activeTab === 'judge'}
+      <div class="tab-inner">
+        <div class="tab-scroll">
+          <JudgePanel
+            {symbol}
+            {timeframe}
+            captures={judgeCaptures}
+            saving={judgeSaving}
+            onSaveJudgment={handleSaveJudgment}
+            onOpenCapture={openCapture}
+          />
+        </div>
+        <div class="more-btn">
+          <button onclick={() => openMoreDrawer('judge-full')}>History →</button>
+        </div>
       </div>
 
     {/if}
   </div>
 </div>
+
+<!-- ── Drawer ── -->
+<DrawerSlide
+  open={drawerOpen}
+  title={drawerKind ? DRAWER_TITLE[drawerKind] : ''}
+  onClose={() => shellStore.closeDrawer()}
+>
+  {#if drawerKind === 'evidence-grid'}
+    <DecisionHUDAdapter />
+  {:else if drawerKind === 'pattern-library'}
+    <div class="drawer-placeholder">
+      <span>Pattern Library</span>
+      <p>Select a pattern from the PAT tab to view details here.</p>
+    </div>
+  {:else if drawerKind === 'verdict-card'}
+    <div class="drawer-placeholder">
+      <span>Verdict Detail</span>
+      <p>Select a verdict from the VER tab to view full details here.</p>
+    </div>
+  {:else if drawerKind === 'research-full'}
+    <AIPanel
+      {messages}
+      onSend={onSend}
+      {symbol}
+      {timeframe}
+      onSelectSymbol={onSelectSymbol}
+      onClose={() => shellStore.closeDrawer()}
+    />
+  {:else if drawerKind === 'judge-full'}
+    <JudgePanel
+      {symbol}
+      {timeframe}
+      captures={judgeCaptures}
+      saving={judgeSaving}
+      onSaveJudgment={handleSaveJudgment}
+      onOpenCapture={openCapture}
+    />
+  {:else if drawerKind === 'why-panel'}
+    <div class="drawer-placeholder">
+      <span>Why Panel</span>
+      <p>Reasoning breakdown coming soon.</p>
+    </div>
+  {/if}
+</DrawerSlide>
 
 <style>
 .agent-panel {
@@ -395,6 +471,26 @@
 }
 .expand-btn:hover { color: var(--g7, #9d9690); }
 
+/* ── AI Search ── */
+.ai-search-bar {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--g3, #1c1918);
+  flex-shrink: 0;
+}
+.ai-search-input {
+  width: 100%;
+  background: var(--g2, #131110);
+  border: 1px solid var(--g4, #272320);
+  border-radius: 2px;
+  color: var(--g8, #cec9c4);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 8px;
+  outline: none;
+  box-sizing: border-box;
+}
+.ai-search-input:focus { border-color: var(--amb, #f5a623); }
+
 /* ── Tab content ── */
 .tab-content {
   flex: 1;
@@ -404,14 +500,42 @@
   flex-direction: column;
 }
 
-/* ── PAT tab ── */
-.pat-panel {
+.tab-inner {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
+.tab-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── More button ── */
+.more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px 10px;
+  border-top: 1px solid var(--g3, #1c1918);
+  flex-shrink: 0;
+}
+.more-btn button {
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--g4, #272320);
+  border-radius: 2px;
+  color: var(--g5, #3d3830);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  cursor: pointer;
+  transition: color 0.07s, border-color 0.07s;
+}
+.more-btn button:hover { color: var(--g7, #9d9690); border-color: var(--g5, #3d3830); }
+
+/* ── PAT tab ── */
 .pat-search-row {
   padding: 6px 8px;
   border-bottom: 1px solid var(--g3, #1c1918);
@@ -420,7 +544,6 @@
   flex-direction: column;
   gap: 5px;
 }
-
 .pat-search {
   width: 100%;
   background: var(--g2, #131110);
@@ -434,12 +557,7 @@
   box-sizing: border-box;
 }
 .pat-search:focus { border-color: var(--g6, #5a534c); }
-
-.pat-chips {
-  display: flex;
-  gap: 4px;
-}
-
+.pat-chips { display: flex; gap: 4px; }
 .pat-chip {
   height: 18px;
   padding: 0 6px;
@@ -458,13 +576,11 @@
 .pat-chip.active { color: var(--g9, #eceae8); border-color: var(--g6, #5a534c); background: var(--g2, #131110); }
 .pat-chip.chip-pos.active { color: var(--pos, #4ade80); border-color: var(--pos, #4ade80); }
 .pat-chip.chip-neg.active { color: var(--neg, #f87171); border-color: var(--neg, #f87171); }
-
 .pat-list {
   flex: 1;
   overflow-y: auto;
   padding: 2px 0;
 }
-
 .pat-row {
   width: 100%;
   display: flex;
@@ -480,48 +596,33 @@
   transition: background 0.06s, border-color 0.06s;
 }
 .pat-row:hover { background: var(--g2, #131110); }
-.pat-row.selected {
-  background: var(--g2, #131110);
-  border-left-color: var(--amb, #f5a623);
-}
-
-.pat-sym {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--g9, #eceae8);
-  min-width: 40px;
-}
-.pat-tf {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--g5, #3d3830);
-  min-width: 24px;
-}
-.pat-slug {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
-  color: var(--g4, #272320);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pat-verdict {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--g5, #3d3830);
-  flex-shrink: 0;
-}
+.pat-row.selected { background: var(--g2, #131110); border-left-color: var(--amb, #f5a623); }
+.pat-sym { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--g9, #eceae8); min-width: 40px; }
+.pat-tf { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--g5, #3d3830); min-width: 24px; }
+.pat-slug { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g4, #272320); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pat-verdict { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--g5, #3d3830); flex-shrink: 0; }
 .pat-verdict.pos { color: var(--pos, #4ade80); }
 .pat-verdict.neg { color: var(--neg, #f87171); }
+.pat-empty { display: block; padding: 20px 12px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--g4, #272320); text-align: center; }
 
-.pat-empty {
-  display: block;
-  padding: 20px 12px;
+/* ── Drawer placeholder ── */
+.drawer-placeholder {
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.drawer-placeholder span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--g7, #9d9690);
+}
+.drawer-placeholder p {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
-  color: var(--g4, #272320);
-  text-align: center;
+  color: var(--g5, #3d3830);
+  line-height: 1.5;
+  margin: 0;
 }
 </style>

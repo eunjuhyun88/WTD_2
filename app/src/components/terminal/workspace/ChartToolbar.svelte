@@ -1,7 +1,7 @@
 <script lang="ts">
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
 
-  let { tf = '1h', onTfChange, showExport = true } = $props();
+  let { tf = '1h', onTfChange, showExport = true, drawingMode = false, onToggleDrawing } = $props();
 
   function handleTfChange(newTf: string) {
     if (onTfChange) {
@@ -31,6 +31,15 @@
   </div>
 
   <div class="toolbar-spacer"></div>
+
+  <button
+    class="draw-btn"
+    class:active={drawingMode}
+    onclick={onToggleDrawing}
+    title={drawingMode ? 'Disable drawing' : 'Enable drawing (D)'}
+  >
+    ✏️
+  </button>
 
   {#if showExport}
     <button class="export-btn" onclick={handleExport} title="Export chart data">
@@ -85,6 +94,27 @@
 
   .toolbar-spacer {
     flex: 1;
+  }
+
+  .draw-btn {
+    background: none;
+    border: none;
+    color: rgba(177, 181, 189, 0.7);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+    border-radius: 3px;
+  }
+
+  .draw-btn:hover {
+    color: rgba(177, 181, 189, 0.95);
+    background: rgba(100, 150, 200, 0.1);
+  }
+
+  .draw-btn.active {
+    color: rgba(100, 200, 255, 0.9);
+    background: rgba(100, 150, 200, 0.2);
   }
 
   .export-btn {
