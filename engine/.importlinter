@@ -1,0 +1,64 @@
+[importlinter]
+root_packages =
+    research
+    scanner
+
+# Phase A — 현재 활성 contracts (research + scanner 범위만)
+# Phase B 이후: core_loop 추가 후 아래 주석 해제
+
+# Contract 1: scheduler가 research discovery 핵심 직접 import 금지
+[importlinter:contract:scheduler-no-research-core]
+name = scanner.scheduler must not import research discovery internals
+type = forbidden
+source_modules =
+    scanner.scheduler
+forbidden_modules =
+    research.autoresearch_loop
+    research.autoresearch_runner
+    research.orchestrator
+
+# Contract 2: research.artifacts sub-package는 discovery/ensemble import 금지
+# (Phase C에서 artifacts 생성 후 활성)
+# [importlinter:contract:artifacts-no-business-logic]
+# name = research.artifacts must not import discovery or ensemble
+# type = forbidden
+# source_modules =
+#     research.artifacts
+# forbidden_modules =
+#     research.discovery
+#     research.ensemble
+
+# Contract 3: validation은 discovery import 금지
+# (Phase C에서 sub-package 분해 후 활성)
+# [importlinter:contract:validation-no-discovery]
+# name = research.validation must not import discovery
+# type = forbidden
+# source_modules =
+#     research.validation
+# forbidden_modules =
+#     research.discovery
+
+# Contract 4: core_loop은 scanner 직접 import 금지 (Phase B 이후)
+# [importlinter:contract:core-loop-no-scanner]
+# name = core_loop must not import scanner directly
+# type = forbidden
+# source_modules =
+#     core_loop
+# forbidden_modules =
+#     scanner
+
+# Contract 5: core_loop은 research 직접 import 금지 (Phase B 이후)
+# [importlinter:contract:core-loop-no-research-direct]
+# name = core_loop must not import research directly
+# type = forbidden
+# source_modules =
+#     core_loop
+# forbidden_modules =
+#     research.autoresearch_loop
+#     research.orchestrator
+#     research.discovery_agent
+#     research.live_monitor
+
+# Contract 6: pipeline facade는 research 내부 직접 import 금지 (Phase B 이후)
+# pipeline.py는 단일 파일 모듈 — core_loop 패키지로 이동 후 아래 활성
+# [importlinter:contract:pipeline-thin-facade]
