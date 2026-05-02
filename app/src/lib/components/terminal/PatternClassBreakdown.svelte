@@ -24,13 +24,13 @@
 
   let { similar = [], phases = [], loading = false, onShareClick }: Props = $props();
 
-  type CategoryKey = '하락' | '매집' | '상승전' | '하락전';
+  type CategoryKey = 'Dump' | 'Accum' | 'Pre-Bull' | 'Pre-Bear';
 
   const CATEGORIES: { key: CategoryKey; color: string; bg: string }[] = [
-    { key: '하락',  color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
-    { key: '매집',  color: '#60a5fa', bg: 'rgba(96,165,250,0.12)'  },
-    { key: '상승전', color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
-    { key: '하락전', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
+    { key: 'Dump',     color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+    { key: 'Accum',    color: '#60a5fa', bg: 'rgba(96,165,250,0.12)'  },
+    { key: 'Pre-Bull', color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
+    { key: 'Pre-Bear', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
   ];
 
   function classifyCapture(c: SimilarCapture): CategoryKey {
@@ -39,30 +39,30 @@
     const l = (c.label ?? '').toLowerCase();
 
     if (p.includes('dump') || p.includes('real_dump') || p.includes('fake_dump') || v === 'bearish')
-      return '하락';
+      return 'Dump';
     if (p.includes('accum') || p.includes('매집'))
-      return '매집';
+      return 'Accum';
     if (p.includes('squeeze') || p.includes('breakout') || v === 'bullish')
-      return '상승전';
+      return 'Pre-Bull';
     if (p.includes('arch') || l.includes('하락전') || l.includes('before_dump'))
-      return '하락전';
+      return 'Pre-Bear';
     // fallback: verdict-based
-    if (v === 'bearish') return '하락';
-    if (v === 'bullish') return '상승전';
-    return '매집';
+    if (v === 'bearish') return 'Dump';
+    if (v === 'bullish') return 'Pre-Bull';
+    return 'Accum';
   }
 
   function classifyPhase(phaseName: string): CategoryKey {
     const p = phaseName.toLowerCase();
-    if (p.includes('dump') || p.includes('bear')) return '하락';
-    if (p.includes('accum') || p.includes('매집')) return '매집';
-    if (p.includes('squeeze') || p.includes('trigger') || p.includes('breakout')) return '상승전';
-    if (p.includes('arch') || p.includes('top')) return '하락전';
-    return '매집';
+    if (p.includes('dump') || p.includes('bear')) return 'Dump';
+    if (p.includes('accum') || p.includes('매집')) return 'Accum';
+    if (p.includes('squeeze') || p.includes('trigger') || p.includes('breakout')) return 'Pre-Bull';
+    if (p.includes('arch') || p.includes('top')) return 'Pre-Bear';
+    return 'Accum';
   }
 
   const counts = $derived.by(() => {
-    const map: Record<CategoryKey, number> = { '하락': 0, '매집': 0, '상승전': 0, '하락전': 0 };
+    const map: Record<CategoryKey, number> = { 'Dump': 0, 'Accum': 0, 'Pre-Bull': 0, 'Pre-Bear': 0 };
 
     // From similar captures
     for (const c of similar) map[classifyCapture(c)]++;
@@ -88,11 +88,11 @@
   <div class="pcb-header">
     <span class="pcb-title">PATTERN BREAKDOWN</span>
     {#if total > 0}
-      <span class="pcb-total">{total}개</span>
+      <span class="pcb-total">{total}</span>
     {/if}
     {#if onShareClick && total > 0}
-      <button class="pcb-share" onclick={onShareClick} title="분류 결과 공유">
-        ↗ 공유
+      <button class="pcb-share" onclick={onShareClick} title="Share breakdown">
+        ↗ Share
       </button>
     {/if}
   </div>
@@ -108,7 +108,7 @@
     </div>
   {:else if total === 0}
     <div class="pcb-empty">
-      차트 구간을 선택하면<br/>유사 패턴이 분류됩니다
+      Select a chart range to classify similar patterns
     </div>
   {:else}
     <div class="pcb-bars">

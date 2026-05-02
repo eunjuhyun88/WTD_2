@@ -39,7 +39,7 @@
     AI
   </button>
 
-  <button class="mode-btn" onclick={() => onModeTap?.()} title="모드 선택">···</button>
+  <button class="mode-btn" onclick={() => onModeTap?.()} title="Select mode">···</button>
 </div>
 
 <style>

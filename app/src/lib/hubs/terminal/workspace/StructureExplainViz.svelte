@@ -21,13 +21,13 @@
 <section class="structure-explain" aria-label="Structure signal decode">
     <header class="se-head">
       <span class="se-title">Signal decode</span>
-      <span class="se-sub">엔진이 태깅한 구조·포지션 맥락 (확정 패턴 아님)</span>
+      <span class="se-sub">Structure &amp; position context tagged by the engine (not confirmed patterns)</span>
     </header>
 
     {#if model.wyckoff}
       <div class="se-block" data-accum={model.wyckoff.isAccumulation ? '1' : '0'}>
         <div class="se-row-label">
-          <span>Wyckoff (1H 스윙·거래량)</span>
+          <span>Wyckoff (1H swing · volume)</span>
           <strong class="se-score" data-sign={model.wyckoff.score >= 0 ? '+' : '-'}>
             {model.wyckoff.score >= 0 ? '+' : ''}{model.wyckoff.score.toFixed(0)}
           </strong>
@@ -44,13 +44,13 @@
               <span class="phase-caption">
                 {band === 'A'
                   ? model.wyckoff.isAccumulation
-                    ? 'SC/초기'
-                    : 'BC/초기'
+                    ? 'SC/Early'
+                    : 'BC/Early'
                   : band === 'B'
-                    ? '빌드'
+                    ? 'Build'
                     : band === 'C'
-                      ? '테스트'
-                      : '전개'}
+                      ? 'Test'
+                      : 'Markup'}
               </span>
             </div>
           {/each}
@@ -63,8 +63,7 @@
           </div>
         {/if}
         <p class="se-hint">
-          스윙 고저·볼륨 z·캔들 형태로 SC→Spring→SOS 같은 이벤트를 <em>근사 탐지</em>합니다. 위 칩이 켜진 항목이 최근 구간에서 잡힌
-          이벤트입니다.
+          Swing highs/lows, volume z-scores, and candle shape are used to <em>approximate-detect</em> events like SC→Spring→SOS. Lit chips above are events detected in the recent window.
         </p>
       </div>
     {/if}
@@ -84,7 +83,7 @@
           {/each}
         </div>
         <p class="se-hint">
-          각 타임프레임 OHLC를 따로 리샘플해 같은 규칙으로 점수를 냅니다. [1H] 문구는 이 중 1H 결과입니다.
+          Each timeframe's OHLC is resampled independently and scored with the same rules. The [1H] label refers to the 1H result among them.
         </p>
       </div>
     {/if}
@@ -112,8 +111,7 @@
           </div>
         {/if}
         <p class="se-hint">
-          OI 명목가치 ÷ 24h 거래대금. 크면 포지션이 거래 회전 대비 과다하게 쌓인 상태(레버리지 밀집).
-          펀딩 부호로 숏/롱 쏠림 리스크를 가산해 점수(+12 등)를 붙입니다.
+          OI notional ÷ 24h volume. A high value means positions are heavily stacked relative to turnover (leverage concentration). Funding sign is used to add short/long skew risk to the score (e.g. +12).
         </p>
       </div>
     {/if}

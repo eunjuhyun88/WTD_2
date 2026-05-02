@@ -20,14 +20,14 @@
     label: string;
     shortcut?: string;
   }> = [
-    { key: 'cursor',         icon: '↖',  label: '선택 (커서)',          shortcut: 'Esc' },
-    { key: 'trendLine',      icon: '╱',  label: '추세선',                shortcut: 'T' },
-    { key: 'horizontalLine', icon: '—',  label: '수평선',                shortcut: 'H' },
-    { key: 'verticalLine',   icon: '|',  label: '수직선',                shortcut: 'V' },
-    { key: 'extendedLine',   icon: '↔',  label: '연장선',                shortcut: 'E' },
-    { key: 'rectangle',      icon: '□',  label: '사각형',                shortcut: 'R' },
-    { key: 'fibRetracement', icon: 'Ψ',  label: '피보나치 되돌림',         shortcut: 'F' },
-    { key: 'textLabel',      icon: 'T',  label: '텍스트',                shortcut: 'L' },
+    { key: 'cursor',         icon: '↖',  label: 'Select (Cursor)',       shortcut: 'Esc' },
+    { key: 'trendLine',      icon: '╱',  label: 'Trend Line',            shortcut: 'T' },
+    { key: 'horizontalLine', icon: '—',  label: 'Horizontal Line',       shortcut: 'H' },
+    { key: 'verticalLine',   icon: '|',  label: 'Vertical Line',         shortcut: 'V' },
+    { key: 'extendedLine',   icon: '↔',  label: 'Extended Line',         shortcut: 'E' },
+    { key: 'rectangle',      icon: '□',  label: 'Rectangle',             shortcut: 'R' },
+    { key: 'fibRetracement', icon: 'Ψ',  label: 'Fibonacci Retracement', shortcut: 'F' },
+    { key: 'textLabel',      icon: 'T',  label: 'Text',                  shortcut: 'L' },
   ];
 </script>
 
@@ -51,8 +51,8 @@
     <button
       class="tool-btn action-btn"
       onclick={onDeleteSelected}
-      title="선택 삭제"
-      aria-label="선택된 도형 삭제"
+      title="Delete Selected"
+      aria-label="Delete selected shape"
     >
       ✕
     </button>
@@ -61,9 +61,9 @@
   {#if onClearAll}
     <button
       class="tool-btn action-btn danger"
-      onclick={() => { if (confirm('모든 드로잉을 삭제하시겠습니까?')) onClearAll?.(); }}
-      title="전체 삭제"
-      aria-label="모든 드로잉 삭제"
+      onclick={() => { if (confirm('Delete all drawings?')) onClearAll?.(); }}
+      title="Clear All"
+      aria-label="Delete all drawings"
     >
       ⌫
     </button>

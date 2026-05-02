@@ -62,3 +62,7 @@ First implemented remote transport:
 - Operators can intentionally force separation pressure with `ENGINE_RUNTIME_MODE=remote` and immediately detect missing engine-api coverage.
 - Remote coverage can advance incrementally by splitting candidate acquisition from app-owned overlay logic instead of waiting for a full one-shot backend rewrite.
 - App-owned product bridges such as `lab/backtest` and `agents/definitions` are not covered by this ADR; ADR-005 still governs their ownership.
+
+## See Also
+
+- [ADR-012](ADR-012-core-loop-spine.md): Core Loop Spine & research/ 4-subpackage boundary (W-0386)

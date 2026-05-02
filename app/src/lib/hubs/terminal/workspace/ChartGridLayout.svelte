@@ -133,12 +133,12 @@
   };
 
   const LAYOUT_LABELS: Record<LayoutKey, string> = {
-    '1':   '1 차트',
-    '2H':  '2 가로 분할',
-    '2V':  '2 세로 분할',
-    '2+1': '1 메인 + 2',
+    '1':   '1 Chart',
+    '2H':  '2 Horizontal Split',
+    '2V':  '2 Vertical Split',
+    '2+1': '1 Main + 2',
     '2x2': '2×2',
-    '3+1': '3 + 1 메인',
+    '3+1': '3 + 1 Main',
   };
 
 

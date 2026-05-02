@@ -94,10 +94,10 @@
   }
 
   const quicks: readonly string[] = [
-    'BTC 분석',
-    'OI 급증 스캔',
-    'ETH long 판정',
-    'VWAP reclaim 스캔',
+    'BTC analyze',
+    'OI surge scan',
+    'ETH long judge',
+    'VWAP reclaim scan',
   ];
 
   // ── Intent classifier ────────────────────────────────────────────────────
@@ -125,7 +125,7 @@
     try {
       const r = await fetch(`/api/cogochi/analyze?symbol=${targetSymbol}&tf=${timeframe}`);
       if (!r.ok) {
-        cards = [{ type: 'info', text: `analyze 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        cards = [{ type: 'info', text: `analyze failed (${r.status})`, ts: Date.now() }, ...cards];
         return;
       }
       const d = (await r.json()) as Record<string, any>;
@@ -165,7 +165,7 @@
       }
     } catch (err) {
       cards = [
-        { type: 'info', text: `analyze 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        { type: 'info', text: `analyze error: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
         ...cards,
       ];
     } finally {
@@ -182,7 +182,7 @@
         body: JSON.stringify({ timeframe }),
       });
       if (!r.ok) {
-        cards = [{ type: 'info', text: `scan 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        cards = [{ type: 'info', text: `scan failed (${r.status})`, ts: Date.now() }, ...cards];
         return;
       }
       const d = (await r.json()) as Record<string, any>;
@@ -200,7 +200,7 @@
       cards = [{ type: 'scan', candidates, ts: Date.now() }, ...cards];
     } catch (err) {
       cards = [
-        { type: 'info', text: `scan 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        { type: 'info', text: `scan error: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
         ...cards,
       ];
     } finally {
@@ -227,11 +227,11 @@
       if (r.ok) {
         cards = [{ type: 'saved', symbol: targetSymbol, verdict, ts: Date.now() }, ...cards];
       } else {
-        cards = [{ type: 'info', text: `저장 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        cards = [{ type: 'info', text: `save failed (${r.status})`, ts: Date.now() }, ...cards];
       }
     } catch (err) {
       cards = [
-        { type: 'info', text: `judge 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        { type: 'info', text: `judge error: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
         ...cards,
       ];
     } finally {
@@ -243,7 +243,7 @@
     const indicatorDef = findIndicatorByQuery(text);
     if (!indicatorDef) {
       cards = [
-        { type: 'info', text: `해석할 수 없는 명령입니다: "${text}"`, ts: Date.now() },
+        { type: 'info', text: `Cannot interpret command: "${text}"`, ts: Date.now() },
         ...cards,
       ];
       return;
@@ -256,7 +256,7 @@
     cards = [
       {
         type: 'info',
-        text: `${indicatorDef.label ?? indicatorDef.id} 지표로 이동했습니다.`,
+        text: `Moved to ${indicatorDef.label ?? indicatorDef.id} indicator.`,
         ts: Date.now(),
       },
       ...cards,
@@ -302,7 +302,7 @@
         `/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}&from=${from}&to=${to}`,
       );
       if (!r.ok) {
-        cards = [{ type: 'info', text: `구간 analyze 실패 (${r.status})`, ts: Date.now() }, ...cards];
+        cards = [{ type: 'info', text: `range analyze failed (${r.status})`, ts: Date.now() }, ...cards];
         return;
       }
       const d = (await r.json()) as Record<string, any>;
@@ -341,7 +341,7 @@
       }
     } catch (err) {
       cards = [
-        { type: 'info', text: `구간 analyze 오류: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
+        { type: 'info', text: `range analyze error: ${(err as Error).message ?? 'unknown'}`, ts: Date.now() },
         ...cards,
       ];
     } finally {
@@ -395,8 +395,8 @@
       <div class="welcome">
         <div class="wl-section">AI · HOW TO</div>
         <p class="wl-text">
-          분석/스캔/판정을 자연어로 요청하세요.<br />
-          <span class="wl-hint">결과는 카드로 누적됩니다 (위가 최신).</span>
+          Request analyze / scan / judge in natural language.<br />
+          <span class="wl-hint">Results accumulate as cards (newest at top).</span>
         </p>
         <div class="wl-section">QUICK</div>
         <div class="wl-picks">
@@ -471,7 +471,7 @@
         {:else if card.type === 'saved'}
           <div class="card card--saved">
             <span class="saved-icon">✓</span>
-            <span>{card.symbol} {card.verdict.toUpperCase()} 저장됨</span>
+            <span>{card.symbol} {card.verdict.toUpperCase()} saved</span>
           </div>
         {:else if card.type === 'info'}
           <div class="card card--info">{card.text}</div>
@@ -485,7 +485,7 @@
       <textarea
         bind:this={textareaEl}
         value={inputValue}
-        placeholder="분석 / 스캔 / 판정 — 'BTC 분석' ↵"
+        placeholder="analyze / scan / judge — 'BTC analyze' ↵"
         rows={2}
         oninput={handleInput}
         onkeydown={(e) => {

@@ -30,14 +30,14 @@
     {#if compareEnabled}
       <div class="cwb-comparison">
         <div class="cwb-question">
-          <span class="cwb-q-label">질문</span>
-          <span class="cwb-q-text">BTC 4h 현재 상황 어때?</span>
+          <span class="cwb-q-label">Question</span>
+          <span class="cwb-q-text">What's the current BTC 4h situation?</span>
         </div>
 
         <div class="cwb-response-block">
           <div class="cwb-response-header cwb-response-baseline-header">
             <span class="cwb-response-tag">Baseline</span>
-            <span class="cwb-response-sublabel">공용 모델</span>
+            <span class="cwb-response-sublabel">Shared model</span>
           </div>
           <div class="cwb-response-body">
             "BTC는 현재 $XX,XXX에 거래 중이며, RSI 60으로

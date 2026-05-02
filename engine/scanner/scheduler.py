@@ -4,17 +4,11 @@ Runs inside the FastAPI process via APScheduler (AsyncIOScheduler).
 Every 15 minutes it scans every symbol in the configured universe,
 computes features, evaluates all building blocks, and pushes any
 signal hit to the `engine_alerts` Supabase table.
-
 Start/stop is controlled by the FastAPI lifespan hook in api/main.py.
 The scan loop is intentionally sequential (not concurrent) to avoid
 bursting Binance rate limits during the feature-calc phase.
-
-Environment variables used:
-  SUPABASE_URL             — Supabase project URL
-  SUPABASE_SERVICE_ROLE_KEY — Service-role key (bypasses RLS)
-  SCAN_INTERVAL_SECONDS    — Override default 900 (15 min)
-  SCAN_MIN_BLOCKS          — Minimum blocks to fire an alert (default 1)
-  SCAN_UNIVERSE            — Universe name for load_universe() (default "binance_dynamic")
+Env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SCAN_INTERVAL_SECONDS,
+SCAN_MIN_BLOCKS, SCAN_UNIVERSE.
 """
 from __future__ import annotations
 
@@ -30,9 +24,8 @@ except ModuleNotFoundError:
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from data_cache.market_search import refresh_market_search_index
 from data_cache.loader import load_klines, load_macro_bundle, load_perp
-from data_cache.fetch_okx_historical import fetch_and_cache_signals, SYMBOL_CHAIN_MAP
+from data_cache.market_search import refresh_market_search_index
 from scanner.alerts import (
     send_pattern_engine_alert,
     send_pattern_scan_summary,
@@ -51,10 +44,7 @@ from scanner.jobs.extreme_event_tracker import (
     extreme_event_outcome_job,
 )
 from workers.feature_windows_prefetcher import prefetch_feature_windows as _fw_prefetch
-from scanner.jobs.universe_scan import (
-    push_alert,
-    scan_universe_job,
-)
+from scanner.jobs.universe_scan import push_alert, scan_universe_job
 from scanner.feature_calc import compute_features_table, compute_snapshot
 from scoring.block_evaluator import evaluate_blocks
 from scoring.lightgbm_engine import get_engine
@@ -65,10 +55,7 @@ log = logging.getLogger("engine.scanner")
 
 
 def _watched_symbols() -> set[str]:
-    """Return symbols from all is_watching=True captures (W-0335 PR-1).
-
-    Gracefully returns empty set if CaptureStore is unavailable.
-    """
+    """Return symbols from all is_watching=True captures (W-0335 PR-1)."""
     try:
         from capture.store import CaptureStore
         store = CaptureStore()
@@ -80,11 +67,7 @@ def _watched_symbols() -> set[str]:
 
 
 async def _load_universe_with_watches(universe_name: str) -> list[str]:
-    """Union default universe with watched-capture symbols (W-0335 PR-1).
-
-    Watched symbols are always included even when absent from the
-    dynamic universe — ensures captures users are monitoring get scanned.
-    """
+    """Union default universe with watched-capture symbols (W-0335 PR-1)."""
     base = set(await load_universe_async(universe_name))
     watches = _watched_symbols()
     if watches - base:
@@ -92,36 +75,28 @@ async def _load_universe_with_watches(universe_name: str) -> list[str]:
                  len(watches - base), sorted(watches - base)[:10])
     return sorted(base | watches)
 
+
 _scheduler: AsyncIOScheduler | None = None
 _last_pattern_entry_keys: set[str] = set()
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 SCAN_INTERVAL = int(os.environ.get("SCAN_INTERVAL_SECONDS", "900"))
-MIN_BLOCKS     = int(os.environ.get("SCAN_MIN_BLOCKS", "1"))
-UNIVERSE_NAME  = DEFAULT_SCAN_UNIVERSE
-PATTERN_REFINEMENT_ENABLED = os.environ.get("ENABLE_PATTERN_REFINEMENT_JOB", "false").strip().lower() in {
-    "1", "true", "yes", "on",
-}
+MIN_BLOCKS = int(os.environ.get("SCAN_MIN_BLOCKS", "1"))
+UNIVERSE_NAME = DEFAULT_SCAN_UNIVERSE
+_ON = {"1", "true", "yes", "on"}
+_OFF = {"0", "false", "no", "off"}
+PATTERN_REFINEMENT_ENABLED = os.environ.get("ENABLE_PATTERN_REFINEMENT_JOB", "false").strip().lower() in _ON
 PATTERN_REFINEMENT_INTERVAL = int(os.environ.get("PATTERN_REFINEMENT_INTERVAL_SECONDS", "21600"))
 MARKET_SEARCH_INDEX_REFRESH_INTERVAL = int(os.environ.get("MARKET_SEARCH_INDEX_REFRESH_SECONDS", "1800"))
-PATTERN_REFINEMENT_AUTO_TRAIN = os.environ.get("PATTERN_REFINEMENT_AUTO_TRAIN", "false").strip().lower() in {
-    "1", "true", "yes", "on",
-}
-SEARCH_CORPUS_ENABLED = os.environ.get("ENABLE_SEARCH_CORPUS_JOB", "false").strip().lower() in {
-    "1", "true", "yes", "on",
-}
+PATTERN_REFINEMENT_AUTO_TRAIN = os.environ.get("PATTERN_REFINEMENT_AUTO_TRAIN", "false").strip().lower() in _ON
+SEARCH_CORPUS_ENABLED = os.environ.get("ENABLE_SEARCH_CORPUS_JOB", "false").strip().lower() in _ON
 SEARCH_CORPUS_INTERVAL = int(os.environ.get("SEARCH_CORPUS_INTERVAL_SECONDS", "3600"))
-SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().lower() not in {
-    "0", "false", "no", "off",
-}
-FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION_JOB", "true").strip().lower() not in {
-    "0", "false", "no", "off",
-}
+SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().lower() not in _OFF
+FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION_JOB", "true").strip().lower() not in _OFF
 FEATURE_MATERIALIZATION_INTERVAL = int(os.environ.get("FEATURE_MATERIALIZATION_INTERVAL_SECONDS", "900"))
 
-# A8: Beta job gates — flywheel jobs (outcome/refinement/okx) now default ON (W-0336).
-# Heavy infra jobs remain off until explicitly enabled.
+# A8: Beta job gates — flywheel jobs default ON (W-0336); heavy infra jobs off.
 _BETA_JOB_FLAGS = {
     "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "true"),
     "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "true"),
@@ -139,9 +114,9 @@ _BETA_JOB_FLAGS = {
 def _job_enabled(job_id: str) -> bool:
     return _BETA_JOB_FLAGS.get(job_id, "true").strip().lower() in {"1", "true", "yes", "on"}
 
-SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
-SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 _PLACEHOLDER_HINTS = ("your_", "your-", "placeholder", "changeme", "example", "dummy", "<")
 
 
@@ -167,84 +142,7 @@ async def _push_alert(payload: dict[str, Any]) -> None:
     await push_alert(payload, SUPABASE_URL, SUPABASE_ROLE_KEY)
 
 
-async def _corpus_bridge_sync_job() -> None:
-    """Sync FeatureMaterializationStore → SearchCorpusStore (enriched 40+ field signatures).
-
-    Runs every 30 min — after _feature_materialization_refresh_job (15 min) so
-    the corpus always reflects the latest materialized features.
-    """
-    import asyncio
-    from features.corpus_bridge import sync_all_corpus
-    try:
-        result = await asyncio.to_thread(sync_all_corpus)
-        log.info("corpus_bridge_sync: %s", result)
-    except Exception as exc:
-        log.warning("corpus_bridge_sync failed (non-fatal): %s", exc)
-
-
-
-async def _search_corpus_refresh_job() -> None:
-    """Scheduler wrapper: refresh the feature-window search corpus."""
-    await search_corpus_refresh_job(universe_name=UNIVERSE_NAME)
-
-
-async def _market_search_index_refresh_job() -> None:
-    """Scheduler wrapper: refresh the flat market search index."""
-    result = refresh_market_search_index()
-    log.info(
-        "market_search_index refreshed: row_count=%d refreshed_at=%s",
-        result.row_count,
-        result.refreshed_at,
-    )
-
-async def _feature_windows_prefetch_job() -> None:
-    """Build feature_windows.sqlite for all BINANCE_30 symbols.
-
-    Populates the FeatureWindowStore used by similar.py Layer A/C enrichment
-    (40+ dimensional signal vectors). Runs every 6 hours.
-    """
-    try:
-        result = await _fw_prefetch()
-        log.info("feature_windows_prefetch: %s", result)
-    except Exception as exc:
-        log.warning("feature_windows_prefetch failed (non-fatal): %s", exc)
-
-
-async def _feature_materialization_refresh_job() -> None:
-    """Materialize feature_windows for all universe symbols from local cache.
-
-    Intentionally offline — reads from existing CSV cache, never fans out to
-    providers. Run after universe_scan so freshly cached data is consumed.
-    """
-    import asyncio
-    from features.materialization_store import FeatureMaterializationStore
-    from scanner.jobs.feature_materialization import materialize_symbol_window
-
-    store = FeatureMaterializationStore()
-    loaded = await load_universe_async(UNIVERSE_NAME)
-    symbols = list(loaded)[:60]
-    materialized = skipped = 0
-    for symbol in symbols:
-        for timeframe in ("1h", "4h"):
-            try:
-                await asyncio.to_thread(
-                    materialize_symbol_window,
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    venue="binance",
-                    offline=True,
-                    store=store,
-                )
-                materialized += 1
-            except Exception:
-                skipped += 1
-    log.info(
-        "feature_materialization: symbols=%d materialized=%d skipped=%d",
-        len(symbols), materialized, skipped,
-    )
-
-
-# ── Core scan loop ────────────────────────────────────────────────────────────
+# ── Core scan loop ─────────────────────────────────────────────────────────────
 
 async def _scan_universe() -> None:
     await scan_universe_job(
@@ -265,14 +163,8 @@ async def _scan_universe() -> None:
     )
 
 
-# ── Lifecycle API (called from api/main.py lifespan) ─────────────────────────
-
 async def _pattern_scan_job() -> None:
-    """Run pattern state machine scan across all symbols.
-
-    This is a separate job from _scan_universe (block alerts).
-    Pattern scan tracks multi-phase progression (FAKE_DUMP → BREAKOUT).
-    """
+    """Pattern state machine scan (separate from block alerts)."""
     global _last_pattern_entry_keys
     _last_pattern_entry_keys, _ = await pattern_scan_job(
         universe_name=UNIVERSE_NAME,
@@ -287,51 +179,26 @@ async def _auto_evaluate_job() -> None:
     await auto_evaluate_job()
 
 
-async def _outcome_resolver_job() -> None:
-    await outcome_resolver_job()
+async def _search_corpus_refresh_job() -> None:
+    await search_corpus_refresh_job(universe_name=UNIVERSE_NAME)
 
 
-async def _pattern_refinement_job() -> None:
-    await pattern_refinement_job(auto_train_candidate=PATTERN_REFINEMENT_AUTO_TRAIN)
+async def _market_search_index_refresh_job() -> None:
+    result = refresh_market_search_index()
+    log.info("market_search_index refreshed: row_count=%d refreshed_at=%s", result.row_count, result.refreshed_at)
 
 
-async def _refinement_trigger_job() -> None:
-    await refinement_trigger_job()
+async def _corpus_bridge_sync_job() -> None:
+    """Sync FeatureMaterializationStore → SearchCorpusStore (every 30 min)."""
+    from features.corpus_bridge import sync_all_corpus  # noqa: PLC0415
+    try:
+        result = await asyncio.to_thread(sync_all_corpus)
+        log.info("corpus_bridge_sync: %s", result)
+    except Exception as exc:
+        log.warning("corpus_bridge_sync failed (non-fatal): %s", exc)
 
 
-async def _fetch_okx_signals_job() -> None:
-    """Fetch and cache recent OKX smart money signals (every 6 hours).
-
-    W-0109 integration: Populates historical cache for smart_money_accumulation block.
-    """
-    log.debug("Fetching OKX smart money signals...")
-    results = []
-    for symbol in list(SYMBOL_CHAIN_MAP.keys())[:20]:  # Limit to avoid rate limit
-        result = fetch_and_cache_signals(
-            symbol,
-            wallet_types="1,2,3",
-            min_amount_usd=1000.0,
-            max_age_hours=24.0,
-        )
-        results.append(result)
-        if result.get("signals_appended", 0) > 0:
-            log.info(f"  {symbol}: {result['signals_appended']} signals cached")
-    total_appended = sum(r.get("signals_appended", 0) for r in results)
-    log.info(f"✓ OKX signals job complete: {total_appended} total signals cached")
-
-
-async def _backtest_stats_refresh_job() -> None:
-    """W-0369: Refresh backtest stats cache for all PatternObjects — runs at 03:00 UTC."""
-    import asyncio
-    from research.backtest_cache import refresh_all_patterns
-    from research.live_monitor import DEFAULT_UNIVERSE
-
-    log.info("backtest_stats_refresh: starting daily refresh for %d universe symbols", len(DEFAULT_UNIVERSE))
-    results = await asyncio.to_thread(refresh_all_patterns, DEFAULT_UNIVERSE)
-    ok = sum(1 for v in results.values() if v == "ok")
-    err = sum(1 for v in results.values() if v == "error")
-    log.info("backtest_stats_refresh: done — %d ok, %d errors", ok, err)
-
+# ── Lifecycle API ──────────────────────────────────────────────────────────────
 
 def start_scheduler() -> None:
     """Start the APScheduler background scan loop."""
@@ -342,227 +209,95 @@ def start_scheduler() -> None:
     validate_scheduler_secrets()
 
     _scheduler = AsyncIOScheduler(timezone="UTC")
+    _add = _scheduler.add_job  # brevity alias
 
-    # Job 1: Universe block scanner (existing) — every 15 min
-    _scheduler.add_job(
-        _scan_universe,
-        trigger="interval",
-        seconds=SCAN_INTERVAL,
-        id="universe_scan",
-        name="Universe block scanner",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=120,
-    )
+    # Always-on jobs
+    _add(_scan_universe, "interval", seconds=SCAN_INTERVAL,
+         id="universe_scan", name="Universe block scanner",
+         max_instances=1, coalesce=True, misfire_grace_time=120)
+    _add(_pattern_scan_job, "interval", seconds=SCAN_INTERVAL,
+         id="pattern_scan", name="Pattern state machine scanner",
+         max_instances=1, coalesce=True, misfire_grace_time=120)
+    _add(auto_evaluate_job, "interval", seconds=3600,
+         id="auto_evaluate", name="Ledger auto-evaluator",
+         max_instances=1, coalesce=True, misfire_grace_time=300)
 
-    # Job 2: Pattern state machine scan — every 15 min (offset by 5 min)
-    _scheduler.add_job(
-        _pattern_scan_job,
-        trigger="interval",
-        seconds=SCAN_INTERVAL,
-        id="pattern_scan",
-        name="Pattern state machine scanner",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=120,
-    )
-
-    # Job 3: Auto-evaluate pending ledger outcomes — every 1 hour
-    _scheduler.add_job(
-        _auto_evaluate_job,
-        trigger="interval",
-        seconds=3600,
-        id="auto_evaluate",
-        name="Ledger auto-evaluator",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=300,
-    )
-
-    # Job 3b: Outcome resolver for user captures (flywheel axis 1→2) — hourly
+    # Beta-gated flywheel jobs
     if _job_enabled("outcome_resolver"):
-        _scheduler.add_job(
-            _outcome_resolver_job,
-            trigger="interval",
-            seconds=3600,
-            id="outcome_resolver",
-            name="Capture outcome resolver",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=300,
-        )
-
-    # Job 3c: Refinement trigger (flywheel axis 3→4) — daily, data-driven
+        _add(outcome_resolver_job, "interval", seconds=3600,
+             id="outcome_resolver", name="Capture outcome resolver",
+             max_instances=1, coalesce=True, misfire_grace_time=300)
     if _job_enabled("refinement_trigger"):
-        _scheduler.add_job(
-            _refinement_trigger_job,
-            trigger="interval",
-            seconds=86400,
-            id="refinement_trigger",
-            name="Data-driven refinement trigger",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=3600,
-        )
-
-    # Job 4: OKX Smart Money signals cache refresh (W-0109) — every 6 hours
+        _add(refinement_trigger_job, "interval", seconds=86400,
+             id="refinement_trigger", name="Data-driven refinement trigger",
+             max_instances=1, coalesce=True, misfire_grace_time=3600)
     if _job_enabled("fetch_okx_signals"):
-        _scheduler.add_job(
-            _fetch_okx_signals_job,
-            trigger="interval",
-            seconds=21600,  # 6 hours
-            id="fetch_okx_signals",
-            name="OKX smart money signal fetcher",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=300,
-        )
+        from scanner.jobs.okx_signals import fetch_okx_signals_job as _okx  # noqa: PLC0415
+        _add(_okx, "interval", seconds=21600,
+             id="fetch_okx_signals", name="OKX smart money signal fetcher",
+             max_instances=1, coalesce=True, misfire_grace_time=300)
 
+    # Flag-gated optional jobs
     if PATTERN_REFINEMENT_ENABLED:
-        _scheduler.add_job(
-            _pattern_refinement_job,
-            trigger="interval",
-            seconds=PATTERN_REFINEMENT_INTERVAL,
-            id="pattern_refinement",
-            name="Pattern refinement methodology cycle",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=300,
-        )
-
+        _add(lambda: pattern_refinement_job(auto_train_candidate=PATTERN_REFINEMENT_AUTO_TRAIN),
+             "interval", seconds=PATTERN_REFINEMENT_INTERVAL,
+             id="pattern_refinement", name="Pattern refinement cycle",
+             max_instances=1, coalesce=True, misfire_grace_time=300)
     if SEARCH_CORPUS_ENABLED:
-        _scheduler.add_job(
-            _search_corpus_refresh_job,
-            trigger="interval",
-            seconds=SEARCH_CORPUS_INTERVAL,
-            id="search_corpus_refresh",
-            name="Search corpus window accumulator",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=300,
-        )
-
+        _add(lambda: search_corpus_refresh_job(universe_name=UNIVERSE_NAME),
+             "interval", seconds=SEARCH_CORPUS_INTERVAL,
+             id="search_corpus_refresh", name="Search corpus accumulator",
+             max_instances=1, coalesce=True, misfire_grace_time=300)
     if FEATURE_MATERIALIZATION_ENABLED:
-        _scheduler.add_job(
-            _feature_materialization_refresh_job,
-            trigger="interval",
-            seconds=FEATURE_MATERIALIZATION_INTERVAL,
-            id="feature_materialization_refresh",
-            name="Canonical feature plane materializer",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=120,
-        )
+        from scanner.jobs.feature_materialization import run_materialization_refresh as _mat  # noqa: PLC0415
+        _add(lambda: _mat(universe_name=UNIVERSE_NAME), "interval",
+             seconds=FEATURE_MATERIALIZATION_INTERVAL,
+             id="feature_materialization_refresh", name="Canonical feature plane materializer",
+             max_instances=1, coalesce=True, misfire_grace_time=120)
 
-    # Job: Corpus bridge — FeatureMaterializationStore → SearchCorpusStore (every 30 min)
+    # Heavy infra jobs (off by default)
     if _job_enabled("corpus_bridge_sync"):
-        _scheduler.add_job(
-            _corpus_bridge_sync_job,
-            trigger="interval",
-            seconds=1800,
-            id="corpus_bridge_sync",
-            name="Corpus bridge enrichment (40+ dims)",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=300,
-        )
-
-    # Job: Feature windows prefetcher — builds feature_windows.sqlite (every 6 hours)
+        _add(_corpus_bridge_sync_job, "interval", seconds=1800,
+             id="corpus_bridge_sync", name="Corpus bridge (40+ dims)",
+             max_instances=1, coalesce=True, misfire_grace_time=300)
     if _job_enabled("feature_windows_prefetch"):
-        _scheduler.add_job(
-            _feature_windows_prefetch_job,
-            trigger="interval",
-            seconds=21600,
-            id="feature_windows_prefetch",
-            name="Feature windows store prefetcher",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=600,
-        )
-
-    # Job: Alpha Universe COLD scanner — every 4 hours
+        _add(_fw_prefetch, "interval", seconds=21600,
+             id="feature_windows_prefetch", name="Feature windows prefetcher",
+             max_instances=1, coalesce=True, misfire_grace_time=600)
     if _job_enabled("alpha_observer_cold"):
-        _scheduler.add_job(
-            scan_alpha_observer_job,
-            trigger="interval",
-            seconds=14400,
-            id="alpha_observer_cold",
-            name="Alpha Universe COLD observer (4h)",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=600,
-        )
-
-    # Job: Alpha Universe WARM scanner — every 30 minutes (active phases only)
+        _add(scan_alpha_observer_job, "interval", seconds=14400,
+             id="alpha_observer_cold", name="Alpha COLD observer (4h)",
+             max_instances=1, coalesce=True, misfire_grace_time=600)
     if _job_enabled("alpha_observer_warm"):
-        _scheduler.add_job(
-            scan_alpha_warm_job,
-            trigger="interval",
-            seconds=1800,
-            id="alpha_observer_warm",
-            name="Alpha Universe WARM observer (30min)",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=120,
-        )
-
-    # Job: Extreme event detector — every 30 min (funding_extreme / OI_spike)
+        _add(scan_alpha_warm_job, "interval", seconds=1800,
+             id="alpha_observer_warm", name="Alpha WARM observer (30min)",
+             max_instances=1, coalesce=True, misfire_grace_time=120)
     if _job_enabled("extreme_event_detector"):
-        _scheduler.add_job(
-            lambda: extreme_event_detector_job(UNIVERSE_NAME),
-            trigger="interval",
-            seconds=1800,
-            jitter=60,
-            id="extreme_event_detector",
-            name="Extreme event detector (30min)",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=300,
-        )
-
-    # Job: Extreme event outcome resolver — every 1 hour
+        _add(lambda: extreme_event_detector_job(UNIVERSE_NAME), "interval",
+             seconds=1800, jitter=60, id="extreme_event_detector",
+             name="Extreme event detector (30min)",
+             max_instances=1, coalesce=True, misfire_grace_time=300)
     if _job_enabled("extreme_event_outcome"):
-        _scheduler.add_job(
-            extreme_event_outcome_job,
-            trigger="interval",
-            seconds=3600,
-            jitter=120,
-            id="extreme_event_outcome",
-            name="Extreme event outcome resolver (1h)",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=600,
-        )
+        _add(extreme_event_outcome_job, "interval", seconds=3600, jitter=120,
+             id="extreme_event_outcome", name="Extreme event outcome resolver (1h)",
+             max_instances=1, coalesce=True, misfire_grace_time=600)
 
-    # W-0377: Signal outcome resolver — hourly, default ON (was false before W-0377)
+    # W-0377: Signal outcome resolver — hourly, default ON
     if os.environ.get("ENABLE_SIGNAL_EVENTS", "true").lower() == "true":
-        from research.verification_loop import register_scheduler as _reg_vloop
-        _reg_vloop(_scheduler)
+        from scanner.jobs.signal_events_job import register_signal_events  # noqa: PLC0415
+        register_signal_events(_scheduler)
 
-    # W-0369: Daily pattern backtest stats refresh — 03:00 UTC
+    # W-0369: Daily backtest stats refresh — 03:00 UTC
     if _job_enabled("backtest_stats_refresh"):
-        _scheduler.add_job(
-            _backtest_stats_refresh_job,
-            trigger="cron",
-            hour=3,
-            minute=0,
-            id="backtest_stats_refresh",
-            name="Daily pattern backtest stats refresh (W-0369)",
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=3600,
-        )
+        from scanner.jobs.backtest_stats_refresh import backtest_stats_refresh_job as _bsr  # noqa: PLC0415
+        _add(_bsr, "cron", hour=3, minute=0, id="backtest_stats_refresh",
+             name="Daily backtest stats refresh (W-0369)",
+             max_instances=1, coalesce=True, misfire_grace_time=3600)
 
     _scheduler.start()
     log.info(
-        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s search_index=%ds refinement=%s universe=%s",
-        SCAN_INTERVAL,
-        SCAN_INTERVAL,
-        MARKET_SEARCH_INDEX_REFRESH_INTERVAL,
-        f"{PATTERN_REFINEMENT_INTERVAL}s" if PATTERN_REFINEMENT_ENABLED else "off",
-        f"{SEARCH_CORPUS_INTERVAL}s" if SEARCH_CORPUS_ENABLED else "off",
-        f"{FEATURE_MATERIALIZATION_INTERVAL}s" if FEATURE_MATERIALIZATION_ENABLED else "off",
-        UNIVERSE_NAME,
+        "Scanner started: block_scan=%ds pattern_scan=%ds universe=%s",
+        SCAN_INTERVAL, SCAN_INTERVAL, UNIVERSE_NAME,
     )
 
 
@@ -594,7 +329,6 @@ def get_jobs_status() -> list[dict]:
     """Return status snapshot of all registered APScheduler jobs.
 
     Used by GET /api/agent-status for real-time harness observability.
-    Each entry: {id, name, next_run, pending, misfire_grace_time}.
     """
     if _scheduler is None:
         return []

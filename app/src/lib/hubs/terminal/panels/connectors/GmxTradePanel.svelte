@@ -71,7 +71,7 @@
 
     const ws = $walletStore;
     if (!ws.connected || !ws.address) {
-      errorMsg = '지갑을 먼저 연결해주세요.';
+      errorMsg = 'Please connect your wallet first.';
       step = 'error';
       return;
     }
@@ -85,7 +85,7 @@
 
       const onArbitrum = await ensureArbitrumChain(providerKey);
       if (!onArbitrum) {
-        errorMsg = 'Arbitrum 체인 전환이 거부되었습니다.';
+        errorMsg = 'Arbitrum chain switch was rejected.';
         step = 'error';
         return;
       }
@@ -93,13 +93,13 @@
       // 2. Check balance
       balance = await fetchGmxBalance(ws.address);
       if (!balance || collateralNum > balance.usdcBalance) {
-        errorMsg = `USDC 잔고 부족 (${balance?.usdcBalance.toFixed(2) ?? '?'} USDC)`;
+        errorMsg = `Insufficient USDC balance (${balance?.usdcBalance.toFixed(2) ?? '?'} USDC)`;
         step = 'error';
         return;
       }
 
       if (balance.ethBalance < 0.001) {
-        errorMsg = 'ETH 잔고 부족 (실행 수수료용 ETH 필요)';
+        errorMsg = 'Insufficient ETH balance (ETH needed for execution fee)';
         step = 'error';
         return;
       }
@@ -115,7 +115,7 @@
           walletAddress: ws.address,
         });
         if (!prepared) {
-          errorMsg = '주문 준비 실패';
+          errorMsg = 'Order preparation failed';
           step = 'error';
           return;
         }
@@ -173,7 +173,7 @@
 
       step = 'done';
     } catch (err: any) {
-      errorMsg = err?.message ?? '알 수 없는 오류';
+      errorMsg = err?.message ?? 'Unknown error';
       step = 'error';
     }
   }
@@ -284,7 +284,7 @@
     {:else if step === 'loading'}
       <div class="gmx-status">
         <div class="status-spinner"></div>
-        <p>주문 준비 중...</p>
+        <p>Preparing order...</p>
         <p class="status-sub">Preparing order</p>
       </div>
 
