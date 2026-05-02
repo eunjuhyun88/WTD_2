@@ -44,7 +44,9 @@
   let lastScan     = $state<string | null>(null);
   let loading      = $state(true);
   let scanning     = $state(false);
-  let savingCandidateIds = $state(new Set<string>());
+  let savingCandidateIds  = $state(new Set<string>());
+  let judgingCandidateIds = $state(new Set<string>());
+  let verdicts = $state(new Map<string, { verdict: string; entry: number | null; stop: number | null; target: number | null; rr: number | null; rationale: string }>());
   let error        = $state<string | null>(null);
 
   // Symbol filter — driven by ?symbol= URL param
@@ -108,6 +110,42 @@
       if (res.ok) await loadAll();
     } finally {
       scanning = false;
+    }
+  }
+
+  async function judgeCandidate(candidate: PatternCandidateView) {
+    const key = `${candidate.patternSlug}:${candidate.symbol}`;
+    judgingCandidateIds = new Set([...judgingCandidateIds, key]);
+    error = null;
+    try {
+      const res = await fetch('/api/engine/agent/judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: candidate.symbol,
+          timeframe: candidate.timeframe || '4h',
+          indicator_snapshot: candidate.featureSnapshot ?? undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { detail?: string }).detail ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const next = new Map(verdicts);
+      next.set(key, {
+        verdict: data.verdict,
+        entry: data.entry,
+        stop: data.stop,
+        target: data.target,
+        rr: data.rr,
+        rationale: data.rationale,
+      });
+      verdicts = next;
+    } catch (e) {
+      error = `Judge failed: ${e}`;
+    } finally {
+      judgingCandidateIds = new Set([...judgingCandidateIds].filter((id) => id !== key));
     }
   }
 
@@ -244,6 +282,7 @@
           <div class="candidate-grid">
             {#each candidates.filter((c) => c.phaseId === 'ACCUMULATION') as cand}
               {@const candidateKey = `${cand.patternSlug}:${cand.symbol}`}
+              {@const verdict = verdicts.get(candidateKey)}
               <div class="surface-card candidate-card">
                 <div class="cand-top">
                   <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
@@ -253,14 +292,37 @@
                   <span>{cand.patternId.replace(/_/g,' ')}</span>
                   <span>{cand.enteredAt ? sinceHours(cand.enteredAt) : 'Entry time unknown'}</span>
                 </div>
+                {#if verdict}
+                  <div class="verdict-inline" class:verdict-long={verdict.verdict === 'LONG'} class:verdict-skip={verdict.verdict === 'SKIP'}>
+                    <span class="verdict-label">{verdict.verdict}</span>
+                    {#if verdict.entry != null}
+                      <span class="verdict-levels">
+                        E {verdict.entry.toFixed(2)}
+                        {#if verdict.stop != null} · S {verdict.stop.toFixed(2)}{/if}
+                        {#if verdict.target != null} · T {verdict.target.toFixed(2)}{/if}
+                        {#if verdict.rr != null} · RR {verdict.rr.toFixed(1)}x{/if}
+                      </span>
+                    {/if}
+                    {#if verdict.rationale}
+                      <p class="verdict-rationale">{verdict.rationale}</p>
+                    {/if}
+                  </div>
+                {/if}
                 <div class="cand-actions">
                   <a class="surface-button-ghost compact-action" href="/cogochi?symbol={cand.symbol}">Open Chart</a>
+                  <button
+                    class="surface-button-secondary compact-action"
+                    onclick={() => judgeCandidate(cand)}
+                    disabled={judgingCandidateIds.has(candidateKey)}
+                  >
+                    {judgingCandidateIds.has(candidateKey) ? 'Judging…' : verdict ? 'Re-Judge' : 'Judge'}
+                  </button>
                   <button
                     class="surface-button-secondary compact-action valid"
                     onclick={() => saveCandidate(cand)}
                     disabled={!cand.candidateTransitionId || savingCandidateIds.has(candidateKey)}
                   >
-                    {savingCandidateIds.has(candidateKey) ? 'Saving…' : 'Save Setup'}
+                    {savingCandidateIds.has(candidateKey) ? 'Saving…' : 'Save'}
                   </button>
                 </div>
               </div>
@@ -538,9 +600,42 @@
   .cand-sym { font-family: var(--sc-font-mono, monospace); font-size: 16px; font-weight: 700; color: #fff; }
   .accum-chip { color: #26a69a; border-color: rgba(38,166,154,0.28); background: rgba(38,166,154,0.08); }
   .cand-meta { display: flex; justify-content: space-between; font-size: var(--ui-text-xs); color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace); }
-  .cand-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+  .cand-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap; }
   .compact-action { min-height: 34px; padding: 0 12px; font-size: 0.8rem; }
   .compact-action.valid { color: #26a69a; border-color: rgba(38,166,154,0.28); }
+
+  .verdict-inline {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    border-left: 2px solid rgba(255,255,255,0.15);
+  }
+  .verdict-inline.verdict-long { border-left-color: #26a69a; background: rgba(38,166,154,0.07); }
+  .verdict-inline.verdict-skip { border-left-color: #ef5350; background: rgba(239,83,80,0.07); }
+  .verdict-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.85);
+  }
+  .verdict-long .verdict-label { color: #26a69a; }
+  .verdict-skip .verdict-label { color: #ef5350; }
+  .verdict-levels {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+  }
+  .verdict-rationale {
+    margin: 0;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    line-height: 1.4;
+    font-style: italic;
+  }
 
   .states-shell {
     padding: 0;
