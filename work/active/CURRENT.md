@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`f430db6d` — HEAD (2026-05-02) — W-0384+W-0378 Ph1 merged: alpha discovery + AI agent LLM + Exa news (#871)
+`dc5be617` — HEAD (2026-05-02) — fix(W-0378): asyncio.to_thread + universe scores (#886 merged)
 
 ---
 
@@ -35,7 +35,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟢 Phase D-9 ✅ — Phase D-10 (Bloomberg polish) 진행 중 |
+| `W-0385-decision-event-ledger` | P1 | 🔴 설계 완료 — 구현 미착수 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
