@@ -3063,6 +3063,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Explain */
+        post: operations["explain_agent_explain_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/alpha-scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Alpha Scan */
+        post: operations["alpha_scan_agent_alpha_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Similar */
+        post: operations["similar_agent_similar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -3354,6 +3405,38 @@ export interface components {
             user_id: string;
             /** Patterns */
             patterns: components["schemas"]["AffinityEntry"][];
+        };
+        /** AgentResponse */
+        AgentResponse: {
+            /** Text */
+            text: string;
+            /** Cmd */
+            cmd: string;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Provider */
+            provider: string;
+        };
+        /** AlphaScanRequest */
+        AlphaScanRequest: {
+            /** Scores */
+            scores: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Top N
+             * @default 5
+             */
+            top_n: number;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** AnomalyFlag */
+        AnomalyFlag: {
+            /** Severity */
+            severity: string;
+            /** Description */
+            description: string;
         };
         /** AutoresearchTriggerResponse */
         AutoresearchTriggerResponse: {
@@ -3752,6 +3835,28 @@ export interface components {
             block_analysis: {
                 [key: string]: unknown;
             };
+        };
+        /** ExplainRequest */
+        ExplainRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Timeframe
+             * @default 4h
+             */
+            timeframe: string;
+            /** Indicator Snapshot */
+            indicator_snapshot?: {
+                [key: string]: number;
+            };
+            /** Anomaly Flags */
+            anomaly_flags?: components["schemas"]["AnomalyFlag"][];
+            /** Alpha Score */
+            alpha_score?: {
+                [key: string]: unknown;
+            } | null;
+            /** User Id */
+            user_id?: string | null;
         };
         /** FindingsResponse */
         FindingsResponse: {
@@ -5354,6 +5459,33 @@ export interface components {
              */
             close_return_pct?: number | null;
         };
+        /** SimilarRequest */
+        SimilarRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Timeframe
+             * @default 4h
+             */
+            timeframe: string;
+            similar: components["schemas"]["SimilarResult"];
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** SimilarResult */
+        SimilarResult: {
+            /** Similar Segments */
+            similar_segments: components["schemas"]["SimilarSegment"][];
+            /** Win Rate */
+            win_rate?: number | null;
+            /** Avg Pnl */
+            avg_pnl?: number | null;
+            /**
+             * Confidence
+             * @default low
+             */
+            confidence: string;
+        };
         /** SimilarSearchRequest */
         SimilarSearchRequest: {
             /**
@@ -5440,6 +5572,21 @@ export interface components {
             };
             /** Degraded Reason */
             degraded_reason?: string | null;
+        };
+        /** SimilarSegment */
+        SimilarSegment: {
+            /** Symbol */
+            symbol: string;
+            /** From Ts */
+            from_ts: string;
+            /** To Ts */
+            to_ts: string;
+            /** Similarity Score */
+            similarity_score: number;
+            /** Forward Pnl 4H */
+            forward_pnl_4h?: number | null;
+            /** Outcome */
+            outcome?: string | null;
         };
         /** SnapInput */
         SnapInput: {
@@ -10966,6 +11113,105 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explain_agent_explain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    alpha_scan_agent_alpha_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlphaScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    similar_agent_similar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimilarRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentResponse"];
                 };
             };
             /** @description Validation Error */
