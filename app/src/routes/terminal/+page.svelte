@@ -1772,7 +1772,7 @@
       {#snippet rightPane()}
         {#if terminalMode === 'execute'}
           <div class="execute-disclaimer" role="note" aria-label="Execute mode notice">
-            수기 입력 · 실주문 X
+            Manual entry · No live orders
           </div>
         {/if}
         {#if applyModePreset(terminalMode).showRightRail}

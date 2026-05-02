@@ -53,7 +53,7 @@
 <div class="detail-mode">
   <!-- Breadcrumb -->
   <div class="breadcrumb">
-    <button class="back-btn" onclick={goBackToChart} aria-label="차트로 돌아가기">
+    <button class="back-btn" onclick={goBackToChart} aria-label="Back to chart">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <polyline points="15 18 9 12 15 6"/>
       </svg>
@@ -87,10 +87,10 @@
       <!-- No analysis yet — guide user to the chart -->
       <MobileEmptyState
         icon="chart"
-        headline="차트에서 시작하세요"
-        subline="구간을 선택하면 여기에 분석이 표시됩니다."
+        headline="Start from the chart"
+        subline="Select a range and analysis will appear here."
         primaryCta={{
-          label: '차트로 이동',
+          label: 'Go to chart',
           onClick: () => mobileMode.setActive('chart'),
         }}
       />
@@ -108,16 +108,16 @@
           <p class="verdict-reason">{verdict.reason}</p>
         </div>
       {:else}
-        <div class="tab-empty">판정 데이터 없음</div>
+        <div class="tab-empty">No verdict data</div>
       {/if}
 
     {:else if activeTab === 'why'}
       {#if verdict}
         <div class="why-section">
-          <p class="section-label">근거</p>
+          <p class="section-label">Evidence</p>
           <p class="why-text">{verdict.reason}</p>
           {#if verdict.against?.length > 0}
-            <p class="section-label against-label">반대 요인</p>
+            <p class="section-label against-label">Counter factors</p>
             <ul class="against-list">
               {#each verdict.against as factor}
                 <li>{factor}</li>
@@ -126,29 +126,29 @@
           {/if}
         </div>
       {:else}
-        <div class="tab-empty">데이터 없음</div>
+        <div class="tab-empty">No data</div>
       {/if}
 
     {:else if activeTab === 'risk'}
       {#if verdict}
         <div class="risk-section">
           <div class="risk-block">
-            <p class="section-label">무효화 조건</p>
+            <p class="section-label">Invalidation</p>
             <p class="risk-value danger">{verdict.invalidation}</p>
           </div>
           <div class="risk-block">
-            <p class="section-label">액션</p>
+            <p class="section-label">Action</p>
             <p class="risk-value">{verdict.action}</p>
           </div>
         </div>
       {:else}
-        <div class="tab-empty">리스크 데이터 없음</div>
+        <div class="tab-empty">No risk data</div>
       {/if}
 
     {:else if activeTab === 'sources'}
       <div class="sources-section">
         {#if evidence.length > 0}
-          <p class="section-label">근거 지표</p>
+          <p class="section-label">Evidence indicators</p>
           <div class="evidence-list">
             {#each evidence as ev}
               <div class="evidence-item">
@@ -160,14 +160,14 @@
             {/each}
           </div>
         {:else}
-          <div class="tab-empty">소스 없음</div>
+          <div class="tab-empty">No sources</div>
         {/if}
 
         {#if captureId}
           <div class="lab-link-block">
-            <p class="section-label">랩 핸드오프</p>
+            <p class="section-label">Lab handoff</p>
             <a class="lab-link" href="/lab?captureId={encodeURIComponent(captureId)}">
-              Lab에서 캡처 열기 →
+              Open capture in Lab →
             </a>
           </div>
         {/if}

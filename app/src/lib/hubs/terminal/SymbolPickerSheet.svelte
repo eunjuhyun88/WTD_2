@@ -66,7 +66,7 @@
         bind:this={inputEl}
         bind:value={query}
         class="sps-input"
-        placeholder="심볼 검색 (예: BTC, SOL, INJ)"
+        placeholder="Search symbol (e.g. BTC, SOL, INJ)"
         autocomplete="off"
         autocorrect="off"
         autocapitalize="characters"
@@ -93,7 +93,7 @@
         </button>
       {/each}
       {#if !loading && results.length === 0}
-        <div class="sps-empty">검색 결과 없음</div>
+        <div class="sps-empty">No results</div>
       {/if}
     </div>
   </div>

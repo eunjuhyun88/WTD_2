@@ -36,36 +36,36 @@
       <span class="toast-icon">⊡</span>
       <span class="toast-text">
         {#if !anchorASet}
-          구간 시작점을 선택하세요
+          Select the range start
         {:else}
-          구간 끝점을 선택하세요
+          Select the range end
         {/if}
       </span>
-      <span class="toast-esc"><kbd>ESC</kbd> 취소</span>
+      <span class="toast-esc"><kbd>ESC</kbd> Cancel</span>
     {:else}
       <!-- Complete range action toolbar -->
       <span class="toast-icon">✓</span>
-      <span class="toast-text">구간 선택 완료</span>
+      <span class="toast-text">Range selected</span>
       <div class="action-buttons">
         <button
           class="action-btn save-btn"
           onclick={onSaveCapture}
-          title="현재 구간을 캡처로 저장"
-        >💾 저장</button>
+          title="Save current range as capture"
+        >💾 Save</button>
         <button
           class="action-btn ai-btn"
           onclick={onSendToAI}
-          title="AI 패널로 전송"
+          title="Send to AI panel"
         >🤖 AI</button>
         <button
           class="action-btn analyze-btn"
           onclick={onAnalyze}
-          title="구간 분석"
-        >🔍 분석</button>
+          title="Analyze range"
+        >🔍 Analyze</button>
         <button
           class="action-btn cancel-btn"
           onclick={onCancel}
-          title="취소 (ESC)"
+          title="Cancel (ESC)"
         >✕</button>
       </div>
     {/if}

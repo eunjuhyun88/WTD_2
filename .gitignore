@@ -46,6 +46,9 @@ tmp/telegram_refs/
 .tmp/
 .vercel
 
+# local agent session logs
+memory/sessions/
+
 # runtime artifacts (test/eval outputs that regenerate on each run)
 output/
 research/experiments/*-walk-forward-eval-latest/
@@ -62,6 +65,10 @@ engine/research/pattern_search/market_indices/*.json
 engine/research/pattern_search/search_runs/*.json
 !engine/research/pattern_search/search_runs/.gitkeep
 engine/research/pattern_search/*.sqlite*
+
+# generated research artifacts
+engine/research/artifacts/
+engine/research/experiments/
 
 # dev artifacts
 *.tar.gz

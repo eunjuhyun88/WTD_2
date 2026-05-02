@@ -172,31 +172,31 @@
               class="verdict-btn valid"
               onclick={() => _submitVerdict('valid')}
               disabled={submitting}
-              title="패턴 유효, 진입 성공"
+              title="Pattern valid, entry successful"
             >✅ Valid</button>
             <button
               class="verdict-btn invalid"
               onclick={() => _submitVerdict('invalid')}
               disabled={submitting}
-              title="패턴 자체가 잘못됨"
+              title="Pattern itself was wrong"
             >❌ Invalid</button>
             <button
               class="verdict-btn near-miss"
               onclick={() => _submitVerdict('near_miss')}
               disabled={submitting}
-              title="패턴 유효, 아슬아슬하게 놓침"
+              title="Pattern valid, narrowly missed"
             >🟡 Near</button>
             <button
               class="verdict-btn too-early"
               onclick={() => _submitVerdict('too_early')}
               disabled={submitting}
-              title="진입이 너무 일렀음"
+              title="Entry was too early"
             >⏪ Early</button>
             <button
               class="verdict-btn too-late"
               onclick={() => _submitVerdict('too_late')}
               disabled={submitting}
-              title="진입 타이밍이 늦었음"
+              title="Entry timing was too late"
             >⏩ Late</button>
           </div>
         </section>

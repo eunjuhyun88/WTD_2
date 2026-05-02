@@ -180,10 +180,10 @@
         } else if (res.status === 401) {
           canSave = false;
         } else {
-          analysisError = 'AI 분석 오류 — 다시 시도해주세요';
+          analysisError = 'AI analysis error — please try again';
         }
       } catch {
-        if (!signal.aborted) analysisError = 'AI 분석 오류';
+        if (!signal.aborted) analysisError = 'AI analysis error';
       }
 
       step = 'searching';
@@ -215,7 +215,7 @@
     searchError = null;
 
     try {
-      const thesis = thesisText || `${sym} ${tf.toUpperCase()} 패턴`;
+      const thesis = thesisText || `${sym} ${tf.toUpperCase()} pattern`;
       const res = await fetch('/api/terminal/pattern-seed/match', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -235,10 +235,10 @@
         const data = await res.json();
         candidates = (data.candidates ?? []).slice(0, 10);
       } else {
-        searchError = '엔진 검색 불가 — 저장 후 재시도';
+        searchError = 'Engine search unavailable — retry after saving';
       }
     } catch {
-      if (!signal?.aborted) searchError = '검색 연결 오류';
+      if (!signal?.aborted) searchError = 'Search connection error';
     } finally {
       searchLoading = false;
       if (step === 'searching') step = 'ready';
@@ -275,7 +275,7 @@
       });
 
       if (!record) {
-        saveError = '저장 실패 — 다시 시도해주세요';
+        saveError = 'Save failed — please try again';
         step = 'ready';
         return;
       }
@@ -289,7 +289,7 @@
 
       onSaved(record.id);
     } catch (e) {
-      saveError = e instanceof Error ? e.message : '저장 오류';
+      saveError = e instanceof Error ? e.message : 'Save error';
       step = 'ready';
     }
   }
@@ -338,7 +338,7 @@
         {#if viewport}
           <span class="range-hint">
             {fmtTime(viewport.timeFrom)} → {fmtTime(viewport.timeTo)}
-            &nbsp;·&nbsp; {viewport.barCount}봉
+            &nbsp;·&nbsp; {viewport.barCount} bars
           </span>
         {/if}
       </div>

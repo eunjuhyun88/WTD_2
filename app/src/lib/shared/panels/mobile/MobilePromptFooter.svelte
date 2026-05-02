@@ -34,7 +34,7 @@
 <div class="prompt-footer">
   {#if assistantText}
     <div class="result-preview" data-loading={loading}>
-      <span class="result-kicker">{loading ? 'AI 스트리밍' : '최근 응답'}</span>
+      <span class="result-kicker">{loading ? 'AI streaming' : 'Latest response'}</span>
       <p class="result-text">{assistantText}</p>
     </div>
   {/if}
@@ -42,7 +42,7 @@
   <div class="composer">
     <textarea
       class="input"
-      placeholder="분석 또는 질문을 입력하세요"
+      placeholder="Enter an analysis or question"
       rows="1"
       bind:value={inputText}
       onkeydown={handleKeydown}
@@ -53,7 +53,7 @@
       class:has-input={inputText.trim().length > 0}
       onclick={handleSend}
       disabled={loading}
-      aria-label="전송"
+      aria-label="Send"
     >
       {#if loading}
         <span class="sending-dot">●</span>

@@ -32,8 +32,8 @@
   const atCap   = $derived(chartNotesStore.noteCount >= 50);
 
   async function handleSave() {
-    if (!body.trim()) { errorMsg = '내용을 입력하세요'; return; }
-    if (atCap) { errorMsg = '메모 50개 한도 도달. Pro로 업그레이드 필요'; return; }
+    if (!body.trim()) { errorMsg = 'Please enter content'; return; }
+    if (atCap) { errorMsg = '50 note limit reached. Upgrade to Pro required'; return; }
     saving = true; errorMsg = '';
     try {
       if (mode === 'create') {
@@ -44,7 +44,7 @@
         chartNotesStore.closePanel();
       }
     } catch (e: unknown) {
-      errorMsg = e instanceof Error ? e.message : '저장 실패';
+      errorMsg = e instanceof Error ? e.message : 'Save failed';
     }
     saving = false;
   }
@@ -63,12 +63,12 @@
   }
 </script>
 
-<div class="note-panel" role="dialog" aria-label="차트 메모">
+<div class="note-panel" role="dialog" aria-label="Chart note">
   <div class="np-header">
     <span class="np-title">
-      {mode === 'create' ? '📝 메모 작성' : mode === 'edit' ? '✏️ 메모 수정' : '📝 메모'}
+      {mode === 'create' ? '📝 Write note' : mode === 'edit' ? '✏️ Edit note' : '📝 Note'}
     </span>
-    <button class="np-close" onclick={() => chartNotesStore.closePanel()} aria-label="닫기">✕</button>
+    <button class="np-close" onclick={() => chartNotesStore.closePanel()} aria-label="Close">✕</button>
   </div>
 
   <!-- Capture meta -->
@@ -97,7 +97,7 @@
   <!-- Body -->
   <textarea
     class="np-body"
-    placeholder="여기에 메모를 입력하세요…"
+    placeholder="Enter a note here…"
     maxlength={500}
     readonly={mode === 'view'}
     bind:value={body}
@@ -105,7 +105,7 @@
   <div class="np-count">{body.length}/500</div>
 
   {#if nearCap && mode === 'create'}
-    <div class="np-warn">⚠️ 메모 {chartNotesStore.noteCount}/50개 — 곧 한도 도달</div>
+    <div class="np-warn">⚠️ Notes {chartNotesStore.noteCount}/50 — limit approaching</div>
   {/if}
   {#if errorMsg}
     <div class="np-error">{errorMsg}</div>
@@ -114,12 +114,12 @@
   <!-- Actions -->
   <div class="np-actions">
     {#if mode === 'view' && note}
-      <button class="np-btn np-btn--ghost np-btn--danger" onclick={handleDelete}>삭제</button>
-      <button class="np-btn np-btn--secondary" onclick={() => { chartNotesStore['panelMode' as never] = 'edit' as never; }}>수정</button>
+      <button class="np-btn np-btn--ghost np-btn--danger" onclick={handleDelete}>Delete</button>
+      <button class="np-btn np-btn--secondary" onclick={() => { chartNotesStore['panelMode' as never] = 'edit' as never; }}>Edit</button>
     {:else}
-      <button class="np-btn np-btn--ghost" onclick={() => chartNotesStore.closePanel()}>취소</button>
+      <button class="np-btn np-btn--ghost" onclick={() => chartNotesStore.closePanel()}>Cancel</button>
       <button class="np-btn np-btn--primary" onclick={handleSave} disabled={saving || !body.trim() || atCap}>
-        {saving ? '저장 중…' : '저장'}
+        {saving ? 'Saving…' : 'Save'}
       </button>
     {/if}
   </div>

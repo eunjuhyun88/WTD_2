@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`efc13630` — HEAD (2026-05-02) — [W-0386-C] research/ 4-subpackage 분해 (#892 merged)
+`8e96aa43` — HEAD (2026-05-02) — [W-0386-D] Scanner Job Protocol + Golden Test + ADR-012 (#897 merged)
 
 ---
 

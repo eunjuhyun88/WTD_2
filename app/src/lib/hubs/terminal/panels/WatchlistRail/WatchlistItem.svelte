@@ -74,7 +74,7 @@
         type="button"
         class="del-btn"
         onclick={(e) => { e.stopPropagation(); onRemove(sym); }}
-        title="제거"
+        title="Remove"
         aria-label="Remove {sym}"
       >×</button>
     {/if}

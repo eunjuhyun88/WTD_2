@@ -97,12 +97,12 @@
         signal: abortCtrl.signal,
       });
 
-      if (!res.ok) { analysisError = `분석 실패 (${res.status})`; return; }
+      if (!res.ok) { analysisError = `Analysis failed (${res.status})`; return; }
       const data = await res.json();
       phase = data.phase ?? ''; phaseConfidence = data.phaseConfidence ?? 0;
       signals = data.signals ?? []; thesis = data.thesis ?? []; summary = data.summary ?? '';
     } catch (e: any) {
-      if (e?.name !== 'AbortError') analysisError = '분석 오류 — 다시 시도하세요';
+      if (e?.name !== 'AbortError') analysisError = 'Analysis error — please try again';
     } finally {
       analyzing = false;
     }
@@ -126,15 +126,15 @@
         }),
       });
       if (res.ok) saved = true;
-      else analysisError = 'Save 실패';
-    } catch { analysisError = 'Save 오류'; }
+      else analysisError = 'Save failed';
+    } catch { analysisError = 'Save error'; }
     finally { saving = false; }
   }
 
   function phaseColor(p: string): string {
     const low = p.toLowerCase();
-    if (low.includes('accumulation') || low.includes('breakout') || low.includes('축적') || low.includes('돌파')) return 'bull';
-    if (low.includes('dump') || low.includes('distribution') || low.includes('급락') || low.includes('분산')) return 'bear';
+    if (low.includes('accumulation') || low.includes('breakout')) return 'bull';
+    if (low.includes('dump') || low.includes('distribution')) return 'bear';
     return 'dim';
   }
 </script>
@@ -150,13 +150,13 @@
     class="aap-range"
     class:has-range={hasRange}
     onclick={() => !hasRange && onEnterRangeMode?.()}
-    aria-label={hasRange ? '구간 선택됨' : '차트에서 구간 선택'}
+    aria-label={hasRange ? 'Range selected' : 'Select range on chart'}
   >
     {#if hasRange}
-      <span class="range-label">구간 선택됨</span>
-      <span class="range-bars">{rangeSelection!.to - rangeSelection!.from + 1}개 봉</span>
+      <span class="range-label">Range selected</span>
+      <span class="range-bars">{rangeSelection!.to - rangeSelection!.from + 1} bars</span>
     {:else}
-      <span class="range-hint">▷ 여기 클릭 후 차트에서 드래그</span>
+      <span class="range-hint">▷ Click here then drag on chart</span>
     {/if}
   </button>
 
@@ -164,7 +164,7 @@
     <input
       class="aap-prompt"
       type="text"
-      placeholder="프롬프트 (옵션)"
+      placeholder="Prompt (optional)"
       bind:value={promptText}
       onkeydown={(e) => e.key === 'Enter' && void runAnalysis()}
     />
@@ -180,7 +180,7 @@
   {/if}
 
   {#if analyzing}
-    <div class="aap-loading"><span class="pulse"></span><span>분석 중…</span></div>
+    <div class="aap-loading"><span class="pulse"></span><span>Analyzing…</span></div>
   {:else if hasResult}
     <div class="aap-result">
       {#if phase}
@@ -225,15 +225,15 @@
 
     {#if judgeVerdict && !saved}
       <button class="aap-save-btn" disabled={saving} onclick={() => void saveCapture()}>
-        {saving ? '저장 중…' : 'Save to Scan'}
+        {saving ? 'Saving…' : 'Save to Scan'}
       </button>
     {:else if saved}
-      <div class="aap-saved">✓ 저장 완료 — 스캔에 추가됨</div>
+      <div class="aap-saved">✓ Saved — added to scan</div>
     {/if}
   {:else if !hasRange}
     <div class="aap-empty">
-      <span>차트에서 분석할 구간을</span>
-      <span>위 버튼을 눌러 선택하세요</span>
+      <span>Select a range to analyze</span>
+      <span>on the chart using the button above</span>
     </div>
   {/if}
 </div>

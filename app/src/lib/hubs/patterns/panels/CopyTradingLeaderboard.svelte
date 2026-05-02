@@ -75,8 +75,8 @@
 
 <div class="leaderboard">
   <div class="leaderboard-header">
-    <span class="leaderboard-title">JUDGE 리더보드</span>
-    <button class="refresh-btn" onclick={load} disabled={loading} aria-label="새로고침">
+    <span class="leaderboard-title">JUDGE Leaderboard</span>
+    <button class="refresh-btn" onclick={load} disabled={loading} aria-label="Refresh">
       {loading ? '…' : '↻'}
     </button>
   </div>
@@ -89,12 +89,12 @@
   {:else if loading}
     <div class="leaderboard-empty">
       <span class="spinner"></span>
-      <span>불러오는 중…</span>
+      <span>Loading…</span>
     </div>
   {:else if traders.length === 0}
     <div class="leaderboard-empty">
       <span class="empty-icon">📊</span>
-      <span>아직 등록된 트레이더가 없습니다</span>
+      <span>No traders registered yet</span>
     </div>
   {:else}
     <div class="trader-list" role="list">
@@ -121,9 +121,9 @@
             {#if isBusy}
               …
             {:else if isSubscribed}
-              구독 중
+              Subscribed
             {:else}
-              + 구독
+              + Subscribe
             {/if}
           </button>
         </div>

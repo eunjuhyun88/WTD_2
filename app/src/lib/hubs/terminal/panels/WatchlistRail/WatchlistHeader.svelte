@@ -37,7 +37,7 @@
         <button
           class="add-btn"
           onclick={onToggleAdd}
-          title="심볼 추가"
+          title="Add symbol"
           aria-label="Add symbol"
         >+</button>
       {/if}
@@ -63,8 +63,8 @@
       maxlength={12}
       autofocus
     />
-    <button class="add-confirm" onclick={onAddConfirm} title="확인">+</button>
-    <button class="add-cancel" onclick={onAddCancel} title="취소">✕</button>
+    <button class="add-confirm" onclick={onAddConfirm} title="Confirm">+</button>
+    <button class="add-cancel" onclick={onAddCancel} title="Cancel">✕</button>
   </div>
   {#if addError}
     <div class="add-error">{addError}</div>

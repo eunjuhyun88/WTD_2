@@ -14,32 +14,32 @@
   let editTag = $state(false);
 
   const tabs: { id: TrainTab; label: string; hint: string }[] = [
-    { id: 'library', label: 'Library',        hint: '내가 박제한 셋업' },
-    { id: 'active',  label: 'Active Learning', hint: '모델이 헷갈리는 case' },
-    { id: 'rules',   label: '내 규칙',          hint: '명문화된 내 트레이딩 docs' },
-    { id: 'rejudge', label: 'Rejudge',         hint: '과거 판정 번복' },
-    { id: 'model',   label: 'Model',           hint: 'per-user 성능' },
+    { id: 'library', label: 'Library',        hint: 'my saved setups' },
+    { id: 'active',  label: 'Active Learning', hint: 'cases the model is unsure about' },
+    { id: 'rules',   label: 'My Rules',        hint: 'my documented trading rules' },
+    { id: 'rejudge', label: 'Rejudge',         hint: 'override past verdicts' },
+    { id: 'model',   label: 'Model',           hint: 'per-user performance' },
   ];
 
   const CAPTURES = [
-    { id: 'c1', symbol: 'TRADOOR', when: '2024-11-12 11:40', note: 'OI +18%, 번지대 3시간, accum 12bar', range: '4H · Nov 8–15', tags: ['tradoor', 'oi_reversal', 'accum'] },
-    { id: 'c2', symbol: 'PTB',     when: '2025-01-03 02:14', note: 'real dump 후 higher-lows, funding 플립', range: '1H · Jan 1–4', tags: ['ptb', 'funding_flip'] },
-    { id: 'c3', symbol: 'JUP',     when: '2025-02-18 18:22', note: 'fake dump만, OI 정체 → invalid', range: '4H · Feb 14–20', tags: ['fake_dump', 'invalid'] },
-    { id: 'c4', symbol: 'AVAXUSDT',when: '2025-03-11 14:20', note: 'accumulation 6bar 너무 짧음 → 판정 재고', range: '1H · Mar 8–13', tags: ['avax', 'accum', 'short_accum'] },
-    { id: 'c5', symbol: 'INJ',     when: '2025-03-28 09:12', note: 'OI +22%, VWAP reclaim 동시 → clean', range: '4H · Mar 24–31', tags: ['inj', 'oi_spike', 'vwap_reclaim'] },
+    { id: 'c1', symbol: 'TRADOOR', when: '2024-11-12 11:40', note: 'OI +18%, range zone 3h, accum 12bar', range: '4H · Nov 8–15', tags: ['tradoor', 'oi_reversal', 'accum'] },
+    { id: 'c2', symbol: 'PTB',     when: '2025-01-03 02:14', note: 'higher-lows after real dump, funding flip', range: '1H · Jan 1–4', tags: ['ptb', 'funding_flip'] },
+    { id: 'c3', symbol: 'JUP',     when: '2025-02-18 18:22', note: 'fake dump only, OI flat → invalid', range: '4H · Feb 14–20', tags: ['fake_dump', 'invalid'] },
+    { id: 'c4', symbol: 'AVAXUSDT',when: '2025-03-11 14:20', note: 'accumulation 6bar too short → reconsider verdict', range: '1H · Mar 8–13', tags: ['avax', 'accum', 'short_accum'] },
+    { id: 'c5', symbol: 'INJ',     when: '2025-03-28 09:12', note: 'OI +22%, simultaneous VWAP reclaim → clean', range: '4H · Mar 24–31', tags: ['inj', 'oi_spike', 'vwap_reclaim'] },
   ];
 
   const ACTIVE_CASES = [
-    { id: 'q1', symbol: 'FETUSDT',  when: '이번 주', why: 'OI +14%인데 funding 미반응 — 유사했던 TRADOOR와 VAPE 케이스에서 판정이 엇갈림', guess: '긍정', confidence: 52 },
-    { id: 'q2', symbol: 'RNDRUSDT', when: '오늘',   why: 'Accumulation 6bar만 — 경험 기준(8bar)보다 짧지만 OI는 충분', guess: '부정', confidence: 48 },
-    { id: 'q3', symbol: 'KASUSDT',  when: '2h 전',  why: '5-phase 완벽인데 BTC regime = DOWN — 알트 거래 조건과 충돌', guess: '부정', confidence: 61 },
+    { id: 'q1', symbol: 'FETUSDT',  when: 'This week', why: 'OI +14% but funding not reacting — TRADOOR and VAPE cases split on this', guess: 'Positive', confidence: 52 },
+    { id: 'q2', symbol: 'RNDRUSDT', when: 'Today',     why: 'Accumulation only 6bar — shorter than my rule (8bar) but OI is sufficient', guess: 'Negative', confidence: 48 },
+    { id: 'q3', symbol: 'KASUSDT',  when: '2h ago',    why: '5-phase perfect but BTC regime = DOWN — conflicts with alt trading conditions', guess: 'Negative', confidence: 61 },
   ];
 
   const PAST_VERDICTS = [
-    { id: 'p1', symbol: 'AVAXUSDT', when: '2025-03-11', original: 'agree',    result: '−3.2%', reason: 'accumulation 6bar만 — 지금 보면 너무 짧았음' },
-    { id: 'p2', symbol: 'DOGEUSDT', when: '2025-04-02', original: 'disagree', result: '+8.4%', reason: 'CVD 못 봤는데 사실 양전환 중이었음' },
-    { id: 'p3', symbol: 'INJUSDT',  when: '2025-04-18', original: 'agree',    result: '+2.1%', reason: '판정 유지 가능' },
-    { id: 'p4', symbol: 'BTCUSDT',  when: '2025-05-02', original: 'agree',    result: '−1.8%', reason: 'BTC regime 놓침 → DOWN이었음' },
+    { id: 'p1', symbol: 'AVAXUSDT', when: '2025-03-11', original: 'agree',    result: '−3.2%', reason: 'only 6bar accumulation — looking back, too short' },
+    { id: 'p2', symbol: 'DOGEUSDT', when: '2025-04-02', original: 'disagree', result: '+8.4%', reason: 'missed CVD which was actually turning positive' },
+    { id: 'p3', symbol: 'INJUSDT',  when: '2025-04-18', original: 'agree',    result: '+2.1%', reason: 'verdict stands' },
+    { id: 'p4', symbol: 'BTCUSDT',  when: '2025-05-02', original: 'agree',    result: '−1.8%', reason: 'missed BTC regime → was DOWN' },
   ];
 
   const MODEL_SKILL = [
@@ -142,7 +142,7 @@
 
           <div class="field-block">
             <div class="field-label-row">
-              <span>LABELS · 모델이 학습에 쓰는 것</span>
+              <span>LABELS · used for model training</span>
               <button class="action-link" onclick={() => { editTag = !editTag; }}>
                 {editTag ? 'done' : 'edit'}
               </button>
@@ -167,7 +167,7 @@
             <div class="snapshot-grid">
               <div><div class="snap-key">OI</div><div class="snap-val">+18.2%</div></div>
               <div><div class="snap-key">FUNDING</div><div class="snap-val">+0.018</div></div>
-              <div><div class="snap-key">CVD</div><div class="snap-val">양전환</div></div>
+              <div><div class="snap-key">CVD</div><div class="snap-val">positive flip</div></div>
               <div><div class="snap-key">REGIME</div><div class="snap-val">range</div></div>
             </div>
           </div>
@@ -175,10 +175,10 @@
 
         <!-- Model influence -->
         <div class="panel">
-          <div class="influence-label">★ 이 캡처가 모델에 준 영향</div>
+          <div class="influence-label">★ Impact of this capture on the model</div>
           <p class="influence-text">
-            이 셋업 이후 모델은 <strong>OI+funding 동시 변화</strong>에 가중치를
-            <strong class="pos">+0.08</strong> 올렸습니다.
+            After this setup the model raised weight for <strong>simultaneous OI+funding change</strong> by
+            <strong class="pos">+0.08</strong>.
           </p>
           <div class="field-label" style="margin-bottom:6px">CONTRIBUTED WEIGHTS</div>
           {#each CONTRIBUTED_WEIGHTS as w}
@@ -188,7 +188,7 @@
             </div>
           {/each}
           <button class="full-btn" style="margin-top:14px">↻ Re-run model on this capture</button>
-          <button class="full-btn neg-btn" style="margin-top:6px">✕ Mark invalid · 학습에서 제외</button>
+          <button class="full-btn neg-btn" style="margin-top:6px">✕ Mark invalid · exclude from training</button>
         </div>
 
       </div>
@@ -200,10 +200,10 @@
 
         <div class="panel" style="padding:14px; overflow:auto">
           <div class="eyebrow amb">ACTIVE LEARNING</div>
-          <div class="section-title" style="margin-bottom:4px">모델이 헷갈립니다. 답해주세요.</div>
+          <div class="section-title" style="margin-bottom:4px">The model is uncertain. Please answer.</div>
           <p class="section-desc">
-            아래 케이스들은 모델이 <strong class="amb">확신도 60% 이하</strong>로 판정한 것들입니다.
-            당신의 답이 모델의 경계를 가장 빠르게 다듬습니다.
+            These cases were rated at <strong class="amb">below 60% confidence</strong> by the model.
+            Your answers sharpen the model's boundaries fastest.
           </p>
           <div class="case-list">
             {#each ACTIVE_CASES as q (q.id)}
@@ -221,10 +221,10 @@
                 </div>
                 <p class="case-why">{q.why}</p>
                 <div class="case-actions">
-                  <span class="model-guess">내 모델의 추측 · <strong>{q.guess}</strong></span>
+                  <span class="model-guess">My model's guess · <strong>{q.guess}</strong></span>
                   <span class="spacer"></span>
-                  <button class="judge-yes">Y · 맞다</button>
-                  <button class="judge-no">N · 아니다</button>
+                  <button class="judge-yes">Y · Correct</button>
+                  <button class="judge-no">N · Wrong</button>
                   <button class="judge-skip">skip</button>
                 </div>
               </div>
@@ -233,10 +233,10 @@
         </div>
 
         <div class="panel" style="padding:12px">
-          <div class="field-label" style="margin-bottom:10px">WHY 이 질문들이 중요한가</div>
+          <div class="field-label" style="margin-bottom:10px">WHY these questions matter</div>
           <p class="why-text">
-            <strong>Active learning</strong>은 모델이 확신 없는 <em class="amb">경계 사례</em>만 골라 묻습니다.<br /><br />
-            비슷한 케이스 100개를 무작정 판정하는 것보다 경계 3개 판정이 per-user 모델을 더 빠르게 당신답게 만듭니다.
+            <strong>Active learning</strong> selects only <em class="amb">boundary cases</em> the model is uncertain about.<br /><br />
+            Answering 3 boundary cases shapes your per-user model faster than judging 100 similar cases at random.
           </p>
           <div class="stat-block">
             <div class="stat-label">THIS WEEK</div>
@@ -259,50 +259,50 @@
       <div class="rules-grid">
 
         <div class="panel" style="padding:18px 24px; overflow:auto">
-          <div class="eyebrow">내 규칙 · AUTO-GENERATED · v0.4.2</div>
-          <h1 class="rules-title">Cogochi가 읽은 나의 트레이딩 규칙</h1>
+          <div class="eyebrow">My Rules · AUTO-GENERATED · v0.4.2</div>
+          <h1 class="rules-title">My Trading Rules as Read by Cogochi</h1>
           <p class="rules-desc">
-            이 문서는 당신이 <strong>24개 캡처</strong>를 박제하고 <strong>67번 판정</strong>한 결과를
-            모델이 자연어로 재구성한 것입니다. 일반 규칙집이 아니라 <em class="amb">당신의</em> 규칙입니다.
+            This document was reconstructed in natural language by the model from your <strong>24 captures</strong> and <strong>67 verdicts</strong>.
+            These are <em class="amb">your</em> rules, not a generic rulebook.
           </p>
 
           <div class="rule-section">
             <div class="rule-section-header">
               <span class="rule-n">§ 01</span>
-              <span class="rule-section-title">진입 조건</span>
+              <span class="rule-section-title">Entry Conditions</span>
             </div>
-            <div class="rule"><span class="rule-dot">·</span><span>OI가 <strong>4시간 봉 기준 +15% 이상</strong> 증가했을 때만 pos 신호로 취급한다. (confidence 0.82)</span></div>
-            <div class="rule"><span class="rule-dot">·</span><span><strong>번지대 최소 3시간</strong>을 채워야 한다. 이보다 짧으면 대부분 fake_dump로 끝났다. (confidence 0.74)</span></div>
-            <div class="rule"><span class="rule-dot">·</span><span>Funding이 <strong>양 → 음</strong>으로 플립된 직후 15분 안의 accumulation만 본다. (confidence 0.61)</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Only treat as a pos signal when OI rises <strong>+15% or more on a 4h bar basis</strong>. (confidence 0.82)</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Range zone must hold for <strong>at least 3 hours</strong>. Shorter than that and it mostly ends as fake_dump. (confidence 0.74)</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Only look at accumulation within 15 min after Funding flips from <strong>positive → negative</strong>. (confidence 0.61)</span></div>
           </div>
 
           <div class="rule-section">
             <div class="rule-section-header">
               <span class="rule-n">§ 02</span>
-              <span class="rule-section-title">금지 조건</span>
+              <span class="rule-section-title">Prohibited Conditions</span>
             </div>
-            <div class="rule"><span class="rule-dot">·</span><span>BTC regime이 <strong>DOWN</strong>일 때 알트 long 진입은 하지 않는다. (5번 시도 → 4번 실패)</span></div>
-            <div class="rule"><span class="rule-dot">·</span><span>Accumulation bar가 <strong>8개 미만</strong>이면 건너뛴다. (confidence 0.58)</span></div>
-            <div class="rule"><span class="rule-dot">·</span><span>CVD가 음전인 상태에서는 OI 신호만으로 진입하지 않는다.</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>No alt long entry when BTC regime is <strong>DOWN</strong>. (5 attempts → 4 failures)</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Skip if accumulation bar count is <strong>fewer than 8</strong>. (confidence 0.58)</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Do not enter on OI signal alone when CVD is in a negative state.</span></div>
           </div>
 
           <div class="rule-section">
             <div class="rule-section-header">
               <span class="rule-n">§ 03</span>
-              <span class="rule-section-title">리스크</span>
+              <span class="rule-section-title">Risk</span>
             </div>
-            <div class="rule"><span class="rule-dot">·</span><span>포지션 크기: equity의 <strong>1–1.5%</strong> 리스크. 레버리지 3x 상한.</span></div>
-            <div class="rule"><span class="rule-dot">·</span><span>Stop: accumulation low −0.8% ~ −1.2%. (과거 평균: −1.08%)</span></div>
-            <div class="rule"><span class="rule-dot">·</span><span>Target: R:R 3.0 이상일 때만 진입.</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Position size: <strong>1–1.5%</strong> equity risk. Max 3x leverage.</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Stop: accumulation low −0.8% ~ −1.2%. (historical average: −1.08%)</span></div>
+            <div class="rule"><span class="rule-dot">·</span><span>Target: only enter when R:R is 3.0 or above.</span></div>
           </div>
 
           <div class="rule-section">
             <div class="rule-section-header">
               <span class="rule-n">§ 04</span>
-              <span class="rule-section-title">예외 · 확신 낮은 영역</span>
+              <span class="rule-section-title">Exceptions · Low-confidence area</span>
             </div>
-            <div class="rule amb"><span class="rule-dot">·</span><span>VWAP reclaim 단독 시그널은 데이터 부족 (n=11). 판정 경계 불명확.</span></div>
-            <div class="rule amb"><span class="rule-dot">·</span><span>15m 타임프레임 BB squeeze는 histor 유사도 낮음. Active Learning 필요.</span></div>
+            <div class="rule amb"><span class="rule-dot">·</span><span>VWAP reclaim signal alone has insufficient data (n=11). Verdict boundary unclear.</span></div>
+            <div class="rule amb"><span class="rule-dot">·</span><span>15m timeframe BB squeeze has low historical similarity. Active Learning needed.</span></div>
           </div>
         </div>
 
@@ -310,16 +310,16 @@
           <div class="panel" style="padding:12px">
             <div class="field-label" style="margin-bottom:8px">DOC ACTIONS</div>
             <button class="full-btn" style="margin-bottom:5px">↓ Export as Markdown</button>
-            <button class="full-btn" style="margin-bottom:5px">✎ Override · 수동 추가</button>
+            <button class="full-btn" style="margin-bottom:5px">✎ Override · add manually</button>
             <button class="full-btn amb-btn">↻ Regenerate from captures</button>
           </div>
           <div class="panel" style="padding:12px">
             <div class="eyebrow pos" style="margin-bottom:8px">VERSION HISTORY</div>
             {#each [
-              { v: 'v0.4.2', when: 'Today',  change: '+ BB squeeze 예외 추가' },
-              { v: 'v0.4.1', when: '3d ago', change: 'accumulation 기준 6→8 bar' },
-              { v: 'v0.4.0', when: '2w ago', change: 'BTC regime DOWN 금지 추가' },
-              { v: 'v0.3.0', when: '1m ago', change: '초기 3개 캡처 반영' },
+              { v: 'v0.4.2', when: 'Today',  change: '+ added BB squeeze exception' },
+              { v: 'v0.4.1', when: '3d ago', change: 'accumulation threshold 6→8 bar' },
+              { v: 'v0.4.0', when: '2w ago', change: 'added BTC regime DOWN prohibition' },
+              { v: 'v0.3.0', when: '1m ago', change: 'reflected initial 3 captures' },
             ] as row, i}
               <div class="version-row" class:border-b={i < 3}>
                 <span class="ver-v">{row.v}</span>
@@ -336,11 +336,11 @@
     <!-- ═══ REJUDGE ════════════════════════════════════════════════════ -->
     {#if activeTab === 'rejudge'}
       <div class="panel rejudge-panel">
-        <div class="eyebrow amb">REJUDGE · 과거 판정 번복</div>
-        <div class="section-title" style="margin-bottom:4px">지금 와서 보면 다르게 판단할 것들</div>
+        <div class="eyebrow amb">REJUDGE · override past verdicts</div>
+        <div class="section-title" style="margin-bottom:4px">Things you'd judge differently in hindsight</div>
         <p class="section-desc">
-          번복은 모델에 <strong class="amb">강한 학습 신호</strong>입니다.
-          "그때의 내가 틀렸다"는 per-user 규칙의 가장 중요한 입력.
+          Overrides are a <strong class="amb">strong training signal</strong> for the model.
+          "I was wrong then" is the most important input for per-user rules.
         </p>
         <div class="rejudge-list">
           {#each PAST_VERDICTS as p (p.id)}
@@ -359,7 +359,7 @@
               </div>
               <div class="rj-reason">{p.reason}</div>
               <div class="rj-actions">
-                <button class="rj-override">번복 →</button>
+                <button class="rj-override">Override →</button>
                 <button class="rj-keep">keep</button>
               </div>
             </div>
@@ -374,7 +374,7 @@
 
         <div class="panel" style="padding:14px; display:flex; flex-direction:column">
           <div class="eyebrow pos">PER-USER MODEL</div>
-          <div class="section-title" style="margin-bottom:14px">성능 · 이번 주</div>
+          <div class="section-title" style="margin-bottom:14px">Performance · This Week</div>
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-label">alpha</div>
@@ -404,14 +404,14 @@
           </div>
           <div class="spacer-flex"></div>
           <div class="model-summary">
-            당신의 모델은 지난 7주간 <strong class="pos">+19 alpha</strong> 개선. 기여가 큰 action:<br />
+            Your model improved by <strong class="pos">+19 alpha</strong> over the last 7 weeks. Top contributing actions:<br />
             <span class="mono-sm amb">active_learning(7) &gt; rejudge(3) &gt; save_setup(12)</span>
           </div>
         </div>
 
         <div class="panel" style="padding:14px; display:flex; flex-direction:column">
           <div class="eyebrow">FEATURE WEIGHTS</div>
-          <div class="section-title" style="margin-bottom:14px">모델이 현재 중시하는 것</div>
+          <div class="section-title" style="margin-bottom:14px">What the model currently prioritizes</div>
           {#each MODEL_SKILL as s (s.feature)}
             <div class="feature-row">
               <div class="feature-top">

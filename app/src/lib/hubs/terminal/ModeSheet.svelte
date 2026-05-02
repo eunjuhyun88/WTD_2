@@ -7,9 +7,9 @@
   const { activeMode, onClose }: Props = $props();
 
   const modes = [
-    { id: 'trade',     icon: '◆', label: 'TRADE',    sub: '차트 · 스캔 · 판단', locked: false,  color: 'var(--brand)' },
-    { id: 'train',     icon: '◈', label: 'TRAIN',    sub: 'PC 권장',           locked: true,   color: 'var(--amb)' },
-    { id: 'flywheel',  icon: '◉', label: 'FLYWHEEL', sub: 'PC 권장',           locked: true,   color: '#7aa2e0' },
+    { id: 'trade',     icon: '◆', label: 'TRADE',    sub: 'Chart · Scan · Judge', locked: false,  color: 'var(--brand)' },
+    { id: 'train',     icon: '◈', label: 'TRAIN',    sub: 'PC recommended',       locked: true,   color: 'var(--amb)' },
+    { id: 'flywheel',  icon: '◉', label: 'FLYWHEEL', sub: 'PC recommended',       locked: true,   color: '#7aa2e0' },
   ] as const;
 
   function onBackdropClick(e: MouseEvent) {
@@ -43,12 +43,12 @@
           {#if activeMode === m.id}
             <span class="ms-active-dot"></span>
           {:else if m.locked}
-            <span class="ms-lock">PC 전용</span>
+            <span class="ms-lock">PC only</span>
           {/if}
         </div>
       {/each}
     </div>
-    <button class="ms-close" onclick={onClose}>닫기</button>
+    <button class="ms-close" onclick={onClose}>Close</button>
   </div>
 </div>
 

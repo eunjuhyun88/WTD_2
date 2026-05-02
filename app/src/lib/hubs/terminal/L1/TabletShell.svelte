@@ -26,13 +26,13 @@
       <button
         class="market-btn"
         onclick={() => (drawerOpen = true)}
-        aria-label="마켓 열기"
+        aria-label="Open market"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="3 17 9 11 13 15 21 7"/>
           <line x1="3" y1="21" x2="21" y2="21"/>
         </svg>
-        마켓
+        Market
       </button>
       {@render topBarContent()}
     </div>
@@ -58,15 +58,15 @@
     class="drawer-backdrop"
     role="dialog"
     aria-modal="true"
-    aria-label="마켓 패널"
+    aria-label="Market panel"
     tabindex="-1"
     onclick={(e) => { if ((e.target as Element).classList.contains('drawer-backdrop')) drawerOpen = false; }}
     onkeydown={(e) => e.key === 'Escape' && (drawerOpen = false)}
   >
     <div class="market-drawer">
       <div class="drawer-header">
-        <span class="drawer-title">마켓</span>
-        <button class="drawer-close" onclick={() => (drawerOpen = false)} aria-label="닫기">
+        <span class="drawer-title">Market</span>
+        <button class="drawer-close" onclick={() => (drawerOpen = false)} aria-label="Close">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -74,7 +74,7 @@
         </button>
       </div>
       <div class="drawer-body">
-        <p class="drawer-placeholder">마켓 패널 (W-0086 머지 후 통합)</p>
+        <p class="drawer-placeholder">Market panel (integrated after W-0086 merge)</p>
       </div>
     </div>
   </div>
