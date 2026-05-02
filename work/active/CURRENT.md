@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`a94a0f69` — origin/main (2026-05-02) — PR #862 W-0379 Phase 6 merged (research UI: ledger + battle + ensemble + diff + counterfactual)
+`9706cd21` — HEAD (2026-05-02) — Phase D-6 local complete: drag-to-save action handlers wired (handleRangeSaveCapture/handleRangeSendToAI/handleRangeAnalyze/handleRangeCancel)
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟡 Phase D-6→D-7 — AIAgentPanel 5탭 + Drawer |
+| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟢 Phase D-6 ✅ — Phase D-7 AIAgentPanel 5탭 + Drawer next |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
@@ -30,9 +30,12 @@
 완료:  W-0373 ✅ — wallet auth Privy email-first + silent failure fixes (#834)
 완료:  W-0358 ✅ — multi-exchange OHLCV ingestion framework (#836)
 완료:  W-0374 Phase D-0~D-3 ✅ — Bloomberg UX TopBar + AIAgentPanel 5-tab (#839)
+완료:  W-0374 Phase D-4 ✅ — IndicatorLibrary drawer (TV-style add/search/pin)
+완료:  W-0374 Phase D-5 ✅ — DrawingToolbar + drag-to-save range capture
+완료:  W-0374 Phase D-6 ✅ — 4-action handlers (Save/AI/Analyze/Cancel) wired + chartSaveMode integration
 완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
 완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
-즉시:  W-0374 Phase D-4+ — IndicatorLibrary drawer + DrawingToolbar + drag-to-save → AI pattern
+즉시:  W-0374 Phase D-7 — AIAgentPanel 5탭 + Drawer (2일, aiQueryRouter.ts + 5-tab wiring)
 추후:  W-0304 per-pane indicator (after W-0374 foundation stable)
 ```
 
@@ -55,11 +58,16 @@
 
 ---
 
-## 다음 실행
+## 다음 실행 — Phase D-7
 
 ```bash
 ./tools/start.sh
 cat work/active/W-0374-cogochi-bloomberg-ux-restructure.md
-# Phase D-4: IndicatorLibrary drawer (TV-style add/search/pin)
-# Phase D-5: DrawingToolbar + drag-to-save → AI agent pattern capture
+# Phase D-7 체크리스트:
+# 1. AIAgentPanel.svelte 5탭 통합 (chat/tools/patterns/analysis/settings)
+# 2. DrawerSlide.svelte (PeekDrawer 일반화)
+# 3. 5탭 inline 카드 + drawer detail wiring
+# 4. AI Search input ⌘L
+# 5. aiQueryRouter.ts (query → action dispatcher)
+# Effort: 2일 | Status: 설계 준비 완료
 ```
