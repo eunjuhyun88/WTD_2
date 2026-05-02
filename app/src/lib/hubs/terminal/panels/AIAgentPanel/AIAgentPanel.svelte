@@ -25,12 +25,13 @@
     blocks_triggered?: string[];
   }
 
+  // Quant workflow order: Research → Pattern → Verdict → Decision → Judge
   const TABS: Array<{ id: RightPanelTab; label: string }> = [
-    { id: 'decision', label: 'DEC' },
-    { id: 'pattern',  label: 'PAT' },
-    { id: 'verdict',  label: 'VER' },
-    { id: 'research', label: 'RES' },
-    { id: 'judge',    label: 'JDG' },
+    { id: 'research',  label: 'Research'  },
+    { id: 'pattern',   label: 'Pattern'   },
+    { id: 'verdict',   label: 'Verdict'   },
+    { id: 'decision',  label: 'Decision'  },
+    { id: 'judge',     label: 'Judge'     },
   ];
 
   const DRAWER_TITLE: Record<NonNullable<TabState['drawerKind']>, string> = {
@@ -460,7 +461,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--ui-text-xs);
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.03em;
   color: var(--g5, #3d3830);
   cursor: pointer;
   background: transparent;
