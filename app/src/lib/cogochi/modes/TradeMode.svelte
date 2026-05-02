@@ -29,6 +29,9 @@
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
   import { useMicrostructureSocket } from '$lib/trade/useMicrostructureSocket.svelte';
   import { useTradeData } from '$lib/trade/useTradeData.svelte';
+  import AnalyzePanel from './AnalyzePanel.svelte';
+  import ScanPanel from './ScanPanel.svelte';
+  import JudgePanel from './JudgePanel.svelte';
 
   type ChartBar = ChartSeriesPayload['klines'][number];
   type MicroOrderbook = MarketMicrostructurePayload['orderbook'];
@@ -692,7 +695,7 @@
 
     return labels.map((label, index) => ({
       label,
-      state: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'pending',
+      state: (index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'pending') as 'done' | 'active' | 'pending',
     }));
   });
 
@@ -746,12 +749,12 @@
     ];
   });
 
-  const judgmentOptions = [
+  const judgmentOptions: Array<{ label: string; tone: 'pos' | 'neg' | 'warn' }> = [
     { label: 'Valid', tone: 'pos' },
     { label: 'Invalid', tone: 'neg' },
     { label: 'Too Early', tone: 'warn' },
     { label: 'Too Late', tone: 'warn' },
-    { label: 'Near Miss', tone: 'neutral' },
+    { label: 'Near Miss', tone: 'warn' },
   ];
 
   const microBars = $derived.by<ChartBar[]>(() => {
@@ -953,7 +956,7 @@
       const maxNotional = Math.max(1, ...trades.slice(0, 18).map((trade) => trade.notional));
       return trades.slice(0, 18).map((trade) => ({
         time: new Date(trade.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-        side: trade.side,
+        side: trade.side as 'BUY' | 'SELL',
         price: _fmtNum(trade.price),
         size: trade.notional > 1000 ? `${(trade.notional / 1000).toFixed(1)}k` : trade.notional.toFixed(0),
         intensity: `${Math.max(12, Math.min(100, (trade.notional / maxNotional) * 100))}%`,
@@ -969,7 +972,7 @@
       const size = bar.volume * (0.45 + directional * 0.55);
       return {
         time: new Date(bar.time * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        side: isBuy ? 'BUY' : 'SELL',
+        side: (isBuy ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
         price: _fmtNum(bar.close),
         size: size > 1000 ? `${(size / 1000).toFixed(1)}k` : size.toFixed(0),
         intensity: `${Math.max(14, Math.min(100, directional * 100))}%`,
@@ -1039,7 +1042,7 @@
           const intensity = Math.max(0.04, Math.min(1, band.intensity * 0.55 + (trade.notional / maxNotional) * 0.3 + (1 - distance) * 0.2));
           return {
             intensity,
-            side: trade.side === 'BUY' ? 'buy' : 'sell',
+            side: (trade.side === 'BUY' ? 'buy' : 'sell') as 'buy' | 'sell',
             label: `${_fmtNum(trade.price)} · ${Math.round(intensity * 100)}%`,
           };
         }),
@@ -1069,7 +1072,7 @@
             : Math.max(0.04, (1 - distance) * 0.12);
           return {
             intensity,
-            side: bar.close >= bar.open ? 'buy' : 'sell',
+            side: (bar.close >= bar.open ? 'buy' : 'sell') as 'buy' | 'sell',
             label: `${_fmtNum(bar.close)} · ${Math.round(intensity * 100)}%`,
           };
         }),
@@ -1544,485 +1547,56 @@
         <!-- Drawer content -->
         <div class="drawer-content">
           {#if drawerTab === 'analyze'}
-            <div class="workspace-body">
-              <section class="workspace-hero" aria-label="Analyze thesis and phase path">
-                <div class="workspace-hero-copy">
-                  <span class="workspace-kicker">PHASE TIMELINE</span>
-                  <div class="workspace-thesis">
-                    <span class="bull">{analyzeDetailDirection} view ·</span>
-                    {' '}{analyzeDetailThesis}
-                  </div>
-                </div>
-                <div class="phase-timeline" role="list" aria-label="Pattern phase timeline">
-                  {#each phaseTimeline as phase}
-                    <div class="phase-node" class:done={phase.state === 'done'} class:active={phase.state === 'active'} role="listitem">
-                      <span class="phase-dot"></span>
-                      <span class="phase-label">{phase.label}</span>
-                    </div>
-                  {/each}
-                </div>
-              </section>
-
-              <div class="market-depth-grid" aria-label="Market microstructure workspace">
-                <section class="workspace-panel depth-panel dom-ladder-panel" class:selected={microstructureView === 'footprint'} aria-label="DOM ladder">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">DOM LADDER</span>
-                    <span class="workspace-panel-copy">bid depth · ask depth · mid liquidity</span>
-                  </div>
-                  <div class="dom-ladder" role="table" aria-label="Depth of market ladder">
-                    <div class="dom-row dom-head" role="row">
-                      <span role="columnheader">BID</span>
-                      <span role="columnheader">PRICE</span>
-                      <span role="columnheader">ASK</span>
-                    </div>
-                    {#each domLadderRows as row}
-                      <div class="dom-row" class:mid={row.isMid} class:bid-heavy={row.delta > 0} class:ask-heavy={row.delta < 0} role="row">
-                        <span class="dom-side bid" role="cell">
-                          <span class="dom-bar bid" style:width={row.bidWidth}></span>
-                          <span class="dom-val">{row.bid}</span>
-                        </span>
-                        <span class="dom-price" role="cell">{row.price}</span>
-                        <span class="dom-side ask" role="cell">
-                          <span class="dom-bar ask" style:width={row.askWidth}></span>
-                          <span class="dom-val">{row.ask}</span>
-                        </span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel depth-panel tape-panel" aria-label="Time and sales">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">TIME & SALES</span>
-                    <span class="workspace-panel-copy">aggressor side and print intensity</span>
-                  </div>
-                  <div class="tm-tape-list" aria-label="Recent trade tape">
-                    {#each timeSalesRows as row}
-                      <div class="tm-tape-row" class:buy={row.side === 'BUY'} class:sell={row.side === 'SELL'}>
-                        <span class="tm-tape-time">{row.time}</span>
-                        <span class="tm-tape-side">{row.side}</span>
-                        <span class="tm-tape-price">{row.price}</span>
-                        <span class="tm-tape-size">{row.size}</span>
-                        <span class="tm-tape-intensity"><span style:width={row.intensity}></span></span>
-                      </div>
-                    {/each}
-                    {#if timeSalesRows.length === 0}
-                      <div class="depth-empty">waiting for trade tape payload</div>
-                    {/if}
-                  </div>
-                </section>
-
-                <section class="workspace-panel depth-panel footprint-panel" class:selected={microstructureView === 'footprint'} aria-label="Footprint table">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">FOOTPRINT</span>
-                    <span class="workspace-panel-copy">bid x ask delta by price bucket</span>
-                  </div>
-                  <div class="footprint-table" role="table" aria-label="Footprint buckets">
-                    <div class="footprint-row footprint-head" role="row">
-                      <span role="columnheader">BID</span>
-                      <span role="columnheader">PRICE</span>
-                      <span role="columnheader">ASK</span>
-                      <span role="columnheader">DELTA</span>
-                    </div>
-                    {#each footprintRows as row}
-                      <div class="footprint-row" class:buy={row.delta >= 0} class:sell={row.delta < 0} role="row">
-                        <span role="cell">{row.bid}</span>
-                        <span role="cell">{row.price}</span>
-                        <span role="cell">{row.ask}</span>
-                        <span role="cell">{row.deltaLabel}</span>
-                        <span class="footprint-volume" style:width={row.width}></span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel depth-panel heatmap-panel" class:selected={microstructureView === 'heatmap'} aria-label="Liquidity heatmap">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">LIQ HEATMAP</span>
-                    <span class="workspace-panel-copy">volume/liquidation concentration bands</span>
-                  </div>
-                  <div class="heatmap-grid" aria-label="Liquidity heatmap matrix">
-                    {#each heatmapRows as band}
-                      <div class="heatmap-row">
-                        <span class="heat-price">{band.price}</span>
-                        <span class="heat-cells">
-                          {#each band.cells as cell}
-                            <span
-                              class="heat-cell"
-                              class:buy={cell.side === 'buy'}
-                              class:sell={cell.side === 'sell'}
-                              style:opacity={0.16 + cell.intensity * 0.84}
-                              title={cell.label}
-                            ></span>
-                          {/each}
-                        </span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-              </div>
-
-              <div class="workspace-grid">
-                <section class="workspace-panel evidence-table-panel" aria-label="Feature evidence table">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">EVIDENCE TABLE</span>
-                    <span class="workspace-panel-copy">raw values and threshold status stay here, not in the HUD</span>
-                  </div>
-                  <div class="evidence-table" role="table" aria-label="Evidence table">
-                    <div class="evidence-table-row header" role="row">
-                      <span role="columnheader">Feature</span>
-                      <span role="columnheader">Value</span>
-                      <span role="columnheader">Threshold</span>
-                      <span role="columnheader">Status</span>
-                      <span role="columnheader">Why</span>
-                    </div>
-                    {#each evidenceTableRows as row}
-                      <div class="evidence-table-row" class:pass={row.pos} class:fail={!row.pos} role="row">
-                        <span role="cell">{row.feature}</span>
-                        <span role="cell">{row.value}</span>
-                        <span role="cell">{row.threshold}</span>
-                        <span role="cell">{row.status}</span>
-                        <span role="cell">{row.why}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel compare-panel" aria-label="Compare workspace">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">COMPARE</span>
-                    <span class="workspace-panel-copy">pattern-object comparisons</span>
-                  </div>
-                  <div class="compare-card-stack">
-                    {#each compareCards as card}
-                      <button class="compare-card" type="button" onclick={card.action}>
-                        <span class="compare-label">{card.label}</span>
-                        <span class="compare-value">{card.value}</span>
-                        <span class="compare-note">{card.note}</span>
-                      </button>
-                    {/each}
-                  </div>
-                  <button class="workspace-primary-action" type="button" onclick={openCompareWorkspace}>Open Compare Workspace</button>
-                </section>
-              </div>
-
-              <div class="workspace-bottom-grid">
-                <section class="workspace-panel ledger-panel" aria-label="Pattern ledger">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">LEDGER</span>
-                    <span class="workspace-panel-copy">saved evidence memory</span>
-                  </div>
-                  <div class="tm-ledger-stats">
-                    {#each ledgerStats as stat}
-                      <div class="tm-ledger-stat">
-                        <span class="tm-ledger-label">{stat.label}</span>
-                        <span class="tm-ledger-value">{stat.value}</span>
-                        <span class="tm-ledger-note">{stat.note}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel judgment-panel" aria-label="User refinement judgment">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">JUDGMENT</span>
-                    <span class="workspace-panel-copy">turn reading into refinement data</span>
-                  </div>
-                  <div class="judgment-options">
-                    {#each judgmentOptions as option}
-                      <button
-                        class="judgment-option"
-                        class:tone-pos={option.tone === 'pos'}
-                        class:tone-neg={option.tone === 'neg'}
-                        class:tone-warn={option.tone === 'warn'}
-                        type="button"
-                        onclick={() => {
-                          if (option.label === 'Valid') judgeVerdict = 'agree';
-                          if (option.label === 'Invalid') judgeVerdict = 'disagree';
-                          openJudgeWorkspace();
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel execution-panel" aria-label="Execution handoff">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">EXECUTION</span>
-                    <span class="workspace-panel-copy">isolated from decision HUD</span>
-                  </div>
-                  <div class="execution-mini-grid">
-                    {#each analyzeExecutionProposal as p}
-                      <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                        <span class="prop-l">{p.label}</span>
-                        <span class="prop-v">{p.val}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-              </div>
-
-              <div class="workspace-action-strip">
-                <button class="analyze-action-btn ai" type="button" onclick={openAnalyzeAIDetail}>
-                  <span class="analyze-action-k">AI</span>
-                  <span class="analyze-action-t">Explain current workspace</span>
-                </button>
-                <button class="analyze-action-btn" type="button" onclick={startSaveSetup}>
-                  <span class="analyze-action-k">SAVE</span>
-                  <span class="analyze-action-t">Select range and save setup</span>
-                </button>
-                <button class="analyze-action-btn" type="button" onclick={openJudgeWorkspace}>
-                  <span class="analyze-action-k">04</span>
-                  <span class="analyze-action-t">Move to Judge</span>
-                </button>
-              </div>
-            </div>
+            <AnalyzePanel
+              direction={analyzeDetailDirection}
+              thesis={analyzeDetailThesis}
+              phaseTimeline={phaseTimeline}
+              microstructureView={microstructureView}
+              domLadderRows={domLadderRows}
+              timeSalesRows={timeSalesRows}
+              footprintRows={footprintRows}
+              heatmapRows={heatmapRows}
+              evidenceTableRows={evidenceTableRows}
+              compareCards={compareCards}
+              ledgerStats={ledgerStats}
+              judgmentOptions={judgmentOptions}
+              executionProposal={analyzeExecutionProposal}
+              onOpenCompareWorkspace={openCompareWorkspace}
+              onSetJudgeVerdict={(v) => judgeVerdict = v}
+              onOpenJudgeWorkspace={openJudgeWorkspace}
+              onOpenAnalyzeAIDetail={openAnalyzeAIDetail}
+              onStartSaveSetup={startSaveSetup}
+            />
           {:else if drawerTab === 'scan'}
-            <div class="scan-panel">
-              <!-- Scan header: idle / scanning / done -->
-              <div class="scan-header">
-                <span class="scan-step">03</span>
-                {#if confluence}
-                  <div style="margin-left: 8px;">
-                    <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
-                  </div>
-                {/if}
-                {#if scanState === 'scanning'}
-                  <span class="scan-label scanning">SCANNING</span>
-                  <span class="scan-title">{Math.round(scanProgress * 3)} / 300</span>
-                  <div class="scan-prog-track">
-                    <div class="scan-prog-fill" style:width="{scanProgress}%"></div>
-                  </div>
-                  <span class="scan-meta anim">유사 패턴 탐색 중...</span>
-                {:else}
-                  <span class="scan-label">SIMILAR NOW</span>
-                  <span class="scan-title">{scanCandidates.length} candidates</span>
-                  <span class="spacer"></span>
-                  <span class="scan-meta">300 sym · 14s</span>
-                  <span class="scan-sort-btn">sim ▾</span>
-                {/if}
-              </div>
-              <!-- Scan grid: show skeleton while scanning, results when done/idle -->
-              <div class="scan-grid" class:scanning={scanState === 'scanning'}>
-                {#if scanState === 'scanning'}
-                  {#each Array(5) as _}
-                    <div class="scan-card skeleton"></div>
-                  {/each}
-                {:else}
-                {#each scanCandidates as x}
-                  {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-                  <div
-                    class="scan-card"
-                    class:active={scanSelected === x.id}
-                    style:--sc={sc}
-                    role="button"
-                    tabindex="0"
-                    onclick={() => scanSelected = x.id}
-                    onkeydown={(e) => e.key === 'Enter' && (scanSelected = x.id)}
-                  >
-                    <div class="sc-top">
-                      <span class="sc-sym">{x.symbol.replace('USDT', '')}</span>
-                      <span class="sc-tf">{x.tf}</span>
-                      <span class="spacer"></span>
-                      <span class="sc-alpha" style:color={sc}>α{x.alpha}</span>
-                      <!-- Open in new tab -->
-                      <button
-                        class="sc-open"
-                        title="새 탭에서 열기"
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` });
-                        }}
-                      >↗</button>
-                    </div>
-                    <svg viewBox="0 0 180 48" preserveAspectRatio="none" class="sc-minichart">
-                      {@html (() => {
-                        const pts: [number,number][] = [[0,14],[8,22],[16,30],[24,38],[32,32],[40,36],[48,40],[56,44],[64,52],[72,48],[80,44],[88,42],[96,40],[104,38],[112,36],[120,34],[128,30],[136,28],[144,26],[152,22],[160,18],[168,14],[176,10],[180,8]];
-                        const str = pts.map(([px,py],i) => `${i===0?'M':'L'}${px},${py+4}`).join(' ');
-                        const nowX = x.phase===3?72 : x.phase===4?128 : x.phase===5?170 : 40;
-                        const nowY = (pts.find(p=>p[0]>=nowX)?.[1]??30)+4;
-                        return `<rect x="${nowX-8}" y="0" width="16" height="48" fill="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}" opacity="0.08"/><path d="${str} L180,52 L0,52 Z" fill="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}" opacity="0.05"/><path d="${str}" fill="none" stroke="var(--g6)" stroke-width="1"/><line x1="${nowX}" y1="0" x2="${nowX}" y2="48" stroke="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.7"/><circle cx="${nowX}" cy="${nowY}" r="2.5" fill="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}"/>`;
-                      })()}
-                    </svg>
-                    <div class="sc-sim-row">
-                      <div class="sc-sim-bar"><div class="sc-sim-fill" style:width="{x.sim * 100}%" style:background={sc}></div></div>
-                      <span class="sc-sim-pct">{Math.round(x.sim * 100)}%</span>
-                    </div>
-                    <div class="sc-pattern">{x.pattern}</div>
-                    <div class="sc-age">{x.age}</div>
-                  </div>
-                {/each}
-                {/if}
-              </div>
-              <div class="tm-past-strip">
-                <div class="tm-past-header">
-                  <span class="tm-past-title">★ SAVED · {pastCaptures.length}</span>
-                  <span class="spacer"></span>
-                  <span class="tm-past-hint">저장된 셋업</span>
-                </div>
-                <div class="tm-past-cards">
-                  {#if pastCaptures.length === 0}
-                    <span class="past-empty">저장된 셋업 없음 — 차트에서 Save Setup으로 추가</span>
-                  {:else}
-                    {#each pastCaptures as s (s.capture_id)}
-                      {@const sym = s.symbol.replace('USDT','').replace('PERP','')}
-                      {@const dateStr = new Date(s.captured_at_ms).toISOString().slice(0,10)}
-                      {@const patternSlug = s.pattern_slug ?? 'saved-setup'}
-                      <button class="tm-past-card" title="{patternSlug} · {s.timeframe}">
-                        <span class="tm-past-sym">{sym}</span>
-                        <span class="tm-past-pnl" style:color="var(--g6)">{dateStr}</span>
-                        <span class="tm-past-sim">{s.status === 'outcome_ready' ? '⚡' : s.status === 'verdict_ready' ? '✓' : '…'}</span>
-                      </button>
-                    {/each}
-                  {/if}
-                </div>
-              </div>
-            </div>
+            <ScanPanel
+              confluence={confluence}
+              onOpenAnalyze={openAnalyze}
+              scanState={scanState}
+              scanProgress={scanProgress}
+              scanCandidates={scanCandidates}
+              scanSelected={scanSelected}
+              onSetScanSelected={(id) => scanSelected = id}
+              pastCaptures={pastCaptures}
+            />
           {:else if drawerTab === 'judge'}
-            <!-- trade_act.jsx ActPanel: A(Plan) + B(Judge Now) + C(After Result) -->
-            <div class="tm-act-panel">
-              {#if confluence}
-                <div style="padding: 6px 10px 0;">
-                  <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
-                </div>
-              {/if}
-              <!-- Header -->
-              <div class="tm-act-header">
-                <span class="tm-act-step">STEP 04 · ACT & JUDGE</span>
-                <span class="tm-act-div"></span>
-                <span class="tm-act-sym">{symbol}</span>
-                <span class="tm-act-tf">{timeframe.toUpperCase()}</span>
-                <span class="tm-act-dir">LONG</span>
-                <span class="tm-act-pat">OI reversal · accumulation</span>
-                <span class="spacer"></span>
-                <span class="tm-act-alpha">{confidenceAlpha}</span>
-              </div>
-              <div class="tm-act-cols">
-                <!-- A: Trade Plan -->
-                <div class="tm-act-col plan-col">
-                  <div class="col-label">A · TRADE PLAN</div>
-                  <div class="lvl-row">
-                    {#each judgePlan as lvl}
-                      <div class="lvl-cell">
-                        <div class="lvl-label">{lvl.label}</div>
-                        <div class="lvl-val" style:color={lvl.color}>{lvl.val}</div>
-                      </div>
-                    {/each}
-                  </div>
-                  <div class="rr-size-row">
-                    <div class="rr-box">
-                      <div class="rr-box-label">RISK:REWARD</div>
-                      <div class="rr-bar">
-                        <div class="rr-loss" style:width={rrLossPct}></div>
-                        <div class="rr-gain" style:width={rrGainPct}></div>
-                      </div>
-                      <div class="rr-labels"><span class="rr-r">1R</span><span class="rr-g">{judgePlan[3].val}</span></div>
-                    </div>
-                    <div class="size-box">
-                      <div class="size-label">SIZE · 3x lev</div>
-                      <div class="size-val">1.2% <span class="size-usd">$1,200</span></div>
-                    </div>
-                  </div>
-                  <button class="exchange-btn">OPEN IN EXCHANGE ↗</button>
-                </div>
-
-                <div class="tm-act-divider"></div>
-
-                <!-- B: Judge Now -->
-                <div class="tm-act-col judge-col">
-                  <div class="judge-head">
-                    <span class="col-label">B · JUDGE NOW</span>
-                    <span class="judge-q">이 셋업, <strong>내 돈을 걸만한가?</strong></span>
-                  </div>
-                  <div class="judge-btns">
-                    <button
-                      class="judge-btn agree"
-                      class:active={judgeVerdict === 'agree'}
-                      onclick={() => judgeVerdict = 'agree'}
-                    >
-                      <span class="jb-key">Y</span>
-                      <div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div>
-                    </button>
-                    <button
-                      class="judge-btn disagree"
-                      class:active={judgeVerdict === 'disagree'}
-                      onclick={() => judgeVerdict = 'disagree'}
-                    >
-                      <span class="jb-key">N</span>
-                      <div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div>
-                    </button>
-                  </div>
-                  <div class="judge-tags">
-                    {#each ['확증부족', 'R:R낮음', 'regime안맞음', 'FOMO', '크기초과'] as tag}
-                      <span class="judge-tag">{tag}</span>
-                    {/each}
-                  </div>
-                </div>
-
-                <div class="tm-act-divider"></div>
-
-                <!-- C: After Result -->
-                <div class="tm-act-col tm-after-col">
-                  <div class="col-label">C · AFTER RESULT</div>
-                  <div class="outcome-row">
-                    {#each [
-                      { k: 'win',  l: 'WIN',  c: 'var(--pos)', bg: 'var(--pos-dd)' },
-                      { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' },
-                      { k: 'flat', l: 'FLAT', c: 'var(--g7)',  bg: 'var(--g2)' },
-                    ] as o}
-                      <button
-                        class="outcome-btn"
-                        class:active={judgeOutcome === o.k}
-                        style:--oc={o.c}
-                        style:--obg={o.bg}
-                        onclick={() => { judgeOutcome = o.k as any; judgeRejudged = null; }}
-                      >{o.l}</button>
-                    {/each}
-                  </div>
-                  {#if judgeOutcome}
-                    <div class="result-row">
-                      <span class="result-label">RESULT</span>
-                      <span class="result-val" style:color={judgeOutcome === 'win' ? 'var(--pos)' : judgeOutcome === 'loss' ? 'var(--neg)' : 'var(--g7)'}>
-                        {judgeOutcome.toUpperCase()}
-                      </span>
-                      <span class="spacer"></span>
-                      {#if judgeSubmitting}
-                        <span class="result-hint">저장 중…</span>
-                      {:else if judgeSubmitResult?.saved}
-                        <span class="result-hint" style:color="var(--pos)">
-                          저장됨 {judgeSubmitResult.training_triggered ? '· 학습 시작' : `· ${judgeSubmitResult.count}건`}
-                        </span>
-                      {:else}
-                        <span class="result-hint">flywheel 연결 중</span>
-                      {/if}
-                    </div>
-                    <div class="rejudge-label">REJUDGE</div>
-                    <div class="rejudge-btns">
-                      <button class="rj-btn rj-pos" class:active={judgeRejudged === 'right'} onclick={() => judgeRejudged = 'right'}>
-                        옳았다 <span class="rj-sub">+보강</span>
-                      </button>
-                      <button class="rj-btn rj-neg" class:active={judgeRejudged === 'wrong'} onclick={() => judgeRejudged = 'wrong'}>
-                        틀렸다 <span class="rj-sub">뒤집기</span>
-                      </button>
-                    </div>
-                    {#if judgeVerdict && judgeRejudged}
-                      {@const consistent = (judgeVerdict === 'agree' && judgeRejudged === 'right') || (judgeVerdict === 'disagree' && judgeRejudged === 'wrong')}
-                      <div class="tm-bias-box" class:tm-bias-good={consistent} class:tm-bias-warn={!consistent}>
-                        {#if consistent}
-                          <strong>✓ 일관 판정</strong> <span>· 가중치 +0.04</span>
-                        {:else}
-                          <strong>⚑ 편향 감지</strong> <span>· Train 권장</span>
-                        {/if}
-                      </div>
-                    {/if}
-                  {:else}
-                    <div class="tm-after-empty">매매 결과 선택시<br>재판정 가능</div>
-                  {/if}
-                </div>
-              </div>
-            </div>
+            <JudgePanel
+              confluence={confluence}
+              confluenceHistory={confluenceHistory}
+              symbol={symbol}
+              timeframe={timeframe}
+              confidenceAlpha={confidenceAlpha}
+              judgePlan={judgePlan}
+              rrLossPct={rrLossPct}
+              rrGainPct={rrGainPct}
+              judgeVerdict={judgeVerdict}
+              onSetJudgeVerdict={(v) => judgeVerdict = v}
+              judgeOutcome={judgeOutcome}
+              onSetJudgeOutcome={(o) => { judgeOutcome = o; judgeRejudged = null; }}
+              judgeRejudged={judgeRejudged}
+              onSetJudgeRejudged={(r) => judgeRejudged = r}
+              judgeSubmitting={judgeSubmitting}
+              judgeSubmitResult={judgeSubmitResult}
+            />
           {/if}
         </div>
       </div>
