@@ -4,6 +4,8 @@
 > Charter: In-Scope (ML 데이터 누적 + 의사결정 감사 루프)
 > Status: 🟡 Design Draft
 > Created: 2026-05-02
+> PR1 Issue: #896 (merged)
+> PR2 Issue: #921 (pending)
 > Depends on: W-0377 (pipeline repair), W-0382 (blocked_candidates 테이블)
 
 ## Owner
