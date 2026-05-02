@@ -1,6 +1,7 @@
 <script lang="ts">
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
   import { shellStore } from '$lib/hubs/terminal/shell.store';
+  import { track } from '$lib/analytics';
 
   interface Command {
     id: string;
@@ -22,9 +23,18 @@
     { id: 'new_tab', label: 'New tab', hint: '⌘T', section: 'view' },
     { id: 'toggle_side', label: 'Toggle sidebar', hint: '⌘B', section: 'view' },
     { id: 'toggle_ai', label: 'Toggle AI panel', hint: '⌘L', section: 'view' },
+    // Mode
     { id: 'mode_trade', label: 'Switch to TRADE mode', hint: '', section: 'mode' },
     { id: 'mode_train', label: 'Switch to TRAIN mode', hint: '', section: 'mode' },
     { id: 'mode_fly', label: 'Switch to FLYWHEEL', hint: '', section: 'mode' },
+    // TF shortcuts
+    { id: 'tf_1m', label: 'Timeframe → 1m', hint: '1', section: 'tf' },
+    { id: 'tf_5m', label: 'Timeframe → 5m', hint: '3', section: 'tf' },
+    { id: 'tf_15m', label: 'Timeframe → 15m', hint: '4', section: 'tf' },
+    { id: 'tf_1h', label: 'Timeframe → 1h', hint: '6', section: 'tf' },
+    { id: 'tf_4h', label: 'Timeframe → 4h', hint: '7', section: 'tf' },
+    { id: 'tf_1D', label: 'Timeframe → 1D', hint: '8', section: 'tf' },
+    // Session
     { id: 'new_trade', label: 'New TRADE session', hint: '', section: 'session' },
     { id: 'reset', label: 'Reset all state', hint: '', section: 'system' },
   ];
@@ -44,9 +54,16 @@
   );
 
   function onRun(c: Command) {
+    track('cmdpalette_action', { command_id: c.id, section: c.section });
     if (c.id.startsWith('toggle_indicator:')) {
       const indicatorId = c.id.slice('toggle_indicator:'.length);
       shellStore.toggleIndicatorVisible(indicatorId);
+      onClose();
+      return;
+    }
+    if (c.id.startsWith('tf_')) {
+      const tf = c.id.slice('tf_'.length);
+      shellStore.setTimeframe(tf);
       onClose();
       return;
     }
