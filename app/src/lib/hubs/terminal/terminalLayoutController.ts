@@ -1,4 +1,4 @@
-import { clampPercent } from '../../../components/terminal/terminalHelpers';
+import { clampPercent } from './terminalHelpers';
 
 export const BP_MOBILE = 768;
 export const BP_TABLET = 1024;

@@ -17,7 +17,7 @@ import {
   type ValuePoint,
 } from './paneIndicators';
 
-import type { InfoChip } from '../../components/terminal/workspace/PaneInfoBar.svelte';
+import type { InfoChip } from '$lib/hubs/terminal/workspace/PaneInfoBar.svelte';
 
 function fmtCompactUsd(v: number): string {
   const a = Math.abs(v);

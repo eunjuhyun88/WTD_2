@@ -6,7 +6,7 @@
    * Visibility is persisted via shellStore.visibleIndicators.
    * Archetype preference (e.g. switch a gauge to venue-strip) persisted via archetypePrefs.
    */
-  import { shellStore } from '$lib/cogochi/shell.store';
+  import { shellStore } from '$lib/hubs/terminal/shell.store';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
   import type { IndicatorDef, IndicatorArchetype } from '$lib/indicators/types';
 

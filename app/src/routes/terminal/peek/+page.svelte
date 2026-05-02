@@ -14,11 +14,11 @@
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
-  import TerminalCommandBar from '../../../components/terminal/workspace/TerminalCommandBar.svelte';
-  import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import ScanGrid from '../../../components/terminal/peek/ScanGrid.svelte';
-  import IndicatorPanel from '../../../components/terminal/peek/IndicatorPanel.svelte';
-  import AIAgentPanel from '../../../components/terminal/peek/AIAgentPanel.svelte';
+  import TerminalCommandBar from '$lib/hubs/terminal/workspace/TerminalCommandBar.svelte';
+  import ChartBoard from '$lib/hubs/terminal/workspace/ChartBoard.svelte';
+  import ScanGrid from '$lib/hubs/terminal/peek/ScanGrid.svelte';
+  import IndicatorPanel from '$lib/hubs/terminal/peek/IndicatorPanel.svelte';
+  import AIAgentPanel from '$lib/hubs/terminal/peek/AIAgentPanel.svelte';
 
   // ── State ────────────────────────────────────────────────────────────────
   let analysisData = $state<TerminalAnalyzeData | null>(null);
