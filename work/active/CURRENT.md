@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟡 Phase D-4+ — IndicatorLibrary + DrawingToolbar + drag-to-save |
+| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟡 Phase D-6→D-7 — AIAgentPanel 5탭 + Drawer |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
