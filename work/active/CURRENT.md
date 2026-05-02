@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`22431449` — HEAD (2026-05-02) — W-0374 Phase D-4~D-7 merged (#865)
+`8b7d6ce9` — HEAD (2026-05-02) — naming contract + agent coordination system merged (#868)
 
 ---
 
