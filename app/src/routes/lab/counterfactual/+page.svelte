@@ -14,6 +14,17 @@
 		status: string;
 	}
 
+	interface FormulaEvidenceRow {
+		scope_kind: string;
+		scope_value: string;
+		sample_n: number;
+		blocked_winner_rate: number;
+		good_block_rate: number;
+		drag_score: number;
+		avg_missed_pnl: number;
+		computed_at: string;
+	}
+
 	let pattern = $state<string>('ALL');
 	let horizon = $state<HorizonHour>(24);
 	let sinceDays = $state<SinceDays>(30);
@@ -22,6 +33,8 @@
 	let data = $state<CounterfactualReview | null>(null);
 	let activeCycle = $state<CycleMarker | null>(null);
 	let cycleHistory = $state<CycleMarker[]>([]);
+	let formulaEvidence = $state<FormulaEvidenceRow[]>([]);
+	let formulaLoading = $state(false);
 
 	const PATTERN_OPTIONS = ['ALL', 'wyckoff-spring', 'bull-flag', 'breakout', 'reversal'];
 	const HORIZON_OPTIONS: HorizonHour[] = [1, 4, 24, 72];
@@ -66,7 +79,25 @@
 		}
 	}
 
-	onMount(load);
+	async function loadFormulaEvidence(): Promise<void> {
+		formulaLoading = true;
+		try {
+			const res = await fetch('/api/research/formula-evidence?limit=20');
+			const body = await res.json();
+			if (res.ok && body.ok && Array.isArray(body.data)) {
+				formulaEvidence = body.data as FormulaEvidenceRow[];
+			}
+		} catch {
+			// non-blocking — formula evidence is best-effort
+		} finally {
+			formulaLoading = false;
+		}
+	}
+
+	onMount(() => {
+		void load();
+		void loadFormulaEvidence();
+	});
 
 	function fmtPct(n: number | null): string {
 		if (n == null || !Number.isFinite(n)) return '—';
@@ -244,6 +275,35 @@
 			</table>
 		</section>
 
+		<section class="scatter" data-testid="cfx-scatter">
+			<h2>SCATTER — p_win vs Δ return by reason</h2>
+			{#if data.by_reason.length > 0}
+				<svg viewBox="0 0 320 160" class="scatter-svg" role="img" aria-label="p_win vs delta return scatter">
+					<!-- axes -->
+					<line x1="40" y1="10" x2="40" y2="140" stroke="var(--g4)" stroke-width="0.5"/>
+					<line x1="40" y1="140" x2="310" y2="140" stroke="var(--g4)" stroke-width="0.5"/>
+					<!-- zero line (delta=0) -->
+					<line x1="40" y1="75" x2="310" y2="75" stroke="var(--g3)" stroke-width="0.5" stroke-dasharray="3,3"/>
+					<!-- axis labels -->
+					<text x="175" y="158" text-anchor="middle" font-size="7" fill="var(--g7)">p_win →</text>
+					<text x="8" y="78" text-anchor="middle" font-size="7" fill="var(--g7)" transform="rotate(-90,8,78)">Δ ret</text>
+					{#each data.by_reason as r}
+						{@const cx = 40 + (r.p_win - 0.3) / 0.5 * 270}
+						{@const cy = 140 - (r.delta + 3) / 6 * 130}
+						{@const fill = r.delta > 0 ? 'var(--neg)' : r.delta < -0.5 ? 'var(--pos)' : 'var(--g6)'}
+						<circle cx={Math.max(42, Math.min(308, cx))} cy={Math.max(12, Math.min(138, cy))} r="5" fill={fill} opacity="0.8"/>
+						<text x={Math.max(42, Math.min(308, cx))} y={Math.max(10, Math.min(136, cy - 7))} text-anchor="middle" font-size="6" fill="var(--g8)">{r.reason.replace('_', ' ')}</text>
+					{/each}
+				</svg>
+				<p class="scatter-legend">
+					<span class="dot neg"></span> blocked signal outperformed (high drag)
+					<span class="dot pos"></span> correctly blocked (low delta)
+				</p>
+			{:else}
+				<p class="muted">No by_reason data available.</p>
+			{/if}
+		</section>
+
 		<section class="signals" data-testid="cfx-signals">
 			<h2>Signal table (latest {data.table.length})</h2>
 			<table>
@@ -274,6 +334,41 @@
 			</table>
 		</section>
 	{/if}
+
+	<section class="formula-evidence" data-testid="cfx-formula-evidence">
+		<h2>FORMULA EVIDENCE — drag_score by filter reason (last 30d)</h2>
+		{#if formulaLoading}
+			<p class="muted">Loading…</p>
+		{:else if formulaEvidence.length === 0}
+			<p class="muted">No formula evidence computed yet. Run materializer to populate.</p>
+		{:else}
+			<table>
+				<thead>
+					<tr>
+						<th>reason</th>
+						<th>n</th>
+						<th>blocked_winner_rate</th>
+						<th>good_block_rate</th>
+						<th>avg_missed (bps)</th>
+						<th>drag_score</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each formulaEvidence as row}
+						<tr>
+							<td class="mono">{row.scope_value}</td>
+							<td>{row.sample_n}</td>
+							<td class={row.blocked_winner_rate > 0.3 ? 'neg' : 'muted'}>{(row.blocked_winner_rate * 100).toFixed(1)}%</td>
+							<td class={row.good_block_rate > 0.5 ? 'pos' : 'muted'}>{(row.good_block_rate * 100).toFixed(1)}%</td>
+							<td class={row.avg_missed_pnl > 30 ? 'neg' : 'muted'}>{row.avg_missed_pnl.toFixed(1)}</td>
+							<td class="drag {row.drag_score > 10 ? 'high' : row.drag_score > 3 ? 'med' : 'low'}">{row.drag_score.toFixed(1)}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+			<p class="formula-hint">drag_score = blocked_winner_rate × avg_missed_pnl. High drag → consider relaxing filter.</p>
+		{/if}
+	</section>
 </section>
 
 <style>
@@ -340,4 +435,21 @@
 
 	.banner { background: var(--amb); color: var(--g0); padding: 8px 12px; font-size: 11px; margin-bottom: 12px; }
 	.error { color: var(--neg); padding: 12px; background: var(--neg-d); }
+
+	/* Scatter */
+	.scatter { background: var(--g1); border: 1px solid var(--g3); padding: 12px; margin-bottom: 16px; }
+	.scatter h2 { font-size: 10px; letter-spacing: 0.06em; margin: 0 0 8px; text-transform: uppercase; color: var(--g7); }
+	.scatter-svg { width: 100%; max-width: 400px; display: block; }
+	.scatter-legend { font-size: 10px; color: var(--g7); margin: 4px 0 0; display: flex; gap: 12px; align-items: center; }
+	.scatter-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+	.scatter-legend .dot.neg { background: var(--neg); }
+	.scatter-legend .dot.pos { background: var(--pos); }
+
+	/* Formula evidence */
+	.formula-evidence { background: var(--g1); border: 1px solid var(--g3); padding: 12px; margin-top: 16px; }
+	.formula-evidence h2 { font-size: 10px; letter-spacing: 0.06em; margin: 0 0 8px; text-transform: uppercase; color: var(--g7); }
+	.formula-hint { font-size: 9px; color: var(--g6); margin: 6px 0 0; font-family: var(--font-mono, ui-monospace); }
+	.drag.high { color: var(--neg); font-weight: 700; }
+	.drag.med { color: var(--amb); }
+	.drag.low { color: var(--g7); }
 </style>
