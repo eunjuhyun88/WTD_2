@@ -14,13 +14,13 @@ __all__ = [
     "MoAStrategy",
 ]
 
-from engine.research.ensemble.single import SingleStrategy
-from engine.research.ensemble.parallel_vote import ParallelVoteStrategy
-from engine.research.ensemble.rank_fusion import RankFusionStrategy
-from engine.research.ensemble.moe_regime import MoERegimeStrategy
-from engine.research.ensemble.judge_arbitrate import JudgeArbitrateStrategy
-from engine.research.ensemble.role_pipeline import RolePipelineStrategy
-from engine.research.ensemble.tournament import TournamentStrategy
-from engine.research.ensemble.self_refine import SelfRefineStrategy
-from engine.research.ensemble.debate import DebateStrategy
-from engine.research.ensemble.moa import MoAStrategy
+from research.ensemble.single import SingleStrategy
+from research.ensemble.parallel_vote import ParallelVoteStrategy
+from research.ensemble.rank_fusion import RankFusionStrategy
+from research.ensemble.moe_regime import MoERegimeStrategy
+from research.ensemble.judge_arbitrate import JudgeArbitrateStrategy
+from research.ensemble.role_pipeline import RolePipelineStrategy
+from research.ensemble.tournament import TournamentStrategy
+from research.ensemble.self_refine import SelfRefineStrategy
+from research.ensemble.debate import DebateStrategy
+from research.ensemble.moa import MoAStrategy
