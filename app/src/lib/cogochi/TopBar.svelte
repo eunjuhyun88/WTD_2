@@ -1,16 +1,9 @@
 <script lang="ts">
   import { shellStore, activeTabState } from './shell.store';
-  import type { ChartType } from './shell.store';
   import { priceStore } from '$lib/stores/priceStore';
   import { getBaseSymbolFromPair } from '$lib/utils/price';
 
   const TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'] as const;
-  const CHART_TYPES: Array<{ id: ChartType; label: string }> = [
-    { id: 'candle', label: 'CNDL' },
-    { id: 'line', label: 'LINE' },
-    { id: 'heikin', label: 'HA' },
-    { id: 'bar', label: 'BAR' },
-  ];
 
   interface Props {
     onSymbolTap?: () => void;
@@ -20,7 +13,6 @@
 
   const symbol   = $derived($activeTabState.symbol ?? 'BTCUSDT');
   const tf       = $derived($activeTabState.timeframe ?? '4h');
-  const chartType = $derived($activeTabState.chartType ?? 'candle');
 
   // base symbol for priceStore lookup (BTCUSDT → BTC)
   const baseSym  = $derived(getBaseSymbolFromPair(symbol));
@@ -68,19 +60,6 @@
     {/each}
   </div>
 
-  <div class="vdivider"></div>
-
-  <!-- Chart type -->
-  <div class="ct-strip">
-    {#each CHART_TYPES as ct}
-      <button
-        class="ct-btn"
-        class:active={chartType === ct.id}
-        onclick={() => shellStore.setChartType(ct.id)}
-      >{ct.label}</button>
-    {/each}
-  </div>
-
   <!-- Live price — pushed right -->
   <div class="price-block {priceClass}">
     <span class="price-val">{fmtPrice(liveP)}</span>
@@ -96,7 +75,7 @@
 
 <style>
 .top-bar {
-  height: var(--zone-top-bar, 32px);
+  height: 48px;
   display: flex;
   align-items: center;
   gap: 0;
@@ -169,27 +148,6 @@
   color: var(--amb);
   border-bottom-color: var(--amb);
 }
-
-/* ── Chart type ───────────────────────────────── */
-.ct-strip {
-  display: flex;
-  align-items: center;
-}
-.ct-btn {
-  padding: 0 5px;
-  height: 32px;
-  background: transparent;
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--g6);
-  cursor: pointer;
-  transition: color 0.08s;
-}
-.ct-btn:hover { color: var(--g7); }
-.ct-btn.active { color: var(--g9); }
 
 /* ── Live price ───────────────────────────────── */
 .price-block {

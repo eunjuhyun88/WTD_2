@@ -71,7 +71,7 @@
       if (action.type === 'set-tab') {
         shellStore.setRightPanelTab(action.tab);
       } else if (action.type === 'toggle-drawing') {
-        shellStore.toggleDrawingMode();
+        shellStore.setDrawingTool('trendLine');
       } else if (action.type === 'analyze') {
         shellStore.setRightPanelTab('research');
       } else if (action.type === 'pattern-recall') {
