@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`a5dff7c6` — HEAD (2026-05-02) — chore: CURRENT.md SHA c130b860 — TerminalHub 마운트 (#922) + 세션 로그 (#923)
+`322f2bdd` — HEAD (2026-05-03) — chore: sweep completed work items + W-0386 finalize (#930)
 
 ---
 
