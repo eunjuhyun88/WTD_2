@@ -478,15 +478,15 @@
 
 .tab-badge {
   display: inline-block;
-  min-width: 14px;
-  height: 14px;
-  line-height: 14px;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
   padding: 0 3px;
   margin-left: 3px;
   background: var(--amb, #f5a623);
   color: var(--g0, #080706);
-  border-radius: 7px;
-  font-size: 9px;
+  border-radius: 8px;
+  font-size: var(--ui-text-xs);
   font-weight: 700;
   text-align: center;
   vertical-align: middle;
