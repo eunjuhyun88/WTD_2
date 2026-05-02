@@ -6,7 +6,7 @@
 
 ## main SHA
 
-`9706cd21` — HEAD (2026-05-02) — Phase D-6 local complete: drag-to-save action handlers wired (handleRangeSaveCapture/handleRangeSendToAI/handleRangeAnalyze/handleRangeCancel)
+`fbae4bab` — HEAD (2026-05-02) — Phase D-7 complete: AIAgentPanel 5-tab + DrawerSlide + aiQueryRouter + shell.store v10
 
 ---
 
@@ -14,7 +14,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟢 Phase D-6 ✅ — Phase D-7 AIAgentPanel 5탭 + Drawer next |
+| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟢 Phase D-7 ✅ — Phase D-8 (final integration) next |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
@@ -35,7 +35,8 @@
 완료:  W-0374 Phase D-6 ✅ — 4-action handlers (Save/AI/Analyze/Cancel) wired + chartSaveMode integration
 완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
 완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
-즉시:  W-0374 Phase D-7 — AIAgentPanel 5탭 + Drawer (2일, aiQueryRouter.ts + 5-tab wiring)
+완료:  W-0374 Phase D-7 ✅ — AIAgentPanel 5탭 (DEC/PAT/VER/RES/JDG) + DrawerSlide + aiQueryRouter (fbae4bab)
+즉시:  W-0374 Phase D-8 — final integration / PR
 추후:  W-0304 per-pane indicator (after W-0374 foundation stable)
 ```
 
@@ -58,16 +59,11 @@
 
 ---
 
-## 다음 실행 — Phase D-7
+## 다음 실행 — Phase D-8
 
 ```bash
 ./tools/start.sh
 cat work/active/W-0374-cogochi-bloomberg-ux-restructure.md
-# Phase D-7 체크리스트:
-# 1. AIAgentPanel.svelte 5탭 통합 (chat/tools/patterns/analysis/settings)
-# 2. DrawerSlide.svelte (PeekDrawer 일반화)
-# 3. 5탭 inline 카드 + drawer detail wiring
-# 4. AI Search input ⌘L
-# 5. aiQueryRouter.ts (query → action dispatcher)
-# Effort: 2일 | Status: 설계 준비 완료
+# Phase D-8: 최종 통합 + PR 준비
+# Effort: 1일 | Status: D-7 완료, D-8 시작 가능
 ```
