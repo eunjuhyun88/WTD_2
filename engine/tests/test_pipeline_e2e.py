@@ -10,6 +10,8 @@ import pytest
 from pipeline import ResearchPipeline
 from verification.types import PaperVerificationResult
 
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

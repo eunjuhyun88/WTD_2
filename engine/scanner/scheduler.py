@@ -1,14 +1,7 @@
 """Background scanner — L4 real-time alert engine.
 
-Runs inside the FastAPI process via APScheduler (AsyncIOScheduler).
-Every 15 minutes it scans every symbol in the configured universe,
-computes features, evaluates all building blocks, and pushes any
-signal hit to the `engine_alerts` Supabase table.
-Start/stop is controlled by the FastAPI lifespan hook in api/main.py.
-The scan loop is intentionally sequential (not concurrent) to avoid
-bursting Binance rate limits during the feature-calc phase.
-Env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SCAN_INTERVAL_SECONDS,
-SCAN_MIN_BLOCKS, SCAN_UNIVERSE.
+APScheduler-based scan loop running inside the FastAPI process.
+Start/stop via FastAPI lifespan hook in api/main.py.
 """
 from __future__ import annotations
 
@@ -96,7 +89,6 @@ SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().low
 FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION_JOB", "true").strip().lower() not in _OFF
 FEATURE_MATERIALIZATION_INTERVAL = int(os.environ.get("FEATURE_MATERIALIZATION_INTERVAL_SECONDS", "900"))
 
-# A8: Beta job gates — flywheel jobs default ON (W-0336); heavy infra jobs off.
 _BETA_JOB_FLAGS = {
     "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "true"),
     "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "true"),
@@ -108,7 +100,6 @@ _BETA_JOB_FLAGS = {
     "extreme_event_detector": os.environ.get("EXTREME_EVENT_TRACKER_JOB", "false"),
     "extreme_event_outcome": os.environ.get("EXTREME_EVENT_OUTCOME_JOB", "false"),
     "backtest_stats_refresh": os.environ.get("ENABLE_BACKTEST_STATS_REFRESH_JOB", "false"),
-    # W-0385: blocked candidate resolver + formula evidence materializer
     "blocked_candidate_resolver": os.environ.get("ENABLE_BLOCKED_CANDIDATE_RESOLVER_JOB", "true"),
     "formula_evidence_materializer": os.environ.get("ENABLE_FORMULA_EVIDENCE_MATERIALIZER_JOB", "true"),
 }
@@ -124,21 +115,16 @@ _PLACEHOLDER_HINTS = ("your_", "your-", "placeholder", "changeme", "example", "d
 
 
 def _looks_like_placeholder(value: str) -> bool:
-    normalized = value.strip().lower()
-    if not normalized:
-        return False
-    return any(hint in normalized for hint in _PLACEHOLDER_HINTS)
+    n = value.strip().lower()
+    return bool(n) and any(hint in n for hint in _PLACEHOLDER_HINTS)
 
 
 def validate_scheduler_secrets() -> None:
-    if not SUPABASE_URL.strip():
-        raise RuntimeError("SUPABASE_URL is required when ENGINE_ENABLE_SCHEDULER=true")
-    if not SUPABASE_ROLE_KEY.strip():
-        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required when ENGINE_ENABLE_SCHEDULER=true")
-    if _looks_like_placeholder(SUPABASE_URL):
-        raise RuntimeError("SUPABASE_URL still looks like a placeholder value")
-    if _looks_like_placeholder(SUPABASE_ROLE_KEY):
-        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY still looks like a placeholder value")
+    for name, val in (("SUPABASE_URL", SUPABASE_URL), ("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_ROLE_KEY)):
+        if not val.strip():
+            raise RuntimeError(f"{name} is required when ENGINE_ENABLE_SCHEDULER=true")
+        if _looks_like_placeholder(val):
+            raise RuntimeError(f"{name} still looks like a placeholder value")
 
 
 async def _push_alert(payload: dict[str, Any]) -> None:
@@ -285,19 +271,16 @@ def start_scheduler() -> None:
              id="extreme_event_outcome", name="Extreme event outcome resolver (1h)",
              max_instances=1, coalesce=True, misfire_grace_time=600)
 
-    # W-0377: Signal outcome resolver — hourly, default ON
     if os.environ.get("ENABLE_SIGNAL_EVENTS", "true").lower() == "true":
         from scanner.jobs.signal_events_job import register_signal_events  # noqa: PLC0415
         register_signal_events(_scheduler)
 
-    # W-0369: Daily backtest stats refresh — 03:00 UTC
     if _job_enabled("backtest_stats_refresh"):
         from scanner.jobs.backtest_stats_refresh import backtest_stats_refresh_job as _bsr  # noqa: PLC0415
         _add(_bsr, "cron", hour=3, minute=0, id="backtest_stats_refresh",
              name="Daily backtest stats refresh (W-0369)",
              max_instances=1, coalesce=True, misfire_grace_time=3600)
 
-    # W-0385: Blocked candidate P&L resolver — hourly
     if _job_enabled("blocked_candidate_resolver"):
         async def _blocked_candidate_resolve_job() -> None:  # noqa: E306
             from scanner.jobs.blocked_candidate_resolver import resolve_batch  # noqa: PLC0415
@@ -307,7 +290,6 @@ def start_scheduler() -> None:
              id="blocked_candidate_resolver", name="Blocked candidate P&L resolver (W-0385)",
              max_instances=1, coalesce=True, misfire_grace_time=600)
 
-    # W-0385: Formula evidence daily materializer — 03:30 UTC
     if _job_enabled("formula_evidence_materializer"):
         async def _formula_evidence_materialize_job() -> None:  # noqa: E306
             from scanner.jobs.formula_evidence_materializer import materialize_all  # noqa: PLC0415
@@ -349,10 +331,7 @@ def next_run_time() -> str | None:
 
 
 def get_jobs_status() -> list[dict]:
-    """Return status snapshot of all registered APScheduler jobs.
-
-    Used by GET /api/agent-status for real-time harness observability.
-    """
+    """Return APScheduler job status list (used by GET /api/agent-status)."""
     if _scheduler is None:
         return []
     result = []
