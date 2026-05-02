@@ -2,7 +2,7 @@
 
 > Wave: 5 (Productivity) | Priority: P2 | Effort: S (반나절)
 > Charter: In-Scope (메타 효율 — 기존 파일 축소, 새 시스템 빌드 아님)
-> Status: 🟢 Implemented — token target met, restart-read comparison pending
+> Status: 🟡 Design Approved
 > Created: 2026-04-29
 > Issue: #583
 > Suggested order: W-0290 이후 (도메인 sub-file 분기 완료 후 AGENTS.md 트리밍 효과 극대화)
@@ -149,7 +149,6 @@ meta (agent productivity — 모든 에이전트 영향)
 - CURRENT.md 54L ≈ 379 tok ✅, MEMORY.md 33L ≈ 833 tok ✅
 - after Phase 1: 7,014 tok — CLAUDE.md + AGENTS.md 트리밍 필요
 - CLAUDE.md: 196L, AGENTS.md: 378L (여전히 목표 초과)
-- W-0316 재측정(2026-04-30): 4,173 tok (CLAUDE.md 378 + AGENTS.md 1,369 + CURRENT.md 476 + MEMORY.md 1,948) ✅ 목표 ≤5,000 충족
 
 ## Assumptions
 
@@ -167,9 +166,9 @@ meta (agent productivity — 모든 에이전트 영향)
 
 ## Next Steps
 
-1. 재시작 후 부팅 Read tool 호출 수 비교(AC5)
-2. AGENTS.md MemKraft 블록 추가 트리밍 가능 여부는 별도 결정으로 처리
-3. 필요 시 `bash tools/measure_context_tokens.sh`로 주기 재측정
+1. CLAUDE.md 196L → 90L 트리밍 (W-0290 완료 후)
+2. AGENTS.md 378L → 120L 트리밍 (도메인 상세 sub-file 이동 후)
+3. after 측정: `bash tools/measure_context_tokens.sh`
 
 ## Handoff Checklist
 
@@ -177,8 +176,8 @@ meta (agent productivity — 모든 에이전트 영향)
 - [x] MEMORY.md 108L → 33L ✅
 - [x] _archive/2026-04.md 생성 ✅
 - [x] tools/measure_context_tokens.sh 생성 ✅
-- [x] CLAUDE.md ≤90L (Phase 2)
-- [x] AGENTS.md token budget 기준 충족 (MemKraft block 포함 168L, 총합 ≤5,000)
+- [ ] CLAUDE.md ≤90L (Phase 2)
+- [ ] AGENTS.md ≤120L (Phase 2, W-0290 후)
 
 ## 구현 순서
 
@@ -193,8 +192,8 @@ meta (agent productivity — 모든 에이전트 영향)
 
 ## Exit Criteria
 
-- [x] AC1: 3,718 tok ≤ 5,000 (-53% 절감) ✅
-- [x] AC2: CLAUDE.md 56L ≤ 90 ✅ / CURRENT.md 53L ✅ / AGENTS.md 168L (MEMKRAFT 40L 포함 — 토큰 목표 달성으로 대체)
-- [x] AC3: MEMORY.md 50L ✅
-- [x] AC4: `_archive/2026-04.md` 존재 ✅
-- [ ] AC5: 재시작 후 부팅 Read tool 호출 수 비교
+- [ ] AC1: `tools/measure_context_tokens.sh` 출력 ≤ 5,000 tokens (절감률 ≥ 50%)
+- [ ] AC2: `wc -l CLAUDE.md AGENTS.md work/active/CURRENT.md` 각각 ≤90 / ≤120 / ≤50
+- [ ] AC3: `~/.claude/.../memory/MEMORY.md` ≤50L
+- [ ] AC4: `ls ~/.claude/.../memory/_archive/2026-04.md` 존재
+- [ ] AC5: 신규 worktree 부팅 후 Read tool 호출 수 비교 (baseline 대비 감소 확인)
