@@ -9,9 +9,21 @@ import {
 export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
-// v2 migration: verdict→analyze, research→scan
+// v4 migration (W-0375 Phase 3): research→decision, verdict→judge.
+// New tab set aligns with TradeMode panels: AI / ANL / SCN / JDG / PAT.
 export type RightPanelTab = 'decision' | 'analyze' | 'scan' | 'judge' | 'pattern';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
+export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D';
+export type ChartActiveMode = 'idle' | 'drawing' | 'save-range';
+export type DrawingTool =
+  | 'cursor'
+  | 'trendLine'
+  | 'horizontalLine'
+  | 'verticalLine'
+  | 'extendedLine'
+  | 'rectangle'
+  | 'fibRetracement'
+  | 'textLabel';
 
 export interface WorkspacePanelRect {
   x: number; y: number; w: number; h: number;
@@ -82,6 +94,9 @@ export interface ShellState {
   hudVisible: boolean;
   selectedVerdictId: string | null;
   decisionBundle: null | { symbol: string; timeframe: string; patternSlug: string | null };
+  // ── Drawing mode (D-4) ───────────────────────────────────────────────────
+  chartActiveMode: ChartActiveMode;
+  drawingTool: DrawingTool;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -207,13 +222,15 @@ const makeDefault = (): ShellState => ({
   hudVisible: false,
   selectedVerdictId: null,
   decisionBundle: null,
+  chartActiveMode: 'idle',
+  drawingTool: 'cursor',
 });
 
 const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'analyze', 'scan', 'judge', 'pattern']);
 function migrateRightPanelTab(raw: unknown): RightPanelTab {
-  // v1→v2: verdict→analyze, research→scan
-  if (raw === 'verdict') return 'analyze';
-  if (raw === 'research') return 'scan';
+  // v3→v4 (W-0375 Phase 3): research→decision, verdict→judge
+  if (raw === 'research') return 'decision';
+  if (raw === 'verdict') return 'judge';
   if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
   return 'decision';
 }
@@ -262,12 +279,14 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
     hudVisible: raw.hudVisible ?? false,
     selectedVerdictId: raw.selectedVerdictId ?? null,
     decisionBundle: raw.decisionBundle ?? null,
+    chartActiveMode: raw.chartActiveMode ?? 'idle',
+    drawingTool: raw.drawingTool ?? 'cursor',
   };
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v9'; // v9: RightPanelTab migration (verdict→analyze, research→scan)
+const SHELL_KEY = 'cogochi_shell_v11'; // v11 (W-0375 P3): RightPanelTab → decision/analyze/scan/judge/pattern
 
 function createShellStore() {
   let initial: ShellState;
@@ -486,6 +505,23 @@ function createShellStore() {
       }));
     },
 
+    setDrawingTool: (tool: DrawingTool) => {
+      update(st => {
+        const next = st.drawingTool === tool && tool !== 'cursor' ? 'cursor' : tool;
+        const mode: ChartActiveMode = next === 'cursor' ? 'idle' : 'drawing';
+        return { ...st, drawingTool: next, chartActiveMode: mode };
+      });
+    },
+
+    setChartActiveMode: (mode: ChartActiveMode) => {
+      update(st => ({
+        ...st,
+        chartActiveMode: mode,
+        // Reverting to idle/save-range clears any active drawing tool
+        drawingTool: mode === 'drawing' ? st.drawingTool : 'cursor',
+      }));
+    },
+
     openDrawer: (drawerKind: TabState['drawerKind']) => {
       update(st => ({
         ...st,
@@ -649,6 +685,7 @@ function createShellStore() {
       set(makeDefault());
       if (typeof window !== 'undefined') {
         localStorage.removeItem(SHELL_KEY);
+        localStorage.removeItem('cogochi_shell_v10');
         localStorage.removeItem('cogochi_shell_v6');
         localStorage.removeItem('cogochi_shell_v5');
       }

@@ -29,6 +29,9 @@
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
   import { useMicrostructureSocket } from '$lib/trade/useMicrostructureSocket.svelte';
   import { useTradeData } from '$lib/trade/useTradeData.svelte';
+  import AnalyzePanel from './AnalyzePanel.svelte';
+  import ScanPanel from './ScanPanel.svelte';
+  import JudgePanel from './JudgePanel.svelte';
 
   type ChartBar = ChartSeriesPayload['klines'][number];
   type MicroOrderbook = MarketMicrostructurePayload['orderbook'];
@@ -692,7 +695,7 @@
 
     return labels.map((label, index) => ({
       label,
-      state: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'pending',
+      state: (index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'pending') as 'done' | 'active' | 'pending',
     }));
   });
 
@@ -746,12 +749,12 @@
     ];
   });
 
-  const judgmentOptions = [
+  const judgmentOptions: Array<{ label: string; tone: 'pos' | 'neg' | 'warn' }> = [
     { label: 'Valid', tone: 'pos' },
     { label: 'Invalid', tone: 'neg' },
     { label: 'Too Early', tone: 'warn' },
     { label: 'Too Late', tone: 'warn' },
-    { label: 'Near Miss', tone: 'neutral' },
+    { label: 'Near Miss', tone: 'warn' },
   ];
 
   const microBars = $derived.by<ChartBar[]>(() => {
@@ -953,7 +956,7 @@
       const maxNotional = Math.max(1, ...trades.slice(0, 18).map((trade) => trade.notional));
       return trades.slice(0, 18).map((trade) => ({
         time: new Date(trade.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-        side: trade.side,
+        side: trade.side as 'BUY' | 'SELL',
         price: _fmtNum(trade.price),
         size: trade.notional > 1000 ? `${(trade.notional / 1000).toFixed(1)}k` : trade.notional.toFixed(0),
         intensity: `${Math.max(12, Math.min(100, (trade.notional / maxNotional) * 100))}%`,
@@ -969,7 +972,7 @@
       const size = bar.volume * (0.45 + directional * 0.55);
       return {
         time: new Date(bar.time * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        side: isBuy ? 'BUY' : 'SELL',
+        side: (isBuy ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
         price: _fmtNum(bar.close),
         size: size > 1000 ? `${(size / 1000).toFixed(1)}k` : size.toFixed(0),
         intensity: `${Math.max(14, Math.min(100, directional * 100))}%`,
@@ -1039,7 +1042,7 @@
           const intensity = Math.max(0.04, Math.min(1, band.intensity * 0.55 + (trade.notional / maxNotional) * 0.3 + (1 - distance) * 0.2));
           return {
             intensity,
-            side: trade.side === 'BUY' ? 'buy' : 'sell',
+            side: (trade.side === 'BUY' ? 'buy' : 'sell') as 'buy' | 'sell',
             label: `${_fmtNum(trade.price)} · ${Math.round(intensity * 100)}%`,
           };
         }),
@@ -1069,7 +1072,7 @@
             : Math.max(0.04, (1 - distance) * 0.12);
           return {
             intensity,
-            side: bar.close >= bar.open ? 'buy' : 'sell',
+            side: (bar.close >= bar.open ? 'buy' : 'sell') as 'buy' | 'sell',
             label: `${_fmtNum(bar.close)} · ${Math.round(intensity * 100)}%`,
           };
         }),
@@ -1544,485 +1547,70 @@
         <!-- Drawer content -->
         <div class="drawer-content">
           {#if drawerTab === 'analyze'}
-            <div class="workspace-body">
-              <section class="workspace-hero" aria-label="Analyze thesis and phase path">
-                <div class="workspace-hero-copy">
-                  <span class="workspace-kicker">PHASE TIMELINE</span>
-                  <div class="workspace-thesis">
-                    <span class="bull">{analyzeDetailDirection} view ·</span>
-                    {' '}{analyzeDetailThesis}
-                  </div>
-                </div>
-                <div class="phase-timeline" role="list" aria-label="Pattern phase timeline">
-                  {#each phaseTimeline as phase}
-                    <div class="phase-node" class:done={phase.state === 'done'} class:active={phase.state === 'active'} role="listitem">
-                      <span class="phase-dot"></span>
-                      <span class="phase-label">{phase.label}</span>
-                    </div>
-                  {/each}
-                </div>
-              </section>
-
-              <div class="market-depth-grid" aria-label="Market microstructure workspace">
-                <section class="workspace-panel depth-panel dom-ladder-panel" class:selected={microstructureView === 'footprint'} aria-label="DOM ladder">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">DOM LADDER</span>
-                    <span class="workspace-panel-copy">bid depth · ask depth · mid liquidity</span>
-                  </div>
-                  <div class="dom-ladder" role="table" aria-label="Depth of market ladder">
-                    <div class="dom-row dom-head" role="row">
-                      <span role="columnheader">BID</span>
-                      <span role="columnheader">PRICE</span>
-                      <span role="columnheader">ASK</span>
-                    </div>
-                    {#each domLadderRows as row}
-                      <div class="dom-row" class:mid={row.isMid} class:bid-heavy={row.delta > 0} class:ask-heavy={row.delta < 0} role="row">
-                        <span class="dom-side bid" role="cell">
-                          <span class="dom-bar bid" style:width={row.bidWidth}></span>
-                          <span class="dom-val">{row.bid}</span>
-                        </span>
-                        <span class="dom-price" role="cell">{row.price}</span>
-                        <span class="dom-side ask" role="cell">
-                          <span class="dom-bar ask" style:width={row.askWidth}></span>
-                          <span class="dom-val">{row.ask}</span>
-                        </span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel depth-panel tape-panel" aria-label="Time and sales">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">TIME & SALES</span>
-                    <span class="workspace-panel-copy">aggressor side and print intensity</span>
-                  </div>
-                  <div class="tm-tape-list" aria-label="Recent trade tape">
-                    {#each timeSalesRows as row}
-                      <div class="tm-tape-row" class:buy={row.side === 'BUY'} class:sell={row.side === 'SELL'}>
-                        <span class="tm-tape-time">{row.time}</span>
-                        <span class="tm-tape-side">{row.side}</span>
-                        <span class="tm-tape-price">{row.price}</span>
-                        <span class="tm-tape-size">{row.size}</span>
-                        <span class="tm-tape-intensity"><span style:width={row.intensity}></span></span>
-                      </div>
-                    {/each}
-                    {#if timeSalesRows.length === 0}
-                      <div class="depth-empty">waiting for trade tape payload</div>
-                    {/if}
-                  </div>
-                </section>
-
-                <section class="workspace-panel depth-panel footprint-panel" class:selected={microstructureView === 'footprint'} aria-label="Footprint table">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">FOOTPRINT</span>
-                    <span class="workspace-panel-copy">bid x ask delta by price bucket</span>
-                  </div>
-                  <div class="footprint-table" role="table" aria-label="Footprint buckets">
-                    <div class="footprint-row footprint-head" role="row">
-                      <span role="columnheader">BID</span>
-                      <span role="columnheader">PRICE</span>
-                      <span role="columnheader">ASK</span>
-                      <span role="columnheader">DELTA</span>
-                    </div>
-                    {#each footprintRows as row}
-                      <div class="footprint-row" class:buy={row.delta >= 0} class:sell={row.delta < 0} role="row">
-                        <span role="cell">{row.bid}</span>
-                        <span role="cell">{row.price}</span>
-                        <span role="cell">{row.ask}</span>
-                        <span role="cell">{row.deltaLabel}</span>
-                        <span class="footprint-volume" style:width={row.width}></span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel depth-panel heatmap-panel" class:selected={microstructureView === 'heatmap'} aria-label="Liquidity heatmap">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">LIQ HEATMAP</span>
-                    <span class="workspace-panel-copy">volume/liquidation concentration bands</span>
-                  </div>
-                  <div class="heatmap-grid" aria-label="Liquidity heatmap matrix">
-                    {#each heatmapRows as band}
-                      <div class="heatmap-row">
-                        <span class="heat-price">{band.price}</span>
-                        <span class="heat-cells">
-                          {#each band.cells as cell}
-                            <span
-                              class="heat-cell"
-                              class:buy={cell.side === 'buy'}
-                              class:sell={cell.side === 'sell'}
-                              style:opacity={0.16 + cell.intensity * 0.84}
-                              title={cell.label}
-                            ></span>
-                          {/each}
-                        </span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-              </div>
-
-              <div class="workspace-grid">
-                <section class="workspace-panel evidence-table-panel" aria-label="Feature evidence table">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">EVIDENCE TABLE</span>
-                    <span class="workspace-panel-copy">raw values and threshold status stay here, not in the HUD</span>
-                  </div>
-                  <div class="evidence-table" role="table" aria-label="Evidence table">
-                    <div class="evidence-table-row header" role="row">
-                      <span role="columnheader">Feature</span>
-                      <span role="columnheader">Value</span>
-                      <span role="columnheader">Threshold</span>
-                      <span role="columnheader">Status</span>
-                      <span role="columnheader">Why</span>
-                    </div>
-                    {#each evidenceTableRows as row}
-                      <div class="evidence-table-row" class:pass={row.pos} class:fail={!row.pos} role="row">
-                        <span role="cell">{row.feature}</span>
-                        <span role="cell">{row.value}</span>
-                        <span role="cell">{row.threshold}</span>
-                        <span role="cell">{row.status}</span>
-                        <span role="cell">{row.why}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel compare-panel" aria-label="Compare workspace">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">COMPARE</span>
-                    <span class="workspace-panel-copy">pattern-object comparisons</span>
-                  </div>
-                  <div class="compare-card-stack">
-                    {#each compareCards as card}
-                      <button class="compare-card" type="button" onclick={card.action}>
-                        <span class="compare-label">{card.label}</span>
-                        <span class="compare-value">{card.value}</span>
-                        <span class="compare-note">{card.note}</span>
-                      </button>
-                    {/each}
-                  </div>
-                  <button class="workspace-primary-action" type="button" onclick={openCompareWorkspace}>Open Compare Workspace</button>
-                </section>
-              </div>
-
-              <div class="workspace-bottom-grid">
-                <section class="workspace-panel ledger-panel" aria-label="Pattern ledger">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">LEDGER</span>
-                    <span class="workspace-panel-copy">saved evidence memory</span>
-                  </div>
-                  <div class="tm-ledger-stats">
-                    {#each ledgerStats as stat}
-                      <div class="tm-ledger-stat">
-                        <span class="tm-ledger-label">{stat.label}</span>
-                        <span class="tm-ledger-value">{stat.value}</span>
-                        <span class="tm-ledger-note">{stat.note}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel judgment-panel" aria-label="User refinement judgment">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">JUDGMENT</span>
-                    <span class="workspace-panel-copy">turn reading into refinement data</span>
-                  </div>
-                  <div class="judgment-options">
-                    {#each judgmentOptions as option}
-                      <button
-                        class="judgment-option"
-                        class:tone-pos={option.tone === 'pos'}
-                        class:tone-neg={option.tone === 'neg'}
-                        class:tone-warn={option.tone === 'warn'}
-                        type="button"
-                        onclick={() => {
-                          if (option.label === 'Valid') judgeVerdict = 'agree';
-                          if (option.label === 'Invalid') judgeVerdict = 'disagree';
-                          openJudgeWorkspace();
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    {/each}
-                  </div>
-                </section>
-
-                <section class="workspace-panel execution-panel" aria-label="Execution handoff">
-                  <div class="workspace-panel-head">
-                    <span class="workspace-kicker">EXECUTION</span>
-                    <span class="workspace-panel-copy">isolated from decision HUD</span>
-                  </div>
-                  <div class="execution-mini-grid">
-                    {#each analyzeExecutionProposal as p}
-                      <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                        <span class="prop-l">{p.label}</span>
-                        <span class="prop-v">{p.val}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </section>
-              </div>
-
-              <div class="workspace-action-strip">
-                <button class="analyze-action-btn ai" type="button" onclick={openAnalyzeAIDetail}>
-                  <span class="analyze-action-k">AI</span>
-                  <span class="analyze-action-t">Explain current workspace</span>
-                </button>
-                <button class="analyze-action-btn" type="button" onclick={startSaveSetup}>
-                  <span class="analyze-action-k">SAVE</span>
-                  <span class="analyze-action-t">Select range and save setup</span>
-                </button>
-                <button class="analyze-action-btn" type="button" onclick={openJudgeWorkspace}>
-                  <span class="analyze-action-k">04</span>
-                  <span class="analyze-action-t">Move to Judge</span>
-                </button>
-              </div>
-            </div>
+            <AnalyzePanel
+              data={{
+                direction: analyzeDetailDirection,
+                thesis: analyzeDetailThesis,
+                phaseTimeline,
+                microstructureView,
+                domLadderRows,
+                timeSalesRows,
+                footprintRows,
+                heatmapRows,
+                evidenceTableRows,
+                compareCards,
+                ledgerStats,
+                judgmentOptions,
+                executionProposal: analyzeExecutionProposal,
+              }}
+              actions={{
+                onOpenCompareWorkspace: openCompareWorkspace,
+                onSetJudgeVerdict: (v) => judgeVerdict = v,
+                onOpenJudgeWorkspace: openJudgeWorkspace,
+                onOpenAnalyzeAIDetail: openAnalyzeAIDetail,
+                onStartSaveSetup: startSaveSetup,
+              }}
+              state={{ microstructureView }}
+            />
           {:else if drawerTab === 'scan'}
-            <div class="scan-panel">
-              <!-- Scan header: idle / scanning / done -->
-              <div class="scan-header">
-                <span class="scan-step">03</span>
-                {#if confluence}
-                  <div style="margin-left: 8px;">
-                    <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
-                  </div>
-                {/if}
-                {#if scanState === 'scanning'}
-                  <span class="scan-label scanning">SCANNING</span>
-                  <span class="scan-title">{Math.round(scanProgress * 3)} / 300</span>
-                  <div class="scan-prog-track">
-                    <div class="scan-prog-fill" style:width="{scanProgress}%"></div>
-                  </div>
-                  <span class="scan-meta anim">유사 패턴 탐색 중...</span>
-                {:else}
-                  <span class="scan-label">SIMILAR NOW</span>
-                  <span class="scan-title">{scanCandidates.length} candidates</span>
-                  <span class="spacer"></span>
-                  <span class="scan-meta">300 sym · 14s</span>
-                  <span class="scan-sort-btn">sim ▾</span>
-                {/if}
-              </div>
-              <!-- Scan grid: show skeleton while scanning, results when done/idle -->
-              <div class="scan-grid" class:scanning={scanState === 'scanning'}>
-                {#if scanState === 'scanning'}
-                  {#each Array(5) as _}
-                    <div class="scan-card skeleton"></div>
-                  {/each}
-                {:else}
-                {#each scanCandidates as x}
-                  {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-                  <div
-                    class="scan-card"
-                    class:active={scanSelected === x.id}
-                    style:--sc={sc}
-                    role="button"
-                    tabindex="0"
-                    onclick={() => scanSelected = x.id}
-                    onkeydown={(e) => e.key === 'Enter' && (scanSelected = x.id)}
-                  >
-                    <div class="sc-top">
-                      <span class="sc-sym">{x.symbol.replace('USDT', '')}</span>
-                      <span class="sc-tf">{x.tf}</span>
-                      <span class="spacer"></span>
-                      <span class="sc-alpha" style:color={sc}>α{x.alpha}</span>
-                      <!-- Open in new tab -->
-                      <button
-                        class="sc-open"
-                        title="새 탭에서 열기"
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` });
-                        }}
-                      >↗</button>
-                    </div>
-                    <svg viewBox="0 0 180 48" preserveAspectRatio="none" class="sc-minichart">
-                      {@html (() => {
-                        const pts: [number,number][] = [[0,14],[8,22],[16,30],[24,38],[32,32],[40,36],[48,40],[56,44],[64,52],[72,48],[80,44],[88,42],[96,40],[104,38],[112,36],[120,34],[128,30],[136,28],[144,26],[152,22],[160,18],[168,14],[176,10],[180,8]];
-                        const str = pts.map(([px,py],i) => `${i===0?'M':'L'}${px},${py+4}`).join(' ');
-                        const nowX = x.phase===3?72 : x.phase===4?128 : x.phase===5?170 : 40;
-                        const nowY = (pts.find(p=>p[0]>=nowX)?.[1]??30)+4;
-                        return `<rect x="${nowX-8}" y="0" width="16" height="48" fill="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}" opacity="0.08"/><path d="${str} L180,52 L0,52 Z" fill="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}" opacity="0.05"/><path d="${str}" fill="none" stroke="var(--g6)" stroke-width="1"/><line x1="${nowX}" y1="0" x2="${nowX}" y2="48" stroke="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.7"/><circle cx="${nowX}" cy="${nowY}" r="2.5" fill="${x.alpha>=75?'var(--pos)':x.alpha>=60?'var(--amb)':'var(--g7)'}"/>`;
-                      })()}
-                    </svg>
-                    <div class="sc-sim-row">
-                      <div class="sc-sim-bar"><div class="sc-sim-fill" style:width="{x.sim * 100}%" style:background={sc}></div></div>
-                      <span class="sc-sim-pct">{Math.round(x.sim * 100)}%</span>
-                    </div>
-                    <div class="sc-pattern">{x.pattern}</div>
-                    <div class="sc-age">{x.age}</div>
-                  </div>
-                {/each}
-                {/if}
-              </div>
-              <div class="tm-past-strip">
-                <div class="tm-past-header">
-                  <span class="tm-past-title">★ SAVED · {pastCaptures.length}</span>
-                  <span class="spacer"></span>
-                  <span class="tm-past-hint">저장된 셋업</span>
-                </div>
-                <div class="tm-past-cards">
-                  {#if pastCaptures.length === 0}
-                    <span class="past-empty">저장된 셋업 없음 — 차트에서 Save Setup으로 추가</span>
-                  {:else}
-                    {#each pastCaptures as s (s.capture_id)}
-                      {@const sym = s.symbol.replace('USDT','').replace('PERP','')}
-                      {@const dateStr = new Date(s.captured_at_ms).toISOString().slice(0,10)}
-                      {@const patternSlug = s.pattern_slug ?? 'saved-setup'}
-                      <button class="tm-past-card" title="{patternSlug} · {s.timeframe}">
-                        <span class="tm-past-sym">{sym}</span>
-                        <span class="tm-past-pnl" style:color="var(--g6)">{dateStr}</span>
-                        <span class="tm-past-sim">{s.status === 'outcome_ready' ? '⚡' : s.status === 'verdict_ready' ? '✓' : '…'}</span>
-                      </button>
-                    {/each}
-                  {/if}
-                </div>
-              </div>
-            </div>
+            <ScanPanel
+              data={{
+                confluence,
+                scanState,
+                scanProgress,
+                scanCandidates,
+                scanSelected,
+                pastCaptures,
+              }}
+              actions={{
+                onOpenAnalyze: openAnalyze,
+                onSetScanSelected: (id) => scanSelected = id,
+                onOpenTradeTab: (x) => shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` }),
+              }}
+            />
           {:else if drawerTab === 'judge'}
-            <!-- trade_act.jsx ActPanel: A(Plan) + B(Judge Now) + C(After Result) -->
-            <div class="tm-act-panel">
-              {#if confluence}
-                <div style="padding: 6px 10px 0;">
-                  <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
-                </div>
-              {/if}
-              <!-- Header -->
-              <div class="tm-act-header">
-                <span class="tm-act-step">STEP 04 · ACT & JUDGE</span>
-                <span class="tm-act-div"></span>
-                <span class="tm-act-sym">{symbol}</span>
-                <span class="tm-act-tf">{timeframe.toUpperCase()}</span>
-                <span class="tm-act-dir">LONG</span>
-                <span class="tm-act-pat">OI reversal · accumulation</span>
-                <span class="spacer"></span>
-                <span class="tm-act-alpha">{confidenceAlpha}</span>
-              </div>
-              <div class="tm-act-cols">
-                <!-- A: Trade Plan -->
-                <div class="tm-act-col plan-col">
-                  <div class="col-label">A · TRADE PLAN</div>
-                  <div class="lvl-row">
-                    {#each judgePlan as lvl}
-                      <div class="lvl-cell">
-                        <div class="lvl-label">{lvl.label}</div>
-                        <div class="lvl-val" style:color={lvl.color}>{lvl.val}</div>
-                      </div>
-                    {/each}
-                  </div>
-                  <div class="rr-size-row">
-                    <div class="rr-box">
-                      <div class="rr-box-label">RISK:REWARD</div>
-                      <div class="rr-bar">
-                        <div class="rr-loss" style:width={rrLossPct}></div>
-                        <div class="rr-gain" style:width={rrGainPct}></div>
-                      </div>
-                      <div class="rr-labels"><span class="rr-r">1R</span><span class="rr-g">{judgePlan[3].val}</span></div>
-                    </div>
-                    <div class="size-box">
-                      <div class="size-label">SIZE · 3x lev</div>
-                      <div class="size-val">1.2% <span class="size-usd">$1,200</span></div>
-                    </div>
-                  </div>
-                  <button class="exchange-btn">OPEN IN EXCHANGE ↗</button>
-                </div>
-
-                <div class="tm-act-divider"></div>
-
-                <!-- B: Judge Now -->
-                <div class="tm-act-col judge-col">
-                  <div class="judge-head">
-                    <span class="col-label">B · JUDGE NOW</span>
-                    <span class="judge-q">이 셋업, <strong>내 돈을 걸만한가?</strong></span>
-                  </div>
-                  <div class="judge-btns">
-                    <button
-                      class="judge-btn agree"
-                      class:active={judgeVerdict === 'agree'}
-                      onclick={() => judgeVerdict = 'agree'}
-                    >
-                      <span class="jb-key">Y</span>
-                      <div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div>
-                    </button>
-                    <button
-                      class="judge-btn disagree"
-                      class:active={judgeVerdict === 'disagree'}
-                      onclick={() => judgeVerdict = 'disagree'}
-                    >
-                      <span class="jb-key">N</span>
-                      <div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div>
-                    </button>
-                  </div>
-                  <div class="judge-tags">
-                    {#each ['확증부족', 'R:R낮음', 'regime안맞음', 'FOMO', '크기초과'] as tag}
-                      <span class="judge-tag">{tag}</span>
-                    {/each}
-                  </div>
-                </div>
-
-                <div class="tm-act-divider"></div>
-
-                <!-- C: After Result -->
-                <div class="tm-act-col tm-after-col">
-                  <div class="col-label">C · AFTER RESULT</div>
-                  <div class="outcome-row">
-                    {#each [
-                      { k: 'win',  l: 'WIN',  c: 'var(--pos)', bg: 'var(--pos-dd)' },
-                      { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' },
-                      { k: 'flat', l: 'FLAT', c: 'var(--g7)',  bg: 'var(--g2)' },
-                    ] as o}
-                      <button
-                        class="outcome-btn"
-                        class:active={judgeOutcome === o.k}
-                        style:--oc={o.c}
-                        style:--obg={o.bg}
-                        onclick={() => { judgeOutcome = o.k as any; judgeRejudged = null; }}
-                      >{o.l}</button>
-                    {/each}
-                  </div>
-                  {#if judgeOutcome}
-                    <div class="result-row">
-                      <span class="result-label">RESULT</span>
-                      <span class="result-val" style:color={judgeOutcome === 'win' ? 'var(--pos)' : judgeOutcome === 'loss' ? 'var(--neg)' : 'var(--g7)'}>
-                        {judgeOutcome.toUpperCase()}
-                      </span>
-                      <span class="spacer"></span>
-                      {#if judgeSubmitting}
-                        <span class="result-hint">저장 중…</span>
-                      {:else if judgeSubmitResult?.saved}
-                        <span class="result-hint" style:color="var(--pos)">
-                          저장됨 {judgeSubmitResult.training_triggered ? '· 학습 시작' : `· ${judgeSubmitResult.count}건`}
-                        </span>
-                      {:else}
-                        <span class="result-hint">flywheel 연결 중</span>
-                      {/if}
-                    </div>
-                    <div class="rejudge-label">REJUDGE</div>
-                    <div class="rejudge-btns">
-                      <button class="rj-btn rj-pos" class:active={judgeRejudged === 'right'} onclick={() => judgeRejudged = 'right'}>
-                        옳았다 <span class="rj-sub">+보강</span>
-                      </button>
-                      <button class="rj-btn rj-neg" class:active={judgeRejudged === 'wrong'} onclick={() => judgeRejudged = 'wrong'}>
-                        틀렸다 <span class="rj-sub">뒤집기</span>
-                      </button>
-                    </div>
-                    {#if judgeVerdict && judgeRejudged}
-                      {@const consistent = (judgeVerdict === 'agree' && judgeRejudged === 'right') || (judgeVerdict === 'disagree' && judgeRejudged === 'wrong')}
-                      <div class="tm-bias-box" class:tm-bias-good={consistent} class:tm-bias-warn={!consistent}>
-                        {#if consistent}
-                          <strong>✓ 일관 판정</strong> <span>· 가중치 +0.04</span>
-                        {:else}
-                          <strong>⚑ 편향 감지</strong> <span>· Train 권장</span>
-                        {/if}
-                      </div>
-                    {/if}
-                  {:else}
-                    <div class="tm-after-empty">매매 결과 선택시<br>재판정 가능</div>
-                  {/if}
-                </div>
-              </div>
-            </div>
+            <JudgePanel
+              data={{
+                confluence,
+                confluenceHistory,
+                symbol,
+                timeframe,
+                confidenceAlpha,
+                judgePlan,
+                rrLossPct,
+                rrGainPct,
+                judgeVerdict,
+                judgeOutcome,
+                judgeRejudged,
+                judgeSubmitting,
+                judgeSubmitResult,
+              }}
+              actions={{
+                onSetJudgeVerdict: (v) => judgeVerdict = v,
+                onSetJudgeOutcome: (o) => { judgeOutcome = o; judgeRejudged = null; },
+                onSetJudgeRejudged: (r) => judgeRejudged = r,
+              }}
+            />
           {/if}
         </div>
       </div>
@@ -2194,37 +1782,9 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
   }
-  .symbol {
-    font-size: 14px;
-    color: var(--g9);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    font-family: 'Space Grotesk', sans-serif;
-    background: transparent;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    border-radius: 3px;
-    transition: color 0.15s;
-  }
-  .symbol:hover { color: var(--brand); }
-  .timeframe { color: var(--g6); letter-spacing: 0.04em; }
-  .pattern {
-    color: var(--g5);
-    padding: 2px 8px;
-    background: var(--g2);
-    border: 0.5px solid var(--g4);
-    border-radius: 999px;
-    font-size: 8px;
-    letter-spacing: 0.06em;
-  }
+
   .spacer { flex: 1; }
 
-  .hd-sep { width: 1px; height: 14px; background: var(--g3); flex-shrink: 0; }
-  .hd-price {
-    font-size: 13px; color: var(--g9); font-weight: 600;
-    letter-spacing: -0.01em; font-family: 'JetBrains Mono', monospace;
-  }
   .hd-chip {
     padding: 2px 7px; border-radius: 3px;
     background: var(--g2); border: 0.5px solid var(--g4);
@@ -2409,8 +1969,7 @@
   }
   .micro-stat.buy { color: var(--pos); }
   .micro-stat.sell { color: var(--neg); }
-  .micro-heat-strip,
-  .micro-depth-strip {
+  .micro-heat-strip, .micro-depth-strip {
     min-width: 0;
     border: 0.5px solid var(--g4);
     border-radius: 6px;
@@ -2450,8 +2009,7 @@
     color: var(--g9);
     font-weight: 800;
   }
-  .depth-bid,
-  .depth-ask {
+  .depth-bid, .depth-ask {
     height: 5px;
     border-radius: 999px;
     opacity: 0.8;
@@ -2468,8 +2026,7 @@
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  .micro-heat-strip.active,
-  .micro-depth-strip.active {
+  .micro-heat-strip.active, .micro-depth-strip.active {
     border-color: color-mix(in srgb, var(--amb) 48%, var(--g4));
     box-shadow: inset 0 0 0 1px rgba(232,184,106,0.08);
   }
@@ -2660,41 +2217,17 @@
   .ev-chip.neg .ev-mark { color: var(--neg); }
   .ev-key { font-size: 10px; color: var(--g7); width: 80px; }
   .ev-val { font-size: 11px; color: var(--g9); font-weight: 600; }
-  .analyze-action-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 10px;
-    border-radius: 4px;
-    border: 0.5px solid var(--g4);
-    background: var(--g1);
-    color: var(--g8);
-    cursor: pointer;
-  }
+
   .analyze-action-btn.ai {
     border-color: color-mix(in srgb, var(--amb) 34%, var(--g4));
     background: color-mix(in srgb, var(--amb) 10%, var(--g1));
   }
-  .analyze-action-btn:hover {
-    border-color: var(--g5);
-    background: var(--g2);
-    color: var(--g9);
-  }
+
   .analyze-action-btn.ai:hover {
     border-color: color-mix(in srgb, var(--amb) 52%, var(--g4));
     background: color-mix(in srgb, var(--amb) 14%, var(--g2));
   }
-  .analyze-action-k {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.14em;
-    color: var(--brand);
-    flex-shrink: 0;
-  }
-  .analyze-action-t {
-    font-size: 10px;
-    font-weight: 600;
-  }
+
   .proposal-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 7px;
@@ -2719,78 +2252,14 @@
   .prop-h { font-size: 9px; color: var(--g6); margin-left: auto; }
 
   /* ── SCAN panel (trade_scan.jsx) ── */
-  .scan-panel {
-    flex: 1; display: flex; flex-direction: column; overflow: hidden;
-    background: var(--g1);
-  }
-  .scan-header {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 14px; border-bottom: 0.5px solid var(--g4);
-    background: var(--g0); flex-shrink: 0;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .scan-step { font-size: 7px; color: #7aa2e0; letter-spacing: 0.22em; font-weight: 600; }
-  .scan-label { font-size: 7px; color: #7aa2e0; letter-spacing: 0.14em; }
-  .scan-label.scanning { animation: scan-pulse 1.1s ease-in-out infinite; }
+
   @keyframes scan-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-  .scan-title { font-size: 13px; color: var(--g9); font-weight: 600; }
-  .scan-meta { font-size: 9px; color: var(--g6); letter-spacing: 0.04em; }
-  .scan-meta.anim { animation: scan-pulse 1.6s ease-in-out infinite; }
-  .scan-prog-track {
-    width: 100%; height: 3px; background: var(--g3); border-radius: 2px; overflow: hidden;
-    margin: 4px 0;
-  }
-  .scan-prog-fill {
-    height: 100%; background: #7aa2e0; border-radius: 2px;
-    transition: width 0.18s ease-out;
-  }
-  .sc-open {
-    padding: 2px 7px; border-radius: 3px;
-    background: transparent; border: 0.5px solid var(--g4);
-    color: var(--g6); font-size: 9px; cursor: pointer;
-    flex-shrink: 0; transition: all 0.1s;
-  }
-  .sc-open:hover { background: var(--g2); border-color: var(--g5); color: var(--g8); }
-  .scan-sort-btn {
-    font-size: 10px; color: var(--g8); font-weight: 500;
-    padding: 3px 8px; background: var(--g2); border-radius: 3px; cursor: pointer;
-  }
-  .scan-grid {
-    flex: 1; overflow: auto; padding: 10px 12px;
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
-    align-content: start;
-  }
-  .scan-card {
-    padding: 10px 12px 9px; border-radius: 8px; cursor: pointer;
-    background: var(--g0); border: 0.5px solid var(--g4);
-    display: flex; flex-direction: column; gap: 5px;
-    transition: all 0.14s; text-align: left;
-  }
-  .scan-card:hover { background: var(--g2); border-color: var(--g4); }
+
   .scan-card.active { background: var(--g2); border-color: var(--sc); box-shadow: 0 0 0 0.5px var(--sc); }
-  .scan-card.skeleton {
-    min-height: 100px; background: var(--g2); border-color: var(--g3);
-    animation: skeleton-fade 1.4s ease-in-out infinite;
-  }
+
   @keyframes skeleton-fade { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-  .sc-top { display: flex; align-items: center; gap: 4px; }
-  .sc-sym { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--g9); font-weight: 600; }
-  .sc-tf {
-    font-family: 'JetBrains Mono', monospace; font-size: 7.5px; color: var(--g6);
-    padding: 1px 4px; background: var(--g2); border-radius: 2px;
-  }
-  .sc-alpha { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
-  .sc-sim-row { display: flex; align-items: center; gap: 4px; }
-  .sc-sim-bar { flex: 1; height: 2.5px; background: var(--g3); border-radius: 2px; overflow: hidden; }
-  .sc-sim-fill { height: 100%; opacity: 0.85; }
-  .sc-sim-pct { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: var(--g8); width: 24px; text-align: right; }
-  .sc-pattern { font-size: 8.5px; color: var(--g6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sc-age { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); }
 
   /* ── ACT panel (trade_act.jsx) ── */
-  .plan-col { flex: 1.3; min-width: 0; }
-  .judge-col { flex: 1.4; min-width: 0; }
-  .col-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); letter-spacing: 0.2em; }
 
   /* Plan col */
   .lvl-row { display: flex; gap: 6px; }
@@ -2800,32 +2269,9 @@
   }
   .lvl-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); letter-spacing: 0.14em; }
   .lvl-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rr-size-row { display: flex; gap: 6px; }
-  .rr-box, .size-box {
-    flex: 1; padding: 8px 10px; background: var(--g0);
-    border: 0.5px solid var(--g4); border-radius: 7px; min-width: 0;
-  }
-  .rr-box-label, .size-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); letter-spacing: 0.1em; margin-bottom: 4px; }
-  .rr-bar { height: 5px; background: var(--g2); border-radius: 3px; overflow: hidden; display: flex; }
-  .rr-loss { background: var(--neg); opacity: 0.9; }
-  .rr-gain { background: var(--pos); }
-  .rr-labels { display: flex; justify-content: space-between; margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-size: 8px; }
-  .rr-r { color: var(--neg); }
-  .rr-g { color: var(--pos); }
-  .size-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--g9); font-weight: 600; display: flex; align-items: baseline; gap: 6px; }
-  .size-usd { font-size: 9px; color: var(--g6); }
-  .exchange-btn {
-    padding: 9px 14px; background: var(--pos-dd); color: var(--pos);
-    border: 0.5px solid var(--pos-d); border-radius: 8px;
-    font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 600;
-    letter-spacing: 0.06em; cursor: pointer; transition: all 0.12s;
-  }
-  .exchange-btn:hover { background: var(--pos-d); border-color: var(--pos); }
 
   /* Judge col */
-  .judge-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .judge-q { font-size: 10px; color: var(--g7); }
-  .judge-q strong { color: var(--g9); }
+
   .judge-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-height: 80px; }
   .judge-btn {
     padding: 10px 14px; border-radius: 5px; cursor: pointer;
@@ -2846,15 +2292,6 @@
   .jb-key { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
   .jb-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.3; }
   .jb-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; }
-  .jb-sub { font-size: 8.5px; opacity: 0.6; }
-  .judge-tags { display: flex; flex-wrap: wrap; gap: 3px; }
-  .judge-tag {
-    font-family: 'Space Grotesk', sans-serif; font-size: 9px; font-weight: 500;
-    padding: 3px 9px; background: var(--g2); color: var(--g6);
-    border: 0.5px solid var(--g4); border-radius: 999px; cursor: pointer;
-    white-space: nowrap; transition: all 0.1s;
-  }
-  .judge-tag:hover { color: var(--g8); border-color: var(--amb); background: var(--amb-dd); }
 
   /* After col */
   .outcome-row { display: flex; gap: 3px; }
@@ -2868,26 +2305,9 @@
   }
   .outcome-btn:hover { border-color: var(--g5); color: var(--g8); }
   .outcome-btn.active { background: var(--obg); color: var(--oc); border-color: var(--oc); }
-  .result-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 5px 8px; background: var(--g0);
-    border: 0.5px solid var(--g4); border-radius: 3px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .result-label { font-size: 7px; color: var(--g6); letter-spacing: 0.12em; }
-  .result-val { font-size: 14px; font-weight: 600; }
-  .result-hint { font-size: 8px; color: var(--g6); }
-  .rejudge-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--amb); letter-spacing: 0.14em; }
-  .rejudge-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  .rj-btn {
-    padding: 7px 6px; border-radius: 3px; cursor: pointer;
-    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;
-    letter-spacing: 0.06em; border: 1px solid; transition: all 0.1s;
-  }
-  .rj-sub { opacity: 0.6; font-size: 8px; }
-  .rj-pos { background: var(--pos-dd); color: var(--pos); border-color: var(--pos-d); }
+
   .rj-pos.active { background: var(--pos-d); border-color: var(--pos); }
-  .rj-neg { background: var(--neg-dd); color: var(--neg); border-color: var(--neg-d); }
+
   .rj-neg.active { background: var(--neg-d); border-color: var(--neg); }
 
   /* PeekBar rich summary */
@@ -2900,7 +2320,6 @@
   .pb-warn { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--amb); flex-shrink: 0; }
 
   /* MiniChart */
-  .sc-minichart { width: 100%; height: 48px; display: block; }
 
   /* ── Layout switcher strip ─────────────────────────────────────────────── */
   .layout-strip {
@@ -3024,8 +2443,7 @@
     padding: 6px;
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));
   }
-  .lc-rail-chip,
-  .lc-rail-handle {
+  .lc-rail-chip, .lc-rail-handle {
     width: 42px;
     border: 0.5px solid var(--g4);
     background: var(--g0);
@@ -3036,8 +2454,7 @@
     cursor: pointer;
     transition: border-color 0.12s, color 0.12s, background 0.12s;
   }
-  .lc-rail-chip:hover,
-  .lc-rail-handle:hover {
+  .lc-rail-chip:hover, .lc-rail-handle:hover {
     border-color: var(--g5);
     color: var(--g9);
     background: var(--g1);
@@ -3172,9 +2589,7 @@
     color: var(--g6);
     font-weight: 700;
   }
-  .hud-card-count,
-  .hud-card-note,
-  .hud-confidence {
+  .hud-card-count, .hud-card-note, .hud-confidence {
     margin-left: auto;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
@@ -3213,8 +2628,7 @@
     white-space: nowrap;
     text-align: right;
   }
-  .hud-evidence-list,
-  .hud-risk-list {
+  .hud-evidence-list, .hud-risk-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -3276,8 +2690,7 @@
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s, color 0.12s;
   }
-  .hud-action:hover,
-  .hud-action.active {
+  .hud-action:hover, .hud-action.active {
     background: var(--g2);
     border-color: var(--brand);
     color: var(--g9);
@@ -3301,279 +2714,28 @@
   }
 
   /* ── Analyze workspace: bottom owns verification/comparison/refinement ── */
-  .workspace-body {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    padding: 10px 12px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background:
-      radial-gradient(circle at 12% 0%, rgba(122,162,224,0.08), transparent 28%),
-      linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.12));
-  }
-  .workspace-hero,
-  .workspace-panel {
-    border: 0.5px solid var(--g4);
-    border-radius: 8px;
-    background: rgba(10,12,16,0.72);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
-  }
-  .workspace-hero {
-    display: grid;
-    grid-template-columns: minmax(210px, 0.75fr) minmax(420px, 1.25fr);
-    gap: 14px;
-    align-items: center;
-    padding: 12px 14px;
-    flex-shrink: 0;
-  }
-  .workspace-hero-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    min-width: 0;
-  }
-  .workspace-kicker {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    color: var(--brand);
-    letter-spacing: 0.2em;
-    font-weight: 800;
-  }
-  .workspace-thesis {
-    font-size: 12px;
-    line-height: 1.55;
-    color: var(--g8);
-    min-width: 0;
-  }
+
   .workspace-thesis .bull { color: var(--pos); font-weight: 700; }
-  .phase-timeline {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    align-items: stretch;
-    gap: 4px;
-  }
-  .phase-node {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px;
-    min-height: 48px;
-    border: 0.5px solid var(--g4);
-    border-radius: 6px;
-    background: var(--g0);
-  }
-  .phase-node.done {
-    border-color: color-mix(in srgb, var(--brand) 28%, var(--g4));
-    background: color-mix(in srgb, var(--brand) 7%, var(--g0));
-  }
+
   .phase-node.active {
     border-color: color-mix(in srgb, var(--amb) 55%, var(--g4));
     background: color-mix(in srgb, var(--amb) 11%, var(--g0));
   }
-  .phase-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: var(--g5);
-  }
-  .phase-node.done .phase-dot { background: var(--brand); }
+
   .phase-node.active .phase-dot { background: var(--amb); box-shadow: 0 0 0 4px var(--amb-dd); }
-  .phase-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    color: var(--g7);
-    letter-spacing: 0.07em;
-  }
+
   .phase-node.active .phase-label { color: var(--g9); font-weight: 700; }
-  .workspace-grid {
-    display: grid;
-    grid-template-columns: minmax(460px, 1.6fr) minmax(240px, 0.8fr);
-    gap: 10px;
-    min-height: 0;
-  }
-  .workspace-bottom-grid {
-    display: grid;
-    grid-template-columns: 0.8fr 1.25fr 1fr;
-    gap: 10px;
-    flex-shrink: 0;
-  }
-  .workspace-panel {
-    padding: 10px;
-    min-width: 0;
-  }
-  .workspace-panel-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 8px;
-  }
-  .workspace-panel-copy {
-    font-size: 9px;
-    color: var(--g6);
-    line-height: 1.4;
-    text-align: right;
-  }
-  .market-depth-grid {
-    display: grid;
-    grid-template-columns: minmax(210px, 0.82fr) minmax(250px, 1fr) minmax(260px, 1.1fr) minmax(280px, 1.2fr);
-    gap: 10px;
-    flex-shrink: 0;
-  }
-  .depth-panel {
-    min-height: 212px;
-    border-color: color-mix(in srgb, var(--g4) 72%, #7aa2e0);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.02), transparent),
-      rgba(5,7,10,0.82);
-  }
-  .depth-panel.selected {
-    border-color: color-mix(in srgb, var(--amb) 58%, var(--g4));
-    box-shadow: inset 0 0 0 1px rgba(232,184,106,0.075), 0 0 22px rgba(232,184,106,0.035);
-  }
-  .dom-ladder,
-  .tm-tape-list,
-  .footprint-table,
-  .heatmap-grid {
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .dom-ladder {
-    display: grid;
-    gap: 2px;
-  }
-  .dom-row {
-    display: grid;
-    grid-template-columns: minmax(58px, 1fr) 72px minmax(58px, 1fr);
-    align-items: center;
-    min-height: 12px;
-    gap: 5px;
-    color: var(--g7);
-    font-size: 8px;
-  }
-  .dom-head {
-    color: var(--g5);
-    font-size: 7px;
-    letter-spacing: 0.14em;
-  }
+
   .dom-row.mid {
     min-height: 16px;
     border-block: 0.5px solid color-mix(in srgb, var(--amb) 32%, var(--g4));
     color: var(--g9);
     background: rgba(232,184,106,0.055);
   }
-  .dom-side {
-    position: relative;
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    height: 12px;
-    border-radius: 3px;
-    overflow: hidden;
-    background: rgba(255,255,255,0.018);
-  }
-  .dom-side.bid { justify-content: flex-end; }
-  .dom-side.ask { justify-content: flex-start; }
-  .dom-bar {
-    position: absolute;
-    top: 1px;
-    bottom: 1px;
-    border-radius: 3px;
-    opacity: 0.76;
-  }
-  .dom-bar.bid {
-    right: 0;
-    background: linear-gradient(90deg, rgba(74,187,142,0.05), rgba(74,187,142,0.72));
-  }
-  .dom-bar.ask {
-    left: 0;
-    background: linear-gradient(90deg, rgba(226,91,91,0.72), rgba(226,91,91,0.05));
-  }
-  .dom-val {
-    position: relative;
-    z-index: 1;
-    padding: 0 4px;
-    font-variant-numeric: tabular-nums;
-  }
-  .dom-price {
-    text-align: center;
-    color: var(--g8);
-    font-variant-numeric: tabular-nums;
-  }
-  .dom-row.bid-heavy .dom-price { color: var(--pos); }
-  .dom-row.ask-heavy .dom-price { color: var(--neg); }
-  .footprint-table {
-    display: grid;
-    gap: 3px;
-  }
-  .footprint-row {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(44px, 0.8fr) minmax(64px, 1fr) minmax(44px, 0.8fr) minmax(48px, 0.8fr);
-    align-items: center;
-    gap: 6px;
-    min-height: 14px;
-    padding: 2px 5px;
-    border-radius: 3px;
-    overflow: hidden;
-    color: var(--g7);
-    font-size: 8px;
-    background: rgba(255,255,255,0.014);
-  }
-  .footprint-head {
-    color: var(--g5);
-    font-size: 7px;
-    letter-spacing: 0.12em;
-    background: transparent;
-  }
+
   .footprint-row.buy span:nth-child(4) { color: var(--pos); font-weight: 900; }
   .footprint-row.sell span:nth-child(4) { color: var(--neg); font-weight: 900; }
-  .footprint-row span {
-    position: relative;
-    z-index: 1;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  .footprint-row span:nth-child(2) { color: var(--g8); text-align: center; }
-  .footprint-volume {
-    position: absolute !important;
-    left: 0;
-    top: 1px;
-    bottom: 1px;
-    z-index: 0 !important;
-    border-radius: 3px;
-    background: linear-gradient(90deg, rgba(122,162,224,0.18), transparent);
-  }
-  .heatmap-grid {
-    display: grid;
-    gap: 4px;
-  }
-  .heatmap-row {
-    display: grid;
-    grid-template-columns: 62px 1fr;
-    align-items: center;
-    gap: 6px;
-  }
-  .heat-price {
-    color: var(--g5);
-    font-size: 8px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  .heat-cells {
-    display: grid;
-    grid-template-columns: repeat(18, minmax(4px, 1fr));
-    gap: 2px;
-    min-height: 16px;
-  }
-  .heat-cell {
-    min-height: 16px;
-    border-radius: 2px;
-    background: #7aa2e0;
-    box-shadow: 0 0 18px currentColor;
-  }
+
   .heat-cell.buy {
     color: var(--pos);
     background: linear-gradient(180deg, rgba(74,187,142,0.95), rgba(74,187,142,0.32));
@@ -3582,130 +2744,9 @@
     color: var(--neg);
     background: linear-gradient(180deg, rgba(226,91,91,0.95), rgba(226,91,91,0.3));
   }
-  .depth-empty {
-    padding: 18px 8px;
-    border: 0.5px dashed var(--g4);
-    border-radius: 6px;
-    color: var(--g5);
-    font-size: 8px;
-    letter-spacing: 0.1em;
-    text-align: center;
-    text-transform: uppercase;
-  }
-  .evidence-table {
-    display: grid;
-    gap: 3px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .evidence-table-row {
-    display: grid;
-    grid-template-columns: minmax(84px, 1.2fr) minmax(58px, 0.75fr) minmax(72px, 0.85fr) 56px minmax(120px, 1.4fr);
-    gap: 8px;
-    align-items: center;
-    min-height: 28px;
-    padding: 5px 7px;
-    border: 0.5px solid var(--g3);
-    border-radius: 4px;
-    background: var(--g0);
-    color: var(--g7);
-    font-size: 8px;
-  }
-  .evidence-table-row.header {
-    min-height: 22px;
-    color: var(--g5);
-    background: transparent;
-    border-color: transparent;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .evidence-table-row.pass span:nth-child(4) { color: var(--pos); font-weight: 800; }
-  .evidence-table-row.fail span:nth-child(4) { color: var(--neg); font-weight: 800; }
-  .evidence-table-row span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .compare-card-stack {
-    display: grid;
-    gap: 7px;
-  }
-  .compare-card {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "label value"
-      "note note";
-    gap: 3px 8px;
-    padding: 9px 10px;
-    text-align: left;
-    border: 0.5px solid var(--g4);
-    border-radius: 6px;
-    background: var(--g0);
-    color: var(--g8);
-    cursor: pointer;
-  }
-  .compare-card:hover { border-color: #7aa2e0; background: var(--g2); }
-  .compare-label {
-    grid-area: label;
-    font-size: 10px;
-    font-weight: 700;
-  }
-  .compare-value {
-    grid-area: value;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: #7aa2e0;
-  }
-  .compare-note {
-    grid-area: note;
-    font-size: 9px;
-    color: var(--g6);
-  }
-  .workspace-primary-action {
-    width: 100%;
-    margin-top: 8px;
-    padding: 8px 10px;
-    border-radius: 5px;
-    border: 0.5px solid color-mix(in srgb, #7aa2e0 42%, var(--g4));
-    background: color-mix(in srgb, #7aa2e0 10%, var(--g0));
-    color: #9bbcf0;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-  }
-  .execution-mini-grid {
-    display: grid;
-    gap: 6px;
-  }
-  .judgment-options {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
-  }
-  .judgment-option {
-    min-height: 34px;
-    padding: 6px 5px;
-    border-radius: 6px;
-    border: 0.5px solid var(--g4);
-    background: var(--g0);
-    color: var(--g8);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-  }
-  .judgment-option:hover { background: var(--g2); color: var(--g9); }
+
   .judgment-option.tone-pos { border-color: color-mix(in srgb, var(--pos) 40%, var(--g4)); color: var(--pos); }
   .judgment-option.tone-neg { border-color: color-mix(in srgb, var(--neg) 40%, var(--g4)); color: var(--neg); }
-  .judgment-option.tone-warn { border-color: color-mix(in srgb, var(--amb) 40%, var(--g4)); color: var(--amb); }
-  .workspace-action-strip {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    flex-shrink: 0;
-  }
 
   /* Visual salvage pass: less card noise, more trading-terminal density. */
   .trade-mode {
@@ -3743,17 +2784,8 @@
     border-bottom: 1px solid rgba(255,255,255,0.04);
     background: var(--g0);
   }
-  .symbol {
-    font-size: 15px;
-    letter-spacing: 0.005em;
-  }
-  .timeframe {
-    color: var(--g7);
-  }
-  .pattern,
-  .hd-chip,
-  .evidence-badge,
-  .micro-toggle {
+
+  .hd-chip, .evidence-badge, .micro-toggle {
     border-color: rgba(255,255,255,0.065);
     background: rgba(255,255,255,0.026);
   }
@@ -3781,10 +2813,7 @@
       linear-gradient(90deg, rgba(74,187,142,0.045), transparent 28%),
       rgba(3,5,8,0.96);
   }
-  .micro-belt-title,
-  .micro-stat,
-  .micro-heat-strip,
-  .micro-depth-strip {
+  .micro-belt-title, .micro-stat, .micro-heat-strip, .micro-depth-strip {
     border-color: rgba(255,255,255,0.06);
     background: rgba(255,255,255,0.018);
     border-radius: 5px;
@@ -3827,8 +2856,7 @@
     border-left-color: rgba(255,255,255,0.045);
     border-bottom-width: 1px;
   }
-  .pb-tab:hover,
-  .pb-tab.active {
+  .pb-tab:hover, .pb-tab.active {
     background: rgba(255,255,255,0.028);
   }
   .peek-overlay {
@@ -3847,57 +2875,14 @@
   .dh-tab {
     border-right-color: rgba(255,255,255,0.045);
   }
-  .dh-tab:hover,
-  .dh-tab.active {
+  .dh-tab:hover, .dh-tab.active {
     background: rgba(255,255,255,0.026);
   }
-  .workspace-body {
-    padding: 8px;
-    gap: 8px;
-    background:
-      radial-gradient(circle at 12% -6%, rgba(232,184,106,0.045), transparent 28%),
-      #05070a;
-  }
-  .workspace-hero,
-  .workspace-panel {
-    border-color: rgba(255,255,255,0.065);
-    background: rgba(255,255,255,0.018);
-    box-shadow: none;
-  }
-  .workspace-hero {
-    grid-template-columns: minmax(190px, 0.58fr) minmax(420px, 1.42fr);
-    padding: 8px 10px;
-  }
-  .phase-node {
-    min-height: 34px;
-    padding: 6px 7px;
-    border-color: rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.018);
-  }
+
   .phase-node.active {
     background: rgba(232,184,106,0.105);
   }
-  .market-depth-grid {
-    grid-template-columns: minmax(190px, 0.84fr) minmax(230px, 1fr) minmax(230px, 1.02fr) minmax(250px, 1.1fr);
-    gap: 8px;
-  }
-  .workspace-panel {
-    padding: 8px;
-    border-radius: 7px;
-  }
-  .workspace-panel-head {
-    margin-bottom: 6px;
-  }
-  .depth-panel {
-    min-height: 178px;
-    background: rgba(3,5,8,0.70);
-    border-color: rgba(122,162,224,0.10);
-  }
-  .dom-row,
-  .tm-tape-row,
-  .footprint-row {
-    min-height: 13px;
-  }
+
   .hud-card {
     margin: 0 8px;
     padding: 8px;
@@ -3912,9 +2897,7 @@
       radial-gradient(circle at 100% 0%, rgba(232,184,106,0.105), transparent 40%),
       rgba(255,255,255,0.018);
   }
-  .hud-evidence-item,
-  .hud-risk-item,
-  .hud-action {
+  .hud-evidence-item, .hud-risk-item, .hud-action {
     border-color: rgba(255,255,255,0.06);
     background: rgba(0,0,0,0.22);
   }
@@ -3987,8 +2970,7 @@
     display: none;
   }
 
-  .observe-mode .evidence-badge,
-  .observe-mode .conf-inline {
+  .observe-mode .evidence-badge, .observe-mode .conf-inline {
     opacity: 0.62;
   }
 
@@ -3996,8 +2978,7 @@
     margin-left: 4px;
   }
 
-  .observe-mode :global(.chart-live .chart-toolbar),
-  .observe-mode :global(.chart-live .chart-header--tv) {
+  .observe-mode :global(.chart-live .chart-toolbar), .observe-mode :global(.chart-live .chart-header--tv) {
     display: none !important;
   }
 
@@ -4059,22 +3040,7 @@
     .micro-belt-stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .workspace-hero,
-    .market-depth-grid,
-    .workspace-grid,
-    .workspace-bottom-grid {
-      grid-template-columns: 1fr;
-    }
-    .phase-timeline {
-      grid-template-columns: repeat(5, minmax(96px, 1fr));
-      overflow-x: auto;
-    }
-    .judgment-options {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .workspace-action-strip {
-      grid-template-columns: 1fr;
-    }
+
   }
 
   /* ── Mobile layout ── */
