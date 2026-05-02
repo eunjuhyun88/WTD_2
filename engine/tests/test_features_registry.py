@@ -77,7 +77,7 @@ class TestComputeSnapshot:
         new = compute_snapshot(klines, "BTCUSDT")
         old = original_cs(klines, "BTCUSDT")
 
-        for field in new.model_fields:
+        for field in type(new).model_fields:
             new_val = getattr(new, field)
             old_val = getattr(old, field)
             if isinstance(new_val, float):
