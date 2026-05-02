@@ -6,12 +6,13 @@
     tick: MiniTickerUpdate | undefined;
     spark: number[];
     active: boolean;
+    focused?: boolean;
     folded: boolean;
     onSelect: (sym: string) => void;
     onRemove: (sym: string) => void;
   }
 
-  let { sym, tick, spark, active, folded, onSelect, onRemove }: Props = $props();
+  let { sym, tick, spark, active, focused = false, folded, onSelect, onRemove }: Props = $props();
 
   function shortName(s: string) { return s.replace(/USDT$/, ''); }
 
@@ -41,6 +42,7 @@
     type="button"
     class="symbol-row"
     class:active
+    class:focused
     onclick={() => onSelect(sym)}
     title={sym}
   >
@@ -109,6 +111,12 @@
     color: var(--g9);
     border-left: 2px solid var(--brand);
     padding-left: 8px;
+  }
+
+  .symbol-row.focused:not(.active) {
+    background: rgba(255,255,255,0.04);
+    outline: 1px solid var(--g4);
+    outline-offset: -1px;
   }
 
   .del-btn {

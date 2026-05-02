@@ -179,6 +179,30 @@
         e.preventDefault();
         desktopSymbolPickerOpen = true;
       }
+      // ctrl+1/2/3: mode switch (modifier avoids conflict with TF shortcuts)
+      if (mod && e.key === '1') { e.preventDefault(); shellStore.switchMode('trade'); }
+      if (mod && e.key === '2') { e.preventDefault(); shellStore.switchMode('train'); }
+      if (mod && e.key === '3') { e.preventDefault(); shellStore.switchMode('flywheel'); }
+      // j/k: WatchlistRail navigation
+      if (!mod && e.key === 'j' && !isInputActive()) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('watchlist:nav', { detail: { dir: 'down' } }));
+      }
+      if (!mod && e.key === 'k' && !isInputActive()) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('watchlist:nav', { detail: { dir: 'up' } }));
+      }
+      // space: add current chart symbol to watchlist
+      if (!mod && e.key === ' ' && !isInputActive()) {
+        e.preventDefault();
+        const cur = get(activeTabState).symbol ?? 'BTCUSDT';
+        window.dispatchEvent(new CustomEvent('watchlist:add', { detail: { symbol: cur } }));
+      }
+      // enter: open focused watchlist symbol in Terminal
+      if (!mod && e.key === 'Enter' && !isInputActive()) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('watchlist:select', {}));
+      }
       // D-7: ⌘L → focus AI Search (Bloomberg-style)
       if (mod && e.key.toLowerCase() === 'l') {
         e.preventDefault();

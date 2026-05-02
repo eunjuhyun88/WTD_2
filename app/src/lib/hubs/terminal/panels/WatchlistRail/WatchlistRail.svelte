@@ -56,9 +56,10 @@
   let folded    = $state(
     typeof localStorage !== 'undefined' && localStorage.getItem('cogochi.watchlist.folded') === 'true'
   );
-  let addOpen   = $state(false);
-  let addInput  = $state('');
-  let addError  = $state('');
+  let addOpen    = $state(false);
+  let addInput   = $state('');
+  let addError   = $state('');
+  let focusedIdx = $state(-1);
 
   // Persist fold state
   $effect(() => {
@@ -88,17 +89,54 @@
     return () => unsub();
   });
 
-  onMount(async () => {
-    try {
-      const r = await fetch('/api/patterns/terminal');
-      if (r.ok) {
+  onMount(() => {
+    // Keyboard nav events dispatched by TerminalHub
+    const onNav = (e: Event) => {
+      const dir = (e as CustomEvent<{ dir: 'up' | 'down' }>).detail.dir;
+      if (symbols.length === 0) return;
+      if (focusedIdx === -1) {
+        focusedIdx = dir === 'down' ? 0 : symbols.length - 1;
+      } else {
+        focusedIdx = dir === 'down'
+          ? Math.min(focusedIdx + 1, symbols.length - 1)
+          : Math.max(focusedIdx - 1, 0);
+      }
+    };
+    const onSelect = () => {
+      if (focusedIdx >= 0 && focusedIdx < symbols.length) {
+        onSelectSymbol?.(symbols[focusedIdx]);
+        focusedIdx = -1;
+      }
+    };
+    const onAdd = (e: Event) => {
+      const sym = (e as CustomEvent<{ symbol: string }>).detail.symbol?.toUpperCase();
+      if (!sym || symbols.includes(sym) || symbols.length >= MAX_SYMBOLS) return;
+      if (!/^[A-Z]{2,10}USDT$/.test(sym)) return;
+      symbols = [...symbols, sym];
+      saveSymbols(symbols);
+    };
+    window.addEventListener('watchlist:nav', onNav);
+    window.addEventListener('watchlist:select', onSelect);
+    window.addEventListener('watchlist:add', onAdd);
+
+    // Fetch patterns async (fire-and-forget, result stored in state)
+    fetch('/api/patterns/terminal')
+      .then(async (r) => {
+        if (!r.ok) return;
         const d = (await r.json()) as { patterns?: Array<{ slug?: string; label?: string; symbol?: string }> };
         myPatterns = (d.patterns ?? [])
           .slice(0, 10)
           .map((p) => ({ slug: p.slug ?? '', label: p.label ?? p.slug ?? '', symbol: p.symbol }))
           .filter((p) => p.slug.length > 0);
-      }
-    } catch { /* silent */ } finally { patternsLoading = false; }
+      })
+      .catch(() => { /* silent */ })
+      .finally(() => { patternsLoading = false; });
+
+    return () => {
+      window.removeEventListener('watchlist:nav', onNav);
+      window.removeEventListener('watchlist:select', onSelect);
+      window.removeEventListener('watchlist:add', onAdd);
+    };
   });
 
   // Whale alerts: fetch + 10s polling, keyed off the watchlist symbols.
@@ -199,14 +237,15 @@
 
   <!-- Symbol list -->
   <ul class="symbol-list">
-    {#each symbols as sym (sym)}
+    {#each symbols as sym, i (sym)}
       <WatchlistItem
         {sym}
         tick={ticks[sym]}
         spark={sparkData[sym] ?? []}
         active={sym === activeSymbol}
+        focused={i === focusedIdx}
         {folded}
-        onSelect={pick}
+        onSelect={(s) => { focusedIdx = -1; pick(s); }}
         onRemove={removeSymbol}
       />
     {/each}
