@@ -101,7 +101,7 @@
     drawingMode = false,
     onToggleDrawingMode,
     indicatorLibraryOpen = false,
-    onToggleIndicatorLibrary = () => {},
+    onToggleIndicatorLibrary,
   }: Props = $props();
 
   let studiesPanelOpen = $state(false);
@@ -301,15 +301,13 @@
         >✏</button>
       {/if}
       <!-- W-0374 Phase D-4: Indicator Library toggle -->
-      {#if onToggleIndicatorLibrary}
-        <button
-          class="capture-save-btn indicator-toggle"
-          class:active={indicatorLibraryOpen}
-          onclick={onToggleIndicatorLibrary}
-          title={indicatorLibraryOpen ? 'Hide indicators' : 'Show indicators'}
-          aria-pressed={indicatorLibraryOpen}
-        >📊</button>
-      {/if}
+      <button
+        class="capture-save-btn indicator-toggle"
+        class:active={indicatorLibraryOpen}
+        onclick={() => onToggleIndicatorLibrary?.()}
+        title={indicatorLibraryOpen ? 'Hide indicators' : 'Show indicators'}
+        aria-pressed={indicatorLibraryOpen}
+      >📊</button>
       <button class="capture-save-btn" onclick={onSaveSetup} aria-label="Save current visible range">
         Save Setup
       </button>
