@@ -9,7 +9,7 @@
   import type { IndicatorValue } from '$lib/indicators/types';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
   import IndicatorRenderer from './IndicatorRenderer.svelte';
-  import { shellStore } from '$lib/cogochi/shell.store';
+  import { shellStore } from '$lib/hubs/terminal/shell.store';
 
   interface Props {
     ids: readonly string[] | string[];

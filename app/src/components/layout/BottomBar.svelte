@@ -1,6 +1,6 @@
 <script lang="ts">
   import AlphaMarketBar from '../cogochi/AlphaMarketBar.svelte';
-  import { EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
+  import { EMPTY_THERMO_DATA, type ThermoData } from '$lib/hubs/terminal/marketPulse';
   import { activePairState } from '$lib/stores/activePairStore';
   import { openTradeCount } from '$lib/stores/quickTradeStore';
   import { activeSignalCount } from '$lib/stores/trackedSignalStore';

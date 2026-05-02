@@ -98,23 +98,23 @@
     TerminalWatchlistItem,
   } from '$lib/contracts/terminalPersistence';
 
-  import { fetchThermoData, EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
+  import { fetchThermoData, EMPTY_THERMO_DATA, type ThermoData } from '$lib/hubs/terminal/marketPulse';
   import { alphaBuckets } from '$lib/stores/alphaBuckets';
   import AlphaMarketBar from '../../components/cogochi/AlphaMarketBar.svelte';
-  import NewsFlashBar from '../../components/terminal/workspace/NewsFlashBar.svelte';
+  import NewsFlashBar from '$lib/hubs/terminal/workspace/NewsFlashBar.svelte';
   import { newsStore, newsEventsToAlphaMarkers } from '$lib/stores/newsStore';
-  import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
-  import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
-  import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
-  import WorkspacePanel from '../../components/terminal/workspace/WorkspacePanel.svelte';
-  import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
-  import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
-  import ScanGrid from '../../components/terminal/peek/ScanGrid.svelte';
-  import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
-  import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
-  import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
+  import TerminalCommandBar from '$lib/hubs/terminal/workspace/TerminalCommandBar.svelte';
+  import TerminalLeftRail from '$lib/hubs/terminal/workspace/TerminalLeftRail.svelte';
+  import TerminalContextPanel from '$lib/hubs/terminal/workspace/TerminalContextPanel.svelte';
+  import WorkspacePanel from '$lib/hubs/terminal/workspace/WorkspacePanel.svelte';
+  import PatternLibraryPanel from '$lib/hubs/terminal/workspace/PatternLibraryPanel.svelte';
+  import MarketDrawer from '$lib/hubs/terminal/workspace/MarketDrawer.svelte';
+  import ScanGrid from '$lib/hubs/terminal/peek/ScanGrid.svelte';
+  import JudgePanel from '$lib/hubs/terminal/peek/JudgePanel.svelte';
+  import CenterPanel from '$lib/hubs/terminal/peek/CenterPanel.svelte';
+  import RightRailPanel from '$lib/hubs/terminal/peek/RightRailPanel.svelte';
   import DecisionHUD from '$lib/components/terminal/hud/DecisionHUD.svelte';
-  import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
+  import VerdictInboxPanel from '$lib/hubs/terminal/peek/VerdictInboxPanel.svelte';
   import SplitPaneLayout from '$lib/components/terminal/SplitPaneLayout.svelte';
   import ModeToggle from '$lib/components/terminal/ModeToggle.svelte';
   import { terminalLayout } from '$lib/stores/terminalLayout';
@@ -122,7 +122,7 @@
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
   import { terminalMode as terminalModeStore } from '$lib/stores/terminalMode';
-  import { applyModePreset, type TerminalMode } from '../../components/terminal/terminalLayoutController';
+  import { applyModePreset, type TerminalMode } from '$lib/hubs/terminal/terminalLayoutController';
 
   // ─── State ──────────────────────────────────────────────────
 

@@ -3,7 +3,7 @@ version: 1
 contracts:
   - name: "ChartBoard core props"
     type: "svelte_props"
-    file: "app/src/components/terminal/workspace/ChartBoard.svelte"
+    file: "app/src/lib/hubs/terminal/workspace/ChartBoard.svelte"
     props:
       symbol:
         required: true

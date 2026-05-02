@@ -1,6 +1,6 @@
 <script lang="ts">
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
-  import { shellStore } from '$lib/cogochi/shell.store';
+  import { shellStore } from '$lib/hubs/terminal/shell.store';
 
   interface Command {
     id: string;
