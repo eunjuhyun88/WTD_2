@@ -73,6 +73,6 @@ describe('CaptureReviewDrawer — W-0354 5-verdict alignment', () => {
   it('tooltip titles present for context labels', () => {
     expect(SRC).toContain('title="Pattern valid, entry successful"');
     expect(SRC).toContain('title="Pattern itself was wrong"');
-    expect(SRC).toContain('title="Pattern valid, barely missed"');
+    expect(SRC).toContain('title="Pattern valid, narrowly missed"');
   });
 });
