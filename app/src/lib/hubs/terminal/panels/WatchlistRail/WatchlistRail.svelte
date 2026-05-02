@@ -8,6 +8,8 @@
    */
   import { onMount } from 'svelte';
   import { subscribeMiniTicker, type MiniTickerUpdate } from '$lib/api/binance';
+  import WatchlistHeader from './WatchlistHeader.svelte';
+  import WatchlistItem from './WatchlistItem.svelte';
 
   const STORAGE_KEY = 'cogochi:watchlist:v1';
   const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT'];
@@ -176,124 +178,37 @@
     if (e.key === 'Enter') addSymbol();
     if (e.key === 'Escape') { addOpen = false; addInput = ''; addError = ''; }
   }
-
-  function fmtPrice(p: number): string {
-    if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
-    if (p >= 1000)  return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
-    if (p >= 1)     return p.toFixed(3);
-    return p.toPrecision(4);
-  }
-
-  function fmtChange(c: number): string {
-    return (c >= 0 ? '+' : '') + c.toFixed(2) + '%';
-  }
-
-  function sparkPolyline(prices: number[]): string {
-    const W = 30, H = 14;
-    const min = Math.min(...prices), max = Math.max(...prices);
-    const range = max - min || 1;
-    return prices
-      .map((p, i) => `${((i / (prices.length - 1)) * W).toFixed(1)},${(H - ((p - min) / range) * H).toFixed(1)}`)
-      .join(' ');
-  }
 </script>
 
 <div class="rail" class:rail--folded={folded}>
 
-  <!-- WATCHLIST header -->
-  <div class="section-header">
-    {#if !folded}
-      <span class="section-label">WATCHLIST</span>
-      <span class="section-actions">
-        <span class="section-count">{symbols.length}/{MAX_SYMBOLS}</span>
-        {#if symbols.length < MAX_SYMBOLS}
-          <button
-            class="add-btn"
-            onclick={() => { addOpen = !addOpen; addError = ''; }}
-            title="심볼 추가"
-            aria-label="Add symbol"
-          >+</button>
-        {/if}
-      </span>
-    {/if}
-    <button
-      class="fold-btn"
-      onclick={() => (folded = !folded)}
-      title={folded ? 'Expand watchlist' : 'Collapse watchlist'}
-      aria-label={folded ? 'Expand watchlist' : 'Collapse watchlist'}
-    >{folded ? '›' : '‹'}</button>
-  </div>
-
-  <!-- Add symbol input -->
-  {#if !folded && addOpen}
-    <div class="add-row">
-      <!-- svelte-ignore a11y_autofocus -->
-      <input
-        class="add-input"
-        type="text"
-        placeholder="SOLUSDT…"
-        bind:value={addInput}
-        onkeydown={onAddKeydown}
-        maxlength={12}
-        autofocus
-      />
-      <button class="add-confirm" onclick={addSymbol} title="확인">+</button>
-      <button class="add-cancel" onclick={() => { addOpen = false; addInput = ''; addError = ''; }} title="취소">✕</button>
-    </div>
-    {#if addError}
-      <div class="add-error">{addError}</div>
-    {/if}
-  {/if}
+  <!-- WATCHLIST header + add-symbol input -->
+  <WatchlistHeader
+    symbolCount={symbols.length}
+    maxSymbols={MAX_SYMBOLS}
+    {folded}
+    {addOpen}
+    bind:addInput
+    {addError}
+    onToggleFold={() => (folded = !folded)}
+    onToggleAdd={() => { addOpen = !addOpen; addError = ''; }}
+    onAddConfirm={addSymbol}
+    onAddCancel={() => { addOpen = false; addInput = ''; addError = ''; }}
+    {onAddKeydown}
+  />
 
   <!-- Symbol list -->
   <ul class="symbol-list">
     {#each symbols as sym (sym)}
-      {@const tick = ticks[sym]}
-      {@const spark = sparkData[sym] ?? []}
-      <li class="symbol-item">
-        <button
-          type="button"
-          class="symbol-row"
-          class:active={sym === activeSymbol}
-          onclick={() => pick(sym)}
-          title={sym}
-        >
-          <span class="sym-name">{shortName(sym)}</span>
-          {#if !folded}
-            <span class="sym-right">
-              {#if tick}
-                <span class="sym-price">{fmtPrice(tick.price)}</span>
-                <span class="sym-bottom">
-                  <span class="sym-change" class:up={tick.change24h >= 0} class:dn={tick.change24h < 0}>
-                    {fmtChange(tick.change24h)}
-                  </span>
-                  {#if spark.length >= 3}
-                    <svg class="sparkline" viewBox="0 0 30 14" width="30" height="14">
-                      <polyline
-                        points={sparkPolyline(spark)}
-                        fill="none"
-                        stroke={tick.change24h >= 0 ? '#22AB94' : '#F23645'}
-                        stroke-width="1.2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  {/if}
-                </span>
-              {:else}
-                <span class="sym-loading">…</span>
-              {/if}
-            </span>
-            <button
-              type="button"
-              class="del-btn"
-              onclick={(e) => { e.stopPropagation(); removeSymbol(sym); }}
-              title="제거"
-              aria-label="Remove {sym}"
-            >×</button>
-          {/if}
-        </button>
-      </li>
+      <WatchlistItem
+        {sym}
+        tick={ticks[sym]}
+        spark={sparkData[sym] ?? []}
+        active={sym === activeSymbol}
+        {folded}
+        onSelect={pick}
+        onRemove={removeSymbol}
+      />
     {/each}
   </ul>
 
@@ -387,12 +302,12 @@
     overflow: hidden;
   }
 
-  .rail--folded .symbol-row {
+  .rail--folded :global(.symbol-row) {
     justify-content: center;
     padding: 6px 4px;
   }
 
-  .rail--folded .sym-name { font-size: 9px; }
+  .rail--folded :global(.sym-name) { font-size: 9px; }
 
   .fold-btn {
     background: none;
@@ -424,11 +339,6 @@
     flex-shrink: 0;
   }
 
-  .rail--folded .section-header {
-    justify-content: center;
-    padding: 8px 4px 4px;
-  }
-
   .section-label { font-weight: 600; }
   .section-count { font-size: 8px; color: var(--g6); }
 
@@ -438,163 +348,11 @@
     gap: 4px;
   }
 
-  .add-btn {
-    background: none;
-    border: 1px solid var(--g4);
-    color: var(--g6);
-    font-size: 11px;
-    line-height: 1;
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.1s, border-color 0.1s;
-  }
-  .add-btn:hover { color: var(--g9); border-color: var(--g6); }
-
-  .add-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 8px;
-    background: var(--g1);
-    border-bottom: 1px solid var(--g4);
-    flex-shrink: 0;
-  }
-
-  .add-input {
-    flex: 1;
-    background: var(--g2);
-    border: 1px solid var(--g4);
-    border-radius: 4px;
-    color: var(--g9);
-    font-family: inherit;
-    font-size: 10px;
-    padding: 3px 6px;
-    outline: none;
-    text-transform: uppercase;
-    min-width: 0;
-  }
-  .add-input:focus { border-color: var(--brand); }
-  .add-input::placeholder { text-transform: none; color: var(--g5); }
-
-  .add-confirm, .add-cancel {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 12px;
-    padding: 2px 4px;
-    line-height: 1;
-    flex-shrink: 0;
-    transition: color 0.1s;
-  }
-  .add-confirm { color: #22AB94; }
-  .add-confirm:hover { color: #4ade80; }
-  .add-cancel { color: var(--g5); }
-  .add-cancel:hover { color: var(--g8); }
-
-  .add-error {
-    padding: 2px 8px 4px;
-    font-size: 9px;
-    color: #F23645;
-    letter-spacing: 0.04em;
-    flex-shrink: 0;
-  }
-
   .symbol-list, .pattern-list {
     list-style: none;
     margin: 0;
     padding: 0;
   }
-
-  .symbol-item { position: relative; }
-
-  .symbol-row {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 10px;
-    background: transparent;
-    border: none;
-    border-bottom: 0.5px solid var(--g3);
-    color: var(--g8);
-    font-family: inherit;
-    font-size: 11px;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.1s;
-  }
-
-  .symbol-row:hover { background: var(--g2); }
-  .symbol-row:hover .del-btn { opacity: 1; }
-
-  .symbol-row.active {
-    background: var(--g3);
-    color: var(--g9);
-    border-left: 2px solid var(--brand);
-    padding-left: 8px;
-  }
-
-  .del-btn {
-    background: none;
-    border: none;
-    color: var(--g5);
-    cursor: pointer;
-    font-size: 13px;
-    line-height: 1;
-    padding: 0 0 0 4px;
-    opacity: 0;
-    transition: opacity 0.1s, color 0.1s;
-    flex-shrink: 0;
-  }
-  .del-btn:hover { color: #F23645; }
-
-  .sym-name {
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    font-size: 11px;
-  }
-
-  .sym-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-  }
-
-  .sym-price {
-    font-size: 10px;
-    color: var(--g9);
-    letter-spacing: 0.01em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .sym-bottom {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .sym-change {
-    font-size: 8px;
-    letter-spacing: 0.04em;
-    font-variant-numeric: tabular-nums;
-  }
-  .sym-change.up { color: #22AB94; }
-  .sym-change.dn { color: #F23645; }
-
-  .sparkline { display: block; flex-shrink: 0; }
-
-  .sym-loading {
-    font-size: 9px;
-    color: var(--g5);
-    animation: blink 1.2s infinite;
-  }
-  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
   .pattern-row {
     display: flex;
