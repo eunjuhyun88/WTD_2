@@ -1,6 +1,6 @@
 """Single best proposer selection."""
 from __future__ import annotations
-from engine.research.proposer.schemas import ChangeProposal
+from research.discovery.proposer.schemas import ChangeProposal
 
 class SingleStrategy:
     """Select single best proposal."""

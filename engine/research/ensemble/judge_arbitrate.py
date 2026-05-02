@@ -1,6 +1,6 @@
 """Judge arbitration ensemble."""
 from __future__ import annotations
-from engine.research.proposer.schemas import ChangeProposal
+from research.discovery.proposer.schemas import ChangeProposal
 
 class JudgeArbitrateStrategy:
     """LLM judge to arbitrate proposals."""

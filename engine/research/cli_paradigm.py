@@ -11,7 +11,7 @@ Usage:
 import sys
 import argparse
 from pathlib import Path
-from engine.research.paradigm_framework import (
+from research.discovery.paradigm_framework import (
     ParadigmFramework,
     BaselineMetrics,
 )
