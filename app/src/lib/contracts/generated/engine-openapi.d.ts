@@ -1629,6 +1629,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Signals
+         * @description Recent live signals for a pattern with resolved outcomes (W-0370 Phase 1).
+         *
+         *     Returns signals from scan_signal_events LEFT-joined with scan_signal_outcomes
+         *     (horizon_h=72). Unresolved signals appear as outcome='pending'.
+         */
+        get: operations["get_pattern_signals_patterns__slug__signals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/captures": {
         parameters: {
             query?: never;
@@ -9071,6 +9094,42 @@ export interface operations {
                 tf?: string;
                 universe?: string;
                 since_days?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_signals_patterns__slug__signals_get: {
+        parameters: {
+            query?: {
+                days?: number;
+                limit?: number;
             };
             header?: never;
             path: {
