@@ -551,7 +551,7 @@
   function handleDrawingModeKeydown(e: KeyboardEvent) {
     if ((e.key === 'd' || e.key === 'D') && !$chartSaveMode.active) {
       e.preventDefault();
-      shellStore.toggleDrawingMode();
+      shellStore.setDrawingTool('trendLine');
     }
   }
 
@@ -1777,7 +1777,7 @@
     {tf}
     onTfChange={selectTf}
     drawingMode={$activeDrawingMode}
-    onToggleDrawing={() => shellStore.toggleDrawingMode()}
+    onToggleDrawing={() => shellStore.setDrawingTool('trendLine')}
   />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
@@ -1801,7 +1801,7 @@
     onSaveSetup={handleSaveSetup}
     onEmaTfChange={(t) => { emaTf = t; }}
     drawingMode={$activeDrawingMode}
-    onToggleDrawingMode={() => shellStore.toggleDrawingMode()}
+    onToggleDrawingMode={() => shellStore.setDrawingTool('trendLine')}
     {indicatorLibraryOpen}
     onToggleIndicatorLibrary={() => { indicatorLibraryOpen = !indicatorLibraryOpen; }}
   />

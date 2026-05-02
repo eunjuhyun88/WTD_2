@@ -701,7 +701,7 @@ export const shellStore = createShellStore();
 // Derived stores
 export const activeTab = derived(shellStore, $st => $st.tabs.find(t => t.id === $st.activeTabId) || $st.tabs[0]);
 export const activeMode = derived(activeTab, $tab => $tab?.mode || 'trade');
-export const activeDrawingMode = derived(activeTab, $tab => $tab?.tabState?.drawingMode ?? false);
+export const activeDrawingMode = derived(shellStore, $st => $st.chartActiveMode === 'drawing');
 export const activeTabState = derived(activeTab, $tab => $tab?.tabState || FRESH_TAB_STATE());
 export const allVerdicts = derived(shellStore, $st =>
   Object.assign({}, ...$st.tabs.map(t => t.tabState?.verdicts || {}))
