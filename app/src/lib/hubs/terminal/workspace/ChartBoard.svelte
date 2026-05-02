@@ -37,7 +37,6 @@
   import CaptureAnnotationLayer from '../../../shared/chart/CaptureAnnotationLayer.svelte';
   import CaptureReviewDrawer    from '../../../shared/chart/CaptureReviewDrawer.svelte';
   import type { CaptureAnnotation } from '../../../shared/chart/primitives/CaptureMarkerPrimitive';
-  import RangeModeToast from '../../../shared/chart/overlays/RangeModeToast.svelte';
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
   import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
@@ -555,38 +554,6 @@
       e.preventDefault();
       shellStore.setDrawingTool('trendLine');
     }
-  }
-
-  async function handleRangeSaveCapture() {
-    await chartSaveMode.save({ symbol, tf, phase: 'GENERAL' });
-  }
-
-  function handleRangeSendToAI() {
-    const state = chartSaveMode.snapshot();
-    if (!state.anchorA || !state.anchorB) return;
-    const t0 = new Date(state.anchorA * 1000).toISOString();
-    const t1 = new Date(state.anchorB * 1000).toISOString();
-    const bars = Math.round((state.anchorB - state.anchorA) / (tfMinutes(tf) * 60));
-    shellStore.updateTabState((ts) => ({
-      ...ts,
-      chat: [...(ts.chat || []), { role: 'user' as const, text: `Selected range: ${t0} to ${t1} (~${bars} bars on ${tf})` }],
-    }));
-  }
-
-  function handleRangeAnalyze() {
-    const state = chartSaveMode.snapshot();
-    if (!state.anchorA || !state.anchorB) return;
-    const t0 = new Date(state.anchorA * 1000).toISOString();
-    const t1 = new Date(state.anchorB * 1000).toISOString();
-    const bars = Math.round((state.anchorB - state.anchorA) / (tfMinutes(tf) * 60));
-    shellStore.updateTabState((ts) => ({
-      ...ts,
-      chat: [...(ts.chat || []), { role: 'user' as const, text: `Analyze this range: ${t0} to ${t1} (~${bars} bars on ${tf}). What patterns, support/resistance, and trading opportunities do you see?` }],
-    }));
-  }
-
-  function handleRangeCancel() {
-    chartSaveMode.exitRangeMode();
   }
 
   // ── Price line manager (verdict / liq / whale) ─────────────────────────────
@@ -1862,15 +1829,6 @@
         </svg>
       {/if}
       <div class="layer2-topright">
-        <RangeModeToast
-          active={$chartSaveMode.active}
-          anchorASet={$chartSaveMode.anchorA !== null}
-          rangeComplete={$chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
-          onSaveCapture={handleRangeSaveCapture}
-          onSendToAI={handleRangeSendToAI}
-          onAnalyze={handleRangeAnalyze}
-          onCancel={handleRangeCancel}
-        />
         <PhaseBadge phase={null} />
       </div>
     </div>

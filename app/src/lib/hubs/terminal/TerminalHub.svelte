@@ -206,6 +206,14 @@
       else if (c.id === 'open_ai_detail') {
         appendAIDetail(c.userText ?? '현재 analyze detail 설명해줘', c.assistantText ?? '');
       }
+      else if (c.id === 'analyze_range') {
+        const fromIso = new Date((c.fromTime as number) * 1000).toISOString();
+        const toIso = new Date((c.toTime as number) * 1000).toISOString();
+        appendAIDetail(
+          `Analyze ${c.symbol} ${c.timeframe} range ${fromIso} → ${toIso}`,
+          ''
+        );
+      }
       else if (c.id === 'reset') { shellStore.reset(); window.location.reload(); }
     };
 
