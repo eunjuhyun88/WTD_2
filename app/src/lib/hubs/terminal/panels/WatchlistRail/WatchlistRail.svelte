@@ -47,6 +47,7 @@
   let symbols   = $state<string[]>(loadSymbols());
   let ticks     = $state<Record<string, MiniTickerUpdate>>({});
   let sparkData = $state<Record<string, number[]>>({});
+  let frMap     = $state<Record<string, number>>({});
   let myPatterns      = $state<PatternRow[]>([]);
   let patternsLoading = $state(true);
   let whaleAlerts     = $state<WhaleAlert[]>([]);
@@ -164,6 +165,33 @@
     };
   });
 
+  // Batch-fetch latest funding rate for each watchlist symbol (60s poll)
+  $effect(() => {
+    if (typeof window === 'undefined' || symbols.length === 0) return;
+    const syms = [...symbols];
+
+    async function loadFR() {
+      const results = await Promise.allSettled(
+        syms.map((sym) => fetch(`/api/market/funding?symbol=${sym}&limit=1`))
+      );
+      const next: Record<string, number> = { ...frMap };
+      for (let i = 0; i < syms.length; i++) {
+        const r = results[i];
+        if (r.status !== 'fulfilled' || !r.value.ok) continue;
+        try {
+          const d = (await r.value.json()) as { bars?: { delta: number }[] };
+          const bars = d.bars ?? [];
+          if (bars.length > 0) next[syms[i]] = bars[bars.length - 1].delta;
+        } catch { /* silent */ }
+      }
+      frMap = next;
+    }
+
+    void loadFR();
+    const t = setInterval(loadFR, 60_000);
+    return () => clearInterval(t);
+  });
+
   function pick(symbol: string) { onSelectSymbol?.(symbol); }
   function shortName(s: string) { return s.replace(/USDT$/, ''); }
 
@@ -245,6 +273,7 @@
         active={sym === activeSymbol}
         focused={i === focusedIdx}
         {folded}
+        fr={frMap[sym] ?? null}
         onSelect={(s) => { focusedIdx = -1; pick(s); }}
         onRemove={removeSymbol}
       />
