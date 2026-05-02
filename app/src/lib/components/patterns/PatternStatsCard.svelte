@@ -68,14 +68,14 @@
   }
   .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .label { font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.05em; }
-  .badge { font-size: 10px; padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }
+  .badge { font-size: var(--ui-text-xs); padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }
   .badge.preliminary { background: rgba(255,200,0,0.12); color: rgba(255,200,0,0.8); }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat { display: flex; flex-direction: column; gap: 2px; }
-  .stat-label { font-size: 10px; color: rgba(255,255,255,0.35); }
+  .stat-label { font-size: var(--ui-text-xs); color: rgba(255,255,255,0.35); }
   .stat-val { font-family: var(--sc-font-mono, monospace); font-size: 13px; color: rgba(255,255,255,0.8); }
   .stat-val.positive { color: #4ade80; }
   .stat-val.negative { color: #f87171; }
-  .ci { margin-top: 8px; font-size: 10px; color: rgba(255,255,255,0.3); font-family: monospace; }
+  .ci { margin-top: 8px; font-size: var(--ui-text-xs); color: rgba(255,255,255,0.3); font-family: monospace; }
   .loading, .empty { font-size: 12px; color: rgba(255,255,255,0.3); text-align: center; padding: 8px 0; }
 </style>

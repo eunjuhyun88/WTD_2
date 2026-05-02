@@ -55,7 +55,7 @@
   .card-bottom { display: flex; justify-content: space-between; align-items: center; }
   .card-pattern {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.3);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -66,7 +66,7 @@
   }
   .card-meta {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.25);
     white-space: nowrap;
   }

@@ -182,7 +182,7 @@
     top: 8px;
     left: 4px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.2);
     width: 22px;
     text-align: center;
@@ -252,7 +252,7 @@
 
   .tf-chip {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.4);
     background: rgba(255, 255, 255, 0.06);
     border-radius: 3px;
@@ -279,7 +279,7 @@
   }
   .sim-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: rgba(255, 255, 255, 0.25);
@@ -309,7 +309,7 @@
 
   .phase-chip {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.5);
     background: rgba(255, 255, 255, 0.05);
     border-radius: 3px;
@@ -318,7 +318,7 @@
 
   .outcome-chip {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     border-radius: 3px;
     padding: 1px 6px;
@@ -334,7 +334,7 @@
 
   .ts-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.25);
     margin-left: auto;
   }
@@ -382,13 +382,13 @@
 
   .no-watch-hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.15);
   }
 
   .watch-error {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: #f87171;
   }
 </style>

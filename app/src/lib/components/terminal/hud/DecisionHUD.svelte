@@ -103,7 +103,7 @@
 
   .hud-title {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     color: rgba(255,255,255,0.3);
@@ -112,7 +112,7 @@
 
   .hud-refresh {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.35);
     background: transparent;
     border: 1px solid rgba(255,255,255,0.1);

@@ -85,7 +85,7 @@
   }
 
   .title {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
     line-height: 1.3;
     flex: 1;
@@ -119,7 +119,7 @@
 
   .weight {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 </style>

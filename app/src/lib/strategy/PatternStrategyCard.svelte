@@ -138,7 +138,7 @@
     display: flex;
     align-items: center;
     gap: 3px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6, #888);
   }
   .card-top {
@@ -163,7 +163,7 @@
     max-width: 120px;
   }
   .card-tf {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, #666);
   }
   .sparkline { flex-shrink: 0; }
@@ -188,7 +188,7 @@
     gap: 1px;
   }
   .stat-label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, #666);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -202,7 +202,7 @@
   .stat-value.pos { color: var(--sc-green, #4caf7d); }
   .stat-value.neg { color: var(--sc-red, #e05c5c); }
   .warn-badge {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, #888);
     background: var(--g2, #1a1a1a);
     border: 1px solid var(--g3, #2a2a2a);

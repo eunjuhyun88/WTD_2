@@ -21,6 +21,6 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-  .phase-badge.sm { font-size: 10px; }
+  .phase-badge.sm { font-size: var(--ui-text-xs); }
   .phase-badge.md { font-size: 12px; }
 </style>

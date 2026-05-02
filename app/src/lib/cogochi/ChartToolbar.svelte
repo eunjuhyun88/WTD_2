@@ -191,13 +191,13 @@
     outline: none;
   }
   .tb-label {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.04em;
     color: var(--g9);
   }
   .tb-arrow {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
@@ -243,7 +243,7 @@
     border-radius: 3px;
     color: var(--g7);
     font-family: inherit;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     text-align: left;
     cursor: pointer;
     transition: background 0.08s, color 0.08s;
@@ -258,14 +258,14 @@
   .ct-item-label {
     font-weight: 700;
     letter-spacing: 0.06em;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
   }
   .ct-item-full {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .ct-item-check {
     color: var(--brand);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   /* Compact viewport: hide button text labels, keep glyph */

@@ -49,7 +49,7 @@
     background: var(--g1);
     border-bottom: 0.5px solid var(--g3);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     letter-spacing: 0.05em;
     flex-shrink: 0;

@@ -83,7 +83,7 @@
 
   .no-key {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(248, 113, 113, 0.6);
     letter-spacing: 0.08em;
   }
@@ -99,7 +99,7 @@
     border: 0.5px solid var(--g4, rgba(255,255,255,0.1));
     border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.1em;
     color: var(--g6, rgba(200,200,200,0.6));

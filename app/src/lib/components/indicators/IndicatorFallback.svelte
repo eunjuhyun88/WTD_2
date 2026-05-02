@@ -27,12 +27,12 @@
   .fallback {
     padding: 6px 10px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6, rgba(255, 255, 255, 0.5));
     border: 1px dashed color-mix(in oklab, currentColor 20%, transparent);
     border-radius: 3px;
   }
-  .label { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .label { font-size: var(--ui-text-xs); letter-spacing: 0.06em; text-transform: uppercase; }
   .val { font-variant-numeric: tabular-nums; margin-top: 2px; color: var(--g9); }
-  .hint { font-size: 8px; opacity: 0.6; margin-top: 2px; }
+  .hint { font-size: var(--ui-text-xs); opacity: 0.6; margin-top: 2px; }
 </style>

@@ -120,7 +120,7 @@
   }
 
   .ind-pane-title {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--g5, rgba(255, 255, 255, 0.4));
@@ -129,7 +129,7 @@
   }
 
   .ind-pane.compact .ind-pane-title {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 0 6px 1px;
     letter-spacing: 0.06em;
   }

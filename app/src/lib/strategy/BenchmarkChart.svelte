@@ -104,5 +104,5 @@
   .legend { display: flex; flex-wrap: wrap; gap: 10px; }
   .legend-item { display: flex; align-items: center; gap: 5px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .legend-label { font-size: 10px; color: var(--g6, #888); }
+  .legend-label { font-size: var(--ui-text-xs); color: var(--g6, #888); }
 </style>

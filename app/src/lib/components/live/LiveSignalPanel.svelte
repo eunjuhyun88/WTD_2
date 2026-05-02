@@ -124,14 +124,14 @@
   }
 
   .panel-title {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.1em;
     color: var(--sc-text-secondary, #888);
   }
 
   .panel-meta {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-tertiary, #555);
   }
 
@@ -140,7 +140,7 @@
   }
 
   .section-label {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.08em;
     margin-bottom: 6px;
@@ -200,7 +200,7 @@
   }
 
   .verdict-btn {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 2px 7px;
     border-radius: 3px;
     border: 1px solid var(--sc-border, #2a2a2a);
@@ -232,7 +232,7 @@
   }
 
   .path-label {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-tertiary, #555);
   }
 </style>

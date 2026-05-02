@@ -502,7 +502,7 @@
     flex: 1;
   }
   .verdict-inbox-arrow {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(250, 247, 235, 0.3);
   }
 
@@ -523,7 +523,7 @@
   .pulse { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:.2} 50%{opacity:1} }
   .page-error { color: #f87171; }
-  .error-detail { font-size: 10px; color: rgba(248,113,113,0.6); max-width: 400px; text-align: center; }
+  .error-detail { font-size: var(--ui-text-xs); color: rgba(248,113,113,0.6); max-width: 400px; text-align: center; }
   .patterns-lower {
     align-items: start;
   }
@@ -537,7 +537,7 @@
   .cand-top { display: flex; align-items: center; justify-content: space-between; }
   .cand-sym { font-family: var(--sc-font-mono, monospace); font-size: 16px; font-weight: 700; color: #fff; }
   .accum-chip { color: #26a69a; border-color: rgba(38,166,154,0.28); background: rgba(38,166,154,0.08); }
-  .cand-meta { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace); }
+  .cand-meta { display: flex; justify-content: space-between; font-size: var(--ui-text-xs); color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace); }
   .cand-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
   .compact-action { min-height: 34px; padding: 0 12px; font-size: 0.8rem; }
   .compact-action.valid { color: #26a69a; border-color: rgba(38,166,154,0.28); }
@@ -582,7 +582,7 @@
     border-radius: 4px;
     color: rgba(255,255,255,0.7);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 3px 6px;
     cursor: pointer;
     appearance: none;
@@ -600,7 +600,7 @@
   .transitions-table th {
     padding: 6px 8px;
     text-align: left;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     color: rgba(255,255,255,0.25);
     border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -641,7 +641,7 @@
   @media (max-width: 640px) {
     .cand-actions { flex-wrap: wrap; }
     .hide-sm { display: none; }
-    .transitions-table { font-size: 10px; }
+    .transitions-table { font-size: var(--ui-text-xs); }
     .table-header, .table-row { grid-template-columns: 64px 1fr 100px 60px 44px; }
   }
 </style>

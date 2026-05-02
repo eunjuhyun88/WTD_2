@@ -98,7 +98,7 @@
 
   .card-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.25);
@@ -107,7 +107,7 @@
 
   .action-error {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: #ef5350;
     padding: 4px 0;
   }
@@ -170,7 +170,7 @@
 
   .ref-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.2);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -178,7 +178,7 @@
 
   .ref-id {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.25);
   }
 </style>

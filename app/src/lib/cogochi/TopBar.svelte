@@ -156,7 +156,7 @@
   font-variant-numeric: tabular-nums;
 }
 .sym-arrow {
-  font-size: 8px;
+  font-size: var(--ui-text-xs);
   color: var(--g6);
 }
 
