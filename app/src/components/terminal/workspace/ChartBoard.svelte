@@ -64,6 +64,7 @@
   import { whaleStore } from '$lib/stores/whaleStore';
   import { chartAIOverlay, clearAIOverlay } from '$lib/stores/chartAIOverlay';
   import type { AIRangeBox, AIAnnotation } from '$lib/stores/chartAIOverlay';
+  import { setChartFreshness } from '$lib/stores/chartFreshness';
   // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
   import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
   import FloatingNoteButton from '../../chart/FloatingNoteButton.svelte';
@@ -730,6 +731,7 @@
   // Keep chartSaveMode payload in sync so SaveStrip can slice indicators (W-0117 Slice B)
   $effect(() => {
     chartSaveMode.setPayload(feed.chartData);
+    if (feed.chartData) setChartFreshness(Date.now());
   });
 
   // ── Pane info chips (current value + Δ for each line in each pane) ───────

@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`8b7d6ce9` — HEAD (2026-05-02) — naming contract + agent coordination system merged (#868)
+`71e2ab64` — HEAD (2026-05-02) — Phase D-9 merged: AI overlay shapes + pattern skeleton + decision auto-refresh (#870)
 
 ---
 
@@ -35,7 +35,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | ✅ Phase D-7 merged (#865) — Phase D-8 (final cleanup/docs) 잔여 |
+| `W-0374-cogochi-bloomberg-ux-restructure` | P1 | 🟢 Phase D-9 ✅ — Phase D-10 (Bloomberg polish) 진행 중 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
@@ -52,9 +52,11 @@
 완료:  W-0358 ✅ — multi-exchange OHLCV ingestion framework (#836)
 완료:  W-0374 Phase D-0~D-3 ✅ — Bloomberg UX TopBar + AIAgentPanel 5-tab (#839)
 완료:  W-0374 Phase D-4~D-7 ✅ — IndicatorLibrary + DrawingToolbar + drag-to-save + AIAgentPanel 5탭 (#865)
+완료:  W-0374 Phase D-8 ✅ — Mobile polish: DrawingToolbar horizontal + ChartBoard min-height + touch swipe (#869)
+완료:  W-0374 Phase D-9 ✅ — AI overlay shapes + pattern skeleton + decision auto-refresh (#870)
 완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
 완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
-즉시:  W-0374 Phase D-8 — final integration polish + PR (if needed)
+즉시:  W-0374 Phase D-10 — Bloomberg polish (KpiStrip chart 상단, StatusBar freshness, chartFreshness ChartBoard wiring)
 추후:  W-0304 per-pane indicator (after W-0374 foundation stable)
 ```
 
@@ -79,10 +81,10 @@
 
 ---
 
-## 다음 실행 — Phase D-8 (잔여 폴리싱)
+## 다음 실행 — Phase D-10
 
 ```bash
 ./tools/start.sh
 cat work/active/W-0374-cogochi-bloomberg-ux-restructure.md
-# Phase D-8: 최종 통합 폴리싱 + W-0374 work item 완료 처리
+# Phase D-10: Bloomberg polish — ChartBoard setChartFreshness, KpiStrip 확인, redirects
 ```
