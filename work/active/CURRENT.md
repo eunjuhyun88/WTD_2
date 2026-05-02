@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`322f2bdd` — HEAD (2026-05-03) — chore: sweep completed work items + W-0386 finalize (#930)
+`84567609` — origin/main (2026-05-03) — feat: W-A108 verification framework + quality gates (#926)
 
 ---
 
@@ -33,8 +33,9 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-A107-verification-audit` | P1 | 🟡 Design Draft |
+| `W-A108-verification-framework` | P1 | 🟡 Design Draft |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-0389-ux-visual-typography-restructure` | P1 | 🟡 Design Draft |
 
 ---
 
