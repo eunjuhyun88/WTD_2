@@ -127,7 +127,7 @@ export const GET: RequestHandler = ({ request, params }) => {
   return proxy(request, params.path);
 };
 
-export const POST: RequestHandler = ({ request, params, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, params, getClientAddress }) => {
   if (!isAllowedPath(params.path, 'POST')) {
     return json({ error: 'Not found' }, { status: 404 });
   }
