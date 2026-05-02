@@ -49,6 +49,40 @@ class ResearchPipeline:
             ledger_store=self._ledger_store, out_dir=self._out_dir,
         )
 
+    def _verify(self, df):
+        """Backward-compat: run VerifyStage logic on a DataFrame."""
+        import asyncio
+        import pandas as pd
+        from pipeline_stages import ScanStage, ValidateStage, VerifyStage
+        from core_loop.contracts import PipelineRequest, PipelineResult as CoreResult
+
+        if isinstance(df, pd.DataFrame) and df.empty:
+            return df
+        fake_scan = ScanStage()
+        validate = ValidateStage(scan_stage=fake_scan)
+        validate.bh_passed = df.copy() if hasattr(df, "copy") else df
+        stage = VerifyStage(validate_stage=validate, ledger_store=self._ledger_store)
+        req = PipelineRequest(symbols=[])
+        asyncio.run(stage.run(req, CoreResult(request=req)))
+        return validate.bh_passed
+
+    def _score(self, df):
+        """Backward-compat: run ScoreStage logic on a DataFrame."""
+        import asyncio
+        import pandas as pd
+        from pipeline_stages import ScanStage, ValidateStage, ScoreStage
+        from core_loop.contracts import PipelineRequest, PipelineResult as CoreResult
+
+        if isinstance(df, pd.DataFrame) and df.empty:
+            return df
+        fake_scan = ScanStage()
+        validate = ValidateStage(scan_stage=fake_scan)
+        validate.bh_passed = df.copy() if hasattr(df, "copy") else df
+        stage = ScoreStage(validate_stage=validate)
+        req = PipelineRequest(symbols=[])
+        asyncio.run(stage.run(req, CoreResult(request=req)))
+        return validate.bh_passed
+
 
 def _parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
