@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { shellStore, activeRightPanelTab, activeTabState } from '../../shell.store';
+  import { shellStore, activeRightPanelTab, activeTabState, verdictCount } from '../../shell.store';
   import type { RightPanelTab, TabState } from '../../shell.store';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
@@ -278,11 +278,14 @@
   <!-- ── Tab bar ── -->
   <div class="tab-bar">
     {#each TABS as tab}
+      {@const badge = tab.id === 'pattern' ? (patternLoaded ? patternRecords.length : 0)
+                    : tab.id === 'verdict' ? $verdictCount
+                    : 0}
       <button
         class="tab-btn"
         class:active={activeTab === tab.id}
         onclick={() => shellStore.setRightPanelTab(tab.id)}
-      >{tab.label}</button>
+      >{tab.label}{#if badge > 0}<span class="tab-badge">{badge}</span>{/if}</button>
     {/each}
     <button
       class="expand-btn"
@@ -471,6 +474,22 @@
 .tab-btn.active {
   color: var(--g9, #eceae8);
   border-bottom-color: var(--amb, #f5a623);
+}
+
+.tab-badge {
+  display: inline-block;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  padding: 0 3px;
+  margin-left: 3px;
+  background: var(--amb, #f5a623);
+  color: var(--g0, #080706);
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .expand-btn {
