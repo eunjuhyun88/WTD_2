@@ -12,15 +12,18 @@
    * (Keeps this component pure/presentational.)
    */
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
-  import type { TerminalVerdict } from '$lib/types/terminal';
 
   type JudgmentVerdict = 'bullish' | 'bearish' | 'neutral';
   type OutcomeLabel = 'correct' | 'wrong' | 'partial' | 'timeout';
 
+  interface JudgeVerdict {
+    direction: JudgmentVerdict;
+  }
+
   interface Props {
     symbol?: string;
     timeframe?: string;
-    verdict?: TerminalVerdict | null;
+    verdict?: JudgeVerdict | null;
     entry?: number | null;
     stop?: number | null;
     target?: number | null;
