@@ -76,7 +76,13 @@
 - [ ] AC2: `grep -rn "from.*cogochi\|from.*components/terminal" app/src` = 0줄
 - [ ] AC3: `app/eslint.config.js` git-tracked
 
-## Facts (grep 실측)
+## Decisions
+
+- [D-3801] ESLint v9 flat-config 선택. 거절: v8 `.eslintrc.*` (deprecated)
+- [D-3802] `eslint-plugin-svelte` v2 사용. 거절: 자체 Svelte rule 작성 (유지비)
+- [D-3803] CI lint 단계 별도 PR로 분리. 거절: 본 PR 포함 (scope 과다)
+
+## Facts
 
 - 잔여 cogochi 임포트: 0개 (W-0382-D 완료)
 - 잔여 components/terminal 임포트: 0개 (W-0382-D 완료)

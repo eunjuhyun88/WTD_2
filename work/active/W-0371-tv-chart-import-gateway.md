@@ -453,6 +453,23 @@ POST /research/tv-import/commit
 3. Estimate: strict/base/loose signal count + filter dropoff + unsupported atoms 표시
 4. "Register & Backtest" → run_id 반환 → 결과는 TopPatternsPanel에서 확인
 
+## Non-Goals
+
+- AI 차트 분석 자동 매매 (Frozen — "AI 차트 분석 툴" 금지)
+- drawing API 호출, 비공개 TV API 사용
+- 실시간 chart 동기화 (one-shot import만)
+- W-0371 내 CI lint 통합 (별도 W-0388)
+
+## Decisions
+
+- [D-0371-01] Vision은 advisory, 권위는 사용자 확정 폼 — "AI 차트 분석 툴" Frozen 회피
+- [D-0371-02] LIBRARY_COMBOS 코드 불변 — dynamic combo는 append-only
+- [D-0371-03] W-0366 `IndicatorFilter`/`feature_catalog` 계약 재사용 — 신규 조건 DSL 금지
+- [D-0371-04] one-shot backtest는 고정 lookback/window 정책 — cherry-picking 차단
+- [D-0371-05] search_origin="tv_import" 태그로 library 패턴과 통계 분리
+- [D-0371-06] unsupported atom은 UI 노출만, silent filter 변환 금지
+- [D-0371-07] commit 전 estimate 필수. `n_signals < 30`이면 base commit 차단
+
 ## CTO 관점
 
 ### Risk Matrix
