@@ -1305,3 +1305,31 @@ async def get_pattern_backtest(
         "cache_hit": False,
         "cached_at": None,
     }
+
+
+# ── W-0370: recent signals feed ──────────────────────────────────────────────
+
+@router.get("/{slug}/signals")
+async def get_pattern_signals(
+    slug: str,
+    days: int = Query(default=30, ge=1, le=365),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> dict:
+    """Recent live signals for a pattern with resolved outcomes (W-0370 Phase 1).
+
+    Returns signals from scan_signal_events LEFT-joined with scan_signal_outcomes
+    (horizon_h=72). Unresolved signals appear as outcome='pending'.
+    """
+    try:
+        get_pattern(slug)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"Pattern {slug!r} not found")
+
+    from research.signal_event_store import fetch_recent_signals
+    signals = await asyncio.to_thread(fetch_recent_signals, slug, days, limit)
+    return {
+        "slug": slug,
+        "days": days,
+        "signals": signals,
+        "total_count": len(signals),
+    }

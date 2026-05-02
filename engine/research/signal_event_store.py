@@ -406,3 +406,42 @@ def fetch_resolved_outcomes(lookback_days: int, pattern_slug: str | None = None)
             continue
         merged.append(flat)
     return merged
+
+
+def fetch_recent_signals(slug: str, days: int = 30, limit: int = 20) -> list[dict]:
+    """Return recent signals for a pattern slug with resolved outcome (horizon_h=72).
+
+    Each record: id, symbol, direction, entry_price, fired_at, outcome, pnl_pct.
+    Unresolved outcomes appear as outcome='pending', pnl_pct=None.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    sb = _sb()
+    rows = (
+        sb.table(SIGNAL_EVENTS_TABLE)
+        .select(
+            "id, symbol, direction, entry_price, fired_at, "
+            f"{SIGNAL_OUTCOMES_TABLE}(horizon_h, triple_barrier_outcome, realized_pnl_pct)"
+        )
+        .eq("pattern", slug)
+        .gte("fired_at", cutoff)
+        .order("fired_at", desc=True)
+        .limit(limit)
+        .execute()
+        .data or []
+    )
+    result = []
+    for row in rows:
+        outcomes = row.pop(SIGNAL_OUTCOMES_TABLE, None) or []
+        # pick horizon_h=72 outcome if available, else latest
+        h72 = next((o for o in outcomes if o.get("horizon_h") == 72), None)
+        best = h72 or (outcomes[0] if outcomes else None)
+        result.append({
+            "id": row.get("id"),
+            "symbol": row.get("symbol"),
+            "direction": row.get("direction"),
+            "entry_price": row.get("entry_price"),
+            "fired_at": row.get("fired_at"),
+            "outcome": best.get("triple_barrier_outcome") if best else "pending",
+            "pnl_pct": best.get("realized_pnl_pct") if best else None,
+        })
+    return result
