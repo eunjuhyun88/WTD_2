@@ -862,6 +862,165 @@ Phase 4:
 
 ---
 
+---
+
+## LLM 실동작 환경 설정 (구현 전 반드시 확인)
+
+### 필수 ENV 변수 (엔진 Cloud Run + 로컬 .env)
+
+```
+# 기본 task→model 매핑 (engine/llm/router.py TASK_MODEL)
+LLM_JUDGE_MODEL=groq/llama-3.3-70b-versatile         # 또는 anthropic/claude-haiku-4-5-20251001
+LLM_SUMMARY_MODEL=cerebras/qwen-3-235b-a22b-instruct-2507
+LLM_SCAN_MODEL=nvidia_nim/meta/llama-3.3-70b-instruct
+
+# Provider 키 (최소 1개 필수, 멀티키 권장)
+GROQ_API_KEY=gsk_...                     # 무료, 12개 키 로테이션 권장
+CEREBRAS_API_KEY=csk-...                 # 빠른 summary용
+NVIDIA_NIM_API_KEY=nvapi-...             # scan용 무료 크레딧
+DEEPSEEK_API_KEY=sk-...                  # fallback
+HUGGINGFACE_API_TOKEN=hf_...             # fallback 최후
+
+# 로컬 LLM (개발환경 Ollama, 비용 0)
+# LLM_SUMMARY_MODEL=ollama/qwen2.5:14b
+# OLLAMA_BASE_URL=http://localhost:11434
+```
+
+### 실동작 확인 절차 (Phase 1 완료 기준)
+
+```bash
+# 1. 엔진 서버 기동 확인
+curl http://localhost:8000/health
+
+# 2. /explain LLM 실제 응답 확인 (heuristic이 아닌 자연어 200자 이상)
+curl -X POST http://localhost:8000/agent/explain \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"ETHUSDT","context":{"btc_trend":"bullish","entry_p_win":0.63}}'
+# 기대: {"text": "ETH는 현재 BTC 강세 흐름 속에서...", "provider_used": "groq/...", "latency_ms": 2300}
+
+# 3. fallback 동작 확인 (GROQ_API_KEY를 빈 값으로 설정 후)
+# 기대: provider_used가 nvidia_nim/... 또는 cerebras/...로 바뀜
+
+# 4. 모든 provider 실패 시 503 확인 (모든 키를 invalid로 설정)
+# 기대: HTTP 503 {"detail": "All LLM providers failed"}
+
+# 5. Ollama 로컬 LLM 동작 확인 (개발환경)
+ollama run qwen2.5:14b "ETH가 bullish인 이유를 3문장으로"
+# 성공 시 LLM_SUMMARY_MODEL=ollama/qwen2.5:14b 설정 후 /explain 재호출
+```
+
+### 실패 원인별 디버깅 트리
+
+```
+/explain → 503
+├─ GROQ_API_KEY 없음   → .env 확인
+├─ rate limit 429      → 키 로테이션 추가 (engine/llm/provider.py GROQ_KEYS)
+├─ litellm ImportError → uv add litellm 확인
+└─ fallback 전체 실패  → FALLBACK_CHAIN 순서로 개별 cURL 테스트
+
+/explain → 응답이 heuristic 텍스트 (LLM 아님)
+└─ Break D 미수정 → app/src/routes/api/terminal/research/+server.ts 확인
+   detectPhase() 가 여전히 사용 중 → dispatch BFF 경유 여부 확인
+
+/explain → 응답 len < 200
+└─ max_tokens=512 확인 → temperature 낮춤(0.1) + system prompt 강화
+```
+
+---
+
+## W-0384 / W-0385 통합 (Phase 2/3에서 반드시 연결할 것)
+
+### Phase 2 수정: `/agent/alpha-scan` → W-0384 `composite_score` 사용
+
+Phase 2 초안은 `run_pattern_scan()` 결과만 LLM에 넣는다. W-0384 머지 후 아래로 교체:
+
+```python
+# engine/api/routes/agent.py — phase 2 수정 (W-0384 머지 후)
+from alpha.composite_score import compute_alpha_scores
+from alpha.universe_seed import get_alpha_universe
+
+@router.post("/alpha-scan", response_model=AgentResponse)
+async def alpha_scan(body: AlphaScanRequest, ...) -> AgentResponse:
+    universe = await get_alpha_universe()  # W-0384 3-source universe
+    symbols = [body.symbol] if body.symbol else universe[:body.top_n * 3]
+
+    # W-0384 Alpha composite 점수 (OI + funding + buy% + 김프 + Binance Alpha 리스트)
+    scores = await compute_alpha_scores(symbols)
+    top = sorted(scores, key=lambda x: -x.score)[:body.top_n]
+
+    user_text = _build_alpha_scan_prompt_v2(top)  # composite score 기반 프롬프트
+    ...
+```
+
+`_build_alpha_scan_prompt_v2(top: list[AlphaScoreResult]) -> str`:
+```python
+lines = [f"알파 스코어 상위 {len(top)}개 심볼:\n"]
+for r in top:
+    sig_summary = " | ".join(f"{s.dimension}:{s.score_delta:+.0f}" for s in r.signals[:3])
+    lines.append(f"• {r.symbol} [{r.verdict}] {r.score:.0f}점  {sig_summary}")
+return "\n".join(lines)
+# 예시 출력:
+# • ETHUSDT [STRONG_ALPHA] 74점  oi_surge:+18 | buy_pressure:+12 | kimchi_premium:+5
+```
+
+### Phase 3 수정: `/agent/similar` → W-0384 `scroll_similar_compose` 사용
+
+Phase 3 초안은 `run_similar_search()` 직접 호출. W-0384 머지 후 아래로 교체:
+
+```python
+from alpha.scroll_segment import build_scroll_segment
+from alpha.scroll_similar_compose import find_similar_segments
+
+@router.post("/similar", response_model=AgentResponse)
+async def find_similar(body: SimilarRequest, ...) -> AgentResponse:
+    # rangeSelection context가 있으면 scroll segment 기반 검색
+    if body.context.get("range_start") and body.context.get("range_end"):
+        from datetime import datetime
+        seg_req = ScrollSegmentRequest(
+            symbol=body.context["symbol"],
+            from_ts=datetime.fromisoformat(body.context["range_start"]),
+            to_ts=datetime.fromisoformat(body.context["range_end"]),
+        )
+        segment = await build_scroll_segment(seg_req)
+        similar_resp = await find_similar_segments(segment, top_k=body.limit)
+        user_text = _build_similar_prompt_v2(similar_resp)
+    else:
+        # fallback: 기존 pattern_draft 기반 검색 (Phase 3 초안과 동일)
+        ...
+```
+
+`_build_similar_prompt_v2(resp: SimilarSegmentResponse) -> str`:
+```python
+lines = [f"유사 구간 {len(resp.similar_segments)}개 (신뢰도: {resp.confidence}):\n"]
+for s in resp.similar_segments[:5]:
+    pnl = f"+{s.forward_pnl_24h:.1%}" if s.forward_pnl_24h else "미확인"
+    lines.append(f"• {s.symbol} {s.from_ts:%Y-%m-%d}  sim={s.similarity_score:.2f}  24h={pnl}  {s.outcome or ''}")
+if resp.win_rate is not None:
+    lines.append(f"\n이전 성공률: {resp.win_rate:.0%}  평균 P&L: {resp.avg_pnl:+.1%}")
+return "\n".join(lines)
+```
+
+### W-0385 통합: watch_only emit (Phase 3에서 추가)
+
+```python
+# engine/api/routes/agent.py — /explain, /alpha-scan, /similar, /judge 모두 공통
+# Phase 3 PR에서 추가 (W-0385 PR1 머지 후)
+try:
+    from research.blocked_candidate_store import emit_blocked_candidate
+    emit_blocked_candidate(
+        symbol=body.symbol if hasattr(body, 'symbol') else "unknown",
+        direction="neutral",
+        reason="diagnostic_only",
+        source="ai_agent",
+    )
+except Exception:
+    pass  # emit 실패는 agent 응답 차단 안 함
+```
+
+이렇게 하면 AI Agent 명령 실행 횟수 × 심볼별 관심도가 `blocked_candidates` 에 축적되어 W-0385 `formula_evidence` 집계에 포함된다.
+
+---
+
 ## Exit Criteria
 
 - [ ] AC1: `/explain` LLM 성공률 ≥95% (n=100 호출), p95 ≤7s
