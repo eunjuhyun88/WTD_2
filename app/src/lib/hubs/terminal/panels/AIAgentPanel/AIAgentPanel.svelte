@@ -171,9 +171,22 @@
   $effect(() => { if (activeTab === 'pattern') void loadPatterns(); });
 
   // ── JDG tab ───────────────────────────────────────────────────────────────
-  let judgeCaptures = $state<PatternCaptureRecord[]>([]);
-  let judgeSaving   = $state(false);
-  let judgeLoaded   = $state(false);
+  interface JudgeResult {
+    verdict: string;
+    entry: number | null;
+    stop: number | null;
+    target: number | null;
+    p_win: number | null;
+    rationale: string;
+    snapshot: Record<string, number>;
+  }
+
+  let judgeCaptures    = $state<PatternCaptureRecord[]>([]);
+  let judgeSaving      = $state(false);
+  let judgeLoaded      = $state(false);
+  let judgeResult      = $state<JudgeResult | null>(null);
+  let judgeLoading     = $state(false);
+  let judgeCacheKey    = $state('');
 
   async function loadJudgeCaptures() {
     try {
@@ -185,20 +198,70 @@
     } catch { /* leave empty */ }
   }
 
+  async function loadJudgeAnalysis() {
+    const key = `${symbol}:${timeframe}`;
+    if (judgeLoading || judgeCacheKey === key) return;
+    judgeLoading = true;
+    try {
+      const res = await fetch('/api/terminal/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cmd: 'judge',
+          context: { symbol, timeframe },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json() as JudgeResult & { cmd: string };
+        judgeResult = { ...data, snapshot: {} };
+        judgeCacheKey = key;
+      }
+    } catch { /* leave null */ } finally { judgeLoading = false; }
+  }
+
   async function handleSaveJudgment({ verdict, note }: { verdict: string; note: string }) {
     judgeSaving = true;
     try {
-      await fetch('/api/captures', {
+      const decision = {
+        verdict,
+        note,
+        ...(judgeResult
+          ? {
+              entry: judgeResult.entry,
+              stop: judgeResult.stop,
+              target: judgeResult.target,
+              p_win: judgeResult.p_win,
+              rationale: judgeResult.rationale,
+            }
+          : {}),
+      };
+      await fetch('/api/terminal/agent/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, timeframe, verdict, note, trigger_origin: 'manual' }),
+        body: JSON.stringify({
+          cmd: 'save',
+          context: {
+            symbol,
+            timeframe,
+            snapshot: judgeResult?.snapshot ?? {},
+            decision,
+            trigger_origin: 'agent_judge',
+          },
+        }),
       });
       judgeLoaded = false;
       await loadJudgeCaptures();
     } catch { /* leave empty */ } finally { judgeSaving = false; }
   }
 
-  $effect(() => { if (activeTab === 'judge' && !judgeLoaded) void loadJudgeCaptures(); });
+  $effect(() => {
+    if (activeTab === 'judge') {
+      if (!judgeLoaded) void loadJudgeCaptures();
+      void loadJudgeAnalysis();
+    }
+  });
+
+  $effect(() => { void symbol; void timeframe; judgeResult = null; judgeCacheKey = ''; });
 
   // ── Expand + Drawer ───────────────────────────────────────────────────────
   function toggleExpand() {
@@ -300,8 +363,13 @@
           <JudgePanel
             {symbol}
             {timeframe}
+            verdict={judgeResult ? { direction: judgeResult.verdict as 'bullish' | 'bearish' | 'neutral' } : null}
+            entry={judgeResult?.entry ?? null}
+            stop={judgeResult?.stop ?? null}
+            target={judgeResult?.target ?? null}
+            pWin={judgeResult?.p_win ?? null}
             captures={judgeCaptures}
-            saving={judgeSaving}
+            saving={judgeSaving || judgeLoading}
             onSaveJudgment={handleSaveJudgment}
             onOpenCapture={openCapture}
           />
@@ -346,8 +414,13 @@
     <JudgePanel
       {symbol}
       {timeframe}
+      verdict={judgeResult ? { direction: judgeResult.verdict as 'bullish' | 'bearish' | 'neutral' } : null}
+      entry={judgeResult?.entry ?? null}
+      stop={judgeResult?.stop ?? null}
+      target={judgeResult?.target ?? null}
+      pWin={judgeResult?.p_win ?? null}
       captures={judgeCaptures}
-      saving={judgeSaving}
+      saving={judgeSaving || judgeLoading}
       onSaveJudgment={handleSaveJudgment}
       onOpenCapture={openCapture}
     />
