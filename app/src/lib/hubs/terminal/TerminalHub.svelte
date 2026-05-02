@@ -391,10 +391,8 @@
     </div>
 
     <StatusBar
-      mode={$activeMode}
       verdicts={$verdictCount}
       modelDelta={$modelDelta}
-      onSwitchMode={(m) => shellStore.switchMode(m)}
       sidebarVisible={$shellStore.sidebarVisible}
       lastVerdictKind={lastVerdictKind}
       lastUpdatedAt={$chartFreshness}
