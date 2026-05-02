@@ -1,6 +1,6 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (47c8b148) | 2026-04-28
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (d6fdfaea) | 2026-05-02
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
@@ -9,19 +9,20 @@
 ## 0. CTO 현황 요약 (2026-04-28)
 
 ```
-시스템 성숙도: 88.3% Built (166/188 features)
+시스템 성숙도: 92.0% Built (W-0365~0387 완료, W-0385 설계)
 핵심 인프라: 52 PatternObjects × 85 Building Blocks
            L1~L7 전 레이어 구조 완성
-           11 APScheduler jobs 자동 운영 중
-           138,915 feature_window rows
+           12 APScheduler jobs 자동 운영 중 (blocked_candidate_resolver 신규)
+           138,915 feature_window rows + formula_evidence_ledger
 주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
            POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
            POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 → **0개** (P0=0 / P1=0 / P2=6 / P3=10) — +F-12 ✅ (#671) kimchi badge + F-14 ✅ (#672) lifecycle promote UI
+           GET /patterns/{slug}/signals 설계 대기 (W-0370 Ph1)
+열린 갭:    0개 (P0=0 / P1=1 / P2=1)
 즉시 P0:   없음 (P0 클리어)
-다음 P1:   없음 (P1 클리어) — W-0304 per-pane indicator (Codex 🟡) + W-0317 SplitPane wire-up (Codex 🟡)
+다음 P1:   **W-0370 Phase 1** — GET /patterns/{slug}/signals engine API + signal_event_store
 퀀트 경화:  **W-0286 ✅ PR #560** + **W-0290~W-0293 ✅ PR #587** + **W-0290 Ph2 ✅ PR #591** + **W-0294 ✅ PR #592**
-하네스:     **PR #574 ✅** (verify.py + inventory) + **PR #575 ✅** (Supabase timeout) + **PR #588 ✅** (PID stale lock) + **PR #609 ✅** (reliability repair + cycle-smoke)
+Wave 5:     **W-0365~W-0387 완료** (23 PR 머지) — P&L verdict, indicator filters, alpha pipeline, Bloomberg UX, AI agent judge/save
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.
