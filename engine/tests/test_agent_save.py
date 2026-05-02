@@ -143,11 +143,18 @@ def test_save_log_verdict_mapping(client, monkeypatch):
         if cmd == "save":
             logged.append(llm_verdict)
 
+    # asyncio.to_thread is used for both promote_capture and _log_interaction;
+    # running them inline ensures the fire-and-forget log call completes before
+    # the TestClient (sync) returns, avoiding a race condition in CI.
+    async def _inline_to_thread(fn, *args, **kwargs):
+        return fn(*args, **kwargs)
+
     monkeypatch.setattr(
         "api.routes.agent.generate_llm_text",
         AsyncMock(return_value="ETH 매도 진입"),
     )
     monkeypatch.setattr("api.routes.agent._log_interaction", _capture_log)
+    monkeypatch.setattr("asyncio.to_thread", _inline_to_thread)
     mock_sb = MagicMock()
     mock_sb.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
     mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock()

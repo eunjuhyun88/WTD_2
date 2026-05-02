@@ -19,15 +19,13 @@
 
 | 에이전트 | Worktree | 락된 파일 | 상태 |
 |---|---|---|---|
-| Agent A | `elastic-chebyshev` | `shell.store.ts`, `AIAgentPanel.svelte`, `aiQueryRouter.ts`, `TradeMode.svelte` | ✅ merged (#865) |
-| Agent B | `W-0378-p1` (예정) | `engine/api/routes/agent.py`, `app/src/routes/api/terminal/agent/`, `CommandBar.svelte` | 🔵 대기 |
-| Agent C | `W-0370` (예정) | `engine/research/signal_event_store.py`, `SignalFeed.svelte` | 🔵 대기 |
+| — | — | — | 모두 free |
 
 ---
 
 ## main SHA
 
-`78eec131` — HEAD (2026-05-02) — W-0382-D merged: lib/cogochi + components/terminal 삭제 (#906)
+`d893dbe5` — HEAD (2026-05-02) — /닫기 sweep 21 items + inventory refresh (#911)
 
 ---
 
@@ -35,6 +33,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0370-strategy-live-signals` | P1 | 🔵 구현 중 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
@@ -55,8 +54,10 @@
 완료:  W-0374 Phase D-9 ✅ — AI overlay shapes + pattern skeleton + decision auto-refresh (#870)
 완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
 완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
-즉시:  W-0374 Phase D-10 — Bloomberg polish (KpiStrip chart 상단, StatusBar freshness, chartFreshness ChartBoard wiring)
-추후:  W-0304 per-pane indicator (after W-0374 foundation stable)
+완료:  W-0387 ✅ — /agent/judge + /agent/save AI agent LLM verdict + idempotent capture (#904)
+즉시:  W-0370 Phase 1 — GET /patterns/{slug}/signals engine API (signal_event_store + patterns route)
+추후:  W-0370 Phase 2 — frontend signal badges on strategy cards
+추후:  W-0304 per-pane indicator (after W-0370 complete)
 ```
 
 ---
@@ -80,10 +81,12 @@
 
 ---
 
-## 다음 실행 — Phase D-10
+## 다음 실행 — W-0370 Phase 1
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0374-cogochi-bloomberg-ux-restructure.md
-# Phase D-10: Bloomberg polish — ChartBoard setChartFreshness, KpiStrip 확인, redirects
+cat work/active/W-0370-strategy-live-signals.md
+# Phase 1: engine/research/signal_event_store.py — fetch_recent_signals()
+# Phase 1: engine/api/routes/patterns.py — GET /patterns/{slug}/signals
+# Phase 1: engine/tests/test_pattern_signal_api.py — ≥ 5 tests
 ```
