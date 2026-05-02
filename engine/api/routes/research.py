@@ -632,4 +632,3 @@ async def get_blocked_candidates(
 
     rows = q.execute().data
     return [BlockedCandidateItem(**r) for r in rows]
-    )
