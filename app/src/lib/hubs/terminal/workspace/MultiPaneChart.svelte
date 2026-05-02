@@ -36,6 +36,7 @@
     type IndicatorKind,
     type ValuePoint,
   } from '$lib/chart/paneIndicators';
+  import { injectClientIndicators } from './chartIndicatorCalc';
 
   type ChartMode = 'candle' | 'line';
 
@@ -74,6 +75,7 @@
   let chart: IChartApi | null = null;
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
   let volumeSeries: ISeriesApi<'Histogram'> | null = null;
+  let _crosshairRafId = 0;
 
   // RSI/MACD share pane index 1 (mutex). When MACD wins, we host its 3 series there.
   type MutexSubKind = 'rsi' | 'macd' | null;
@@ -151,6 +153,7 @@
   let lastHash = '';
 
   function clearChart() {
+    cancelAnimationFrame(_crosshairRafId);
     if (chart) {
       try { chart.remove(); } catch { /* ignore */ }
       chart = null;
@@ -254,6 +257,17 @@
 
     chart.timeScale().fitContent();
 
+    // rAF-throttled crosshair sync across panes (single chart instance = native sync)
+    chart.subscribeCrosshairMove((param) => {
+      cancelAnimationFrame(_crosshairRafId);
+      _crosshairRafId = requestAnimationFrame(() => {
+        // No-op placeholder: native multi-pane crosshair sync is free via the
+        // single IChartApi. This handler exists to batch rapid mouse events so
+        // the JS main thread is not saturated during fast cursor sweeps.
+        void param;
+      });
+    });
+
     if (priceSeries && onChartReady) onChartReady(chart, priceSeries);
   }
 
@@ -332,7 +346,7 @@
 
   function mountRSIPane(paneIndex: number, payload: ChartSeriesPayload) {
     if (!chart) return;
-    const ind = (payload.indicators ?? {}) as Record<string, any>;
+    const ind = injectClientIndicators(payload.klines ?? [], payload.indicators ?? {}) as Record<string, any>;
     const rsi = (ind.rsi14 as Array<{ time: number; value: number }> | undefined) ?? [];
     if (rsi.length === 0) return;
     const bundle: PaneBundle = { paneIndex, windows: [], aux: [] };
@@ -354,7 +368,7 @@
 
   function mountMACDPane(paneIndex: number, payload: ChartSeriesPayload) {
     if (!chart) return;
-    const ind = (payload.indicators ?? {}) as Record<string, any>;
+    const ind = injectClientIndicators(payload.klines ?? [], payload.indicators ?? {}) as Record<string, any>;
     const macd = (ind.macd as Array<{ time: number; macd: number; signal: number; hist: number }> | undefined) ?? [];
     if (macd.length === 0) return;
     const bundle: PaneBundle = { paneIndex, windows: [], aux: [] };

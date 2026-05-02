@@ -70,6 +70,7 @@
   import { shellStore, activeDrawingMode } from '$lib/hubs/terminal/shell.store';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
   import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
+  import { injectClientIndicators } from './chartIndicatorCalc';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -803,8 +804,8 @@
 
     const w = containerEl?.offsetWidth ?? 900;
 
-    const ind = data.indicators as Record<string, Array<{ time: number; value: number }>>;
     const klines = data.klines as Array<{ time: number; open: number; close: number; high: number; low: number; volume: number }>;
+    const ind = injectClientIndicators(klines, data.indicators) as Record<string, Array<{ time: number; value: number }>>;
     const oiBars = data.oiBars as Array<{ time: number; value: number; color: string }>;
     const fundingBars = data.fundingBars as Array<{ time: number; value: number; color: string }> | undefined;
     const cvdRaw = data.cvdBars as Array<{ time: number; value: number }> | undefined;
@@ -1135,15 +1136,19 @@
     // W-0210 Layer 1: Alpha overlay — ATR levels + phase markers from analysisData
     syncAlphaOverlay();
 
+    let _crosshairRafId = 0;
     mainChart.subscribeCrosshairMove((param) => {
-      if (param.time) {
-        const series = priceSeries;
-        const d = series ? param.seriesData.get(series) as { close?: number; value?: number } | undefined : undefined;
-        liveTick.update({
-          time:  param.time as number,
-          price: d?.close ?? d?.value ?? liveTick.price,
-        });
-      }
+      cancelAnimationFrame(_crosshairRafId);
+      _crosshairRafId = requestAnimationFrame(() => {
+        if (param.time) {
+          const series = priceSeries;
+          const d = series ? param.seriesData.get(series) as { close?: number; value?: number } | undefined : undefined;
+          liveTick.update({
+            time:  param.time as number,
+            price: d?.close ?? d?.value ?? liveTick.price,
+          });
+        }
+      });
     });
 
     // W-0358: note marker click — open NotePanel view for matching note
