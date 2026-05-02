@@ -14,15 +14,21 @@ Use this repository as a low-context AI research operating system.
 
 > **전체 문서 지도는 `AGENTS.md §문서 지도` 에 있음** — 어떤 문서가 왜 존재하는지 거기서 확인.
 
+### 필수 6단계 (skip 금지)
+
 1. `AGENTS.md` — 문서 지도 + 운영 규칙 (§문서 지도 섹션 필독)
 2. `work/active/CURRENT.md` — 지금 할 일 + 에이전트 락 테이블
 3. **`spec/NAMING.md`** — 이름 계약서 (**skip 금지**: 미확인 시 merge conflict. W-0374 사례)
 4. `work/log/` 최신 파일 — 직전 에이전트 완료 내역 (append-only)
-5. 도메인 sub-file (`agents/engine.md` or `agents/app.md` — 작업 유형 기준)
-6. `state/inventory.md` — tools, endpoints, commands 전체 목록
-7. Relevant `work/active/*.md` listed in `CURRENT.md`
-8. Relevant `docs/domains/*.md`
-9. Minimal required code files
+5. **`spec/PRIORITIES.md`** — Wave 우선순위 + **Frozen 항목** (**skip 금지**: Frozen 진입 즉시 중단)
+6. **도메인 sub-file** (`agents/engine.md` or `agents/app.md` — 건드리는 경로 기준, **skip 금지**)
+
+### 조건부 (해당 시만)
+
+7. `state/inventory.md` — tools, endpoints, commands 전체 목록
+8. Relevant `work/active/*.md` listed in `CURRENT.md`
+9. Relevant `docs/domains/*.md`
+10. Minimal required code files
 
 ## Canonical Truth
 
