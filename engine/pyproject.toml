@@ -54,4 +54,9 @@ markers = [
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "import-linter>=2.1",
 ]
+
+[tool.importlinter]
+root_package = "engine"
+include_external_packages = true
