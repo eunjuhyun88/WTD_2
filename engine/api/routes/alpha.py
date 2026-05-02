@@ -409,3 +409,195 @@ async def post_alpha_find(body: _FindBody) -> dict:
         "conditions": [c.model_dump() for c in body.conditions],
         "matches": matches,
     }
+
+
+# ── W-0384: Alpha composite score + scroll segment endpoints ──────────────────
+
+class _ScrollQuery(BaseModel):
+    symbol: str
+    from_ts: str   # ISO8601
+    to_ts: str     # ISO8601
+    timeframe: str = "1h"
+    top_k: int = Field(default=10, ge=1, le=20)
+
+
+class _ScanQuery(BaseModel):
+    symbols: str | None = None   # comma-separated, e.g. "ETHUSDT,BTCUSDT"
+    universe: str | None = None  # "all" → full alpha universe
+
+
+@router.get("/alpha/scroll")
+async def get_alpha_scroll(
+    symbol: str,
+    from_ts: str,
+    to_ts: str,
+    timeframe: str = "1h",
+    top_k: int = Query(default=10, ge=1, le=20),
+) -> dict:
+    """Scroll segment analysis: indicator snapshot + anomaly flags + similar segments.
+
+    Trigger: chart scroll event stops on a time range.
+    Returns segment analysis + alpha composite score + top-K similar historical windows.
+    Cache: 5min (same symbol+from+to+tf).
+    Timeout: 3s.
+    """
+    import asyncio
+    from datetime import datetime
+    from alpha.composite_score import AlphaScoreRequest, compute_alpha_score
+    from alpha.scroll_segment import ScrollSegmentRequest, analyze_scroll_segment
+    from alpha.scroll_similar_compose import find_similar_segments
+    from dataclasses import asdict
+
+    try:
+        from_dt = datetime.fromisoformat(from_ts.replace("Z", "+00:00"))
+        to_dt = datetime.fromisoformat(to_ts.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid timestamp: {exc}")
+
+    seg_req = ScrollSegmentRequest(
+        symbol=symbol.upper(),
+        from_ts=from_dt,
+        to_ts=to_dt,
+        timeframe=timeframe,
+    )
+    alpha_req = AlphaScoreRequest(symbol=symbol.upper(), timeframe=timeframe, reference_ts=to_dt)
+
+    try:
+        segment, alpha_score = await asyncio.gather(
+            asyncio.get_event_loop().run_in_executor(None, analyze_scroll_segment, seg_req),
+            compute_alpha_score(alpha_req),
+        )
+    except Exception as exc:
+        log.warning("alpha/scroll error for %s: %s", symbol, exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    segment.alpha_score = alpha_score
+
+    # Similar segments — best-effort, timeout tolerant
+    try:
+        similar = await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(
+                None, find_similar_segments, segment, top_k
+            ),
+            timeout=2.5,
+        )
+        similar_dict = {
+            "query_symbol": similar.query_symbol,
+            "similar_segments": [
+                {
+                    "symbol": s.symbol,
+                    "from_ts": s.from_ts.isoformat(),
+                    "to_ts": s.to_ts.isoformat(),
+                    "similarity_score": s.similarity_score,
+                    "layer_scores": s.layer_scores,
+                    "forward_pnl_1h": s.forward_pnl_1h,
+                    "forward_pnl_4h": s.forward_pnl_4h,
+                    "forward_pnl_24h": s.forward_pnl_24h,
+                    "outcome": s.outcome,
+                    "explanation": s.explanation,
+                }
+                for s in similar.similar_segments
+            ],
+            "win_rate": similar.win_rate,
+            "avg_pnl": similar.avg_pnl,
+            "confidence": similar.confidence,
+            "run_id": similar.run_id,
+        }
+    except (asyncio.TimeoutError, Exception) as exc:
+        log.debug("alpha/scroll: similar search skipped (%s)", exc)
+        similar_dict = {"similar_segments": [], "confidence": "low", "run_id": ""}
+
+    def _signal_dict(sig):
+        return {
+            "dimension": sig.dimension,
+            "score_delta": sig.score_delta,
+            "label": sig.label,
+            "raw_value": sig.raw_value,
+            "threshold_used": sig.threshold_used,
+        }
+
+    return {
+        "segment": {
+            "symbol": segment.symbol,
+            "from_ts": segment.from_ts.isoformat(),
+            "to_ts": segment.to_ts.isoformat(),
+            "timeframe": segment.timeframe,
+            "n_bars": segment.n_bars,
+            "indicator_snapshot": segment.indicator_snapshot,
+            "anomaly_flags": [
+                {
+                    "ts": f.ts.isoformat(),
+                    "dimension": f.dimension,
+                    "severity": f.severity,
+                    "description": f.description,
+                    "z_score": f.z_score,
+                }
+                for f in segment.anomaly_flags
+            ],
+        },
+        "alpha_score": {
+            "symbol": alpha_score.symbol,
+            "score": alpha_score.score,
+            "verdict": alpha_score.verdict,
+            "signals": [_signal_dict(s) for s in alpha_score.signals],
+            "computed_at": alpha_score.computed_at.isoformat(),
+            "data_freshness_s": alpha_score.data_freshness_s,
+        },
+        "similar": similar_dict,
+    }
+
+
+@router.get("/alpha/scan")
+async def get_alpha_scan(
+    symbols: str | None = Query(default=None),
+    universe: str | None = Query(default=None),
+) -> dict:
+    """Compute Alpha composite scores for a list of symbols or the full universe.
+
+    ?symbols=ETHUSDT,BTCUSDT  — specific symbols
+    ?universe=all             — full 3-source alpha universe
+    Returns scores sorted descending.
+    """
+    import asyncio
+    from alpha.composite_score import AlphaScoreRequest, compute_alpha_score
+    from alpha.universe_seed import get_alpha_universe
+
+    if universe == "all":
+        target_symbols = await get_alpha_universe()
+    elif symbols:
+        target_symbols = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    else:
+        raise HTTPException(status_code=400, detail="Provide ?symbols= or ?universe=all")
+
+    if not target_symbols:
+        raise HTTPException(status_code=400, detail="No symbols resolved")
+
+    # Cap at 50 to avoid timeout
+    target_symbols = target_symbols[:50]
+
+    requests = [AlphaScoreRequest(symbol=s) for s in target_symbols]
+    results = await asyncio.gather(
+        *[compute_alpha_score(r) for r in requests],
+        return_exceptions=True,
+    )
+
+    scores = []
+    for sym, result in zip(target_symbols, results):
+        if isinstance(result, Exception):
+            log.debug("alpha/scan: %s failed: %s", sym, result)
+            continue
+        scores.append({
+            "symbol": result.symbol,
+            "score": result.score,
+            "verdict": result.verdict,
+            "signal_count": len(result.signals),
+            "computed_at": result.computed_at.isoformat(),
+        })
+
+    scores.sort(key=lambda x: -x["score"])
+    return {
+        "scores": scores,
+        "universe_size": len(target_symbols),
+        "returned": len(scores),
+        "computed_at": scores[0]["computed_at"] if scores else None,
+    }
