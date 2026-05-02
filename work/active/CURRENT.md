@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`d893dbe5` — HEAD (2026-05-02) — /닫기 sweep 21 items + inventory refresh (#911)
+`d6fdfaea` — HEAD (2026-05-02) — CURRENT.md SHA update + W-0370 next + test race fix (#912)
 
 ---
 
