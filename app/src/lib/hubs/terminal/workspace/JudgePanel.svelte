@@ -112,7 +112,7 @@
     <div class="tm-act-col judge-col">
       <div class="judge-head">
         <span class="col-label">B · JUDGE NOW</span>
-        <span class="judge-q">이 셋업, <strong>내 돈을 걸만한가?</strong></span>
+        <span class="judge-q">Is this setup <strong>worth my money?</strong></span>
       </div>
       <div class="judge-btns">
         <button
@@ -121,7 +121,7 @@
           onclick={() => onSetJudgeVerdict('agree')}
         >
           <span class="jb-key">Y</span>
-          <div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div>
+          <div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">Enter</span></div>
         </button>
         <button
           class="judge-btn disagree"
@@ -129,11 +129,11 @@
           onclick={() => onSetJudgeVerdict('disagree')}
         >
           <span class="jb-key">N</span>
-          <div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div>
+          <div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">Pass</span></div>
         </button>
       </div>
       <div class="judge-tags">
-        {#each ['확증부족', 'R:R낮음', 'regime안맞음', 'FOMO', '크기초과'] as tag}
+        {#each ['Insufficient evidence', 'Low R:R', 'Wrong regime', 'FOMO', 'Oversized'] as tag}
           <span class="judge-tag">{tag}</span>
         {/each}
       </div>
@@ -166,36 +166,36 @@
           </span>
           <span class="spacer"></span>
           {#if judgeSubmitting}
-            <span class="result-hint">저장 중…</span>
+            <span class="result-hint">Saving…</span>
           {:else if judgeSubmitResult?.saved}
             <span class="result-hint" style:color="var(--pos)">
-              저장됨 {judgeSubmitResult.training_triggered ? '· 학습 시작' : `· ${judgeSubmitResult.count}건`}
+              Saved {judgeSubmitResult.training_triggered ? '· Training started' : `· ${judgeSubmitResult.count} records`}
             </span>
           {:else}
-            <span class="result-hint">flywheel 연결 중</span>
+            <span class="result-hint">Connecting to flywheel</span>
           {/if}
         </div>
         <div class="rejudge-label">REJUDGE</div>
         <div class="rejudge-btns">
           <button class="rj-btn rj-pos" class:active={judgeRejudged === 'right'} onclick={() => onSetJudgeRejudged('right')}>
-            옳았다 <span class="rj-sub">+보강</span>
+            Correct <span class="rj-sub">+reinforce</span>
           </button>
           <button class="rj-btn rj-neg" class:active={judgeRejudged === 'wrong'} onclick={() => onSetJudgeRejudged('wrong')}>
-            틀렸다 <span class="rj-sub">뒤집기</span>
+            Wrong <span class="rj-sub">flip</span>
           </button>
         </div>
         {#if judgeVerdict && judgeRejudged}
           {@const consistent = (judgeVerdict === 'agree' && judgeRejudged === 'right') || (judgeVerdict === 'disagree' && judgeRejudged === 'wrong')}
           <div class="tm-bias-box" class:tm-bias-good={consistent} class:tm-bias-warn={!consistent}>
             {#if consistent}
-              <strong>✓ 일관 판정</strong> <span>· 가중치 +0.04</span>
+              <strong>✓ Consistent judgment</strong> <span>· weight +0.04</span>
             {:else}
-              <strong>⚑ 편향 감지</strong> <span>· Train 권장</span>
+              <strong>⚑ Bias detected</strong> <span>· Training recommended</span>
             {/if}
           </div>
         {/if}
       {:else}
-        <div class="tm-after-empty">매매 결과 선택시<br>재판정 가능</div>
+        <div class="tm-after-empty">Select a trade outcome<br>to re-judge</div>
       {/if}
     </div>
   </div>

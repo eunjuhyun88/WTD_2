@@ -68,12 +68,12 @@
   </span>
 
   <span class="divider">│</span>
-  <span class="status-item" title="누적 판단 (AGREE/DISAGREE) 수">
+  <span class="status-item" title="Cumulative verdict count (AGREE/DISAGREE)">
     verdicts <strong>{verdicts}</strong>
   </span>
 
   <span class="divider">│</span>
-  <span class="status-item" title="모델 예측 대비 실제 수익 편차">
+  <span class="status-item" title="Actual profit deviation vs. model prediction">
     drift <strong class:positive={modelDelta >= 0} class:negative={modelDelta < 0}>
       {modelDelta >= 0 ? '+' : ''}{modelDelta.toFixed(3)}
     </strong>
@@ -81,7 +81,7 @@
 
   {#if lastVerdictKind}
     <span class="divider">│</span>
-    <span class="status-item" title="최근 verdict (LONG/SHORT/WAIT)">
+    <span class="status-item" title="Latest verdict (LONG/SHORT/WAIT)">
       verdict
       <span
         class="verdict-pill"
@@ -94,7 +94,7 @@
 
   {#if freshnessSec !== null}
     <span class="divider">│</span>
-    <span class="status-item" title="최근 데이터 갱신 경과 시간">
+    <span class="status-item" title="Time since last data refresh">
       fresh <strong class={freshnessClass}>{freshnessSec}s</strong>
     </span>
   {/if}

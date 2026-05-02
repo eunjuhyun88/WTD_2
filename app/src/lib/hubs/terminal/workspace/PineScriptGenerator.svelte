@@ -190,7 +190,7 @@
             {/if}
             {#if result.limitations}
               <div class="pine-note">
-                <span class="pine-note-label">한계</span>
+                <span class="pine-note-label">Limits</span>
                 <span class="pine-note-text">{result.limitations}</span>
               </div>
             {/if}
@@ -199,7 +199,7 @@
 
         <!-- Re-generate -->
         <button class="pine-regen-btn" onclick={() => { result = null; }}>
-          ← 다시 작성
+          ← Rewrite
         </button>
       </div>
     {/if}

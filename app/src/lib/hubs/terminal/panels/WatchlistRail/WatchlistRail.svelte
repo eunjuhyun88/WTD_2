@@ -165,9 +165,9 @@
     const sym = addInput.trim().toUpperCase();
     addError = '';
     if (!sym) return;
-    if (symbols.includes(sym)) { addError = '이미 추가됨'; return; }
-    if (symbols.length >= MAX_SYMBOLS) { addError = `최대 ${MAX_SYMBOLS}개`; return; }
-    if (!/^[A-Z]{2,10}USDT$/.test(sym)) { addError = 'USDT 페어만 지원 (예: BTCUSDT)'; return; }
+    if (symbols.includes(sym)) { addError = 'Already added'; return; }
+    if (symbols.length >= MAX_SYMBOLS) { addError = `Max ${MAX_SYMBOLS}`; return; }
+    if (!/^[A-Z]{2,10}USDT$/.test(sym)) { addError = 'USDT pairs only (e.g. BTCUSDT)'; return; }
     symbols = [...symbols, sym];
     saveSymbols(symbols);
     addInput = '';
@@ -253,7 +253,7 @@
   <!-- 내 패턴 -->
   {#if !folded}
     <div class="section-header">
-      <span class="section-label">내 패턴</span>
+      <span class="section-label">My Patterns</span>
       {#if !patternsLoading}
         <span class="section-count">{myPatterns.length}</span>
       {/if}
@@ -261,7 +261,7 @@
     {#if patternsLoading}
       <div class="empty">loading…</div>
     {:else if myPatterns.length === 0}
-      <div class="empty">없음</div>
+      <div class="empty">None</div>
     {:else}
       <ul class="pattern-list">
         {#each myPatterns as p (p.slug)}
