@@ -1,13 +1,11 @@
-"""Research proposers — LLM, GP, grid-based rule change proposers."""
-from __future__ import annotations
+# backward-compat shim package: research.proposer → research.discovery.proposer
+import sys as _sys
+import importlib as _il
 
-__all__ = [
-    "LLMProposer",
-    "LLMProposerConfig",
-    "ChangeProposal",
-    "ProposalBatch",
-    "ActiveRules",
-    "Thresholds",
-    "FilterRule",
-    "RegimeWeights",
-]
+_canonical = "research.discovery.proposer"
+_alias = "research.proposer"
+
+_target = _il.import_module(_canonical)
+_sys.modules[_alias] = _target
+
+from research.discovery.proposer import *  # noqa: F401, F403

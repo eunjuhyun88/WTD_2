@@ -1,18 +1,11 @@
-"""Optuna TPE grid proposer."""
-from __future__ import annotations
+# backward-compat shim: research.proposer.grid_proposer → research.discovery.proposer.grid_proposer
+import sys as _sys
+import importlib as _il
 
-from engine.research.proposer.schemas import ChangeProposal
+_canonical = "research.discovery.proposer.grid_proposer"
+_alias = "research.proposer.grid_proposer"
 
+_target = _il.import_module(_canonical)
+_sys.modules[_alias] = _target
 
-class GridProposer:
-    """Optuna TPE sampler for threshold space exploration."""
-
-    def __init__(self, n_trials: int = 30) -> None:
-        self.n_trials = n_trials
-
-    def propose(self, rules_before: dict, eval_fn) -> list[ChangeProposal]:
-        """Optuna TPE sweep on threshold space.
-
-        TODO: Phase 4 full implementation with Optuna TPE.
-        """
-        return []
+from research.discovery.proposer.grid_proposer import *  # noqa: F401, F403

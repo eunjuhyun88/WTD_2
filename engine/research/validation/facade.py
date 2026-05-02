@@ -19,20 +19,20 @@ from typing import Literal, Optional
 
 import numpy as np
 
-from engine.research.proposer.schemas import ChangeProposal
-from engine.features.gex_pressure import gex_filter_proposal
-from engine.research.validation.pbo import pbo_filter_proposal
-from engine.research.validation.pipeline import (
+from research.discovery.proposer.schemas import ChangeProposal
+from features.gex_pressure import gex_filter_proposal
+from research.validation.pbo import pbo_filter_proposal
+from research.validation.pipeline import (
     ValidationPipelineConfig,
     ValidationReport,
     run_validation_pipeline,
 )
-from engine.research.validation.gates import (
+from research.validation.gates import (
     GateV2Config,
     GateV2Result,
     evaluate_gate_v2,
 )
-from engine.research.validation.hypothesis_registry_store import (
+from research.validation.hypothesis_registry_store import (
     HypothesisRegistryStore,
 )
 

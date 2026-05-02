@@ -1,12 +1,11 @@
-"""Event Tracker — W-0099 Pattern Discovery Agent infrastructure.
+# backward-compat shim package: research.event_tracker → research.discovery.event_tracker
+import sys as _sys
+import importlib as _il
 
-Detects extreme market events (funding extremes, OI spikes, compression),
-tracks 24/48/72h outcomes, and classifies events as predictive or not.
-Feed predictive events into BenchmarkPackBuilder to auto-generate benchmark
-packs for pattern-benchmark-search.
-"""
-from research.event_tracker.detector import ExtremeEventDetector
-from research.event_tracker.models import ExtremeEvent
-from research.event_tracker.tracker import OutcomeTracker
+_canonical = "research.discovery.event_tracker"
+_alias = "research.event_tracker"
 
-__all__ = ["ExtremeEventDetector", "ExtremeEvent", "OutcomeTracker"]
+_target = _il.import_module(_canonical)
+_sys.modules[_alias] = _target
+
+from research.discovery.event_tracker import *  # noqa: F401, F403

@@ -1,62 +1,18 @@
-"""W-0382: Supabase store for blocked_candidates (NEUTRAL / filtered signals).
+# backward-compat shim: research.blocked_candidate_store → research.artifacts.blocked_candidate_store
+# Uses sys.modules alias for full transparency (monkeypatch/mock compatibility)
+import sys as _sys
+import importlib as _il
 
-Records every signal that was discarded before emission so counterfactual
-analysis can measure what the filter cost us.
-"""
-from __future__ import annotations
+_canonical = "research.artifacts.blocked_candidate_store"
+_alias = "research.blocked_candidate_store"
 
-import logging
-import os
-from typing import Literal
+# Ensure the canonical module is loaded
+_target = _il.import_module(_canonical)
 
-log = logging.getLogger("engine.research.blocked_candidate_store")
+# Replace this module in sys.modules with the canonical one
+# This means "import research.blocked_candidate_store" or "from research import blocked_candidate_store"
+# will get the SAME object as "import research.artifacts.blocked_candidate_store"
+_sys.modules[_alias] = _target
 
-BLOCKED_CANDIDATES_TABLE = "blocked_candidates"
-
-FilterReason = Literal[
-    "below_min_conviction",
-    "timing_conflict",
-    "regime_mismatch",
-    "heat_too_high",
-    "insufficient_liquidity",
-    "spread_too_wide",
-    "duplicate_signal",
-    "conflicting_signals",
-    "stale_context",
-]
-
-
-def _sb():
-    from supabase import create_client
-    return create_client(
-        os.environ["SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
-    )
-
-
-def insert_blocked_candidate(
-    *,
-    symbol: str,
-    timeframe: str = "1h",
-    direction: str,
-    reason: FilterReason,
-    score: float | None = None,
-    p_win: float | None = None,
-) -> None:
-    """Fire-and-forget insert. Logs on failure, never raises."""
-    row: dict = {
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "direction": direction,
-        "reason": reason,
-    }
-    if score is not None:
-        row["score"] = score
-    if p_win is not None:
-        row["p_win"] = p_win
-
-    try:
-        sb = _sb()
-        sb.table(BLOCKED_CANDIDATES_TABLE).insert(row).execute()
-    except Exception as exc:
-        log.warning("blocked_candidate insert failed (%s %s %s): %s", symbol, timeframe, reason, exc)
+# Still export everything for "from research.blocked_candidate_store import ..." style
+from research.artifacts.blocked_candidate_store import *  # noqa: F401, F403
