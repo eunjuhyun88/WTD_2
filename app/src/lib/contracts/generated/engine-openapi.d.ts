@@ -3114,6 +3114,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/judge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Judge */
+        post: operations["judge_agent_judge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save */
+        post: operations["save_agent_save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -3871,6 +3905,53 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** JudgeRequest */
+        JudgeRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Timeframe
+             * @default 4h
+             */
+            timeframe: string;
+            /** Indicator Snapshot */
+            indicator_snapshot?: {
+                [key: string]: number;
+            };
+            /** Alpha Score */
+            alpha_score?: {
+                [key: string]: unknown;
+            } | null;
+            /** Last Price */
+            last_price?: number | null;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** JudgeResponse */
+        JudgeResponse: {
+            /** Verdict */
+            verdict: string;
+            /** Entry */
+            entry: number | null;
+            /** Stop */
+            stop: number | null;
+            /** Target */
+            target: number | null;
+            /** P Win */
+            p_win: number | null;
+            /** Rr */
+            rr: number | null;
+            /** Rationale */
+            rationale: string;
+            /** Text */
+            text: string;
+            /** Cmd */
+            cmd: string;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Provider */
+            provider: string;
         };
         /**
          * KlineBar
@@ -5218,6 +5299,46 @@ export interface components {
             workspace: {
                 [key: string]: unknown;
             };
+        };
+        /** SaveRequest */
+        SaveRequest: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Timeframe
+             * @default 4h
+             */
+            timeframe: string;
+            /** Snapshot */
+            snapshot?: {
+                [key: string]: number;
+            };
+            /** Decision */
+            decision?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Trigger Origin
+             * @default agent_judge
+             */
+            trigger_origin: string;
+            /** User Id */
+            user_id?: string | null;
+        };
+        /** SaveResponse */
+        SaveResponse: {
+            /** Capture Id */
+            capture_id: string;
+            /** Dup Of */
+            dup_of: string | null;
+            /** Reason Summary */
+            reason_summary: string | null;
+            /** Cmd */
+            cmd: string;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Provider */
+            provider: string;
         };
         /** ScanMatch */
         ScanMatch: {
@@ -11212,6 +11333,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    judge_agent_judge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JudgeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JudgeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_agent_save_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
                 };
             };
             /** @description Validation Error */
