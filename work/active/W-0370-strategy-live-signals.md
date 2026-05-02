@@ -119,3 +119,64 @@ app/src/routes/strategies/+page.svelte  # 드릴다운 확장
 - [ ] AC5: `pnpm check` 0 new errors
 - [ ] CI green
 - [ ] PR merged + CURRENT.md SHA 업데이트
+
+## Owner
+
+engine (Phase 1) + app (Phase 2)
+
+## Canonical Files
+
+```
+engine/research/signal_event_store.py
+engine/api/routes/patterns.py
+engine/tests/test_pattern_signal_api.py
+app/src/lib/api/strategyBackend.ts
+app/src/lib/strategy/SignalFeed.svelte
+app/src/lib/strategy/PatternStrategyCard.svelte
+app/src/routes/strategies/+page.svelte
+```
+
+## Facts
+
+```
+grep -n "fetch_resolved_outcomes" engine/research/signal_event_store.py
+# → exists, reuse pattern for fetch_recent_signals
+
+grep -n "scan_signal_events\|scan_signal_outcomes" engine/research/signal_event_store.py
+# → tables in use, migration 037 applied
+
+ls app/src/lib/strategy/
+# → PatternStrategyCard.svelte exists, SignalFeed.svelte to be created
+
+grep -n "slug.*signals\|/signals" engine/api/routes/patterns.py
+# → endpoint not yet present
+```
+
+## Assumptions
+
+- `scan_signal_events` 테이블과 `scan_signal_outcomes` 테이블은 migration 037 (W-0367) 로 존재
+- `ENABLE_SIGNAL_EVENTS=true` 환경에서만 데이터 있음 — false면 empty state 처리
+- Phase 1은 engine-only, Phase 2는 app-only — 독립 PR 2개
+
+## Next Steps
+
+```
+Phase 1:
+1. engine/research/signal_event_store.py — fetch_recent_signals() 추가
+2. engine/api/routes/patterns.py — GET /patterns/{slug}/signals 라우트 추가
+3. engine/tests/test_pattern_signal_api.py — ≥ 5 tests 작성
+4. PR 생성 + CI green + merge
+
+Phase 2 (Phase 1 merge 후):
+1. app/src/lib/api/strategyBackend.ts — fetchPatternSignals() 추가
+2. app/src/lib/strategy/SignalFeed.svelte — 신규 신호 목록 컴포넌트
+3. app/src/lib/strategy/PatternStrategyCard.svelte — last signal 배지
+4. app/src/routes/strategies/+page.svelte — 드릴다운 신호 탭
+```
+
+## Handoff Checklist
+
+- [ ] Phase 1 PR merged, engine-openapi.d.ts sync 확인
+- [ ] CURRENT.md SHA 업데이트
+- [ ] `scan_signal_events` 테이블 실제 데이터 유무 확인 (ENABLE_SIGNAL_EVENTS 환경변수)
+- [ ] Phase 2 시작 전 Phase 1 endpoint 로컬 curl 검증
