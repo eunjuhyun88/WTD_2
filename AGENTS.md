@@ -2,6 +2,62 @@
 
 Execution rules for humans and coding agents.
 
+---
+
+## 문서 지도 — 전체 문서 구조 + 읽기 순서
+
+### 필수 4단계 (모든 에이전트, skip 금지)
+
+| 순서 | 파일 | 목적 | 확인 항목 |
+|---|---|---|---|
+| 1 | `AGENTS.md` (지금 여기) | 문서 지도 + 운영 규칙 | 이 섹션 전체 |
+| 2 | `work/active/CURRENT.md` | 지금 뭐 해야 하나, 에이전트 락 테이블 | 락 테이블 내 파일 겹침 여부 |
+| 3 | `spec/NAMING.md` | 이름 계약서 | 탭명·SHELL_KEY·파일경로 |
+| 4 | `work/log/` 최신 파일 | 직전 에이전트가 뭘 했나 | 마지막 entry SHA + 락 해제 목록 |
+
+### 도메인 게이트 (건드리는 경로 기준, 추가 로드)
+
+| 경로 | 추가 로드 |
+|---|---|
+| `app/src/` | `CLAUDE.md` → `agents/app.md` |
+| `engine/` | `CLAUDE.md` → `agents/engine.md` |
+| worktree/PR/멀티에이전트 | `agents/coordination.md` |
+| `app/src/lib/cogochi/**` | `work/active/PRODUCT-DESIGN-PAGES-V2.md` 추가 |
+
+### 제약 확인 (새 기능 시작 전만)
+
+| 파일 | 목적 |
+|---|---|
+| `spec/PRIORITIES.md` | Wave 우선순위, Frozen 항목 — **Frozen 발견 시 즉시 중단** |
+| `spec/CHARTER.md` | 제품 가드레일 1페이지 |
+
+### 설계·제품 진실 (해당 도메인 작업 시만)
+
+| 파일 | 언제 읽는가 |
+|---|---|
+| `work/active/PRODUCT-DESIGN-PAGES-V2.md` | cogochi/ UX 변경 시 |
+| `work/active/PTRACK.md` | 패턴 엔진 실적 추적 관련 작업 시 |
+| `docs/live/PRD.md` | 전체 제품 요구사항 확인 시 |
+| `docs/design/` | 아키텍처·설계 문서 (MASTER_ARCHITECTURE 등) |
+| `docs/decisions/` | 아키텍처 결정 기록 (ADR, 번호 결정) |
+| `docs/runbooks/` | 배포·장애 대응 |
+
+### 상태·운영 (필요 시만)
+
+| 파일 | 목적 |
+|---|---|
+| `state/inventory.md` | 자동생성 — tools/endpoints 전체 (수동 편집 금지) |
+| `memory/` | MemKraft 메모리 (decisions/incidents/sessions) |
+| `work/active/W-XXXX-slug.md` | 개별 work item 상세 |
+| `work/log/YYYY-MM-DD.md` | append-only 진행 로그 — 에이전트 완료 이력 |
+
+### CURRENT.md vs work/log/ 역할 분리
+
+- **`work/active/CURRENT.md`** = "지금 뭐 해야 하나" (다음 실행 + 활성 work item + 락 테이블)
+- **`work/log/YYYY-MM-DD.md`** = "지금까지 뭐 했나" (완료 이력 누적, 덮어쓰기 금지)
+
+---
+
 ## Core Rules
 
 1. `engine/` is the only backend truth.

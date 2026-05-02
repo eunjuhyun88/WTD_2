@@ -33,6 +33,22 @@ argument-hint: "shipped" "handoff" [lesson]
 bash tools/complete_work_item.sh W-XXXX
 ```
 
+## 로그 append (필수 — 자동 또는 수동)
+
+`work/log/$(date +%Y-%m-%d).md` 파일에 아래 형식으로 **맨 아래에 append**:
+
+```
+## HH:MM | {worktree-slug} | {W-XXXX 또는 작업명}
+- **완료**: {한 일 1줄}
+- **PR**: #{N} {merged/open} → SHA `{SHA}`
+- **락 해제**: {파일 목록 또는 "없음"}
+- **다음 에이전트에게**: {인계 사항}
+```
+
+**규칙**: 기존 entry 수정·삭제 금지. append만.
+
+---
+
 ## 실행 후
 
 다음을 사용자에게 표시:
