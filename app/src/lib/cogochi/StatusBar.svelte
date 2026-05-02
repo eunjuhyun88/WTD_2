@@ -5,22 +5,17 @@
     modelDelta: number;
     onSwitchMode: (mode: 'trade' | 'train' | 'flywheel') => void;
     sidebarVisible: boolean;
-    /** D-10: latest verdict label, e.g. "LONG" / "SHORT" / "WAIT" / null. */
     lastVerdictKind?: 'LONG' | 'SHORT' | 'WAIT' | null;
-    /** D-10: epoch ms of latest data tick (chart price). null = unknown. */
     lastUpdatedAt?: number | null;
+    scannerSymCount?: number;
+    scannerAgeSec?: number;
   }
 
   const {
     mode, verdicts, modelDelta, onSwitchMode, sidebarVisible,
     lastVerdictKind = null, lastUpdatedAt = null,
+    scannerSymCount = 0, scannerAgeSec = 0,
   }: Props = $props();
-
-  const modes = [
-    { id: 'trade', label: 'TRADE', color: 'var(--brand)' },
-    { id: 'train', label: 'TRAIN', color: 'var(--amb)' },
-    { id: 'flywheel', label: 'FLYWHEEL', color: '#7aa2e0' },
-  ];
 
   function getTime(): string {
     const now = new Date();
@@ -48,23 +43,32 @@
 </script>
 
 <div class="status-bar">
-  <div class="mode-selector">
-    {#each modes as m (m.id)}
-      <button
-        class="mode-btn"
-        class:active={mode === m.id}
-        style:--mode-color={m.color}
-        onclick={() => onSwitchMode(m.id as any)}
-      >
-        {m.label}
-      </button>
-    {/each}
-  </div>
+  <!-- verdict pill — L1, most prominent element -->
+  {#if lastVerdictKind}
+    <span
+      class="verdict-pill"
+      class:vp-long={lastVerdictKind === 'LONG'}
+      class:vp-short={lastVerdictKind === 'SHORT'}
+      class:vp-wait={lastVerdictKind === 'WAIT'}
+      title="AI verdict"
+    >
+      {lastVerdictKind === 'LONG' ? '▲' : lastVerdictKind === 'SHORT' ? '▼' : '—'}
+      {lastVerdictKind}
+    </span>
+    <span class="divider">│</span>
+  {/if}
 
-  <span class="divider">│</span>
   <span class="status-item">
     <span class="dot"></span>
-    scanner live · 300 sym · 14s
+    scanner
+    {#if scannerSymCount > 0}
+      · {scannerSymCount} sym
+    {/if}
+    {#if scannerAgeSec > 0}
+      · {scannerAgeSec}s
+    {:else}
+      · live
+    {/if}
   </span>
 
   <span class="divider">│</span>
@@ -79,18 +83,6 @@
     </strong>
   </span>
 
-  {#if lastVerdictKind}
-    <span class="divider">│</span>
-    <span class="status-item" title="최근 verdict (LONG/SHORT/WAIT)">
-      verdict
-      <span
-        class="verdict-pill"
-        class:vp-long={lastVerdictKind === 'LONG'}
-        class:vp-short={lastVerdictKind === 'SHORT'}
-        class:vp-wait={lastVerdictKind === 'WAIT'}
-      >{lastVerdictKind}</span>
-    </span>
-  {/if}
 
   {#if freshnessSec !== null}
     <span class="divider">│</span>
@@ -118,42 +110,14 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     padding: 0 10px;
     background: var(--g1);
     border-top: 1px solid var(--g5);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: 11px;
     color: var(--g7);
     letter-spacing: 0.04em;
-  }
-
-  .mode-selector {
-    display: flex;
-    gap: 1px;
-    background: var(--g2);
-    border-radius: 3px;
-    padding: 1px;
-  }
-
-  .mode-btn {
-    padding: 2px 10px;
-    border-radius: 2px;
-    font-size: 9px;
-    background: transparent;
-    color: var(--g7);
-    letter-spacing: 0.1em;
-    font-weight: 400;
-    cursor: pointer;
-    border: 0.5px solid transparent;
-    transition: all 0.15s;
-  }
-
-  .mode-btn.active {
-    background: var(--g0);
-    color: var(--mode-color);
-    font-weight: 600;
-    border-color: color-mix(in srgb, var(--mode-color) 27%, transparent);
   }
 
   .divider {
@@ -187,21 +151,24 @@
     color: var(--neg);
   }
 
-  /* D-10 verdict pill + freshness */
+  /* verdict pill — L1, 14px bold */
   .verdict-pill {
-    display: inline-block;
-    padding: 1px 5px;
-    margin-left: 3px;
-    font-size: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.1em;
-    border-radius: 2px;
-    border: 0.5px solid var(--g4);
+    letter-spacing: 0.06em;
+    border-radius: 3px;
+    border: 1px solid var(--g4);
     background: var(--g2);
     color: var(--g8);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
   }
-  .verdict-pill.vp-long  { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 40%, transparent); }
-  .verdict-pill.vp-short { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 40%, transparent); }
+  .verdict-pill.vp-long  { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 40%, transparent); background: color-mix(in srgb, var(--pos) 8%, transparent); }
+  .verdict-pill.vp-short { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 40%, transparent); background: color-mix(in srgb, var(--neg) 8%, transparent); }
   .verdict-pill.vp-wait  { color: var(--amb, #d6a347); border-color: color-mix(in srgb, var(--amb, #d6a347) 40%, transparent); }
 
   .fresh-good  { color: var(--pos); }

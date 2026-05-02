@@ -398,6 +398,8 @@
       sidebarVisible={$shellStore.sidebarVisible}
       lastVerdictKind={lastVerdictKind}
       lastUpdatedAt={$chartFreshness}
+      scannerSymCount={0}
+      scannerAgeSec={0}
     />
   {/if}
 

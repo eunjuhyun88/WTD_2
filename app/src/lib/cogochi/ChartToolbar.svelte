@@ -112,14 +112,6 @@
     <span class="tb-glyph">+</span><span class="tb-text">Indicator</span>
   </button>
 
-  <button class="tb-btn" onclick={() => dispatch('toggle_replay')} title="Replay (D-5)">
-    <span class="tb-glyph">▶</span><span class="tb-text">Replay</span>
-  </button>
-
-  <button class="tb-btn" onclick={() => dispatch('chart_snapshot')} title="Snapshot (D-6)">
-    <span class="tb-glyph">📷</span><span class="tb-text">Snap</span>
-  </button>
-
   <span class="tb-spacer"></span>
 
   <button class="tb-btn" onclick={onSettings ?? onIndicator} title="Chart settings">
@@ -127,7 +119,7 @@
   </button>
 
   <button class="tb-btn tb-primary" onclick={startSave} title="Save range (B)">
-    <span class="tb-glyph">💾</span><span class="tb-text">Save</span>
+    <span class="tb-text">Save Zone</span>
   </button>
 </div>
 
@@ -169,7 +161,7 @@
     border-radius: 3px;
     color: var(--g7);
     font-family: inherit;
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.04em;
     cursor: pointer;
     transition: background 0.1s, color 0.1s, border-color 0.1s;
@@ -187,9 +179,8 @@
   }
 
   .tb-text {
-    font-size: 9px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.04em;
   }
 
   .tb-trigger.open,
