@@ -1,5 +1,5 @@
 # Inventory — 자동 생성 (tools/refresh_inventory.sh)
-# 마지막 갱신: 2026-05-01
+# 마지막 갱신: 2026-05-02
 # 이 파일을 직접 편집하지 말 것 — 다음 갱신 시 덮어씌워짐
 
 ## Slash Commands
@@ -51,6 +51,7 @@
 | live.sh | Agent heartbeat file manager |
 | measure_context_tokens.sh | 매 세션 자동 주입되는 컨텍스트 파일 토큰 측정 (4... |
 | mk.sh | Repo-pinned MemKraft CLI entrypoint. |
+| refresh_docs_navigator.sh | AGENTS.md §문서 지도 경로 유효성 검증 |
 | refresh_inventory.sh | state/inventory.md 자동 생성 |
 | refresh_state.sh | Derived state 자동 생성 + worktree registry 머지 |
 | save.sh | 세션 중간 체크포인트 (memkraft 기반) |
@@ -63,6 +64,7 @@
 | work_issue_map.sh | work item ↔ GitHub Issue mapping CRUD |
 | worktree-registry.sh | Worktree SSOT registry CLI (state/worktrees.json) |
 | cycle-smoke.py | 1-Cycle Pattern Finding Smoke Test — 5 AC, 17 checks. |
+| import_audit.py | Import coupling audit — run before/after W-0386 phases to track c... |
 | verify.py | CI guard for wtd-v2. |
 | verify/architecture.py | Verify design architecture invariants. |
 | verify/contracts.py | Verify design contract invariants. |
@@ -72,12 +74,19 @@
 
 | Method | Path | File |
 |---|---|---|
+| POST | /agent/explain | routes/agent.py:185 |
+| POST | /agent/alpha-scan | routes/agent.py:239 |
+| POST | /agent/similar | routes/agent.py:268 |
+| POST | /agent/judge | routes/agent.py:335 |
+| POST | /agent/save | routes/agent.py:401 |
 | GET | /alpha/world-model | routes/alpha.py:78 |
 | GET | /alpha/token/{symbol} | routes/alpha.py:120 |
 | GET | /alpha/token/{symbol}/history | routes/alpha.py:176 |
 | GET | /alpha/anomalies | routes/alpha.py:209 |
 | POST | /alpha/watch | routes/alpha.py:244 |
 | POST | /alpha/find | routes/alpha.py:293 |
+| GET | /alpha/scroll | routes/alpha.py:429 |
+| GET | /alpha/scan | routes/alpha.py:550 |
 | POST | /auth/logout | routes/auth.py:27 |
 | POST | /backtest | routes/backtest.py:18 |
 | POST | /captures | routes/captures.py:276 |
@@ -169,6 +178,7 @@
 | GET | /patterns/objects | routes/patterns.py:1187 |
 | GET | /patterns/objects/{slug} | routes/patterns.py:1203 |
 | POST | /patterns/{slug}/verify-paper | routes/patterns.py:1214 |
+| GET | /patterns/{slug}/backtest | routes/patterns.py:1236 |
 | GET | /propfirm/summary | routes/propfirm.py:33 |
 | POST | /propfirm/accounts | routes/propfirm.py:116 |
 | POST | /rag/terminal-scan | routes/rag.py:24 |
@@ -179,16 +189,19 @@
 | GET | /refinement/stats/{slug} | routes/refinement.py:137 |
 | GET | /refinement/suggestions | routes/refinement.py:147 |
 | GET | /refinement/leaderboard | routes/refinement.py:169 |
-| POST | /research/validate | routes/research.py:44 |
-| POST | /research/discover | routes/research.py:94 |
-| POST | /research/autoresearch/trigger | routes/research.py:141 |
-| GET | /research/signals/{symbol} | routes/research.py:184 |
-| GET | /research/runs/{run_id} | routes/research.py:246 |
-| GET | /research/findings | routes/research.py:268 |
-| GET | /research/alpha-quality | routes/research.py:286 |
-| POST | /research/market-search | routes/research.py:308 |
-| GET | /research/indicator-features | routes/research.py:355 |
-| GET | /research/signals/{signal_id}/components | routes/research.py:374 |
+| POST | /research/validate | routes/research.py:52 |
+| POST | /research/discover | routes/research.py:102 |
+| POST | /research/autoresearch/trigger | routes/research.py:149 |
+| GET | /research/signals/{symbol} | routes/research.py:192 |
+| GET | /research/runs/{run_id} | routes/research.py:254 |
+| GET | /research/findings | routes/research.py:276 |
+| GET | /research/alpha-quality | routes/research.py:294 |
+| POST | /research/market-search | routes/research.py:316 |
+| GET | /research/indicator-features | routes/research.py:363 |
+| GET | /research/signals/{signal_id}/components | routes/research.py:382 |
+| GET | /research/top-patterns | routes/research.py:443 |
+| GET | /research/formula-evidence | routes/research.py:544 |
+| GET | /research/blocked-candidates | routes/research.py:602 |
 | POST | /runtime/captures | routes/runtime.py:128 |
 | GET | /runtime/captures | routes/runtime.py:169 |
 | GET | /runtime/captures/{capture_id} | routes/runtime.py:241 |
@@ -258,6 +271,8 @@
 /chart/notes
 /chart/notes/[id]
 /cogochi/alerts
+/cogochi/alpha/scan
+/cogochi/alpha/scroll
 /cogochi/alpha/world-model
 /cogochi/analyze
 /cogochi/news
@@ -292,6 +307,7 @@
 /gmx/prepare
 /klines
 /lab/autorun
+/lab/counterfactual
 /lab/forward-walk
 /live-signals
 /live-signals/verdict
@@ -348,6 +364,8 @@
 /onchain/cryptoquant
 /patterns
 /patterns/[slug]/capture
+/patterns/[slug]/filter-drag
+/patterns/[slug]/formula
 /patterns/[slug]/lifecycle-status
 /patterns/[slug]/pnl-stats
 /patterns/[slug]/stats
@@ -356,6 +374,7 @@
 /patterns/draft-from-range
 /patterns/lifecycle
 /patterns/parse
+/patterns/recall
 /patterns/scan
 /patterns/states
 /patterns/stats
@@ -397,7 +416,13 @@
 /refinement/leaderboard
 /refinement/stats
 /refinement/suggestions
+/research/blocked-candidates
+/research/cycle/[cycle_id]
+/research/formula-evidence
 /research/indicator-features
+/research/ledger
+/research/run-cycle
+/research/strategies
 /runtime/[...path]
 /search/[...path]
 /senti/social
@@ -406,6 +431,7 @@
 /signals/[id]/convert
 /signals/track
 /telegram/webhook
+/terminal/agent/dispatch
 /terminal/alerts
 /terminal/alerts/[id]
 /terminal/anomalies
@@ -436,6 +462,8 @@
 /terminal/watchlist
 /ui-state
 /wallet/intel
+/watchlist
+/whale-alerts
 /wizard
 /yahoo/[symbol]
 
