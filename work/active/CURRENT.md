@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`71e2ab64` — HEAD (2026-05-02) — Phase D-9 merged: AI overlay shapes + pattern skeleton + decision auto-refresh (#870)
+`32c62dd6` — HEAD (2026-05-02) — W-0386-B merged: core_loop spine + pipeline facade (#881)
 
 ---
 
