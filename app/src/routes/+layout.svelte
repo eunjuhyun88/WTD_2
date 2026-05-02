@@ -89,7 +89,7 @@
     {@render children()}
   </div>
 
-  {#if showMobileBottomNav}
+  {#if showMobileBottomNav && !$isTerminal}
     <MobileBottomNav />
   {/if}
 </div>
