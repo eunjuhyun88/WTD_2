@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`8e96aa43` — HEAD (2026-05-02) — [W-0386-D] Scanner Job Protocol + Golden Test + ADR-012 (#897 merged)
+`8f998e73` — HEAD (2026-05-02) — W-0385 complete: PR1+PR2+PR3 merged (#896#901#903)
 
 ---
 
@@ -35,7 +35,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0385-decision-event-ledger` | P1 | 🔴 설계 완료 — 구현 미착수 |
+| `W-0385-decision-event-ledger` | P1 | ✅ PR1 #896 + PR2 #901 + PR3 #903 merged |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---
