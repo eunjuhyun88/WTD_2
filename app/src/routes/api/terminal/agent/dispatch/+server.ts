@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { engineFetch } from '$lib/server/engineTransport';
 
 const DispatchSchema = z.object({
-  cmd: z.enum(['explain', 'scan', 'similar']),
+  cmd: z.enum(['explain', 'scan', 'similar', 'judge', 'save']),
   args: z.string().default(''),
   context: z.record(z.unknown()).optional(),
 });

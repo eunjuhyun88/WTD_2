@@ -1,7 +1,8 @@
-"""POST /agent/{explain,alpha-scan,similar} — AI Agent LLM endpoints (W-0378 Phase 1).
+"""POST /agent/{explain,alpha-scan,similar,judge,save} — AI Agent LLM endpoints.
 
+W-0378 Phase 1: explain, alpha-scan, similar
+W-0387 Phase 2: judge, save
 All endpoints call generate_llm_text() and log to agent_interactions.
-Exa news enrichment is non-blocking — missing key or timeout → degraded gracefully.
 """
 from __future__ import annotations
 
@@ -16,6 +17,17 @@ from pydantic import BaseModel, Field
 
 from agents.llm_runtime import generate_llm_text, resolve_llm_settings
 from agents.external_enrichment import fetch_news_context, extract_symbol_base, detect_risk_news
+from agents.judge_runtime import (
+    build_judge_prompt,
+    parse_verdict,
+    compute_rr,
+    _JUDGE_SYSTEM,
+)
+from agents.save_runtime import (
+    build_reason_prompt,
+    promote_capture,
+    _SAVE_REASON_SYSTEM,
+)
 
 log = logging.getLogger("engine.api.routes.agent")
 router = APIRouter()
@@ -293,3 +305,157 @@ async def similar(req: SimilarRequest) -> AgentResponse:
         None, 0, False,
     ))
     return AgentResponse(text=text, cmd="similar", latency_ms=latency, provider=cfg.provider)
+
+
+# ── W-0387: /agent/judge ──────────────────────────────────────────────────────
+
+class JudgeRequest(BaseModel):
+    symbol: str
+    timeframe: str = "4h"
+    indicator_snapshot: dict[str, float] = Field(default_factory=dict)
+    alpha_score: dict[str, Any] | None = None
+    last_price: float | None = None
+    user_id: str | None = None
+
+
+class JudgeResponse(BaseModel):
+    verdict: str
+    entry: float | None
+    stop: float | None
+    target: float | None
+    p_win: float | None
+    rr: float | None
+    rationale: str
+    text: str
+    cmd: str
+    latency_ms: int
+    provider: str
+
+
+@router.post("/agent/judge", response_model=JudgeResponse)
+async def judge(req: JudgeRequest) -> JudgeResponse:
+    t0 = time.monotonic()
+    cfg = resolve_llm_settings()
+
+    user_text = build_judge_prompt(
+        req.symbol,
+        req.timeframe,
+        req.indicator_snapshot,
+        req.alpha_score,
+        req.last_price,
+    )
+
+    raw = await generate_llm_text(
+        _JUDGE_SYSTEM, user_text, max_tokens=256, temperature=0.05, settings=cfg
+    )
+    parsed = parse_verdict(raw)
+    rr = compute_rr(parsed["entry"], parsed["stop"], parsed["target"])
+    latency = int((time.monotonic() - t0) * 1000)
+
+    verdict_to_llm = {"bullish": "buy", "bearish": "sell", "neutral": "watch"}
+    llm_verdict = verdict_to_llm.get(parsed["verdict"], "watch")
+
+    asyncio.ensure_future(asyncio.to_thread(
+        _log_interaction,
+        "judge",
+        {"symbol": req.symbol, "timeframe": req.timeframe},
+        raw, latency, cfg.provider, None, req.user_id,
+        llm_verdict, 0, False,
+    ))
+
+    return JudgeResponse(
+        verdict=parsed["verdict"],
+        entry=parsed["entry"],
+        stop=parsed["stop"],
+        target=parsed["target"],
+        p_win=parsed["p_win"],
+        rr=rr,
+        rationale=parsed["rationale"],
+        text=raw,
+        cmd="judge",
+        latency_ms=latency,
+        provider=cfg.provider,
+    )
+
+
+# ── W-0387: /agent/save ───────────────────────────────────────────────────────
+
+class SaveRequest(BaseModel):
+    symbol: str
+    timeframe: str = "4h"
+    snapshot: dict[str, float] = Field(default_factory=dict)
+    decision: dict[str, Any] = Field(default_factory=dict)
+    trigger_origin: str = "agent_judge"
+    user_id: str | None = None
+
+
+class SaveResponse(BaseModel):
+    capture_id: str
+    dup_of: str | None
+    reason_summary: str | None
+    cmd: str
+    latency_ms: int
+    provider: str
+
+
+@router.post("/agent/save", response_model=SaveResponse)
+async def save(req: SaveRequest) -> SaveResponse:
+    from fastapi import HTTPException
+
+    if not req.user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+
+    t0 = time.monotonic()
+    cfg = resolve_llm_settings()
+
+    # Generate short reason summary (failure is non-fatal)
+    reason: str | None = None
+    try:
+        reason_prompt = build_reason_prompt(
+            req.symbol,
+            req.timeframe,
+            req.decision.get("verdict", "neutral"),
+            req.decision.get("entry"),
+            req.decision.get("stop"),
+            req.decision.get("target"),
+            req.decision.get("rationale", ""),
+        )
+        raw_reason = await generate_llm_text(
+            _SAVE_REASON_SYSTEM, reason_prompt, max_tokens=100, temperature=0.1, settings=cfg
+        )
+        reason = raw_reason.strip()[:200] if raw_reason else None
+    except Exception as exc:
+        log.warning("save: reason LLM failed: %s", exc)
+
+    result = await asyncio.to_thread(
+        promote_capture,
+        _sb(),
+        req.user_id,
+        req.symbol,
+        req.timeframe,
+        req.snapshot,
+        req.decision,
+        req.trigger_origin,
+        reason,
+    )
+    latency = int((time.monotonic() - t0) * 1000)
+
+    verdict_to_llm = {"bullish": "buy", "bearish": "sell", "neutral": "watch"}
+    llm_verdict = verdict_to_llm.get(req.decision.get("verdict", "neutral"), "watch")
+
+    asyncio.ensure_future(asyncio.to_thread(
+        _log_interaction,
+        "save",
+        {"symbol": req.symbol, "dup_of": result.get("dup_of")},
+        reason or "", latency, cfg.provider, None, req.user_id,
+        llm_verdict, 0, False,
+    ))
+
+    return SaveResponse(
+        capture_id=result["capture_id"],
+        dup_of=result["dup_of"],
+        reason_summary=reason,
+        cmd="save",
+        latency_ms=latency,
+        provider=cfg.provider,
+    )
