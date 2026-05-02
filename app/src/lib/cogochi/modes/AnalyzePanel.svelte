@@ -1,4 +1,5 @@
 <script lang="ts">
+  // Reuse types from composition layer if available, else inline
   interface PhaseNode { state: 'done' | 'active' | 'pending'; label: string }
   interface DomRow { isMid: boolean; delta: number; bidWidth: string; bid: string; price: string; askWidth: string; ask: string }
   interface TapeRow { side: 'BUY' | 'SELL'; time: string; price: string; size: string; intensity: string }
@@ -11,7 +12,8 @@
   interface JudgmentOption { label: string; tone: 'pos' | 'neg' | 'warn' }
   interface ExecProposal { label: string; val: string; tone: '' | 'pos' | 'neg' }
 
-  interface Props {
+  // Bundled data object — all panel data in one place
+  interface AnalyzeData {
     direction: string;
     thesis: string;
     phaseTimeline: PhaseNode[];
@@ -25,6 +27,10 @@
     ledgerStats: LedgerStat[];
     judgmentOptions: JudgmentOption[];
     executionProposal: ExecProposal[];
+  }
+
+  // Bundled actions object — all callbacks in one place
+  interface AnalyzeActions {
     onOpenCompareWorkspace: () => void;
     onSetJudgeVerdict: (v: 'agree' | 'disagree') => void;
     onOpenJudgeWorkspace: () => void;
@@ -32,7 +38,16 @@
     onStartSaveSetup: () => void;
   }
 
-  let {
+  interface Props {
+    data: AnalyzeData;
+    actions: AnalyzeActions;
+    state?: { microstructureView?: string };
+  }
+
+  let { data, actions, state }: Props = $props();
+
+  // For convenience, destructure commonly used properties
+  const {
     direction,
     thesis,
     phaseTimeline,
@@ -46,12 +61,15 @@
     ledgerStats,
     judgmentOptions,
     executionProposal,
+  } = data;
+
+  const {
     onOpenCompareWorkspace,
     onSetJudgeVerdict,
     onOpenJudgeWorkspace,
     onOpenAnalyzeAIDetail,
     onStartSaveSetup,
-  }: Props = $props();
+  } = actions;
 </script>
 
 <div class="workspace-body">

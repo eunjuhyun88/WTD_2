@@ -1,6 +1,5 @@
 <script lang="ts">
   import ConfluencePeekChip from '$lib/components/confluence/ConfluencePeekChip.svelte';
-  import { shellStore } from '$lib/cogochi/shell.store';
 
   interface ScanCandidate {
     id: string;
@@ -22,27 +21,31 @@
     status: string;
   }
 
-  interface Props {
+  interface ScanData {
     confluence: any;
-    onOpenAnalyze: () => void;
     scanState: 'idle' | 'scanning' | 'done';
     scanProgress: number;
     scanCandidates: ScanCandidate[];
     scanSelected: string;
-    onSetScanSelected: (id: string) => void;
     pastCaptures: PastCapture[];
   }
 
-  let {
-    confluence,
-    onOpenAnalyze,
-    scanState,
-    scanProgress,
-    scanCandidates,
-    scanSelected,
-    onSetScanSelected,
-    pastCaptures,
-  }: Props = $props();
+  interface ScanActions {
+    onOpenAnalyze: () => void;
+    onSetScanSelected: (id: string) => void;
+    onOpenTradeTab: (candidate: ScanCandidate) => void;
+  }
+
+  interface Props {
+    data: ScanData;
+    actions: ScanActions;
+  }
+
+  let { data, actions }: Props = $props();
+
+  // Convenience destructuring for template
+  const { confluence, scanState, scanProgress, scanCandidates, scanSelected, pastCaptures } = data;
+  const { onOpenAnalyze, onSetScanSelected, onOpenTradeTab } = actions;
 </script>
 
 <div class="scan-panel">
@@ -95,7 +98,7 @@
             title="새 탭에서 열기"
             onclick={(e) => {
               e.stopPropagation();
-              shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` });
+              onOpenTradeTab(x);
             }}
           >↗</button>
         </div>

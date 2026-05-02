@@ -1548,54 +1548,68 @@
         <div class="drawer-content">
           {#if drawerTab === 'analyze'}
             <AnalyzePanel
-              direction={analyzeDetailDirection}
-              thesis={analyzeDetailThesis}
-              phaseTimeline={phaseTimeline}
-              microstructureView={microstructureView}
-              domLadderRows={domLadderRows}
-              timeSalesRows={timeSalesRows}
-              footprintRows={footprintRows}
-              heatmapRows={heatmapRows}
-              evidenceTableRows={evidenceTableRows}
-              compareCards={compareCards}
-              ledgerStats={ledgerStats}
-              judgmentOptions={judgmentOptions}
-              executionProposal={analyzeExecutionProposal}
-              onOpenCompareWorkspace={openCompareWorkspace}
-              onSetJudgeVerdict={(v) => judgeVerdict = v}
-              onOpenJudgeWorkspace={openJudgeWorkspace}
-              onOpenAnalyzeAIDetail={openAnalyzeAIDetail}
-              onStartSaveSetup={startSaveSetup}
+              data={{
+                direction: analyzeDetailDirection,
+                thesis: analyzeDetailThesis,
+                phaseTimeline,
+                microstructureView,
+                domLadderRows,
+                timeSalesRows,
+                footprintRows,
+                heatmapRows,
+                evidenceTableRows,
+                compareCards,
+                ledgerStats,
+                judgmentOptions,
+                executionProposal: analyzeExecutionProposal,
+              }}
+              actions={{
+                onOpenCompareWorkspace,
+                onSetJudgeVerdict: (v) => judgeVerdict = v,
+                onOpenJudgeWorkspace,
+                onOpenAnalyzeAIDetail,
+                onStartSaveSetup,
+              }}
+              state={{ microstructureView }}
             />
           {:else if drawerTab === 'scan'}
             <ScanPanel
-              confluence={confluence}
-              onOpenAnalyze={openAnalyze}
-              scanState={scanState}
-              scanProgress={scanProgress}
-              scanCandidates={scanCandidates}
-              scanSelected={scanSelected}
-              onSetScanSelected={(id) => scanSelected = id}
-              pastCaptures={pastCaptures}
+              data={{
+                confluence,
+                scanState,
+                scanProgress,
+                scanCandidates,
+                scanSelected,
+                pastCaptures,
+              }}
+              actions={{
+                onOpenAnalyze,
+                onSetScanSelected: (id) => scanSelected = id,
+                onOpenTradeTab: (x) => shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` }),
+              }}
             />
           {:else if drawerTab === 'judge'}
             <JudgePanel
-              confluence={confluence}
-              confluenceHistory={confluenceHistory}
-              symbol={symbol}
-              timeframe={timeframe}
-              confidenceAlpha={confidenceAlpha}
-              judgePlan={judgePlan}
-              rrLossPct={rrLossPct}
-              rrGainPct={rrGainPct}
-              judgeVerdict={judgeVerdict}
-              onSetJudgeVerdict={(v) => judgeVerdict = v}
-              judgeOutcome={judgeOutcome}
-              onSetJudgeOutcome={(o) => { judgeOutcome = o; judgeRejudged = null; }}
-              judgeRejudged={judgeRejudged}
-              onSetJudgeRejudged={(r) => judgeRejudged = r}
-              judgeSubmitting={judgeSubmitting}
-              judgeSubmitResult={judgeSubmitResult}
+              data={{
+                confluence,
+                confluenceHistory,
+                symbol,
+                timeframe,
+                confidenceAlpha,
+                judgePlan,
+                rrLossPct,
+                rrGainPct,
+                judgeVerdict,
+                judgeOutcome,
+                judgeRejudged,
+                judgeSubmitting,
+                judgeSubmitResult,
+              }}
+              actions={{
+                onSetJudgeVerdict: (v) => judgeVerdict = v,
+                onSetJudgeOutcome: (o) => { judgeOutcome = o; judgeRejudged = null; },
+                onSetJudgeRejudged: (r) => judgeRejudged = r,
+              }}
             />
           {/if}
         </div>

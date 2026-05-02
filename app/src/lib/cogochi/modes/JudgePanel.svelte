@@ -13,7 +13,7 @@
     count?: number;
   }
 
-  interface Props {
+  interface JudgeData {
     confluence: any;
     confluenceHistory: any;
     symbol: string;
@@ -23,16 +23,27 @@
     rrLossPct: string;
     rrGainPct: string;
     judgeVerdict: Verdict;
-    onSetJudgeVerdict: (v: 'agree' | 'disagree') => void;
     judgeOutcome: Outcome;
-    onSetJudgeOutcome: (o: 'win' | 'loss' | 'flat') => void;
     judgeRejudged: Rejudged;
-    onSetJudgeRejudged: (r: 'right' | 'wrong') => void;
     judgeSubmitting: boolean;
     judgeSubmitResult: JudgeSubmitResult | null;
   }
 
-  let {
+  interface JudgeActions {
+    onSetJudgeVerdict: (v: 'agree' | 'disagree') => void;
+    onSetJudgeOutcome: (o: 'win' | 'loss' | 'flat') => void;
+    onSetJudgeRejudged: (r: 'right' | 'wrong') => void;
+  }
+
+  interface Props {
+    data: JudgeData;
+    actions: JudgeActions;
+  }
+
+  let { data, actions }: Props = $props();
+
+  // Convenience destructuring for template
+  const {
     confluence,
     confluenceHistory,
     symbol,
@@ -42,14 +53,12 @@
     rrLossPct,
     rrGainPct,
     judgeVerdict,
-    onSetJudgeVerdict,
     judgeOutcome,
-    onSetJudgeOutcome,
     judgeRejudged,
-    onSetJudgeRejudged,
     judgeSubmitting,
     judgeSubmitResult,
-  }: Props = $props();
+  } = data;
+  const { onSetJudgeVerdict, onSetJudgeOutcome, onSetJudgeRejudged } = actions;
 </script>
 
 <div class="tm-act-panel">
