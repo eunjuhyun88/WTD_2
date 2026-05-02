@@ -3029,6 +3029,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/formula-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Formula Evidence
+         * @description Return formula evidence rows sorted by drag_score DESC.
+         *
+         *     drag_score (bps) = blocked_winner_rate × avg_missed_pnl — how much
+         *     alpha each filter rule has cost us in the last period_days.
+         */
+        get: operations["get_formula_evidence_research_formula_evidence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/blocked-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Blocked Candidates
+         * @description Return blocked_candidates rows, optionally filtered by reason/symbol.
+         */
+        get: operations["get_blocked_candidates_research_blocked_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/propfirm/summary": {
         parameters: {
             query?: never;
@@ -3521,6 +3564,37 @@ export interface components {
             /** Disqualifiers */
             disqualifiers?: string[];
         };
+        /** BlockedCandidateItem */
+        BlockedCandidateItem: {
+            /** Id */
+            id?: string | null;
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Direction */
+            direction?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Score */
+            score?: number | null;
+            /** P Win */
+            p_win?: number | null;
+            /** Source */
+            source?: string | null;
+            /** Pattern Slug */
+            pattern_slug?: string | null;
+            /** Forward 1H */
+            forward_1h?: number | null;
+            /** Forward 4H */
+            forward_4h?: number | null;
+            /** Forward 24H */
+            forward_24h?: number | null;
+            /** Forward 72H */
+            forward_72h?: number | null;
+            /** Blocked At */
+            blocked_at?: string | null;
+        };
         /** BulkImportBody */
         BulkImportBody: {
             /** Rows */
@@ -3866,6 +3940,25 @@ export interface components {
             findings: string[];
             /** Count */
             count: number;
+        };
+        /** FormulaEvidenceItem */
+        FormulaEvidenceItem: {
+            /** Scope Kind */
+            scope_kind: string;
+            /** Scope Value */
+            scope_value: string;
+            /** Sample N */
+            sample_n?: number | null;
+            /** Blocked Winner Rate */
+            blocked_winner_rate?: number | null;
+            /** Good Block Rate */
+            good_block_rate?: number | null;
+            /** Drag Score */
+            drag_score?: number | null;
+            /** Avg Missed Pnl */
+            avg_missed_pnl?: number | null;
+            /** Computed At */
+            computed_at?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -11043,6 +11136,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TopPatternsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_formula_evidence_research_formula_evidence_get: {
+        parameters: {
+            query?: {
+                /** @description filter_rule | pattern */
+                scope?: string;
+                period_days?: number;
+                min_sample?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaEvidenceItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_blocked_candidates_research_blocked_candidates_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by filter_reason code */
+                reason?: string | null;
+                /** @description Filter by symbol */
+                symbol?: string | null;
+                period_days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockedCandidateItem"][];
                 };
             };
             /** @description Validation Error */
