@@ -66,9 +66,7 @@
   // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
   import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
   import FloatingNoteButton from '../../chart/FloatingNoteButton.svelte';
-  // ── W-0374: Drawing mode state ─────────────────────────────────────────────
   import { shellStore, activeDrawingMode } from '$lib/cogochi/shell.store';
-  // ── W-0374 Phase D-4: IndicatorLibrary drawer ──────────────────────────────
   import IndicatorLibrary from '$lib/cogochi/components/IndicatorLibrary.svelte';
   import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
 
@@ -171,10 +169,12 @@
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
 
   // ── W-0289: Drawing tools ──────────────────────────────────────────────────
-  let drawingActiveTool   = $state<DrawingToolType>('cursor');
+  let drawingActiveTool     = $state<DrawingToolType>('cursor');
+  let drawingToolsVisible   = $state(false);
   let drawingMgr: DrawingManager | null = null;
 
-  // ── W-0374 Phase D-4: IndicatorLibrary drawer ────────────────────────────
+  const onToggleDrawingTools = () => { drawingToolsVisible = !drawingToolsVisible; shellStore.setDrawingTool(drawingToolsVisible ? 'trendLine' : 'cursor'); };
+
   let indicatorLibraryOpen = $state(false);
 
   // ── W-0358: Chart Notes ───────────────────────────────────────────────────
@@ -555,58 +555,31 @@
     }
   }
 
-  // ── Drag-to-save action handlers (W-0374 Phase D-6) ────────────────────────
   async function handleRangeSaveCapture() {
-    const captureId = await chartSaveMode.save({
-      symbol,
-      tf,
-      phase: 'GENERAL',
-    });
-    if (captureId) {
-      // Range mode exits automatically after save succeeds
-      // chartSaveMode listeners handle the UI reset
-    }
+    await chartSaveMode.save({ symbol, tf, phase: 'GENERAL' });
   }
 
   function handleRangeSendToAI() {
     const state = chartSaveMode.snapshot();
     if (!state.anchorA || !state.anchorB) return;
-
-    // Format range selection for AI context
-    const startTime = new Date(state.anchorA * 1000).toISOString();
-    const endTime = new Date(state.anchorB * 1000).toISOString();
-    const barCount = (state.anchorB - state.anchorA) / (tfMinutes(tf) * 60);
-
-    const rangeContext = `Selected range: ${startTime} to ${endTime} (~${Math.round(barCount)} bars on ${tf})`;
-
+    const t0 = new Date(state.anchorA * 1000).toISOString();
+    const t1 = new Date(state.anchorB * 1000).toISOString();
+    const bars = Math.round((state.anchorB - state.anchorA) / (tfMinutes(tf) * 60));
     shellStore.updateTabState((ts) => ({
       ...ts,
-      chat: [
-        ...(ts.chat || []),
-        { role: 'user' as const, text: rangeContext },
-      ],
+      chat: [...(ts.chat || []), { role: 'user' as const, text: `Selected range: ${t0} to ${t1} (~${bars} bars on ${tf})` }],
     }));
-
-    // Keep range mode active for further refinement
   }
 
   function handleRangeAnalyze() {
     const state = chartSaveMode.snapshot();
     if (!state.anchorA || !state.anchorB) return;
-
-    // Send analysis context to AI panel (similar to Send to AI but focused on analysis)
-    const startTime = new Date(state.anchorA * 1000).toISOString();
-    const endTime = new Date(state.anchorB * 1000).toISOString();
-    const barCount = (state.anchorB - state.anchorA) / (tfMinutes(tf) * 60);
-
-    const analysisContext = `Analyze this range: ${startTime} to ${endTime} (~${Math.round(barCount)} bars on ${tf}). What patterns, support/resistance, and trading opportunities do you see?`;
-
+    const t0 = new Date(state.anchorA * 1000).toISOString();
+    const t1 = new Date(state.anchorB * 1000).toISOString();
+    const bars = Math.round((state.anchorB - state.anchorA) / (tfMinutes(tf) * 60));
     shellStore.updateTabState((ts) => ({
       ...ts,
-      chat: [
-        ...(ts.chat || []),
-        { role: 'user' as const, text: analysisContext },
-      ],
+      chat: [...(ts.chat || []), { role: 'user' as const, text: `Analyze this range: ${t0} to ${t1} (~${bars} bars on ${tf}). What patterns, support/resistance, and trading opportunities do you see?` }],
     }));
   }
 
@@ -1761,7 +1734,6 @@
     }
   });
 
-
 </script>
 
 <div
@@ -1800,8 +1772,8 @@
     onToggleStudy={(id) => toggleStudy(id)}
     onSaveSetup={handleSaveSetup}
     onEmaTfChange={(t) => { emaTf = t; }}
-    drawingMode={$activeDrawingMode}
-    onToggleDrawingMode={() => shellStore.setDrawingTool('trendLine')}
+    drawingMode={drawingToolsVisible}
+    onToggleDrawingMode={onToggleDrawingTools}
     {indicatorLibraryOpen}
     onToggleIndicatorLibrary={() => { indicatorLibraryOpen = !indicatorLibraryOpen; }}
   />
