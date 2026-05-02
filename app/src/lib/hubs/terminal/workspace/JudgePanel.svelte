@@ -1,7 +1,7 @@
 <script lang="ts">
   import ConfluenceBanner from '$lib/components/confluence/ConfluenceBanner.svelte';
-  import '../../../../styles/panel-base.css';
-  import '../../../../styles/JudgePanel.css';
+  import '$lib/styles/panel-base.css';
+  import '$lib/styles/JudgePanel.css';
 
   type Verdict = 'agree' | 'disagree' | null;
   type Outcome = 'win' | 'loss' | 'flat' | null;

@@ -1,7 +1,7 @@
 <script lang="ts">
   import ConfluencePeekChip from '$lib/components/confluence/ConfluencePeekChip.svelte';
-  import '../../../../styles/panel-base.css';
-  import '../../../../styles/ScanPanel.css';
+  import '$lib/styles/panel-base.css';
+  import '$lib/styles/ScanPanel.css';
 
   interface ScanCandidate {
     id: string;
