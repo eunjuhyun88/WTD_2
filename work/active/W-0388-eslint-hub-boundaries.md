@@ -91,3 +91,21 @@
 
 - ESLint v9 flat-config 사용 (v8 `.eslintrc.*` 아님)
 - CI에 lint 단계 추가는 별도 작업 (이번 scope 아님)
+
+## Owner
+
+app
+
+## Next Steps
+
+1. `app/package.json` devDeps: `eslint@^9`, `eslint-plugin-svelte@^2` 추가
+2. `app/eslint.config.js` flat-config 작성
+3. `pnpm lint` 0 errors 확인
+4. PR 생성 + CI green 확인
+
+## Handoff Checklist
+
+- [ ] ESLint v9 flat-config + eslint-plugin-svelte v2 호환성 확인
+- [ ] `pnpm lint` exit 0 확인
+- [ ] `grep -rn "from.*cogochi\|from.*components/terminal" app/src` = 0 확인
+- [ ] CURRENT.md 활성 항목에 W-0388 추가 (작업 착수 시)

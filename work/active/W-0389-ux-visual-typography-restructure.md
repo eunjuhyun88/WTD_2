@@ -200,3 +200,34 @@ RIGHT: [● TRADE ▾]  [Pro]  [⚙]
 - `app/src/routes/lab/health/+page.svelte` (신규)
 - `app/.stylelintrc.cjs` (신규)
 - `app/src/lib/hubs/**/*.svelte` (86파일 치환)
+
+## Owner
+
+app
+
+## Assumptions
+
+- W-0381 (#889) typography.css token 이미 머지됨 — 선행 조건 충족
+- LucideSvelte: `app/package.json` dep 확인 후 없으면 추가 (Phase 3 착수 전)
+- Dashboard `/lab/health` redirect: 1주 유지 (운영팀 공지 필요)
+- mobile StatusBar mode: 변경 보류 (W-0374 D-8 이후 별도)
+- 치환 화이트리스트: chart tooltip legend 7px 2개 파일 명시적 예외 처리
+
+## Next Steps
+
+1. PR-A: terminal/ 47파일 폰트 치환 (Phase 1A)
+2. PR-B: 나머지 39파일 폰트 치환 (Phase 1B)
+3. PR-C: TopBar L1+L2 재구성 (H/L/Vol + Mode segmented)
+4. PR-D: AIAgentPanel 풀워드 탭 + ChartToolbar cleanup
+5. PR-E: StatusBar 정보 전용화
+6. PR-F: Dashboard Trader Home + /lab/health 신설
+7. PR-G: stylelint rule + 5-Hub QA
+
+## Handoff Checklist
+
+- [ ] W-0381 (#889) 머지 확인
+- [ ] terminal/ 47파일 치환 후 svelte-check 0 errors 확인
+- [ ] TopBar L1: H/L/Vol 데이터 engine API 응답 확인 (`/api/terminal/signals`)
+- [ ] AIAgentPanel 탭 순서 변경 → 사용자에게 공지 필요 (localStorage last-tab 유지)
+- [ ] Dashboard FlywheelHealth → `/lab/health` redirect 배너 1주 유지
+- [ ] CURRENT.md 에이전트 락 테이블 등재

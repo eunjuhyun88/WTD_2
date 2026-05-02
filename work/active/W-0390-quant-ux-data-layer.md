@@ -202,3 +202,24 @@ BTC/USDT  $95,123  +1.24%
 - W-0389 Phase 2+5 완료 후 착수 (TopBar L1 + Dashboard Trader Home 전제)
 - OI/FR feature flag 기본 OFF → 2일 soak 후 ON
 - `feature_windows` 테이블 30m 이전 row 접근 가능 (Q-4001 확인 필요)
+
+## Owner
+
+app + engine
+
+## Next Steps
+
+1. PR-H: TopBar L2 OI/FR/Kimchi (feature flag off → on after 2d soak)
+2. PR-I: StatusBar Kimchi+FR strip
+3. PR-J: TerminalHub 키보드 확장 + CommandPalette ⌘K 연결
+4. PR-K: WatchlistRail 신호강도 bar + FR
+5. PR-L: Dashboard Alert Strip + Kimchi bar
+
+## Handoff Checklist
+
+- [ ] W-0389 Phase 2 TopBar L1 완료 확인 (선행 의존)
+- [ ] engine `GET /api/terminal/signals` → `ticker_data.open_interest` + `funding_rate` 응답 확인
+- [ ] `/api/market/kimchi-premium` 30s 캐시 정상 동작 확인
+- [ ] `feature_windows` 테이블 30m 이전 row 쿼리 성능 확인 (Q-4001)
+- [ ] `j/k` input focus guard 테스트 (isInputActive() 적용 확인)
+- [ ] CURRENT.md 에이전트 락 테이블 등재 (TerminalHub.svelte 락)
