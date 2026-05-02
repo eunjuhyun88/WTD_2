@@ -179,6 +179,7 @@
 | GET | /patterns/objects/{slug} | routes/patterns.py:1203 |
 | POST | /patterns/{slug}/verify-paper | routes/patterns.py:1214 |
 | GET | /patterns/{slug}/backtest | routes/patterns.py:1236 |
+| GET | /patterns/{slug}/signals | routes/patterns.py:1312 |
 | GET | /propfirm/summary | routes/propfirm.py:33 |
 | POST | /propfirm/accounts | routes/propfirm.py:116 |
 | POST | /rag/terminal-scan | routes/rag.py:24 |

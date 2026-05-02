@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`d893dbe5` — HEAD (2026-05-02) — /닫기 sweep 21 items + inventory refresh (#911)
+`c130b860` — HEAD (2026-05-02) — fix(cogochi): TerminalHub 마운트 + MobileBottomNav 터미널 제외 (#922)
 
 ---
 
