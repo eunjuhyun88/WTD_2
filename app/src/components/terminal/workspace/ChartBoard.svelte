@@ -1725,48 +1725,32 @@
     clearAIOverlay();
   });
 
-  // D-9: AI overlay shape rendering — range boxes + annotation markers
+  // D-9: AI overlay shapes
   interface AIBoxCoord { x: number; y: number; w: number; h: number; color: string; label?: string }
   let aiBoxCoords = $state<AIBoxCoord[]>([]);
-
   function recomputeAIShapes() {
-    if (!mainChart || !priceSeries || !chartStackEl) { aiBoxCoords = []; return; }
-    const state = $chartAIOverlay;
-    if (state.symbol !== symbol) { aiBoxCoords = []; return; }
+    if (!mainChart || !priceSeries) { aiBoxCoords = []; return; }
+    const ov = $chartAIOverlay;
+    if (ov.symbol !== symbol) { aiBoxCoords = []; return; }
     const ts = mainChart.timeScale();
-    const boxes = state.shapes.filter((s): s is AIRangeBox => s.kind === 'range');
-    aiBoxCoords = boxes.flatMap(box => {
-      const x1 = ts.timeToCoordinate(box.fromTime as UTCTimestamp);
-      const x2 = ts.timeToCoordinate(box.toTime as UTCTimestamp);
-      const y1 = priceSeries!.priceToCoordinate(box.fromPrice);
-      const y2 = priceSeries!.priceToCoordinate(box.toPrice);
+    aiBoxCoords = (ov.shapes.filter((s): s is AIRangeBox => s.kind === 'range')).flatMap(b => {
+      const x1 = ts.timeToCoordinate(b.fromTime as UTCTimestamp), x2 = ts.timeToCoordinate(b.toTime as UTCTimestamp);
+      const y1 = priceSeries!.priceToCoordinate(b.fromPrice), y2 = priceSeries!.priceToCoordinate(b.toPrice);
       if (x1 == null || x2 == null || y1 == null || y2 == null) return [];
-      return [{ x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1), color: box.color, label: box.label }];
+      return [{ x: Math.min(x1,x2), y: Math.min(y1,y2), w: Math.abs(x2-x1), h: Math.abs(y2-y1), color: b.color, label: b.label }];
     });
+    if (candleMarkerApi && ov.symbol === symbol) {
+      const ann = ov.shapes.filter((s): s is AIAnnotation => s.kind === 'annotation')
+        .map(s => ({ time: s.time as UTCTimestamp, position: 'aboveBar' as const, color: s.color, shape: 'circle' as const, text: s.text }));
+      if (ann.length) candleMarkerApi.setMarkers([...ann]);
+    }
   }
-
   $effect(() => {
     if (!mainChart) return;
     mainChart.timeScale().subscribeVisibleLogicalRangeChange(recomputeAIShapes);
     return () => mainChart?.timeScale().unsubscribeVisibleLogicalRangeChange(recomputeAIShapes);
   });
-
-  $effect(() => {
-    void $chartAIOverlay;
-    recomputeAIShapes();
-  });
-
-  // D-9: merge AI annotation markers into candleMarkerApi
-  $effect(() => {
-    const state = $chartAIOverlay;
-    if (!candleMarkerApi || state.symbol !== symbol) return;
-    const annMarkers = state.shapes
-      .filter((s): s is AIAnnotation => s.kind === 'annotation')
-      .map(s => ({ time: s.time as UTCTimestamp, position: 'aboveBar' as const, color: s.color, shape: 'circle' as const, text: s.text }));
-    if (annMarkers.length > 0) {
-      candleMarkerApi.setMarkers([...annMarkers]);
-    }
-  });
+  $effect(() => { void $chartAIOverlay; recomputeAIShapes(); });
 
   // W-0210 Layer 3: Fetch comparison data when comparison is toggled or TF changes
   const COMPARISON_SYMBOL = 'BTCUSDT';
@@ -2083,33 +2067,9 @@
 {/if}
 
 <style>
-  /* ── Layer 2 overlay (W-0086) ── */
-  .chart-layer2-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    /* Overlay sits above chart canvas but below header chrome */
-    z-index: 15;
-    pointer-events: none;
-  }
-  .ai-range-overlay {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    overflow: visible;
-  }
-  .layer2-topright {
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    pointer-events: none;
-  }
+  .chart-layer2-overlay { position: absolute; top: 0; left: 0; right: 0; z-index: 15; pointer-events: none; }
+  .ai-range-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .layer2-topright { position: absolute; top: 8px; right: 10px; display: flex; align-items: center; gap: 6px; pointer-events: none; }
 
   .chart-board {
     display: flex;
@@ -2288,14 +2248,7 @@
     flex: 1 1 100%;
     min-height: 480px;
   }
-  /*
-    PaneInfoBar anchors. Native lightweight-charts doesn't emit pane-pixel
-    geometry to the DOM, so we approximate vertical positions using the pane
-    stretch factors we set in mountIndicatorPanes (price = 4, each indicator
-    pane = 1). Price area ≈ 0..PRICE%, then each indicator pane ≈ STEP%.
-    These are rough — overlays sit slightly inside the top of each pane,
-    which is exactly the legend slot users expect.
-  */
+  /* PaneInfoBar: approximate pane positions via stretch factors (price=4, indicator=1). */
   .pib-anchor {
     position: absolute;
     left: 0;
@@ -2581,9 +2534,7 @@
   .liq-s { color: rgba(143,221,157,0.85); }
 
   @media (max-width: 1200px) {
-    .micro-bars {
-      grid-template-columns: 1fr;
-    }
+    .micro-bars { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 768px) {
@@ -2641,13 +2592,6 @@
   }
 
   @media (max-width: 425px) {
-    /* Extra small mobile adjustments */
-    .chart-board {
-      min-height: 300px;
-    }
-    .pane-label {
-      font-size: 8px;
-      margin-bottom: 2px;
-    }
+    .pane-label { font-size: 8px; margin-bottom: 2px; }
   }
 </style>
