@@ -197,7 +197,7 @@
   }
 
   .alpha-bar {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: -0.5px;
     color: var(--brand);
     line-height: 1;

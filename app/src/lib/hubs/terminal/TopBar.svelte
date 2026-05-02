@@ -416,32 +416,32 @@
   align-items: center;
   gap: 3px;
   font-family: var(--font-mono, monospace);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   white-space: nowrap;
 }
 .q-lbl {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-weight: 500;
   color: var(--g5);
   letter-spacing: 0.04em;
 }
 .q-val {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
   color: var(--g7);
   letter-spacing: 0.02em;
 }
 .q-arrow {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   font-weight: 600;
 }
 .q-hint {
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   font-weight: 400;
   opacity: 0.7;
 }
 .q-sep {
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: var(--g3);
   margin: 0 8px;
 }
