@@ -319,3 +319,21 @@ __all__ = [
     "outcome_resolver_job",
     "resolve_outcomes",
 ]
+
+
+# ── Job Protocol class (W-0386-D) ─────────────────────────────────────────────
+
+from scanner.jobs.protocol import Job, JobContext, JobResult  # noqa: E402
+
+
+class OutcomeResolverJob:
+    """Job Protocol wrapper for outcome resolver (W-0386-D)."""
+    name: str = "outcome_resolver_job"
+    schedule: str = "0 * * * *"
+
+    async def run(self, ctx: JobContext) -> JobResult:
+        try:
+            await outcome_resolver_job()
+            return JobResult(name=self.name, ok=True)
+        except Exception as exc:
+            return JobResult(name=self.name, ok=False, error=str(exc))

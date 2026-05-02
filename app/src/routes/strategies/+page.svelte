@@ -49,19 +49,19 @@
 <div class="strategies-page">
   <header class="page-header">
     <h1 class="page-title">Strategies</h1>
-    <p class="page-sub">52개 패턴별 1년 백테스트 성과 · 매일 03:00 UTC 갱신</p>
+    <p class="page-sub">52 patterns · 1-year backtest results · updated daily at 03:00 UTC</p>
     <a href="/benchmark" class="benchmark-link">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
         <polyline points="1,8 3.5,5 6,6.5 8.5,2.5 11,4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      벤치마크 비교 →
+      Benchmark Compare →
     </a>
   </header>
 
   {#if pageError}
     <div class="page-error">{pageError}</div>
   {:else if patterns.length === 0}
-    <div class="loading-state">패턴 목록 로딩 중…</div>
+    <div class="loading-state">Loading pattern list…</div>
   {:else}
     <StrategyGrid
       {patterns}
@@ -76,7 +76,7 @@
   {#if drillSlug}
     {@const s = statsMap.get(drillSlug)}
     <div class="drill-backdrop" onclick={() => (drillSlug = null)} role="presentation"></div>
-    <div class="drill-panel" role="dialog" aria-modal="true" aria-label="패턴 상세">
+    <div class="drill-panel" role="dialog" aria-modal="true" aria-label="Pattern Detail">
       <button class="drill-close" onclick={() => (drillSlug = null)} type="button">×</button>
       <h2 class="drill-title">{drillSlug}</h2>
       {#if s}
@@ -110,10 +110,10 @@
           <div class="ds"><span>Hit Rate</span><strong>{s.hit_rate != null ? ((s.hit_rate * 100).toFixed(1) + '%') : '—'}</strong></div>
         </div>
         {#if s.insufficient_data}
-          <p class="drill-warn">신호 수 부족 (n={s.n_signals}) — 통계 신뢰도 낮음</p>
+          <p class="drill-warn">Insufficient signals (n={s.n_signals}) — low statistical confidence</p>
         {/if}
       {:else}
-        <p class="drill-loading">로딩 중…</p>
+        <p class="drill-loading">Loading…</p>
       {/if}
     </div>
   {/if}

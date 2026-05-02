@@ -116,7 +116,7 @@
 
       <!-- First-use drag hint: visible for 3s then fades; never shown during range-mode -->
       {#if showHint && !$chartSaveMode.active}
-        <div class="drag-hint" aria-hidden="true">드래그해서 구간을 지정하세요</div>
+        <div class="drag-hint" aria-hidden="true">Drag to select a range</div>
       {/if}
     </div>
 

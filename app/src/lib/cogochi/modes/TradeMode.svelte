@@ -280,7 +280,7 @@
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study));
 
-    const userText = `${symbol} ${timeframe} analyze detail 설명해줘`;
+    const userText = `Explain analyze detail for ${symbol} ${timeframe}`;
     const assistantText = [
       `**${symbol} · ${timeframe} ANALYZE DETAIL**`,
       workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,

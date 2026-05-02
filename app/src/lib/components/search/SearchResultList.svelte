@@ -41,7 +41,7 @@
 
 <div class="srl-root">
   {#if pageItems.length === 0}
-    <p class="srl-empty">결과 없음</p>
+    <p class="srl-empty">No results</p>
   {:else}
     <div class="srl-list">
       {#each pageItems as item, i (item.capture_id ?? `${item.symbol}-${item.timestamp}-${i}`)}

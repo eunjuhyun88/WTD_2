@@ -233,3 +233,23 @@ async def scan_universe_job(
     if scan_telegram_enabled:
         await send_scan_summary({"n_signals": hits, "n_symbols": len(universe), "duration_sec": elapsed})
     log.info("Scanner: scan complete in %.1fs — %d/%d symbols hit", elapsed, hits, len(universe))
+
+
+# ── Job Protocol class (W-0386-D) ─────────────────────────────────────────────
+
+from scanner.jobs.protocol import Job, JobContext, JobResult  # noqa: E402
+
+
+class UniverseScanJob:
+    """Job Protocol wrapper for universe scan (W-0386-D)."""
+    name: str = "universe_scan"
+    schedule: str = "*/15 * * * *"
+
+    async def run(self, ctx: JobContext) -> JobResult:
+        try:
+            # Lazy import avoids circular dependency (scheduler imports universe_scan at module level)
+            import scanner.scheduler as _sched  # noqa: PLC0415
+            await _sched._scan_universe()
+            return JobResult(name=self.name, ok=True)
+        except Exception as exc:
+            return JobResult(name=self.name, ok=False, error=str(exc))

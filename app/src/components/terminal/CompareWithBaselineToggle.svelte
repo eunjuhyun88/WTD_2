@@ -30,18 +30,18 @@
     {#if compareEnabled}
       <div class="cwb-comparison">
         <div class="cwb-question">
-          <span class="cwb-q-label">질문</span>
-          <span class="cwb-q-text">BTC 4h 현재 상황 어때?</span>
+          <span class="cwb-q-label">Question</span>
+          <span class="cwb-q-text">How does BTC 4h look right now?</span>
         </div>
 
         <div class="cwb-response-block">
           <div class="cwb-response-header cwb-response-baseline-header">
             <span class="cwb-response-tag">Baseline</span>
-            <span class="cwb-response-sublabel">공용 모델</span>
+            <span class="cwb-response-sublabel">Public model</span>
           </div>
           <div class="cwb-response-body">
-            "BTC는 현재 $XX,XXX에 거래 중이며, RSI 60으로
-            중립 구간. MACD는 상승 추세..."
+            "BTC is currently trading at $XX,XXX, RSI at 60,
+            neutral zone. MACD in uptrend..."
             <span class="cwb-response-type">[generic + textbook response]</span>
           </div>
         </div>
@@ -49,19 +49,19 @@
         <div class="cwb-response-block">
           <div class="cwb-response-header cwb-response-user-header">
             <span class="cwb-response-tag">Your Model</span>
-            <span class="cwb-response-sublabel">v3, 피드백 60 반영</span>
+            <span class="cwb-response-sublabel">v3, 60 feedbacks applied</span>
           </div>
           <div class="cwb-response-body">
-            "너가 전에 본 bb_expansion + OI 누적 조건이
-            지금 BTC 4h에 나타남. 다만 지난번처럼 펀딩비
-            과열 아니라 진입 가능할 듯. 손절 23.8..."
+            "The bb_expansion + OI accumulation condition you saw before
+            is appearing on BTC 4h now. Unlike last time, funding is not
+            overheated so entry looks viable. Stop at 23.8..."
             <span class="cwb-response-type">[your-style response]</span>
           </div>
         </div>
 
         <div class="cwb-diff-footer">
-          차이: 너의 피드백으로 학습된 패턴 "bb_expansion"이
-          baseline 모델에는 없는 관점.
+          Difference: the pattern "bb_expansion" learned from your feedback
+          is a perspective not present in the baseline model.
         </div>
       </div>
     {/if}

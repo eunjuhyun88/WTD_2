@@ -77,7 +77,7 @@
   <header class="page-header">
     <div>
       <h1 class="page-title">Benchmark</h1>
-      <p class="page-sub">최대 5개 패턴 선택 → BTC Hold 대비 수익률 비교</p>
+      <p class="page-sub">Select up to 5 patterns → compare returns vs BTC Hold</p>
     </div>
     <a href="/strategies" class="back-link">← Strategies</a>
   </header>
@@ -85,13 +85,13 @@
   {#if error}
     <div class="page-error">{error}</div>
   {:else if loading}
-    <div class="loading-state">데이터 로딩 중…</div>
+    <div class="loading-state">Loading data…</div>
   {:else}
     <div class="benchmark-layout">
       <!-- Selector -->
       <div class="selector-panel">
         <div class="selector-header">
-          <span>패턴 선택</span>
+          <span>Select Pattern</span>
           <span class="sel-count">{selected.length}/{MAX_SELECT}</span>
         </div>
         <div class="selector-list">
@@ -123,13 +123,13 @@
       <!-- Chart -->
       <div class="chart-panel">
         {#if chartSeries.length === 0}
-          <div class="chart-empty">왼쪽에서 패턴을 선택하세요</div>
+          <div class="chart-empty">Select a pattern on the left</div>
         {:else}
           <BenchmarkChart series={chartSeries} {btcCurve} height={280} />
 
           <div class="stats-table">
             <div class="st-header">
-              <span>패턴</span><span>APR</span><span>Win Rate</span><span>Sharpe</span><span>Signals</span>
+              <span>Pattern</span><span>APR</span><span>Win Rate</span><span>Sharpe</span><span>Signals</span>
             </div>
             {#each selected as slug, i}
               {@const s = statsMap.get(slug)}

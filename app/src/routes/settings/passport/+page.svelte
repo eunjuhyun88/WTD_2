@@ -35,7 +35,7 @@
       const response = await fetch('/api/profile/passport');
       if (!response.ok) {
         if (response.status === 401) {
-          error = '지갑 연결 또는 로그인 후 Passport를 읽을 수 있습니다.';
+          error = 'Connect wallet or log in to view your Passport.';
           return;
         }
         throw new Error('Failed to load passport');
@@ -102,14 +102,14 @@
   {#if loading}
     <section class="surface-card">
       <span class="surface-meta">Loading</span>
-      <p class="body-copy">Passport 데이터를 불러오는 중입니다.</p>
+      <p class="body-copy">Loading Passport data.</p>
     </section>
   {:else if error}
     <section class="surface-card error-card">
       <span class="surface-meta">Access</span>
       <h2>{error}</h2>
       <div class="surface-inline-actions">
-        <button class="surface-button" onclick={openWalletModal}>지갑 연결 열기</button>
+        <button class="surface-button" onclick={openWalletModal}>Connect Wallet</button>
         <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
       </div>
     </section>
@@ -119,7 +119,7 @@
         <div class="surface-section-head">
           <div>
             <span class="surface-kicker">Identity</span>
-            <h2>계정과 지갑 상태</h2>
+            <h2>Account & Wallet Status</h2>
           </div>
           <span class="surface-chip">{passport.tier}</span>
         </div>
@@ -136,7 +136,7 @@
         <div class="surface-section-head">
           <div>
             <span class="surface-kicker">Performance</span>
-            <h2>누적 결과</h2>
+            <h2>Cumulative Results</h2>
           </div>
           <span class="surface-chip">{passport.totalMatches} matches</span>
         </div>
@@ -155,7 +155,7 @@
         <div class="surface-section-head">
           <div>
             <span class="surface-kicker">Activity</span>
-            <h2>현재 열려 있는 상태</h2>
+            <h2>Currently Open</h2>
           </div>
         </div>
 
@@ -171,7 +171,7 @@
         <div class="surface-section-head">
           <div>
             <span class="surface-kicker">Agents</span>
-            <h2>학습 요약</h2>
+            <h2>Learning Summary</h2>
           </div>
         </div>
 
@@ -188,7 +188,7 @@
       <div class="surface-section-head">
         <div>
           <span class="surface-kicker">Badges</span>
-          <h2>획득 기록</h2>
+          <h2>Earned Badges</h2>
         </div>
       </div>
 
@@ -199,7 +199,7 @@
           {/each}
         </div>
       {:else}
-        <p class="body-copy">아직 배지가 없습니다. 검증 기록이 쌓이면 이곳에 누적됩니다.</p>
+        <p class="body-copy">No badges yet. They will appear here as your verification record grows.</p>
       {/if}
     </section>
   {/if}

@@ -204,7 +204,7 @@
       else if (c.id === 'open_indicator_settings') { indicatorSettingsOpen = true; }
       else if (c.id === 'open_indicator_library') { indicatorLibraryOpen = true; }
       else if (c.id === 'open_ai_detail') {
-        appendAIDetail(c.userText ?? '현재 analyze detail 설명해줘', c.assistantText ?? '');
+        appendAIDetail(c.userText ?? 'Explain current analyze detail', c.assistantText ?? '');
       }
       else if (c.id === 'reset') { shellStore.reset(); window.location.reload(); }
     };

@@ -35,7 +35,7 @@
     {
       id: 'GENERAL',
       label: 'General',
-      description: '특정 phase 없이 reviewed evidence 로 저장',
+      description: 'Save as reviewed evidence without a specific phase',
       tone: 'neutral',
     },
     ...PHASE_ORDER.map((phase) => ({
@@ -87,9 +87,9 @@
   );
 
   function formatRangeLabel(): string {
-    if (!selectedViewport) return '정확한 차트 구간을 먼저 선택해야 저장됩니다.';
+    if (!selectedViewport) return 'You must select an exact chart range before saving.';
     const fmtDate = (ts: number) =>
-      new Date(ts * 1000).toLocaleString('ko-KR', {
+      new Date(ts * 1000).toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -98,7 +98,7 @@
       });
     const first = selectedViewport.klines[0]?.time ?? selectedViewport.timeFrom;
     const last = selectedViewport.klines.at(-1)?.time ?? selectedViewport.timeTo;
-    return `${fmtDate(first)} → ${fmtDate(last)} · ${selectedViewport.tf.toUpperCase()} (${selectedViewport.barCount}봉)`;
+    return `${fmtDate(first)} → ${fmtDate(last)} · ${selectedViewport.tf.toUpperCase()} (${selectedViewport.barCount} bars)`;
   }
 
   const rangeLabel = $derived(formatRangeLabel());
@@ -205,7 +205,7 @@
   async function handleSave() {
     saveError = null;
     if (!canSave) {
-      saveError = '정확한 차트 구간에 유효한 캔들이 있어야 저장할 수 있습니다.';
+      saveError = 'A valid candle range must be selected before saving.';
       return;
     }
     const id = await chartSaveMode.save({
@@ -216,7 +216,7 @@
       note: saveState.noteDraft,
     });
     if (!id) {
-      saveError = '저장 실패 — 구간을 다시 선택해 보세요.';
+      saveError = 'Save failed — please re-select the range.';
       return;
     }
     onSaved?.(id);
@@ -225,7 +225,7 @@
   async function handleSaveAndOpenLab() {
     saveError = null;
     if (!canSave) {
-      saveError = '정확한 차트 구간에 유효한 캔들이 있어야 저장할 수 있습니다.';
+      saveError = 'A valid candle range must be selected before saving.';
       return;
     }
     const id = await chartSaveMode.save({
@@ -236,7 +236,7 @@
       note: saveState.noteDraft,
     });
     if (!id) {
-      saveError = '저장 실패 — 구간을 다시 선택해 보세요.';
+      saveError = 'Save failed — please re-select the range.';
       return;
     }
     onSaved?.(id);
@@ -281,7 +281,7 @@
       <div class="save-strip__panel-head">
         <span>Capture phase</span>
         <small>
-          {selectedPhaseMeta ? selectedPhaseMeta.tradingRule : 'AI research가 이 캡처를 일반 사례로 다룹니다.'}
+          {selectedPhaseMeta ? selectedPhaseMeta.tradingRule : 'AI research will treat this capture as a general case.'}
         </small>
       </div>
       <div class="save-strip__phase-grid">
@@ -305,7 +305,7 @@
         <span>Research note</span>
         <textarea
           class="save-strip__textarea"
-          placeholder="왜 이 구간이 중요한지 짧게 적으세요. 예: OI 유지 + funding flip + higher lows"
+          placeholder="Briefly explain why this range matters. e.g. OI holding + funding flip + higher lows"
           rows={2}
           value={saveState.noteDraft}
           oninput={handleNoteInput}
@@ -318,7 +318,7 @@
           type="button"
           onclick={() => chartSaveMode.exitRangeMode()}
         >
-          취소
+          Cancel
         </button>
         <button
           class="save-strip__action save-strip__action--secondary"
@@ -326,7 +326,7 @@
           onclick={handleSaveAndOpenLab}
           disabled={!canSave || saveState.submitting || projecting}
         >
-          {saveState.submitting ? '저장 중…' : projecting ? 'Projecting…' : 'Save & Open Lab'}
+          {saveState.submitting ? 'Saving…' : projecting ? 'Projecting…' : 'Save & Open Lab'}
         </button>
         <button
           class="save-strip__action save-strip__action--primary"
@@ -334,7 +334,7 @@
           onclick={handleSave}
           disabled={!canSave || saveState.submitting || projecting}
         >
-          {saveState.submitting ? '저장 중…' : 'Save Setup'}
+          {saveState.submitting ? 'Saving…' : 'Save Setup'}
         </button>
       </div>
     </div>
@@ -342,11 +342,11 @@
     <div class="save-strip__preview">
       <div class="save-strip__panel-head">
         <span>AI Research Preview</span>
-        <small>유사 캡처를 먼저 보여주고, 없으면 새 canonical example 로 저장합니다.</small>
+        <small>Shows similar captures first; if none found, saves as a new canonical example.</small>
       </div>
 
       {#if similarLoading}
-        <div class="save-strip__empty">유사 캡처 검색 중…</div>
+        <div class="save-strip__empty">Searching for similar captures…</div>
       {:else if similarMatches.length > 0}
         <div class="save-strip__preview-list">
           {#each similarMatches.slice(0, 4) as match}
@@ -357,15 +357,15 @@
               </div>
               <div class="save-strip__preview-meta">
                 <span>{match.record.reason ?? 'GENERAL'}</span>
-                <span>{new Date(match.record.createdAt).toLocaleDateString('ko-KR')}</span>
+                <span>{new Date(match.record.createdAt).toLocaleDateString('en-US')}</span>
               </div>
-              <p>{match.record.note ?? '저장된 note 없음'}</p>
+              <p>{match.record.note ?? 'No note saved'}</p>
             </a>
           {/each}
         </div>
       {:else}
         <div class="save-strip__empty">
-          유사 캡처가 없습니다. 이 저장이 AutoResearch 의 새 기준 예시가 됩니다.
+          No similar captures found. This save will become a new baseline example for AutoResearch.
         </div>
       {/if}
     </div>

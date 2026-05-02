@@ -31,12 +31,12 @@
   function timeSince(ts: number): string {
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return '방금';
-    if (mins < 60) return `${mins}분 전`;
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}시간 전`;
+    if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
-    return `${days}일 전`;
+    return `${days}d ago`;
   }
 
   function handleFork() {
@@ -91,7 +91,7 @@
       <div class="sp-progress-bar">
         <div class="sp-progress-fill" style:width="{(post.strategy.cyclesTested / Math.max(post.strategy.totalCycles, 1)) * 100}%"></div>
       </div>
-      <span class="sp-progress-text">{post.strategy.cyclesTested}/{post.strategy.totalCycles} 사이클</span>
+      <span class="sp-progress-text">{post.strategy.cyclesTested}/{post.strategy.totalCycles} cycles</span>
     </div>
   </div>
 
@@ -101,7 +101,7 @@
       <span class="action-stat">🔀 {post.forkCount}</span>
     </div>
     <button class="fork-btn" onclick={handleFork}>
-      Lab에서 테스트 →
+      Test in Lab →
     </button>
   </div>
 </div>

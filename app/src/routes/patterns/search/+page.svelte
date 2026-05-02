@@ -186,7 +186,7 @@
         <h1 class="surface-title">Similarity Search</h1>
       </div>
       <p class="surface-subtitle">
-        feature_windows 스토어에서 패턴 드래프트와 유사한 과거 구간을 찾습니다.
+        Finds historical windows similar to a pattern draft from the feature_windows store.
         Feature (0.45) + Phase sequence (0.45) + Context (0.10) 3-layer hybrid scoring.
       </p>
     </div>
@@ -225,14 +225,14 @@
       <div class="surface-card query-card">
         {#if catalogPatterns.length > 0}
           <div class="catalog-picker">
-            <label class="field-label" for="catalog-select">패턴 빠른 선택</label>
+            <label class="field-label" for="catalog-select">Quick pattern select</label>
             <select
               id="catalog-select"
               class="catalog-select"
               bind:value={selectedPattern}
               onchange={onPatternPick}
             >
-              <option value="">— 패턴 선택 —</option>
+              <option value="">— Select pattern —</option>
               {#each catalogPatterns as slug}
                 <option value={slug}>{slug.replace(/_/g, ' ')}</option>
               {/each}
@@ -283,7 +283,7 @@
     {:else if loading}
       <section class="surface-card page-loading">
         <span class="pulse"></span>
-        <span>feature_windows 스토어 검색 중…</span>
+        <span>Searching feature_windows store…</span>
       </section>
 
     {:else if result}
@@ -300,16 +300,16 @@
 
         {#if result.candidates.length === 0}
           <div class="surface-card empty-card">
-            <p>결과 없음 — feature_windows 스토어가 비어있거나 매칭되는 구간이 없습니다.</p>
+            <p>No results — the feature_windows store is empty or no matching zones found.</p>
             <p class="empty-hint">
-              로컬 환경: <code>python -m research.feature_windows_builder --all --tf 15m,1h,4h</code> 를 먼저 실행하세요.
+              Local env: run <code>python -m research.feature_windows_builder --all --tf 15m,1h,4h</code> first.
             </p>
           </div>
         {:else}
           <div class="surface-card results-shell">
             <div class="results-table">
               <div class="table-header">
-                <span class="col-chart">차트</span>
+                <span class="col-chart">Chart</span>
                 <span>Symbol</span>
                 <span>TF</span>
                 <span>Date</span>

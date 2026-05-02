@@ -60,10 +60,10 @@
     <div class="bar-meta">
       <span class="meta-count">
         <span class="count-num">{count}</span><span class="count-sep">/</span><span class="count-total">{total}</span>
-        <span class="count-label">선택</span>
+        <span class="count-label">Selected</span>
       </span>
       <button class="meta-btn" onclick={count < total ? selectAll : clearAll}>
-        {count < total ? '전체' : '해제'}
+        {count < total ? 'All' : 'Clear'}
       </button>
     </div>
   </div>
@@ -94,10 +94,10 @@
     <button class="run-btn" disabled={!canRun} onclick={onRun}>
       {#if isRunning}
         <span class="spinner"></span>
-        실행 중
+        Running
       {:else}
         <span class="run-icon">▶</span>
-        실행
+        Run
       {/if}
     </button>
   </div>

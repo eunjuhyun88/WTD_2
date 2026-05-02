@@ -7,7 +7,7 @@
     class:active={$locale === 'ko'}
     onclick={() => setLocale('ko')}
     aria-pressed={$locale === 'ko'}
-  >한</button>
+  >KO</button>
   <span class="divider">/</span>
   <button
     class:active={$locale === 'en'}

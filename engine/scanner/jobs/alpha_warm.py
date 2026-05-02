@@ -180,3 +180,22 @@ async def scan_alpha_warm_job() -> dict[str, Any]:
         elapsed, stats["processed"], stats["phase_transitions"],
     )
     return stats
+
+
+# ── Job Protocol class (W-0386-D) ─────────────────────────────────────────────
+
+from scanner.jobs.protocol import Job, JobContext, JobResult  # noqa: E402
+
+
+class AlphaWarmJob:
+    """Job Protocol wrapper for alpha warm observation (W-0386-D)."""
+    name: str = "alpha_warm"
+    schedule: str = "*/30 * * * *"
+
+    async def run(self, ctx: JobContext) -> JobResult:
+        try:
+            result = await scan_alpha_warm_job()
+            processed = result.get("processed", 0) if isinstance(result, dict) else 0
+            return JobResult(name=self.name, ok=True, processed=processed)
+        except Exception as exc:
+            return JobResult(name=self.name, ok=False, error=str(exc))

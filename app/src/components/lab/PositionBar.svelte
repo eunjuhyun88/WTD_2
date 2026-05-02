@@ -36,7 +36,7 @@
 
 <div class="position-bar">
   {#if mode === 'auto' && backtestResult}
-    <span class="pb-stat">{backtestResult.totalTrades}건</span>
+    <span class="pb-stat">{backtestResult.totalTrades} trades</span>
     <span class="pb-sep">│</span>
     <span class="pb-stat">Win <span class:positive={backtestResult.winRate >= 55} class:negative={backtestResult.winRate < 45}>{backtestResult.winRate.toFixed(0)}%</span></span>
     <span class="pb-sep">│</span>
@@ -66,12 +66,12 @@
     <span class="bar-progress">Bar {revealedBars}/{totalBars}</span>
 
   {:else if mode === 'manual'}
-    <span class="pb-stat dim">포지션 없음</span>
+    <span class="pb-stat dim">No position</span>
     <span class="pb-spacer"></span>
     <span class="bar-progress">Bar {revealedBars}/{totalBars}</span>
 
   {:else}
-    <span class="pb-stat dim">전략을 실행하세요</span>
+    <span class="pb-stat dim">Run a strategy to begin</span>
   {/if}
 </div>
 

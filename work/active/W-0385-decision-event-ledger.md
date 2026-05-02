@@ -21,11 +21,12 @@ eunjuhyun88 — PR1(engine), PR2(engine worker), PR3(app UI).
 ## Scope
 
 ```
-app/supabase/migrations/048_formula_evidence.sql
-engine/research/blocked_candidate_store.py    # emit_blocked_candidate() + list_unresolved()
-engine/scanner/jobs/blocked_candidate_resolver.py  # 72h forward P&L 채우기
-engine/scanner/jobs/formula_evidence_materializer.py  # 매일 drag_score 집계
-engine/scheduler.py                           # 두 job APScheduler 등록
+app/supabase/migrations/048_formula_evidence.sql   # ← 047은 agent_interactions (W-0378) 선점
+engine/research/artifacts/blocked_candidate_store.py  # insert_blocked_candidate() 시그니처 확장
+engine/scanner/jobs/blocked_candidate_resolver.py     # 72h forward P&L 채우기 (신규)
+engine/scanner/jobs/formula_evidence_materializer.py  # 매일 drag_score 집계 (신규)
+engine/scanner/scheduler.py                           # 두 job APScheduler 등록
+engine/scanner/realtime.py                            # insert_blocked_candidate kwargs 확장
 engine/tests/test_blocked_candidate_resolver.py
 app/src/routes/lab/counterfactual/+page.svelte
 app/src/routes/patterns/formula/+page.svelte
@@ -47,10 +48,11 @@ app/src/routes/patterns/filter-drag/+page.svelte
 
 ```
 app/supabase/migrations/048_formula_evidence.sql
-engine/research/blocked_candidate_store.py
+engine/research/artifacts/blocked_candidate_store.py
 engine/scanner/jobs/blocked_candidate_resolver.py
 engine/scanner/jobs/formula_evidence_materializer.py
-engine/scheduler.py                           # APScheduler 등록 지점
+engine/scanner/scheduler.py                   # APScheduler 등록 지점
+engine/scanner/realtime.py                    # insert_blocked_candidate kwargs 확장
 app/src/routes/lab/counterfactual/+page.svelte
 app/src/routes/patterns/formula/+page.svelte
 ```
@@ -59,20 +61,27 @@ app/src/routes/patterns/formula/+page.svelte
 
 ## Facts
 
-1. `blocked_candidates` 테이블은 migration 044에서 생성됨 (W-0382). `forward_1h/4h/24h/72h` 컬럼 존재하나 모두 NULL.
-2. `filter_reason` ENUM은 현재 9개 코드. 이번 work item에서 5개 추가 (migration 048).
-3. 최신 migration 번호: `046_ensemble_rounds.sql` → 이번 migration = `048` (047은 W-0378 agent_interactions에 선점).
-4. `formula_evidence` 테이블은 신규 생성 (기존 없음). `drag_score = blocked_winner_rate × avg_missed_pnl`.
-5. blocked_candidate_resolver는 APScheduler 1h 간격. formula_evidence_materializer는 daily 03:30 UTC.
-6. `pattern_outcomes`의 실제 exit_return_pct와 `blocked_candidates.forward_24h` ≥ 50bps 비교로 `winner` 판정.
+1. `blocked_candidates` 테이블 — migration 044 (`app/supabase/migrations/044_blocked_candidates.sql`). `forward_*` 컬럼 존재, 모두 NULL.
+2. `filter_reason` ENUM — 현재 9개 코드 (below_min_conviction, timing_conflict, regime_mismatch, heat_too_high, insufficient_liquidity, spread_too_wide, duplicate_signal, conflicting_signals, stale_context). 이번 5개 추가.
+3. **migration 최신 번호: `047_agent_interactions.sql` (W-0378 선점).** 이번 migration = **`048`**.
+4. migration 경로: `app/supabase/migrations/` (engine 측 없음).
+5. `formula_evidence` 테이블 신규 생성. `drag_score = blocked_winner_rate × avg_missed_pnl`.
+6. `insert_blocked_candidate` 이미 존재 — `engine/research/artifacts/blocked_candidate_store.py:37`. shim: `engine/research/blocked_candidate_store.py`. PR1은 `source`, `pattern_slug`, `outcome_id` kwargs 추가.
+7. **현재 emit 지점**: `engine/scanner/realtime.py:206` — direction=NEUTRAL 시 reason="below_min_conviction"으로 insert. PR1에서 kwargs 확장만.
+8. APScheduler 등록 위치: `engine/scanner/scheduler.py`. 기존 `outcome_resolver` job (line ~390) 바로 뒤에 추가 (동일 패턴: `_job_enabled()` 가드 + `add_job`).
+9. `_entry_and_forward_closes()` — `engine/scanner/jobs/outcome_resolver.py:33` private 함수. blocked_candidate_resolver는 동일 로직을 독립 헬퍼로 재구현하거나 `outcome_resolver` 모듈 내 노출 함수(`resolve_outcomes`)를 직접 호출.
+10. `evaluate_blocks` 반환값은 블록 이름 list (e.g. "bullish_engulfing", "funding_extreme"). 이 블록 목록이 아닌 `direction==NEUTRAL`이 차단 기준 — reason_code 다양화는 별도 explicit gate 추가 필요.
 
 ---
 
 ## Open Questions
 
-1. `blocked_candidates`에 `source` 컬럼 추가 필요 여부 (`engine` vs `ai_agent`). 현재 미존재 — migration 048에 포함 예정.
-2. `formula_evidence` compute 주기: daily 03:30 UTC vs. 매 resolve 후 incremental. 현재: daily batch.
-3. W-0378 watch_only emit 시점: agent 명령 dispatch 직후 vs. LLM 응답 완료 후. 현재 설계: dispatch 직후.
+1. ✅ **해결**: migration 번호 = 048 (047은 W-0378 agent_interactions 선점).
+2. ✅ **해결**: `source` 컬럼 — migration 048 `ALTER TABLE blocked_candidates ADD COLUMN source text DEFAULT 'engine'` 포함.
+3. `formula_evidence` compute 주기: **결정 = daily batch 03:30 UTC** (incremental은 불필요한 복잡성).
+4. W-0378 watch_only emit 시점: agent 명령 dispatch 직후 vs. LLM 응답 완료 후. **결정 = dispatch 직후** (LLM 실패해도 watch_only 기록).
+5. [ ] **미결**: backfill (migration 044 이후 누적 NULL rows) — PR2에 포함할지 별도 후속 PR로 뺄지. 권장: PR2 이후 dev 환경에서 먼저 실행, prod은 별도 확인.
+6. [ ] **미결**: `engine/api/routes/research.py` 기존 파일 존재 여부 확인 필요 — PR2 시작 전 `grep -n "formula\|blocked_candidate" engine/api/routes/research.py` 실행.
 
 ---
 
@@ -120,7 +129,7 @@ executed 케이스의 기준. `blocked_candidates.forward_*`와 비교해 drag_s
 
 ## 신규 DB 변경
 
-### migration 048 — formula_evidence + filter_reason ENUM 확장 (현재 최신 migration: 046_ensemble_rounds)
+### migration 048 — formula_evidence + filter_reason ENUM 확장 (047_agent_interactions 선점 확인됨)
 
 ```sql
 -- Part 1: filter_reason ENUM에 Kieran 14코드 추가 (기존 9개에서 14개로)
@@ -152,6 +161,10 @@ CREATE TABLE IF NOT EXISTS formula_evidence (
 
 CREATE INDEX idx_formula_evidence_scope ON formula_evidence (scope_kind, scope_value, computed_at DESC);
 CREATE INDEX idx_formula_evidence_drag  ON formula_evidence (drag_score DESC NULLS LAST, computed_at DESC);
+
+-- Idempotency: materializer는 매일 실행 — 같은 (scope, period) 중복 방지
+CREATE UNIQUE INDEX idx_formula_evidence_unique
+  ON formula_evidence (scope_kind, scope_value, period_start);
 
 -- RLS
 ALTER TABLE formula_evidence ENABLE ROW LEVEL SECURITY;
@@ -199,24 +212,79 @@ def resolve_batch() -> int:
 ```
 
 #### forward P&L 계산 방식
-- `entry_price` = `blocked_at` 시점의 OHLCV close (outcome_resolver와 동일 방식)
-- `forward_Xh` = (close at blocked_at + Xh) / entry_price - 1.0
-- **방향(direction)을 반영**: direction='long' → 상기 공식 그대로; 'short' → 부호 반전
-- 데이터 없음(캔들 부족) → NULL 유지 (에러 아님)
 
-#### 스케줄러 등록
-`engine/scanner/scheduler.py` 에 추가:
+`engine/scanner/jobs/outcome_resolver.py:33`의 `_entry_and_forward_closes()`는 private 함수. **직접 import 금지** — 대신 아래 독립 헬퍼를 `blocked_candidate_resolver.py` 내부에 구현:
+
 ```python
-# W-0385: blocked candidate P&L resolver — hourly
-_scheduler.add_job(
-    _blocked_candidate_resolve_job,
-    trigger="interval",
-    hours=1,
-    id="blocked_candidate_resolver",
-    max_instances=1,
-    coalesce=True,
-    misfire_grace_time=600,
-)
+def _forward_return_at_horizon(
+    klines,        # pd.DataFrame with DatetimeIndex, 'close' col
+    ref_ts: datetime,
+    horizon_h: int,
+) -> float | None:
+    """Return (close at ref_ts + horizon_h) / (close at ref_ts) - 1.0.
+    Returns None if insufficient bars."""
+    import pandas as pd
+    tz = getattr(klines.index, "tz", None)
+    if tz and ref_ts.tzinfo is None:
+        ref_ts = ref_ts.replace(tzinfo=timezone.utc)
+    entry_mask = klines.index >= ref_ts
+    if not entry_mask.any():
+        return None
+    entry_close = float(klines.loc[entry_mask, "close"].iloc[0])
+    target_ts = ref_ts + timedelta(hours=horizon_h)
+    future_mask = klines.index >= target_ts
+    if not future_mask.any():
+        return None
+    future_close = float(klines.loc[future_mask, "close"].iloc[0])
+    return (future_close / entry_close) - 1.0
+```
+
+- **방향 반영**: direction='long' → 그대로; 'short' → 부호 반전; 'neutral' → 그대로 (진단용)
+- 데이터 부족 → None 유지 (에러 아님, next resolve cycle에서 재시도)
+
+#### 스케줄러 등록 (`engine/scanner/scheduler.py`)
+
+기존 `outcome_resolver` 등록 블록 (line ~390) 바로 뒤에 추가. `_job_enabled()` 패턴 동일하게 사용:
+
+```python
+# W-0385: blocked candidate P&L resolver — hourly (Job 3d)
+async def _blocked_candidate_resolve_job() -> None:
+    from scanner.jobs.blocked_candidate_resolver import resolve_batch
+    import asyncio
+    filled = await asyncio.to_thread(resolve_batch)
+    log.info("blocked_candidate_resolver: %d rows filled", filled)
+
+async def _formula_evidence_materialize_job() -> None:
+    from scanner.jobs.formula_evidence_materializer import materialize_all
+    import asyncio
+    rows = await asyncio.to_thread(materialize_all)
+    log.info("formula_evidence_materializer: %d rows written", rows)
+
+# In start_scheduler():
+if _job_enabled("blocked_candidate_resolver"):
+    _scheduler.add_job(
+        _blocked_candidate_resolve_job,
+        trigger="interval",
+        seconds=3600,
+        id="blocked_candidate_resolver",
+        name="Blocked candidate P&L resolver",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=600,
+    )
+
+if _job_enabled("formula_evidence_materializer"):
+    _scheduler.add_job(
+        _formula_evidence_materialize_job,
+        trigger="cron",
+        hour=3,
+        minute=30,
+        id="formula_evidence_materializer",
+        name="Formula evidence daily materializer",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=1800,
+    )
 ```
 
 ---
@@ -230,120 +298,140 @@ _scheduler.add_job(
 """W-0385: Formula evidence materializer.
 
 Runs daily at 03:30 UTC (after backtest_stats_refresh at 03:00).
-For each filter_reason code and pattern_slug, computes:
-  - blocked_winner_rate: proportion of blocked signals that would have been TP
-  - good_block_rate: proportion that would have been SL/timeout
-  - drag_score: blocked_winner_rate * avg_missed_pnl
-
-"Winner" definition: forward_24h >= +50bps (configurable via DRAG_WIN_THRESHOLD_BPS env)
+"Winner" definition: forward_24h >= +50bps (DRAG_WIN_THRESHOLD env, bps).
+Idempotent: UPSERT ON CONFLICT (scope_kind, scope_value, period_start).
 """
+import os
+from statistics import mean
 
 DRAG_WIN_THRESHOLD_BPS = float(os.environ.get("DRAG_WIN_THRESHOLD_BPS", "50"))
 
 def materialize_all(period_days: int = 30) -> int:
-    """Compute formula_evidence for last N days. Returns rows written."""
-    ...
+    """Fetch blocked_candidates with forward_24h filled, group by reason, UPSERT formula_evidence.
+    Returns number of rows upserted."""
+    sb = _sb()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=period_days)).isoformat()
+    period_start = (datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) - timedelta(days=1)).isoformat()  # 전일 00:00 UTC
 
-def _compute_for_reason_code(reason: str, rows: list[dict]) -> dict:
-    """
-    rows: list of blocked_candidates with forward_* filled.
-    Returns formula_evidence dict.
+    rows = (
+        sb.table("blocked_candidates")
+        .select("reason, source, forward_24h, score, p_win, blocked_at")
+        .gte("blocked_at", cutoff)
+        .not_.is_("forward_24h", "null")
+        .execute()
+        .data
+    )
 
-    blocked_winner_rate = len([r for r in rows if r['forward_24h'] >= DRAG_WIN_THRESHOLD_BPS/10000]) / len(rows)
-    good_block_rate     = len([r for r in rows if r['forward_24h'] is not None and r['forward_24h'] < 0]) / len(rows)
-    avg_missed_pnl      = mean(r['forward_24h'] for r in rows if r['forward_24h'] >= DRAG_WIN_THRESHOLD_BPS/10000)
-    drag_score          = blocked_winner_rate * avg_missed_pnl * 10000  # bps로 변환
-    """
-    ...
-```
+    by_reason: dict[str, list[dict]] = {}
+    for r in rows:
+        by_reason.setdefault(r["reason"], []).append(r)
 
-#### 스케줄러 등록
-```python
-_scheduler.add_job(
-    _formula_evidence_materialize_job,
-    trigger="cron",
-    hour=3,
-    minute=30,
-    id="formula_evidence_materializer",
-    max_instances=1,
-    coalesce=True,
-    misfire_grace_time=1800,
-)
-```
+    upserted = 0
+    for reason, group in by_reason.items():
+        evidence = _compute(group, reason, period_start)
+        sb.table("formula_evidence").upsert(
+            evidence, on_conflict="scope_kind,scope_value,period_start"
+        ).execute()
+        upserted += 1
+    return upserted
 
----
+def _compute(rows: list[dict], reason: str, period_start: str) -> dict:
+    threshold = DRAG_WIN_THRESHOLD_BPS / 10000  # 0.005 for 50bps
+    winners = [r for r in rows if (r["forward_24h"] or 0) >= threshold]
+    losers  = [r for r in rows if r["forward_24h"] is not None and r["forward_24h"] < 0]
+    n = len(rows)
+    win_rate = len(winners) / n if n else 0.0
+    good_block_rate = len(losers) / n if n else 0.0
+    avg_missed = mean(r["forward_24h"] for r in winners) if winners else 0.0
+    drag_score = win_rate * avg_missed * 10000  # bps
 
-### `engine/scanner/scheduler.py` 수정 — blocked emit
-
-#### 목적 (Break B+ 수정 = W-0377 Break B의 확장)
-`scheduler.py`의 MIN_BLOCKS gate 통과 실패 지점에서 `blocked_candidates` insert.
-
-현재 코드 (차단 후 `continue`로 넘어감):
-```python
-if len(triggered_blocks) < min_blocks:
-    continue   # <-- HERE: 차단 기록 없음
-```
-
-W-0385 수정:
-```python
-if len(triggered_blocks) < min_blocks:
-    try:
-        from research.blocked_candidate_store import emit_blocked_candidate
-        emit_blocked_candidate(
-            symbol=symbol,
-            direction=direction,
-            reason=_map_reason_code(triggered_blocks),  # filter_reason ENUM으로 매핑
-            score=ensemble_score,
-            p_win=ml_p_win,
-        )
-    except Exception:
-        pass  # emit 실패는 scan 흐름 차단 안 함
-    continue
-```
-
-`_map_reason_code(triggered_blocks: list[str]) -> str`:
-```
-"oi_hold_after_spike" → "below_min_conviction"
-"btc_trend_bearish"   → "regime_mismatch"
-"volume_thin"         → "insufficient_liquidity"
-"duplicate_entry"     → "duplicate_signal"
-"late_entry"          → "anti_chase"
-default               → "below_min_conviction"
+    return {
+        "scope_kind": "filter_rule",
+        "scope_value": reason,
+        "period_start": period_start,
+        "period_end": datetime.now(timezone.utc).isoformat(),
+        "sample_n": n,
+        "blocked_winner_rate": win_rate,
+        "good_block_rate": good_block_rate,
+        "drag_score": drag_score,
+        "avg_missed_pnl": avg_missed * 10000,  # bps
+        "computed_at": datetime.now(timezone.utc).isoformat(),
+    }
 ```
 
 ---
 
-### `engine/research/blocked_candidate_store.py` (신규, 30줄 미만)
+### `engine/scanner/realtime.py` 수정 — 기존 emit에 kwargs 추가
+
+기존 emit 지점은 **이미 존재** (`realtime.py:206`). PR1 범위는 새 kwargs 전달만:
 
 ```python
-"""W-0385: thin write layer for blocked_candidates.
-Keeps scheduler.py clean — no direct Supabase calls there.
-"""
-from __future__ import annotations
-from datetime import datetime, timezone
+# 현재 (line 206):
+if ensemble.direction == SignalDirection.NEUTRAL:
+    insert_blocked_candidate(
+        symbol=symbol,
+        timeframe="1h",
+        direction="neutral",
+        reason="below_min_conviction",
+        score=ensemble.ensemble_score,
+        p_win=p_win,
+    )
+    return None
 
-def emit_blocked_candidate(
+# W-0385 수정 — source + 향후 확장 가능 구조:
+if ensemble.direction == SignalDirection.NEUTRAL:
+    insert_blocked_candidate(
+        symbol=symbol,
+        timeframe="1h",
+        direction="neutral",
+        reason="below_min_conviction",  # 현재는 단일 코드; reason_code 다양화는 PR2+
+        score=ensemble.ensemble_score,
+        p_win=p_win,
+        source="engine",               # NEW
+    )
+    return None
+```
+
+> **Note**: `_map_reason_code()` 는 현재 불필요 — `evaluate_blocks` 반환 블록 이름(e.g. "funding_extreme")은 filter_reason ENUM과 다른 축. reason_code 다양화는 explicit gate 추가 시 별도 설계(W-0304 이후).
+
+---
+
+### `engine/research/artifacts/blocked_candidate_store.py` — 시그니처 확장 (신규 작성 아님)
+
+기존 `insert_blocked_candidate` 함수에 kwargs 3개 추가. shim (`engine/research/blocked_candidate_store.py`)은 `from artifacts import *` 구조라 자동 반영됨.
+
+```python
+# 변경 전 시그니처 (현재 line 37):
+def insert_blocked_candidate(
+    *, symbol, timeframe="1h", direction, reason, score=None, p_win=None
+) -> None: ...
+
+# 변경 후 — source / pattern_slug / outcome_id 추가:
+def insert_blocked_candidate(
     *,
     symbol: str,
+    timeframe: str = "1h",
     direction: str,
-    reason: str,
+    reason: FilterReason,
     score: float | None = None,
     p_win: float | None = None,
-    source: str = "engine",
-    pattern_slug: str | None = None,
-) -> None:
-    """Insert one row into blocked_candidates. Fire-and-forget (no return value)."""
-    from ledger.supabase_record_store import _sb
-    _sb().table("blocked_candidates").insert({
-        "symbol": symbol,
-        "direction": direction,
-        "reason": reason,
-        "score": score,
-        "p_win": p_win,
-        "blocked_at": datetime.now(timezone.utc).isoformat(),
-        "source": source,
-        "pattern_slug": pattern_slug,
-    }).execute()
+    source: str = "engine",          # NEW: 'engine' | 'ai_agent' | 'user'
+    pattern_slug: str | None = None, # NEW: executed 케이스의 pattern_outcomes.pattern_slug
+    outcome_id: str | None = None,   # NEW: pattern_outcomes.id FK (uuid str)
+) -> None: ...
+```
+
+`FilterReason` Literal도 5개 코드 추가:
+```python
+FilterReason = Literal[
+    "below_min_conviction", "timing_conflict", "regime_mismatch",
+    "heat_too_high", "insufficient_liquidity", "spread_too_wide",
+    "duplicate_signal", "conflicting_signals", "stale_context",
+    "anti_chase", "too_late", "not_executable",  # NEW
+    "diagnostic_only", "manual_skip",             # NEW
+]
 ```
 
 ---
@@ -353,8 +441,9 @@ def emit_blocked_candidate(
 W-0378에서 `/scan`, `/similar`, `/explain` 명령 실행 시 아래 1줄 추가:
 ```python
 # W-0385: watch_only event
-emit_blocked_candidate(
+insert_blocked_candidate(
     symbol=symbol,
+    timeframe="1h",
     direction="neutral",
     reason="diagnostic_only",
     source="ai_agent",
@@ -453,26 +542,53 @@ Response: blocked_candidates rows, forward_* 포함, 최신순 정렬
 
 ## Implementation Plan
 
-**PR1 — migration + emit (1d)**
-1. `app/supabase/migrations/048_formula_evidence.sql` (위 SQL)
-2. `engine/research/blocked_candidate_store.py` (emit_blocked_candidate)
-3. `engine/scanner/scheduler.py` — MIN_BLOCKS gate에 emit 추가
-4. `engine/scanner/jobs/outcome_resolver.py` — executed 케이스 emit (source='engine', pattern_slug=..., outcome_id=...)
-5. `engine/tests/test_blocked_candidate_store.py` — emit + reason mapping 2 tests
+**PR1 — migration + store 확장 (1d)**
+1. `app/supabase/migrations/048_formula_evidence.sql` (위 SQL — 번호 확인 필수)
+2. `engine/research/artifacts/blocked_candidate_store.py` — `insert_blocked_candidate` kwargs 3개 추가 (`source`, `pattern_slug`, `outcome_id`) + FilterReason Literal 5개 추가
+3. `engine/scanner/realtime.py:206` — `source="engine"` kwarg 추가 (1줄)
+4. `engine/tests/test_blocked_candidate_store.py` — new kwargs 포함 2 tests (Supabase mock)
 
-**PR2 — resolvers + materializer (2-3d)**
-1. `engine/research/blocked_candidate_resolver.py` (forward P&L fill)
-2. `engine/research/formula_evidence_materializer.py` (daily cron)
-3. `engine/scanner/scheduler.py` — 두 job 등록
-4. API: `engine/api/routes/research.py` 에 `/research/formula-evidence` + `/research/blocked-candidates` 추가
-5. `engine/tests/test_formula_evidence.py` — materializer unit test (mock Supabase)
+**PR2 — resolvers + materializer + API (2-3d)**
+1. `engine/scanner/jobs/blocked_candidate_resolver.py` — `_forward_return_at_horizon()` + `resolve_batch()` 신규 (위 pseudo code)
+2. `engine/scanner/jobs/formula_evidence_materializer.py` — `materialize_all()` + `_compute()` 신규 (위 pseudo code)
+3. `engine/scanner/scheduler.py` — `_blocked_candidate_resolve_job` + `_formula_evidence_materialize_job` 2개 등록 (위 패턴)
+4. `engine/api/routes/research.py` — `/research/formula-evidence` + `/research/blocked-candidates` 2개 엔드포인트 추가
+5. `engine/tests/test_formula_evidence.py` — materializer unit test (mock Supabase, `_compute()` 직접 호출)
+6. **Backfill 스크립트** (optional, 별도 PR 또는 PR2에 포함):
+   ```bash
+   # 기존 NULL rows 일괄 채우기 (migration 044 이후 누적분)
+   # engine/scripts/backfill_blocked_candidates.py
+   python -c "
+   from scanner.jobs.blocked_candidate_resolver import resolve_batch
+   import time
+   total = 0
+   while True:
+       n = resolve_batch(batch_size=200)
+       total += n
+       if n == 0: break
+       print(f'filled {n}, total={total}')
+       time.sleep(1)
+   print('backfill complete', total)
+   "
+   ```
 
 **PR3 — UI (2-3d)**
 1. `app/src/routes/patterns/filter-drag/+page.svelte` 완성
 2. `app/src/routes/patterns/formula/+page.svelte` 완성
-3. `app/src/routes/lab/counterfactual/+page.svelte` scatter + timeline 확장
-4. `app/src/routes/api/research/formula-evidence/+server.ts`
-5. `app/src/routes/api/research/blocked-candidates/+server.ts`
+3. `app/src/routes/lab/counterfactual/+page.svelte` scatter + histogram 확장
+4. `app/src/routes/api/research/formula-evidence/+server.ts` — engine proxy (`/research/formula-evidence` 호출)
+5. `app/src/routes/api/research/blocked-candidates/+server.ts` — engine proxy
+
+> **SvelteKit proxy 패턴** (기존 `app/src/routes/api/research/` 하위 동일 패턴):
+> ```ts
+> import { ENGINE_BASE_URL, ENGINE_KEY } from '$env/static/private';
+> export async function GET({ url }) {
+>   const res = await fetch(`${ENGINE_BASE_URL}/research/formula-evidence?${url.searchParams}`, {
+>     headers: { Authorization: `Bearer ${ENGINE_KEY}` },
+>   });
+>   return new Response(await res.text(), { headers: { 'Content-Type': 'application/json' } });
+> }
+> ```
 
 ---
 
@@ -495,9 +611,12 @@ Response: blocked_candidates rows, forward_* 포함, 최신순 정렬
 
 ## Decisions
 
-- D1: `decision_events`를 별도 테이블로 만들지 않고 `blocked_candidates` 테이블을 확장한다. 이유: 이미 migration 044가 배포됐고, executed/watch_only 케이스도 `source` 컬럼으로 구분 가능.
-- D2: `formula_evidence`는 read-only materialized view 대신 실제 테이블(매일 INSERT)로 구현. UI가 시계열 히스토리를 볼 수 있어야 하기 때문.
-- D3: "winner" 판정 기준 = forward_24h >= 50bps (env로 오버라이드 가능). 24h를 주 기준으로 사용하는 이유: 1h는 노이즈가 많고, 72h는 채워지는 데 너무 오래 걸림.
+- D1: `decision_events`를 별도 테이블로 만들지 않고 `blocked_candidates` 확장. 이유: migration 044 이미 배포, `source` 컬럼으로 engine/ai_agent/user 구분 가능.
+- D2: `formula_evidence`는 materialized view 대신 실제 테이블(매일 UPSERT). UI가 시계열 히스토리 필요. Idempotency: `UNIQUE(scope_kind, scope_value, period_start)`.
+- D3: "winner" 판정 = forward_24h >= 50bps (`DRAG_WIN_THRESHOLD_BPS` env). 24h 기준 이유: 1h는 노이즈, 72h는 fill 지연.
+- **D4**: migration = 048 (047 선점 확인). `engine/supabase/migrations/` 경로 없음 — `app/supabase/migrations/`만 사용.
+- **D5**: `emit_blocked_candidate()` 신규 작성 대신 기존 `insert_blocked_candidate()` 확장. 이유: 이미 `realtime.py`에서 import 중. shim 구조 덕분에 `engine/research/blocked_candidate_store.py`도 자동 반영.
+- **D6**: `_entry_and_forward_closes()` import 금지 (private). `blocked_candidate_resolver.py` 내부에 `_forward_return_at_horizon()` 독립 구현.
 
 ## Next Steps
 

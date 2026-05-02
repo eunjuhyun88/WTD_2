@@ -103,7 +103,7 @@
   </div>
 
   {#if !loading && stats?.insufficient_data}
-    <div class="warn-badge">데이터 부족</div>
+    <div class="warn-badge">Insufficient data</div>
   {/if}
 </button>
 

@@ -29,15 +29,15 @@
   const STEPS = [
     {
       num: '01',
-      text: '차트를 보고 구간을 드래그합니다',
+      text: 'View the chart and drag to select a range',
     },
     {
       num: '02',
-      text: 'Save Setup 으로 박제합니다',
+      text: 'Save it with Save Setup',
     },
     {
       num: '03',
-      text: 'AI가 같은 구조를 다른 코인에서 찾아냅니다',
+      text: 'AI finds the same structure in other coins',
     },
   ];
 
@@ -79,14 +79,14 @@
     class="scrim"
     role="dialog"
     aria-modal="true"
-    aria-label="시작 안내"
+    aria-label="Getting started"
     tabindex="-1"
     onclick={handleScrimClick}
     onkeydown={handleScrimKeydown}
   >
     <div class="sheet" role="document">
       <!-- X close button -->
-      <button class="close-btn" onclick={dismiss} aria-label="닫기" type="button">
+      <button class="close-btn" onclick={dismiss} aria-label="Close" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -97,7 +97,7 @@
       <p class="app-mark">COGOTCHI</p>
 
       <!-- Steps -->
-      <ol class="steps" aria-label="시작 안내 단계">
+      <ol class="steps" aria-label="Getting started steps">
         {#each STEPS as step, i}
           <li class="step">
             <span class="step-num" aria-hidden="true">{step.num}</span>
@@ -108,7 +108,7 @@
 
       <!-- Primary CTA -->
       <button class="start-btn" onclick={dismiss} type="button">
-        시작
+        Start
       </button>
     </div>
   </div>

@@ -56,7 +56,7 @@
 
   function del(e: MouseEvent, name: string) {
     e.stopPropagation();
-    if (confirm(`"${name}" 프리셋을 삭제할까요?`)) removePreset(name);
+    if (confirm(`Delete preset "${name}"?`)) removePreset(name);
   }
 
   function onDocClick(e: MouseEvent) {
@@ -98,7 +98,7 @@
     onclick={toggle}
     aria-haspopup="menu"
     aria-expanded={open}
-    title="워크스페이스 프리셋"
+    title="Workspace Presets"
   >
     <span class="wsp-icon">◱</span>
     <span class="wsp-label">{activeLabel}</span>

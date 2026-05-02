@@ -53,7 +53,7 @@
       });
       draft = result;
     } catch (e) {
-      parseError = e instanceof Error ? e.message : 'Parse 실패';
+      parseError = e instanceof Error ? e.message : 'Parse failed';
     } finally {
       parsing = false;
     }
@@ -90,7 +90,7 @@
 
     <div class="parser-sheet">
       <div class="parser-header">
-        <h2 id="parser-title" class="parser-title">📝 메모로 패턴 만들기</h2>
+        <h2 id="parser-title" class="parser-title">📝 Create Pattern from Note</h2>
         <button class="close-btn" onclick={onClose} disabled={parsing} aria-label="Close">×</button>
       </div>
 
@@ -100,7 +100,7 @@
             class="parser-textarea"
             class:over-limit={overLimit}
             bind:value={text}
-            placeholder="텔레그램 메모, 분석 노트 등 자유롭게 붙여넣으세요...&#10;&#10;예: BTC 4h. OI 급등하면서 funding 양수로 전환. higher lows + smart money cohort entry. accumulation 진입 후보."
+            placeholder="Paste your Telegram memo, analysis notes, etc. freely...&#10;&#10;e.g. BTC 4h. OI surged while funding turned positive. Higher lows + smart money cohort entry. Accumulation entry candidate."
             rows="12"
             disabled={parsing}
           ></textarea>
@@ -110,7 +110,7 @@
               {charCount} / {MAX_CHARS}
             </span>
             {#if overLimit}
-              <span class="error-msg">너무 깁니다 — {MAX_CHARS}자 이하로 줄여주세요</span>
+              <span class="error-msg">Too long — please keep it under {MAX_CHARS} characters</span>
             {/if}
           </div>
 
@@ -119,12 +119,12 @@
           {/if}
 
           <div class="parser-actions">
-            <button class="btn-secondary" onclick={onClose} disabled={parsing}>취소</button>
+            <button class="btn-secondary" onclick={onClose} disabled={parsing}>Cancel</button>
             <button
               class="btn-primary"
               onclick={handleParse}
               disabled={!canParse}
-              title={!canParse ? '텍스트를 입력하세요' : 'AI에게 패턴 추출 요청'}
+              title={!canParse ? 'Enter some text' : 'Request pattern extraction from AI'}
             >
               {#if parsing}
                 <span class="spinner">●</span> Parsing…
@@ -137,7 +137,7 @@
           <!-- Draft preview -->
           <div class="draft-preview">
             <div class="draft-section">
-              <h3>패턴</h3>
+              <h3>Pattern</h3>
               <div class="draft-meta">
                 {#if draft.pattern_family}
                   <span class="meta-chip">{draft.pattern_family}</span>
@@ -195,8 +195,8 @@
             </div>
 
             <div class="parser-actions">
-              <button class="btn-secondary" onclick={() => { draft = null; }}>다시 작성</button>
-              <button class="btn-primary" onclick={handleSave}>💾 저장</button>
+              <button class="btn-secondary" onclick={() => { draft = null; }}>Rewrite</button>
+              <button class="btn-primary" onclick={handleSave}>💾 Save</button>
             </div>
           </div>
         {/if}

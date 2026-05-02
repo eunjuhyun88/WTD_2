@@ -43,7 +43,7 @@
 <button
   class="scroll-card"
   onclick={() => onJumpTo?.(segment.from_ts, segment.to_ts)}
-  title="차트에서 이 구간으로 이동"
+  title="Jump to this zone in chart"
 >
   <div class="scroll-card__header">
     <span class="scroll-card__symbol">{segment.symbol}</span>

@@ -91,9 +91,9 @@
   }
 
   const TABS: Array<{ id: Tab; label: string; hint: string }> = [
-    { id: 'analyze', label: 'ANALYZE', hint: '분석 · 가설 · 근거' },
-    { id: 'scan',    label: 'SCAN',    hint: '유사 셋업 · 스캐너 알림' },
-    { id: 'judge',   label: 'JUDGE',   hint: '판정 · 재판정' },
+    { id: 'analyze', label: 'ANALYZE', hint: 'Analysis · Hypothesis · Evidence' },
+    { id: 'scan',    label: 'SCAN',    hint: 'Similar setups · Scanner alerts' },
+    { id: 'judge',   label: 'JUDGE',   hint: 'Verdict · Re-judge' },
   ];
 
   function count(t: Tab): number {

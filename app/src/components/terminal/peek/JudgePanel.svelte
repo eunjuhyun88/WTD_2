@@ -126,13 +126,13 @@
   <!-- SECTION 1: 직후 판정 bar -->
   <section class="now">
     <header>
-      <h3>지금 판정</h3>
+      <h3>Current Verdict</h3>
       <span class="ctx">{symbol ? symbol.replace(/USDT$/, '') : '—'} · {timeframe.toUpperCase()}</span>
     </header>
 
     <div class="now-bar">
       <div class="cell">
-        <span class="k">방향</span>
+        <span class="k">Direction</span>
         <strong class="v-{verdict?.direction ?? 'neutral'}">
           {verdict?.direction?.toUpperCase() ?? '—'}
         </strong>
@@ -161,7 +161,7 @@
       {/if}
       {#if lastPrice != null}
         <div class="cell last">
-          <span class="k">현재가</span>
+          <span class="k">Price</span>
           <strong>{fmt(lastPrice)}</strong>
         </div>
       {/if}
@@ -170,7 +170,7 @@
     <div class="note-row">
       <input
         class="note"
-        placeholder="메모 — 왜 이 판정인가? (선택)"
+        placeholder="Note — why this verdict? (optional)"
         bind:value={note}
         disabled={saving}
       />
@@ -192,8 +192,8 @@
   {#if rejudgeList.length > 0}
     <section class="rejudge">
       <header>
-        <h3>재판정 필요 <small>({rejudgeList.length})</small></h3>
-        <span class="ctx">24h 경과 · 결과 라벨 없음</span>
+        <h3>Re-judge needed <small>({rejudgeList.length})</small></h3>
+        <span class="ctx">24h elapsed · no outcome label</span>
       </header>
       <div class="rj-list">
         {#each rejudgeList as r}
@@ -205,25 +205,25 @@
                 <span class="v-{r.decision?.verdict ?? 'neutral'}">
                   {(r.decision?.verdict ?? '—').toUpperCase()}
                 </span>
-                <span class="age">{relativeTime(r.updatedAt)} 전</span>
+                <span class="age">{relativeTime(r.updatedAt)} ago</span>
               </button>
               {#if rejudgeFor !== r.id}
-                <button class="btn-sm" onclick={() => startRejudge(r.id)}>판정</button>
+                <button class="btn-sm" onclick={() => startRejudge(r.id)}>Judge</button>
               {/if}
             </div>
             {#if rejudgeFor === r.id}
               <div class="rj-form">
                 <input
                   class="rj-note"
-                  placeholder="무엇이 맞았나 / 틀렸나"
+                  placeholder="What was correct / wrong"
                   bind:value={rejudgeNote}
                 />
                 <div class="rj-actions">
-                  <button class="btn-sm good" onclick={() => submitRejudge(r.id, 'correct')}>맞음</button>
-                  <button class="btn-sm partial" onclick={() => submitRejudge(r.id, 'partial')}>부분</button>
-                  <button class="btn-sm bad" onclick={() => submitRejudge(r.id, 'wrong')}>틀림</button>
-                  <button class="btn-sm neu" onclick={() => submitRejudge(r.id, 'timeout')}>시간초과</button>
-                  <button class="btn-sm cancel" onclick={() => startRejudge(r.id)}>취소</button>
+                  <button class="btn-sm good" onclick={() => submitRejudge(r.id, 'correct')}>Correct</button>
+                  <button class="btn-sm partial" onclick={() => submitRejudge(r.id, 'partial')}>Partial</button>
+                  <button class="btn-sm bad" onclick={() => submitRejudge(r.id, 'wrong')}>Wrong</button>
+                  <button class="btn-sm neu" onclick={() => submitRejudge(r.id, 'timeout')}>Timeout</button>
+                  <button class="btn-sm cancel" onclick={() => startRejudge(r.id)}>Cancel</button>
                 </div>
               </div>
             {/if}
@@ -236,10 +236,10 @@
   <!-- SECTION 3: 최근 판정 -->
   <section class="recent">
     <header>
-      <h3>최근 판정 <small>({captures.length})</small></h3>
+      <h3>Recent Verdicts <small>({captures.length})</small></h3>
     </header>
     {#if recentList.length === 0}
-      <p class="empty">저장된 판정 없음.</p>
+      <p class="empty">No saved verdicts.</p>
     {:else}
       <div class="rec-list">
         {#each recentList as r}

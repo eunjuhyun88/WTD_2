@@ -226,7 +226,7 @@
         {@const base = bt(idx)}
         <rect x="0" y={base-2} width={W} height={BAND_H+4} fill="#0a0c10" opacity="0.5"/>
         <text x="8" y={base+11} fill="#6a7280" font-family="JetBrains Mono" font-size="8" letter-spacing="0.14em">CVD 15m</text>
-        <text x="74" y={base+11} fill="#34c470" font-family="JetBrains Mono" font-size="9" font-weight="600">양전환</text>
+        <text x="74" y={base+11} fill="#34c470" font-family="JetBrains Mono" font-size="9" font-weight="600">Positive flip</text>
         <polyline points={cvdLine(idx)} fill="none" stroke="#34c470" stroke-width="1.4"/>
         <polyline points={cvdArea(idx)} fill="#34c470" opacity="0.12"/>
       {/if}

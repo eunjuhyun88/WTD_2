@@ -95,11 +95,11 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) { agentText = '에러: 엔진 응답 실패'; return; }
+      if (!res.ok) { agentText = 'Error: engine response failed'; return; }
       const data = await res.json() as { text?: string };
       agentText = data.text ?? null;
     } catch {
-      agentText = '에러: 요청 실패';
+      agentText = 'Error: request failed';
     } finally {
       agentLoading = false;
     }
@@ -321,7 +321,7 @@
   </div>
 
   {#if agentLoading}
-    <div class="agent-response agent-response--loading">분석 중…</div>
+    <div class="agent-response agent-response--loading">Analyzing…</div>
   {:else if agentText}
     <div class="agent-response">
       <button class="agent-response__close" onclick={() => (agentText = null)}>✕</button>

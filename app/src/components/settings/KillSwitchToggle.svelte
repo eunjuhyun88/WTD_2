@@ -28,7 +28,7 @@
     <span class="ks-label">Use baseline model instead</span>
     <span class="ks-helper">
       {#if isLive}
-        Cogochi가 너의 LoRA 어댑터 대신 공용 baseline 모델을 사용합니다.
+        Cogochi will use the shared baseline model instead of your LoRA adapter.
       {:else}
         Requires H1 verification — available after per-user adapter is live.
       {/if}

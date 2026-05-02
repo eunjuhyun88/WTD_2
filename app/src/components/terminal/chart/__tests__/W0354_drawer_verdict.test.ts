@@ -71,8 +71,8 @@ describe('CaptureReviewDrawer — W-0354 5-verdict alignment', () => {
   });
 
   it('tooltip titles present for context labels', () => {
-    expect(SRC).toContain('title="패턴 유효, 진입 성공"');
-    expect(SRC).toContain('title="패턴 자체가 잘못됨"');
-    expect(SRC).toContain('title="패턴 유효, 아슬아슬하게 놓침"');
+    expect(SRC).toContain('title="Pattern valid, entry successful"');
+    expect(SRC).toContain('title="Pattern itself was wrong"');
+    expect(SRC).toContain('title="Pattern valid, barely missed"');
   });
 });

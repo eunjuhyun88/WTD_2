@@ -237,9 +237,9 @@
 
     <!-- Footer: legend -->
     <div class="lib-footer">
-      <span class="leg-item"><span class="ind-badge tier-a">LIVE</span> 차트에 즉시 추가</span>
-      <span class="leg-item"><span class="ind-badge tier-b">SOON</span> 백엔드 확장 예정</span>
-      <span class="leg-item"><span class="ind-badge tier-c">LINK</span> 외부 플랫폼 열기</span>
+      <span class="leg-item"><span class="ind-badge tier-a">LIVE</span> Add to chart instantly</span>
+      <span class="leg-item"><span class="ind-badge tier-b">SOON</span> Backend expansion planned</span>
+      <span class="leg-item"><span class="ind-badge tier-c">LINK</span> Open external platform</span>
     </div>
   </aside>
 {/if}

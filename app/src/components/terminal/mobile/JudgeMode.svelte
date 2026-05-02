@@ -32,11 +32,11 @@
   let { alerts = [], loading = false, onFeedback }: Props = $props();
 
   const REASON_CHIPS: { id: AlertReason; label: string }[] = [
-    { id: 'valid',   label: '유효' },
-    { id: 'late',    label: '지연' },
-    { id: 'noisy',   label: '노이즈' },
-    { id: 'invalid', label: '무효' },
-    { id: 'almost',  label: '거의' },
+    { id: 'valid',   label: 'Valid' },
+    { id: 'late',    label: 'Late' },
+    { id: 'noisy',   label: 'Noisy' },
+    { id: 'invalid', label: 'Invalid' },
+    { id: 'almost',  label: 'Almost' },
   ];
 
   // Pending first, then resolved
@@ -73,7 +73,7 @@
   }
 
   function fmtTime(ts: number) {
-    return new Date(ts).toLocaleString('ko-KR', {
+    return new Date(ts).toLocaleString('en-US', {
       month: 'numeric',
       day: 'numeric',
       hour: '2-digit',
@@ -96,7 +96,7 @@
 
 <div class="judge-mode">
   <div class="section-header">
-    <span class="section-title">신호 알림</span>
+    <span class="section-title">Signal Alerts</span>
     {#if loading}
       <span class="loading-dot">●</span>
     {/if}
@@ -106,14 +106,14 @@
     {#if sortedAlerts.length === 0 && !loading}
       <MobileEmptyState
         icon="bell"
-        headline="아직 알림 없음"
-        subline="스캐너가 15분마다 패턴을 찾아 여기로 올려요."
+        headline="No alerts yet"
+        subline="The scanner checks for patterns every 15 minutes."
         primaryCta={{
-          label: '패턴 검토하러 가기',
+          label: 'Review patterns',
           onClick: () => mobileMode.setActive('chart'),
         }}
         secondaryCta={{
-          label: '워치리스트 보기',
+          label: 'View watchlist',
           onClick: () => mobileMode.setActive('scan'),
         }}
       />
@@ -124,7 +124,7 @@
           <button
             class="alert-header"
             onclick={() => goToChartReplay(alert)}
-            aria-label="{alert.symbol} 차트 리플레이"
+            aria-label="{alert.symbol} chart replay"
           >
             <div class="alert-left">
               <span class="alert-symbol">{alert.symbol.replace('USDT', '')}</span>
@@ -164,16 +164,16 @@
             <!-- Agree / Disagree -->
             <div class="feedback-btns">
               <button class="fb-btn agree" onclick={() => handleAgree(alert.id)}>
-                동의
+                Agree
               </button>
               <button class="fb-btn disagree" onclick={() => handleDisagree(alert.id)}>
-                반대
+                Disagree
               </button>
             </div>
           {:else}
             <div class="resolved-badge">
               <span class="resolved-label">
-                {alert.status === 'agreed' ? '✓ 동의함' : '✗ 반대함'}
+                {alert.status === 'agreed' ? '✓ Agreed' : '✗ Disagreed'}
                 {#if alert.reason}
                   · {REASON_CHIPS.find(c => c.id === alert.reason)?.label ?? alert.reason}
                 {/if}

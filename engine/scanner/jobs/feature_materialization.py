@@ -144,3 +144,39 @@ def materialize_symbol_window(
         "pattern_event": bundle.pattern_event,
         "search_signature": bundle.search_signature,
     }
+
+
+# ── Scheduler-level orchestrator (W-0386-D) ───────────────────────────────────
+
+async def run_materialization_refresh(
+    universe_name: str,
+    max_symbols: int = 60,
+) -> dict:
+    """Materialize feature_windows for all universe symbols from local cache.
+
+    Intentionally offline — reads from existing CSV cache, never fans out to
+    providers. Extracted from scheduler.py (W-0386-D).
+    """
+    import asyncio  # noqa: PLC0415
+    from features.materialization_store import FeatureMaterializationStore  # noqa: PLC0415
+    from universe.loader import load_universe_async  # noqa: PLC0415
+
+    store = FeatureMaterializationStore()
+    loaded = await load_universe_async(universe_name)
+    symbols = list(loaded)[:max_symbols]
+    materialized = skipped = 0
+    for symbol in symbols:
+        for timeframe in ("1h", "4h"):
+            try:
+                await asyncio.to_thread(
+                    materialize_symbol_window,
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    venue="binance",
+                    offline=True,
+                    store=store,
+                )
+                materialized += 1
+            except Exception:
+                skipped += 1
+    return {"symbols": len(symbols), "materialized": materialized, "skipped": skipped}

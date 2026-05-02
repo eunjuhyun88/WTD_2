@@ -31,10 +31,10 @@
 </script>
 
 {#if $scrollAnalysis.isOpen}
-  <aside class="scroll-drawer" aria-label="구간 분석">
+  <aside class="scroll-drawer" aria-label="Zone Analysis">
     <!-- Header -->
     <div class="scroll-drawer__header">
-      <span class="scroll-drawer__title">구간 분석</span>
+      <span class="scroll-drawer__title">Zone Analysis</span>
       {#if $scrollAnalysis.request}
         <span class="scroll-drawer__symbol">{$scrollAnalysis.request.symbol}</span>
       {/if}
@@ -44,7 +44,7 @@
     {#if $scrollAnalysis.isLoading}
       <div class="scroll-drawer__loading">
         <span class="scroll-drawer__spinner" aria-hidden="true"></span>
-        <span>분석 중...</span>
+        <span>Analyzing...</span>
       </div>
 
     {:else if $scrollAnalysis.error}
@@ -71,7 +71,7 @@
           class="accordion-toggle"
           onclick={() => (expandedSignals = !expandedSignals)}
         >
-          시그널 {r.alpha_score.signals.length}개 {expandedSignals ? '▲' : '▼'}
+          {r.alpha_score.signals.length} signals {expandedSignals ? '▲' : '▼'}
         </button>
         {#if expandedSignals}
           <ul class="signal-list">
@@ -95,7 +95,7 @@
             class="scroll-section__title accordion-toggle"
             onclick={() => (expandedAnomalies = !expandedAnomalies)}
           >
-            이상점 {r.segment.anomaly_flags.length}개 {expandedAnomalies ? '▲' : '▼'}
+            {r.segment.anomaly_flags.length} anomalies {expandedAnomalies ? '▲' : '▼'}
           </button>
           {#if expandedAnomalies}
             <ul class="anomaly-list">
@@ -113,17 +113,17 @@
       <!-- Section 3: Similar Segments -->
       <section class="scroll-section">
         <div class="scroll-section__title">
-          유사구간
+          Similar Zones
           <span class="confidence-badge confidence-badge--{r.similar.confidence}">
             {r.similar.confidence}
           </span>
           {#if r.similar.win_rate != null}
-            <span class="win-rate">승률 {(r.similar.win_rate * 100).toFixed(0)}%</span>
+            <span class="win-rate">Win Rate {(r.similar.win_rate * 100).toFixed(0)}%</span>
           {/if}
         </div>
 
         {#if r.similar.similar_segments.length === 0}
-          <p class="scroll-empty">유사구간 없음 (corpus 미채워짐)</p>
+          <p class="scroll-empty">No similar zones (corpus not yet populated)</p>
         {:else}
           <div class="card-list">
             {#each r.similar.similar_segments as seg, i}

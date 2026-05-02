@@ -55,3 +55,7 @@ The core runtime roles are:
 - Move training/refinement mutation endpoints behind worker-control.
 - Remove process-local pattern state from multi-instance production paths.
 - Slim app routes so `app-web` proxies canonical engine contracts without reshaping engine truth.
+
+## See Also
+
+- [ADR-012](ADR-012-core-loop-spine.md): Core Loop Spine & research/ 4-subpackage boundary (W-0386)

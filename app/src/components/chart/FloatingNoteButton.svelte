@@ -35,8 +35,8 @@
     class="fnb-btn"
     class:active={chartNotesStore.panelOpen}
     onclick={handleOpen}
-    title="메모 작성"
-    aria-label="차트 메모 작성"
+    title="Write note"
+    aria-label="Write chart note"
   >
     ✏️
     {#if chartNotesStore.noteCount > 0}

@@ -32,22 +32,22 @@
     <!-- Running state -->
     <div class="state-empty">
       <div class="spinner-lg"></div>
-      <p class="state-text">백테스트 실행 중...</p>
+      <p class="state-text">Running backtest...</p>
     </div>
 
   {:else if !result}
     <!-- Empty state -->
     <div class="state-empty">
       <div class="empty-icon">⚗</div>
-      <p class="state-text">전략 조건을 설정하고<br/>사이클을 선택한 뒤<br/><strong>▶ 실행</strong>을 누르세요</p>
+      <p class="state-text">Set strategy conditions,<br/>select cycles, then press<br/><strong>▶ Run</strong></p>
     </div>
 
   {:else if result.totalTrades === 0}
     <!-- No trades -->
     <div class="state-empty">
       <div class="empty-icon">📊</div>
-      <p class="state-text">조건을 충족하는 진입이 없었습니다.<br/>조건을 완화하거나 다른 사이클을 추가해보세요.</p>
-      <p class="state-hint">Tip: RSI 임계값을 올리거나, 조건 수를 줄여보세요.</p>
+      <p class="state-text">No entries matched the conditions.<br/>Try relaxing the conditions or adding more cycles.</p>
+      <p class="state-hint">Tip: Raise the RSI threshold or reduce the number of conditions.</p>
     </div>
 
   {:else}
@@ -56,7 +56,7 @@
       <!-- Summary cards -->
       <div class="summary-grid">
         <div class="stat-card">
-          <span class="stat-label">승률</span>
+          <span class="stat-label">Win Rate</span>
           <span class="stat-value" class:positive={result.winRate >= 55} class:negative={result.winRate < 45}>
             {result.winRate.toFixed(1)}%
           </span>
@@ -74,13 +74,13 @@
           </span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">총 PnL</span>
+          <span class="stat-label">Total PnL</span>
           <span class="stat-value {pnlClass(result.totalPnlPercent)}">
             {fmtPct(result.totalPnlPercent)}
           </span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">트레이드</span>
+          <span class="stat-label">Trades</span>
           <span class="stat-value">{result.totalTrades}</span>
         </div>
         <div class="stat-card">
@@ -101,9 +101,9 @@
       {#if result.inSample && result.outOfSample}
         <div class="wf-section">
           <div class="wf-header">
-            <span class="wf-title">Walk-Forward 검증</span>
+            <span class="wf-title">Walk-Forward Validation</span>
             <span class="wf-ratio" class:warn={result.overfitRatio > 1.3} class:danger={result.overfitRatio > 1.5}>
-              과적합 비율: {fmtNum(result.overfitRatio)}
+              Overfit Ratio: {fmtNum(result.overfitRatio)}
             </span>
           </div>
           <div class="wf-compare">
@@ -117,7 +117,7 @@
             </div>
           </div>
           {#if result.overfitRatio > 1.5}
-            <div class="wf-warn">⚠ 과적합 가능성이 높습니다. 조건을 단순화하세요.</div>
+            <div class="wf-warn">⚠ High overfitting risk. Simplify the conditions.</div>
           {/if}
         </div>
       {/if}
@@ -125,10 +125,10 @@
       <!-- Cycle breakdown -->
       {#if result.cycleBreakdown.length > 0}
         <div class="cycle-section">
-          <div class="cycle-header">사이클별 성과</div>
+          <div class="cycle-header">Performance by Cycle</div>
           <div class="cycle-table">
             <div class="ct-head">
-              <span class="ct-h-name">사이클</span>
+              <span class="ct-h-name">Cycle</span>
               <span class="ct-h">Win%</span>
               <span class="ct-h">PnL</span>
               <span class="ct-h">MDD</span>
@@ -149,8 +149,8 @@
 
       <!-- Actions -->
       <div class="action-bar">
-        <button class="action-btn secondary" onclick={onViewChart}>차트로 보기</button>
-        <button class="action-btn primary" onclick={onSave}>버전 저장</button>
+        <button class="action-btn secondary" onclick={onViewChart}>View Chart</button>
+        <button class="action-btn primary" onclick={onSave}>Save Version</button>
       </div>
     </div>
   {/if}
