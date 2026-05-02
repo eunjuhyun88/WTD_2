@@ -3029,6 +3029,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/formula-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Formula Evidence
+         * @description Return formula_evidence rows sorted by drag_score DESC.
+         *
+         *     scope: group by filter_rule (reason codes) or pattern (pattern slugs).
+         *     min_sample: rows with sample_n < min_sample are excluded (noise floor).
+         */
+        get: operations["get_formula_evidence_research_formula_evidence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/blocked-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Blocked Candidates
+         * @description Return blocked_candidates rows in reverse chronological order.
+         *
+         *     filled_only=true returns only rows where forward_24h IS NOT NULL.
+         */
+        get: operations["get_blocked_candidates_research_blocked_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/propfirm/summary": {
         parameters: {
             query?: never;
@@ -11043,6 +11088,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TopPatternsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_formula_evidence_research_formula_evidence_get: {
+        parameters: {
+            query?: {
+                scope?: "filter_rule" | "pattern" | "reason_code";
+                period_days?: number;
+                min_sample?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_blocked_candidates_research_blocked_candidates_get: {
+        parameters: {
+            query?: {
+                reason?: string | null;
+                symbol?: string | null;
+                from_ts?: string | null;
+                to_ts?: string | null;
+                filled_only?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
