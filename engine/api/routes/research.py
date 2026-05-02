@@ -524,3 +524,112 @@ def get_top_patterns(
         total_available=total_available,
         limit_applied=limit_applied,
     )
+
+
+# ---------------------------------------------------------------------------
+# W-0385: GET /research/formula-evidence
+# ---------------------------------------------------------------------------
+
+class FormulaEvidenceItem(BaseModel):
+    scope_kind: str
+    scope_value: str
+    sample_n: int | None = None
+    blocked_winner_rate: float | None = None
+    good_block_rate: float | None = None
+    drag_score: float | None = None
+    avg_missed_pnl: float | None = None
+    computed_at: str | None = None
+
+
+@router.get("/formula-evidence", response_model=list[FormulaEvidenceItem])
+async def get_formula_evidence(
+    scope: str = Query("filter_rule", description="filter_rule | pattern"),
+    period_days: int = Query(30, ge=1, le=365),
+    min_sample: int = Query(10, ge=1),
+) -> list[FormulaEvidenceItem]:
+    """Return formula evidence rows sorted by drag_score DESC.
+
+    drag_score (bps) = blocked_winner_rate × avg_missed_pnl — how much
+    alpha each filter rule has cost us in the last period_days.
+    """
+    import os as _os
+    from supabase import create_client
+    from datetime import datetime as _dt, timedelta as _td
+
+    sb = create_client(
+        _os.environ["SUPABASE_URL"],
+        _os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+    )
+
+    cutoff = (_dt.now(__import__("datetime").timezone.utc) - _td(days=period_days)).isoformat()
+
+    rows = (
+        sb.table("formula_evidence")
+        .select("scope_kind, scope_value, sample_n, blocked_winner_rate, good_block_rate, drag_score, avg_missed_pnl, computed_at")
+        .eq("scope_kind", scope)
+        .gte("computed_at", cutoff)
+        .gte("sample_n", min_sample)
+        .order("drag_score", desc=True)
+        .limit(200)
+        .execute()
+        .data
+    )
+
+    return [FormulaEvidenceItem(**r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# W-0385: GET /research/blocked-candidates
+# ---------------------------------------------------------------------------
+
+class BlockedCandidateItem(BaseModel):
+    id: str | None = None
+    symbol: str | None = None
+    timeframe: str | None = None
+    direction: str | None = None
+    reason: str | None = None
+    score: float | None = None
+    p_win: float | None = None
+    source: str | None = None
+    pattern_slug: str | None = None
+    forward_1h: float | None = None
+    forward_4h: float | None = None
+    forward_24h: float | None = None
+    forward_72h: float | None = None
+    blocked_at: str | None = None
+
+
+@router.get("/blocked-candidates", response_model=list[BlockedCandidateItem])
+async def get_blocked_candidates(
+    reason: str | None = Query(None, description="Filter by filter_reason code"),
+    symbol: str | None = Query(None, description="Filter by symbol"),
+    period_days: int = Query(30, ge=1, le=365),
+    limit: int = Query(100, ge=1, le=500),
+) -> list[BlockedCandidateItem]:
+    """Return blocked_candidates rows, optionally filtered by reason/symbol."""
+    import os as _os
+    from supabase import create_client
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+    sb = create_client(
+        _os.environ["SUPABASE_URL"],
+        _os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+    )
+
+    cutoff = (_dt.now(_tz.utc) - _td(days=period_days)).isoformat()
+
+    q = (
+        sb.table("blocked_candidates")
+        .select("id, symbol, timeframe, direction, reason, score, p_win, source, pattern_slug, forward_1h, forward_4h, forward_24h, forward_72h, blocked_at")
+        .gte("blocked_at", cutoff)
+        .order("blocked_at", desc=True)
+        .limit(limit)
+    )
+    if reason:
+        q = q.eq("reason", reason)
+    if symbol:
+        q = q.eq("symbol", symbol.upper())
+
+    rows = q.execute().data
+    return [BlockedCandidateItem(**r) for r in rows]
+    )

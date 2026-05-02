@@ -108,6 +108,9 @@ _BETA_JOB_FLAGS = {
     "extreme_event_detector": os.environ.get("EXTREME_EVENT_TRACKER_JOB", "false"),
     "extreme_event_outcome": os.environ.get("EXTREME_EVENT_OUTCOME_JOB", "false"),
     "backtest_stats_refresh": os.environ.get("ENABLE_BACKTEST_STATS_REFRESH_JOB", "false"),
+    # W-0385: blocked candidate resolver + formula evidence materializer
+    "blocked_candidate_resolver": os.environ.get("ENABLE_BLOCKED_CANDIDATE_RESOLVER_JOB", "true"),
+    "formula_evidence_materializer": os.environ.get("ENABLE_FORMULA_EVIDENCE_MATERIALIZER_JOB", "true"),
 }
 
 
@@ -293,6 +296,26 @@ def start_scheduler() -> None:
         _add(_bsr, "cron", hour=3, minute=0, id="backtest_stats_refresh",
              name="Daily backtest stats refresh (W-0369)",
              max_instances=1, coalesce=True, misfire_grace_time=3600)
+
+    # W-0385: Blocked candidate P&L resolver — hourly
+    if _job_enabled("blocked_candidate_resolver"):
+        async def _blocked_candidate_resolve_job() -> None:  # noqa: E306
+            from scanner.jobs.blocked_candidate_resolver import resolve_batch  # noqa: PLC0415
+            filled = await asyncio.to_thread(resolve_batch)
+            log.info("blocked_candidate_resolver: %d rows filled", filled)
+        _add(_blocked_candidate_resolve_job, "interval", seconds=3600,
+             id="blocked_candidate_resolver", name="Blocked candidate P&L resolver (W-0385)",
+             max_instances=1, coalesce=True, misfire_grace_time=600)
+
+    # W-0385: Formula evidence daily materializer — 03:30 UTC
+    if _job_enabled("formula_evidence_materializer"):
+        async def _formula_evidence_materialize_job() -> None:  # noqa: E306
+            from scanner.jobs.formula_evidence_materializer import materialize_all  # noqa: PLC0415
+            rows = await asyncio.to_thread(materialize_all)
+            log.info("formula_evidence_materializer: %d rows written", rows)
+        _add(_formula_evidence_materialize_job, "cron", hour=3, minute=30,
+             id="formula_evidence_materializer", name="Formula evidence daily materializer (W-0385)",
+             max_instances=1, coalesce=True, misfire_grace_time=1800)
 
     _scheduler.start()
     log.info(
