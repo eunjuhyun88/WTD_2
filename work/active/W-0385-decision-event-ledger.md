@@ -21,7 +21,7 @@ eunjuhyun88 — PR1(engine), PR2(engine worker), PR3(app UI).
 ## Scope
 
 ```
-engine/supabase/migrations/047_formula_evidence.sql
+app/supabase/migrations/048_formula_evidence.sql
 engine/research/blocked_candidate_store.py    # emit_blocked_candidate() + list_unresolved()
 engine/scanner/jobs/blocked_candidate_resolver.py  # 72h forward P&L 채우기
 engine/scanner/jobs/formula_evidence_materializer.py  # 매일 drag_score 집계
@@ -46,7 +46,7 @@ app/src/routes/patterns/filter-drag/+page.svelte
 ## Canonical Files
 
 ```
-engine/supabase/migrations/047_formula_evidence.sql
+app/supabase/migrations/048_formula_evidence.sql
 engine/research/blocked_candidate_store.py
 engine/scanner/jobs/blocked_candidate_resolver.py
 engine/scanner/jobs/formula_evidence_materializer.py
@@ -60,8 +60,8 @@ app/src/routes/patterns/formula/+page.svelte
 ## Facts
 
 1. `blocked_candidates` 테이블은 migration 044에서 생성됨 (W-0382). `forward_1h/4h/24h/72h` 컬럼 존재하나 모두 NULL.
-2. `filter_reason` ENUM은 현재 9개 코드. 이번 work item에서 5개 추가 (migration 047).
-3. 최신 migration 번호: `046_ensemble_rounds.sql` → 이번 migration = `047`.
+2. `filter_reason` ENUM은 현재 9개 코드. 이번 work item에서 5개 추가 (migration 048).
+3. 최신 migration 번호: `046_ensemble_rounds.sql` → 이번 migration = `048` (047은 W-0378 agent_interactions에 선점).
 4. `formula_evidence` 테이블은 신규 생성 (기존 없음). `drag_score = blocked_winner_rate × avg_missed_pnl`.
 5. blocked_candidate_resolver는 APScheduler 1h 간격. formula_evidence_materializer는 daily 03:30 UTC.
 6. `pattern_outcomes`의 실제 exit_return_pct와 `blocked_candidates.forward_24h` ≥ 50bps 비교로 `winner` 판정.
@@ -70,7 +70,7 @@ app/src/routes/patterns/formula/+page.svelte
 
 ## Open Questions
 
-1. `blocked_candidates`에 `source` 컬럼 추가 필요 여부 (`engine` vs `ai_agent`). 현재 미존재 — migration 047에 포함 예정.
+1. `blocked_candidates`에 `source` 컬럼 추가 필요 여부 (`engine` vs `ai_agent`). 현재 미존재 — migration 048에 포함 예정.
 2. `formula_evidence` compute 주기: daily 03:30 UTC vs. 매 resolve 후 incremental. 현재: daily batch.
 3. W-0378 watch_only emit 시점: agent 명령 dispatch 직후 vs. LLM 응답 완료 후. 현재 설계: dispatch 직후.
 
@@ -99,7 +99,7 @@ app/src/routes/patterns/formula/+page.svelte
 | decision_event(watch_only) | 없음 | **NEW** — W-0378 AI Agent 명령 시 emit |
 | counterfactual_row(executed) | scan_signal_outcomes (triple barrier 1h/4h/24h/72h) | ✅ 이미 존재 |
 | counterfactual_row(blocked) | blocked_candidates.forward_1h/4h/24h/72h | ⚡ 컬럼 존재, resolver 없음 |
-| formula_evidence | 없음 | **NEW** — migration 047 |
+| formula_evidence | 없음 | **NEW** — migration 048 |
 | reason_codes taxonomy | filter_reason ENUM (9코드, migration 044) | ⚡ 5코드 추가 필요 |
 
 ---
@@ -120,7 +120,7 @@ executed 케이스의 기준. `blocked_candidates.forward_*`와 비교해 drag_s
 
 ## 신규 DB 변경
 
-### migration 047 — formula_evidence + filter_reason ENUM 확장 (현재 최신 migration: 046_ensemble_rounds)
+### migration 048 — formula_evidence + filter_reason ENUM 확장 (현재 최신 migration: 046_ensemble_rounds)
 
 ```sql
 -- Part 1: filter_reason ENUM에 Kieran 14코드 추가 (기존 9개에서 14개로)
@@ -454,7 +454,7 @@ Response: blocked_candidates rows, forward_* 포함, 최신순 정렬
 ## Implementation Plan
 
 **PR1 — migration + emit (1d)**
-1. `app/supabase/migrations/047_formula_evidence.sql` (위 SQL)
+1. `app/supabase/migrations/048_formula_evidence.sql` (위 SQL)
 2. `engine/research/blocked_candidate_store.py` (emit_blocked_candidate)
 3. `engine/scanner/scheduler.py` — MIN_BLOCKS gate에 emit 추가
 4. `engine/scanner/jobs/outcome_resolver.py` — executed 케이스 emit (source='engine', pattern_slug=..., outcome_id=...)
@@ -507,6 +507,6 @@ Response: blocked_candidates rows, forward_* 포함, 최신순 정렬
 ## Handoff Checklist
 
 - [ ] AC1~AC7 전부 체크
-- [ ] migration 047 Supabase 적용 확인
+- [ ] migration 048 Supabase 적용 확인
 - [ ] CURRENT.md W-0385 row 추가
 - [ ] blocked_candidates resolver 1h 이후 smoke: NULL rows 감소 확인
