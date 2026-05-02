@@ -63,6 +63,7 @@
   import { comparisonStore } from '$lib/stores/comparisonStore';
   import { whaleStore } from '$lib/stores/whaleStore';
   import { chartAIOverlay, clearAIOverlay } from '$lib/stores/chartAIOverlay';
+  import type { AIRangeBox, AIAnnotation } from '$lib/stores/chartAIOverlay';
   // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
   import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
   import FloatingNoteButton from '../../chart/FloatingNoteButton.svelte';
@@ -1724,6 +1725,49 @@
     clearAIOverlay();
   });
 
+  // D-9: AI overlay shape rendering — range boxes + annotation markers
+  interface AIBoxCoord { x: number; y: number; w: number; h: number; color: string; label?: string }
+  let aiBoxCoords = $state<AIBoxCoord[]>([]);
+
+  function recomputeAIShapes() {
+    if (!mainChart || !priceSeries || !chartStackEl) { aiBoxCoords = []; return; }
+    const state = $chartAIOverlay;
+    if (state.symbol !== symbol) { aiBoxCoords = []; return; }
+    const ts = mainChart.timeScale();
+    const boxes = state.shapes.filter((s): s is AIRangeBox => s.kind === 'range');
+    aiBoxCoords = boxes.flatMap(box => {
+      const x1 = ts.timeToCoordinate(box.fromTime as UTCTimestamp);
+      const x2 = ts.timeToCoordinate(box.toTime as UTCTimestamp);
+      const y1 = priceSeries!.priceToCoordinate(box.fromPrice);
+      const y2 = priceSeries!.priceToCoordinate(box.toPrice);
+      if (x1 == null || x2 == null || y1 == null || y2 == null) return [];
+      return [{ x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1), color: box.color, label: box.label }];
+    });
+  }
+
+  $effect(() => {
+    if (!mainChart) return;
+    const off1 = mainChart.timeScale().subscribeVisibleLogicalRangeChange(recomputeAIShapes);
+    return () => off1();
+  });
+
+  $effect(() => {
+    void $chartAIOverlay;
+    recomputeAIShapes();
+  });
+
+  // D-9: merge AI annotation markers into candleMarkerApi
+  $effect(() => {
+    const state = $chartAIOverlay;
+    if (!candleMarkerApi || state.symbol !== symbol) return;
+    const annMarkers = state.shapes
+      .filter((s): s is AIAnnotation => s.kind === 'annotation')
+      .map(s => ({ time: s.time as UTCTimestamp, position: 'aboveBar' as const, color: s.color, shape: 'circle' as const, text: s.text }));
+    if (annMarkers.length > 0) {
+      candleMarkerApi.setMarkers([...annMarkers]);
+    }
+  });
+
   // W-0210 Layer 3: Fetch comparison data when comparison is toggled or TF changes
   const COMPARISON_SYMBOL = 'BTCUSDT';
   $effect(() => {
@@ -1818,6 +1862,19 @@
     <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
+      <!-- D-9: AI range box overlay -->
+      {#if aiBoxCoords.length > 0}
+        <svg class="ai-range-overlay" aria-hidden="true">
+          {#each aiBoxCoords as box}
+            <rect x={box.x} y={box.y} width={box.w} height={box.h}
+              fill={box.color} fill-opacity="0.10"
+              stroke={box.color} stroke-width="1" stroke-opacity="0.45" />
+            {#if box.label}
+              <text x={box.x + 4} y={box.y + 11} fill={box.color} font-size="8" opacity="0.75">{box.label}</text>
+            {/if}
+          {/each}
+        </svg>
+      {/if}
       <div class="layer2-topright">
         <RangeModeToast
           active={$chartSaveMode.active}
@@ -2035,6 +2092,14 @@
     /* Overlay sits above chart canvas but below header chrome */
     z-index: 15;
     pointer-events: none;
+  }
+  .ai-range-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
   }
   .layer2-topright {
     position: absolute;
