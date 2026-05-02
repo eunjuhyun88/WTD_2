@@ -196,7 +196,7 @@
 
 .empty-hint {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--ui-text-xs);
   color: var(--g5);
   letter-spacing: 0.04em;
 }
@@ -217,7 +217,7 @@
   align-items: center;
   gap: 4px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   color: var(--g7);
   letter-spacing: 0.04em;
 }

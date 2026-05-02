@@ -161,8 +161,8 @@
   }
   .tb-btn:hover { background: rgba(var(--lis-rgb-pink), 0.06); }
   .strat-btn { font-weight: 600; }
-  .tb-ver { font-family: var(--sc-font-mono); font-size: 10px; color: var(--lis-accent); background: rgba(var(--lis-rgb-pink), 0.1); padding: 1px 5px; border-radius: 3px; }
-  .tb-arrow { font-size: 9px; color: rgba(255 255 255 / 0.25); }
+  .tb-ver { font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); color: var(--lis-accent); background: rgba(var(--lis-rgb-pink), 0.1); padding: 1px 5px; border-radius: 3px; }
+  .tb-arrow { font-size: var(--ui-text-xs); color: rgba(255 255 255 / 0.25); }
   .tb-label { color: rgba(255 255 255 / 0.8); }
 
   .tb-dropdown {
@@ -183,7 +183,7 @@
   .dd-item.active { background: rgba(var(--lis-rgb-pink), 0.12); }
   .dd-item.add { color: var(--lis-accent); }
   .dd-name { flex: 1; }
-  .dd-meta { font-family: var(--sc-font-mono); font-size: 10px; color: rgba(255 255 255 / 0.3); }
+  .dd-meta { font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); color: rgba(255 255 255 / 0.3); }
   .dd-sep { height: 1px; background: rgba(255 255 255 / 0.06); margin: 4px 0; }
 
   .dd-check {
@@ -192,7 +192,7 @@
   }
   .dd-check:hover { background: rgba(var(--lis-rgb-pink), 0.06); }
   .dd-check input { accent-color: var(--lis-accent); }
-  .dd-change { font-family: var(--sc-font-mono); font-size: 10px; margin-left: auto; }
+  .dd-change { font-family: var(--sc-font-mono); font-size: var(--ui-text-xs); margin-left: auto; }
   .dd-change.pos { color: var(--lis-positive); }
   .dd-change.neg { color: var(--sc-bad); }
 
@@ -207,7 +207,7 @@
   .interval-group { display: flex; gap: 2px; }
   .iv-btn {
     padding: 4px 8px; background: transparent; border: 1px solid transparent;
-    border-radius: 4px; font-family: var(--sc-font-mono); font-size: 10px;
+    border-radius: 4px; font-family: var(--sc-font-mono); font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.35); cursor: pointer; transition: all 0.15s;
   }
   .iv-btn.active { color: rgba(255 255 255 / 0.9); border-color: rgba(255 255 255 / 0.1); background: rgba(255 255 255 / 0.04); }

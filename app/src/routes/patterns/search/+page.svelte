@@ -376,7 +376,7 @@
 
   .field-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     color: rgba(255, 255, 255, 0.35);
     text-transform: uppercase;
@@ -426,7 +426,7 @@
 
   .param-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     color: rgba(255, 255, 255, 0.35);
     text-transform: uppercase;
@@ -468,7 +468,7 @@
   }
   .page-error { color: #f87171; }
   .error-detail {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(248, 113, 113, 0.6);
     max-width: 500px;
   }
@@ -492,7 +492,7 @@
   /* ── Results ── */
   .phase-path {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.04em;
   }
 
@@ -537,7 +537,7 @@
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     color: rgba(255, 255, 255, 0.25);
     text-transform: uppercase;
@@ -579,7 +579,7 @@
 
   .row-phases {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.35);
     white-space: nowrap;
     overflow: hidden;

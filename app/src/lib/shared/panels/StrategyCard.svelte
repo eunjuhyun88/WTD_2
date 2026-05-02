@@ -137,7 +137,7 @@
 
   .time {
     font-family: var(--sc-font-body);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.2);
   }
 
@@ -175,7 +175,7 @@
 
   .sp-ver {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--lis-accent);
     background: rgba(var(--lis-rgb-pink), 0.1);
     padding: 1px 5px;
@@ -194,7 +194,7 @@
   }
 
   .sp-stat-label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: rgba(255 255 255 / 0.3);
@@ -218,7 +218,7 @@
 
   .cond-tag {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     background: rgba(var(--lis-rgb-pink), 0.08);
     color: rgba(255 255 255 / 0.5);
     padding: 2px 6px;
@@ -227,7 +227,7 @@
 
   .cond-more {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.25);
   }
 
@@ -253,7 +253,7 @@
 
   .sp-progress-text {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.25);
     flex-shrink: 0;
   }

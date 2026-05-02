@@ -231,14 +231,14 @@
 	.fdr-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 	.fdr-header h1 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
 	.fdr-header .slug { color: var(--amb); }
-	.controls label { display: flex; flex-direction: column; font-size: 9px; text-transform: uppercase; gap: 4px; color: var(--g7); }
+	.controls label { display: flex; flex-direction: column; font-size: var(--ui-text-xs); text-transform: uppercase; gap: 4px; color: var(--g7); }
 	.controls select { font-family: var(--font-mono, ui-monospace); font-size: 11px; background: var(--g1); color: var(--g10); border: 1px solid var(--g3); padding: 4px 8px; }
-	.paper-note { background: var(--g2); color: var(--g7); font-size: 10px; padding: 4px 12px; border-left: 2px solid var(--amb); }
+	.paper-note { background: var(--g2); color: var(--g7); font-size: var(--ui-text-xs); padding: 4px 12px; border-left: 2px solid var(--amb); }
 
 	.sliders { background: var(--g1); border: 1px solid var(--g3); padding: 16px; margin-bottom: 16px; }
 	.row { display: grid; grid-template-columns: 140px 80px 1fr 160px; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--g2); font-family: var(--font-mono, ui-monospace); font-size: 11px; }
 	.row:last-child { border-bottom: 0; }
-	.row .key { color: var(--g7); text-transform: uppercase; font-size: 9px; letter-spacing: 0.05em; }
+	.row .key { color: var(--g7); text-transform: uppercase; font-size: var(--ui-text-xs); letter-spacing: 0.05em; }
 	.row .cur { color: var(--g10); text-align: left; }
 	.row input[type='range'] { width: 100%; accent-color: var(--amb); }
 	.toggle { position: relative; display: inline-block; width: 36px; height: 18px; }
@@ -250,7 +250,7 @@
 	.impact { font-size: 11px; text-align: right; }
 
 	.preview { background: var(--g1); border: 1px solid var(--g3); padding: 16px; }
-	.preview h2 { font-size: 10px; letter-spacing: 0.06em; margin: 0 0 8px; color: var(--g7); text-transform: uppercase; }
+	.preview h2 { font-size: var(--ui-text-xs); letter-spacing: 0.06em; margin: 0 0 8px; color: var(--g7); text-transform: uppercase; }
 	.curve { width: 100%; height: 120px; background: var(--g0); }
 	.cur-line { fill: none; stroke: var(--g7); stroke-width: 1.5; stroke-dasharray: 3 3; }
 	.sim-line { fill: none; stroke: var(--amb); stroke-width: 2; }

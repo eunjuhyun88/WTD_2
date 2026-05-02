@@ -164,7 +164,7 @@
   .context-kicker,
   .result-preview-kicker {
     font-family: var(--sc-font-mono);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -185,7 +185,7 @@
     background: rgba(255,255,255,0.05);
     color: var(--sc-text-1);
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     cursor: pointer;
@@ -283,7 +283,7 @@
 
   .sending-dot {
     color: #fbbf24;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     animation: pulse 0.8s infinite;
   }
 
@@ -301,7 +301,7 @@
     border-radius: 999px;
     background: rgba(255,255,255,0.06);
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-1);
   }
 
@@ -334,7 +334,7 @@
     background: rgba(255,255,255,0.04);
     color: var(--sc-text-1);
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.05em;
     cursor: pointer;

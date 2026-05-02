@@ -242,7 +242,7 @@
   }
   .qp-sub {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3);
   }
   .qp-collapse, .qp-expand {
@@ -274,7 +274,7 @@
   }
   .qp-preset {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.5px;
     padding: 4px 8px;
@@ -302,7 +302,7 @@
   }
   .qp-filter {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.5px;
     padding: 2px 6px;
@@ -362,19 +362,19 @@
   }
   .qr-price {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3);
   }
   .qr-price-dim {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3);
     opacity: 0.35;
     margin-left: auto;
   }
   .qr-ch {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     margin-left: auto;
   }
   .qr-ch.up { color: var(--sc-good, #adca7c); }
@@ -386,7 +386,7 @@
   }
   .qr-flag {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     padding: 1px 4px;
     border-radius: 999px;
     background: rgba(219,154,159,0.08);
@@ -401,13 +401,13 @@
   }
   .qr-score {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 800;
     text-align: right;
   }
   .qr-change {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     text-align: right;
   }
   .qr-change.up { color: var(--sc-good, #adca7c); }
@@ -445,14 +445,14 @@
   }
   .qp-scan-text {
     font-family: var(--sc-font-body);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3);
   }
 
   .qp-empty {
     padding: 20px;
     text-align: center;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3);
   }
   .qp-count {
@@ -461,7 +461,7 @@
     justify-content: space-between;
     gap: 8px;
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3);
     border-top: 1px solid var(--sc-line-soft);
   }
@@ -521,7 +521,7 @@
     }
     .qp-count {
       padding: 10px 16px 12px;
-      font-size: 9px;
+      font-size: var(--ui-text-xs);
     }
   }
 

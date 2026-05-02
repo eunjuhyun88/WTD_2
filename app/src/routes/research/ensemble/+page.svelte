@@ -437,7 +437,7 @@
 		color: var(--g7);
 		font-weight: 500;
 		text-transform: uppercase;
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		letter-spacing: 0.04em;
 		cursor: pointer;
 	}
@@ -460,7 +460,7 @@
 
 	td.code {
 		font-family: var(--font-mono, ui-monospace);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 	}
 
 	.strategy-name {

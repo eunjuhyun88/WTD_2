@@ -299,7 +299,7 @@
 
   .section { display: flex; flex-direction: column; gap: 6px; }
   .section-title {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--sc-text-3, #64748b);
@@ -378,7 +378,7 @@
   .verdict-btn:hover:not(:disabled) { opacity: 0.85; }
 
   .capture-id {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3, #64748b);
     font-family: monospace;
     margin-top: auto;

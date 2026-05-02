@@ -93,7 +93,7 @@
 
   .tab-label {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;

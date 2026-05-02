@@ -263,7 +263,7 @@
 	}
 
 	.metric .label {
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: var(--g6);
@@ -277,7 +277,7 @@
 
 	.status-badge {
 		padding: 2px 6px;
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		border-radius: 2px;
@@ -304,7 +304,7 @@
 		padding: 2px 4px;
 		border-radius: 2px;
 		font-family: var(--font-mono, ui-monospace);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 	}
 
 	.mono {
@@ -330,7 +330,7 @@
 		color: var(--g7);
 		font-weight: 500;
 		text-transform: uppercase;
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		letter-spacing: 0.04em;
 	}
 
@@ -355,7 +355,7 @@
 	}
 
 	.rule-block .label {
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: var(--g6);
@@ -372,7 +372,7 @@
 		color: var(--g7);
 		padding: 2px 6px;
 		border-radius: 2px;
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		font-family: var(--font-mono, ui-monospace);
 	}
 
@@ -387,7 +387,7 @@
 		justify-content: space-between;
 		padding: 4px 0;
 		border-bottom: 1px solid var(--g2);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 	}
 
 	.muted {

@@ -93,7 +93,7 @@
 
   .toast-text {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.75);
     white-space: nowrap;
     flex-shrink: 0;
@@ -101,7 +101,7 @@
 
   .toast-esc {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.38);
     white-space: nowrap;
     flex-shrink: 0;
@@ -109,7 +109,7 @@
 
   kbd {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: rgba(247, 242, 234, 0.55);
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -133,7 +133,7 @@
     background: rgba(77, 143, 245, 0.1);
     color: rgba(247, 242, 234, 0.8);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;

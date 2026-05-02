@@ -209,7 +209,7 @@
     gap: 12px;
   }
   .ds { display: flex; flex-direction: column; gap: 2px; }
-  .ds span { font-size: 10px; color: var(--g5, #666); text-transform: uppercase; }
+  .ds span { font-size: var(--ui-text-xs); color: var(--g5, #666); text-transform: uppercase; }
   .ds strong { font-size: 14px; font-weight: 700; color: var(--g9, #f0f0f0); font-variant-numeric: tabular-nums; }
   .drill-chart {
     margin-bottom: 14px;
@@ -224,7 +224,7 @@
     display: flex;
     justify-content: space-between;
     margin-top: 4px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, #666);
     font-variant-numeric: tabular-nums;
   }

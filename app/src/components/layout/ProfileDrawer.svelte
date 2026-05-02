@@ -98,7 +98,7 @@
 
   .drawer-title {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.12em;
     color: rgba(249, 216, 194, 0.5);
@@ -136,7 +136,7 @@
 
   .field-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.1em;
     color: rgba(249, 216, 194, 0.35);
@@ -156,7 +156,7 @@
 
   .tier-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.08em;
   }
@@ -182,7 +182,7 @@
     background: rgba(249, 216, 194, 0.05);
     color: rgba(250, 247, 235, 0.75);
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.1em;
     cursor: pointer;

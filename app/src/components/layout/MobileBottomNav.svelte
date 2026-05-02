@@ -124,7 +124,7 @@
 
   .nav-label {
     font-family: var(--sc-font-body, sans-serif);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;

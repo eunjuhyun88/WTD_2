@@ -162,7 +162,7 @@
     color: rgba(250, 247, 235, 0.88);
     border: 1px solid rgba(249, 216, 194, 0.08);
     box-shadow: none;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     display: flex;
     align-items: center;
     gap: 6px;

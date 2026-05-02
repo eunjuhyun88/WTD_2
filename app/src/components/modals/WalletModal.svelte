@@ -726,7 +726,7 @@
     text-align: center;
     padding: 6px 10px;
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     color: rgba(250, 247, 235, 0.38);
     transition: all 0.2s;
@@ -856,7 +856,7 @@
 
   .wo-chain {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     border: 1px solid rgba(249, 216, 194, 0.1);
     border-radius: 999px;
@@ -867,7 +867,7 @@
 
   .wo-badge {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.1em;
     border-radius: 999px;
     padding: 3px 8px;
@@ -935,7 +935,7 @@
 
   .info-k {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.12em;
     color: rgba(250, 247, 235, 0.48);
   }

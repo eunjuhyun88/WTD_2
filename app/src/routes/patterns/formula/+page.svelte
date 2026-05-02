@@ -199,7 +199,7 @@
 	.hd h1 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
 	.hd .slug { color: var(--amb); }
 	.card { background: var(--g1); border: 1px solid var(--g3); padding: 12px 16px; margin-bottom: 12px; }
-	.card h2 { font-size: 10px; letter-spacing: 0.06em; color: var(--g7); margin: 0 0 8px; text-transform: uppercase; }
+	.card h2 { font-size: var(--ui-text-xs); letter-spacing: 0.06em; color: var(--g7); margin: 0 0 8px; text-transform: uppercase; }
 	.card .n { color: var(--g6); font-weight: 400; }
 	dl { display: grid; grid-template-columns: 140px 1fr; gap: 4px 12px; margin: 0; font-family: var(--font-mono, ui-monospace); font-size: 11px; }
 	dt { color: var(--g7); }
@@ -207,13 +207,13 @@
 	.vars { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 12px; margin: 0; padding: 0; list-style: none; font-family: var(--font-mono, ui-monospace); font-size: 11px; color: var(--g8); }
 	table { width: 100%; border-collapse: collapse; font-family: var(--font-mono, ui-monospace); font-size: 11px; }
 	th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--g2); }
-	th { background: var(--g2); color: var(--g7); font-weight: 500; text-transform: uppercase; font-size: 9px; letter-spacing: 0.04em; }
+	th { background: var(--g2); color: var(--g7); font-weight: 500; text-transform: uppercase; font-size: var(--ui-text-xs); letter-spacing: 0.04em; }
 	.rh { background: var(--g2); color: var(--g8); }
-	.bucket-n { display: block; font-size: 9px; color: var(--g7); }
+	.bucket-n { display: block; font-size: var(--ui-text-xs); color: var(--g7); }
 	.bucket-pnl { display: block; font-size: 11px; font-weight: 600; }
-	.btn { background: var(--g3); color: var(--g10); border: 1px solid var(--g4); padding: 4px 10px; font-size: 10px; text-transform: uppercase; cursor: pointer; }
-	.action { color: var(--amb); text-decoration: none; font-size: 10px; }
-	.weight { padding: 1px 6px; font-size: 9px; text-transform: uppercase; }
+	.btn { background: var(--g3); color: var(--g10); border: 1px solid var(--g4); padding: 4px 10px; font-size: var(--ui-text-xs); text-transform: uppercase; cursor: pointer; }
+	.action { color: var(--amb); text-decoration: none; font-size: var(--ui-text-xs); }
+	.weight { padding: 1px 6px; font-size: var(--ui-text-xs); text-transform: uppercase; }
 	.weight.high { background: var(--neg); color: var(--g0); }
 	.weight.med { background: var(--amb); color: var(--g0); }
 	.weight.low { background: var(--g3); color: var(--g8); }

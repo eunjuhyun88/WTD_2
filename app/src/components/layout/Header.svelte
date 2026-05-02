@@ -250,7 +250,7 @@
 
   .tab-star {
     margin-left: 3px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-accent);
   }
 
@@ -361,7 +361,7 @@
     color: rgba(250, 247, 235, 0.92);
     border: 1px solid rgba(249, 216, 194, 0.08);
     box-shadow: none;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .wallet-dot {
     width: 5px; height: 5px;
@@ -404,7 +404,7 @@
   #nav.home-mode .nav-tab-desktop {
     height: 100%;
     padding: 0 6px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.14em;
     background: transparent;
@@ -567,7 +567,7 @@
     #nav.home-mode .wallet-btn {
       min-height: 28px;
       padding: 0 12px;
-      font-size: 10px;
+      font-size: var(--ui-text-xs);
       border-radius: 6px;
     }
   }
@@ -580,7 +580,7 @@
       height: 40px;
       padding: 0 10px;
     }
-    .mobile-page-chip { padding: 0 8px; font-size: 10px; height: 26px; }
-    .wallet-btn { padding: 0 10px; min-height: 30px; font-size: 10px; }
+    .mobile-page-chip { padding: 0 8px; font-size: var(--ui-text-xs); height: 26px; }
+    .wallet-btn { padding: 0 10px; min-height: 30px; font-size: var(--ui-text-xs); }
   }
 </style>

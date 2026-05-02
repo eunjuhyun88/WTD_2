@@ -215,7 +215,7 @@
   }
 
   .loading-dot {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: #fbbf24;
     animation: pulse 0.8s infinite;
   }
@@ -281,7 +281,7 @@
 
   .alert-tf {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     padding: 2px 5px;
     border-radius: 3px;
@@ -291,7 +291,7 @@
 
   .alert-direction {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
   }
@@ -305,7 +305,7 @@
 
   .alert-time {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--sc-text-3, rgba(255,255,255,0.3));
   }
 
@@ -344,7 +344,7 @@
     background: rgba(255, 255, 255, 0.04);
     color: var(--sc-text-2, rgba(255,255,255,0.5));
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     cursor: pointer;
     min-height: 30px;
@@ -402,7 +402,7 @@
 
   .resolved-label {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     color: var(--sc-text-3, rgba(255,255,255,0.3));
   }

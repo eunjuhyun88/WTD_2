@@ -300,7 +300,7 @@
 		color: var(--g7);
 		font-weight: 500;
 		text-transform: uppercase;
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		letter-spacing: 0.04em;
 	}
 
@@ -321,7 +321,7 @@
 
 	.status-badge {
 		padding: 2px 6px;
-		font-size: 9px;
+		font-size: var(--ui-text-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		border-radius: 2px;

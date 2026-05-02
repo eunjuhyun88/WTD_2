@@ -108,7 +108,7 @@
 
   .sb-kicker {
     color: rgba(var(--home-ref-accent-rgb, 219, 154, 159), 0.82);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .sb-market-lead {
@@ -120,7 +120,7 @@
 
   .sb-pair {
     color: rgba(250, 247, 235, 0.5);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .sb-price {

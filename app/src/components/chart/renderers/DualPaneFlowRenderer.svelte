@@ -101,7 +101,7 @@
 	.dpf-title,
 	.flow-label {
 		font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		letter-spacing: 1px;
 		color: var(--sc-text-3, rgba(247, 242, 234, 0.52));
 		text-transform: uppercase;
@@ -122,7 +122,7 @@
 		border: 1px solid rgba(219, 154, 159, 0.16);
 		padding: 3px 6px;
 		font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-		font-size: 10px;
+		font-size: var(--ui-text-xs);
 		color: var(--sc-text-3, rgba(247, 242, 234, 0.52));
 	}
 	.dpf-chip.up {

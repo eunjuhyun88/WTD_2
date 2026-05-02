@@ -298,7 +298,7 @@
   .signal-item--pos .signal-delta { color: hsl(160 60% 55%); }
   .signal-item--neg .signal-delta { color: hsl(0 60% 60%); }
   .signal-label { flex: 1; color: hsl(220 15% 70%); }
-  .signal-raw { color: hsl(220 15% 45%); font-size: 10px; }
+  .signal-raw { color: hsl(220 15% 45%); font-size: var(--ui-text-xs); }
 
   .anomaly-list {
     list-style: none;
@@ -324,7 +324,7 @@
   .anomaly-desc { color: hsl(220 15% 65%); line-height: 1.4; }
 
   .confidence-badge {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 1px 5px;
     border-radius: 3px;
     font-weight: 600;

@@ -227,7 +227,7 @@
 
   .chip-regime {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.06em;
     color: var(--lis-bg-0);
@@ -301,7 +301,7 @@
   }
 
   .run-icon {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     display: inline-flex;
   }
 

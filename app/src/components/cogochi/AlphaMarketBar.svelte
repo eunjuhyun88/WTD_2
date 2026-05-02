@@ -223,7 +223,7 @@
 
   .pulse-title {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.14em;
     color: var(--sc-text-0);
     text-transform: uppercase;
@@ -276,7 +276,7 @@
 
   .chip-lane {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.14em;
     color: rgba(219, 154, 159, 0.64);
@@ -285,7 +285,7 @@
 
   .chip-key {
     font-family: var(--sc-font-body, sans-serif);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     color: var(--sc-text-3);
@@ -294,7 +294,7 @@
 
   .chip-value {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     line-height: 1;
     color: var(--sc-text-0);
@@ -303,7 +303,7 @@
 
   .chip-meta {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     line-height: 1.1;
     letter-spacing: 0.05em;
     color: var(--sc-text-3);

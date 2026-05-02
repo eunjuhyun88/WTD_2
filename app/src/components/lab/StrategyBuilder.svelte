@@ -295,7 +295,7 @@
 
   .section-badge {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     background: rgba(var(--lis-rgb-pink), 0.15);
     color: var(--lis-accent);
     padding: 1px 6px;
@@ -362,7 +362,7 @@
     border: none;
     color: var(--lis-positive);
     cursor: pointer;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     padding: 0;
     width: 16px;
   }
@@ -538,7 +538,7 @@
 
   .mi-desc {
     display: block;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.35);
     margin-top: 2px;
   }
@@ -596,7 +596,7 @@
 
   .exit-unit {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255 255 255 / 0.3);
     width: 16px;
   }

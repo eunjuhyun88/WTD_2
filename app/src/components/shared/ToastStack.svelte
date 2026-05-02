@@ -138,7 +138,7 @@
 
   .toast-badge {
     font-family: var(--fm);
-    font-size: 7px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     letter-spacing: 1.5px;
     padding: 2px 7px;
@@ -157,7 +157,7 @@
 
   .toast-title {
     font-family: var(--fm);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     font-weight: 900;
     letter-spacing: 0.5px;
     color: var(--fg-strong);
@@ -168,7 +168,7 @@
 
   .toast-score {
     font-family: var(--fd);
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 2px;
     color: var(--dim);
