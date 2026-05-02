@@ -210,6 +210,7 @@ def _score_symbol(
             reason="below_min_conviction",
             score=ensemble.ensemble_score,
             p_win=p_win,
+            source="engine",
         )
         return None
 

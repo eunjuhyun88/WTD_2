@@ -23,6 +23,12 @@ FilterReason = Literal[
     "duplicate_signal",
     "conflicting_signals",
     "stale_context",
+    # W-0385: Kieran taxonomy additions
+    "anti_chase",
+    "too_late",
+    "not_executable",
+    "diagnostic_only",
+    "manual_skip",
 ]
 
 
@@ -42,6 +48,9 @@ def insert_blocked_candidate(
     reason: FilterReason,
     score: float | None = None,
     p_win: float | None = None,
+    source: str = "engine",
+    pattern_slug: str | None = None,
+    outcome_id: str | None = None,
 ) -> None:
     """Fire-and-forget insert. Logs on failure, never raises."""
     row: dict = {
@@ -49,11 +58,16 @@ def insert_blocked_candidate(
         "timeframe": timeframe,
         "direction": direction,
         "reason": reason,
+        "source": source,
     }
     if score is not None:
         row["score"] = score
     if p_win is not None:
         row["p_win"] = p_win
+    if pattern_slug is not None:
+        row["pattern_slug"] = pattern_slug
+    if outcome_id is not None:
+        row["outcome_id"] = outcome_id
 
     try:
         sb = _sb()
