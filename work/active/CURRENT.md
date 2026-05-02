@@ -35,7 +35,6 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0385-decision-event-ledger` | P1 | ✅ PR1 #896 + PR2 #901 + PR3 #903 merged |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 
 ---

@@ -2,7 +2,7 @@
 
 > Wave: 5 | Priority: P1 | Effort: L (7-10d, 3 PR)
 > Charter: In-Scope (ML 데이터 누적 + 의사결정 감사 루프)
-> Status: 🟡 Design Draft
+> Status: ✅ Completed
 > Created: 2026-05-02
 > Depends on: W-0377 (pipeline repair), W-0382 (blocked_candidates 테이블)
 
