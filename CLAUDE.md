@@ -14,11 +14,12 @@ Use this repository as a low-context AI research operating system.
 
 1. `AGENTS.md`
 2. `work/active/CURRENT.md`
-3. 도메인 sub-file (`agents/engine.md` or `agents/app.md` — 작업 유형 기준)
-4. `state/inventory.md` — tools, endpoints, commands 전체 목록
-5. Relevant `work/active/*.md` listed in `CURRENT.md`
-6. Relevant `docs/domains/*.md`
-7. Minimal required code files
+3. **`spec/NAMING.md`** — 이름 계약서 (**skip 금지**: 미확인 시 merge conflict 발생. W-0374 사례)
+4. 도메인 sub-file (`agents/engine.md` or `agents/app.md` — 작업 유형 기준)
+5. `state/inventory.md` — tools, endpoints, commands 전체 목록
+6. Relevant `work/active/*.md` listed in `CURRENT.md`
+7. Relevant `docs/domains/*.md`
+8. Minimal required code files
 
 ## Canonical Truth
 
