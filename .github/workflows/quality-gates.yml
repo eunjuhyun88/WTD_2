@@ -1,0 +1,143 @@
+name: Quality Gates
+
+# W-A108: Automated quality enforcement
+# Jobs: line-budgets | pydantic-warnings | js-lint | perf-budgets
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1: Line-count budgets (W-0386 ACs) ──────────────────────────────────
+  line-budgets:
+    name: Line Budgets
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: scheduler.py ≤ 400 lines
+        run: |
+          LINES=$(wc -l < scanner/scheduler.py)
+          echo "scheduler.py: $LINES lines (budget 400)"
+          [ "$LINES" -le "400" ] || (echo "❌ scheduler.py $LINES > 400" && exit 1)
+
+      - name: pipeline.py ≤ 140 lines
+        run: |
+          LINES=$(wc -l < pipeline.py)
+          echo "pipeline.py: $LINES lines (budget 140)"
+          [ "$LINES" -le "140" ] || (echo "❌ pipeline.py $LINES > 140" && exit 1)
+
+      - name: from engine.research imports ≤ 15
+        run: |
+          COUNT=$(grep -rh "from engine\.research" . --include="*.py" | wc -l)
+          echo "engine.research top-level imports: $COUNT (budget 15)"
+          [ "$COUNT" -le "15" ] || (echo "❌ research imports $COUNT > 15" && exit 1)
+
+  # ── Job 2: Pydantic v2 deprecation warnings = 0 ──────────────────────────────
+  pydantic-warnings:
+    name: Pydantic Warnings
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: pip install uv --quiet
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Check zero Pydantic deprecation warnings
+        run: |
+          COUNT=$(uv run pytest tests/research/test_autoresearch_runner.py -q --tb=no 2>&1 | grep -c "PydanticDeprecatedSince20" || echo 0)
+          echo "PydanticDeprecatedSince20 warnings: $COUNT"
+          [ "$COUNT" -eq "0" ] || (echo "❌ Found $COUNT Pydantic deprecation warnings — fix before merge" && exit 1)
+
+  # ── Job 3: JS/CSS lint ────────────────────────────────────────────────────────
+  js-lint:
+    name: JS Lint + Font Gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint hub boundaries (warn only)
+        run: pnpm lint || true  # Phase 1: warn only, don't fail
+
+      - name: Stylelint font-size gate (≤ 400 violations)
+        run: |
+          COUNT=$(pnpm stylelint 2>&1 | grep -c "declaration-property" || echo 0)
+          echo "font-size violations: $COUNT (budget 400)"
+          [ "$COUNT" -le "400" ] || (echo "❌ font violations $COUNT > 400 — run W-0389" && exit 1)
+
+  # ── Job 4: Perf benchmarks (non-blocking, reporting only) ────────────────────
+  perf-budgets:
+    name: Perf Budgets
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: pip install uv --quiet
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Budget tests (line counts + import count)
+        run: |
+          uv run pytest tests/perf/test_alpha_perf.py \
+            -k "budget or import_count" \
+            --benchmark-disable \
+            -q --tb=short
+
+      - name: Benchmarks (report only, not gated)
+        run: |
+          uv run pytest tests/perf/ \
+            --benchmark-only \
+            --benchmark-json=benchmark-results.json \
+            -q || true
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: engine/benchmark-results.json
+          if-no-files-found: ignore
