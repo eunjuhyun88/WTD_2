@@ -196,82 +196,28 @@
   </header>
 
   <div class="settings-body">
-    <!-- Trading -->
+    <!-- Profile & Subscription -->
     <section class="settings-section">
       <div class="ss-head">
-        <span class="surface-kicker">Trading</span>
+        <span class="surface-kicker">Profile & Subscription</span>
       </div>
-
       <div class="setting-row">
         <div class="sr-info">
-          <div class="sr-label">Default Timeframe</div>
-          <div class="sr-desc">Set default chart timeframe</div>
+          <div class="sr-label">Passport</div>
+          <div class="sr-desc">Win rate, LP, tier, trading streak</div>
         </div>
-        <select class="sr-select" bind:value={settings.defaultTF} onchange={() => updateSetting('defaultTF', settings.defaultTF)}>
-          {#each CORE_TIMEFRAME_OPTIONS as option}
-            <option value={option.value}>{formatTimeframeLabel(option.value)}</option>
-          {/each}
-        </select>
+        <a class="sr-link-btn" href="/settings/passport">View Passport →</a>
       </div>
-
       <div class="setting-row">
         <div class="sr-info">
-          <div class="sr-label">Data Source</div>
-          <div class="sr-desc">Real-time market data provider</div>
+          <div class="sr-label">Subscription</div>
+          <div class="sr-desc">Current plan · upgrade for unlimited patterns</div>
         </div>
-        <select class="sr-select" bind:value={settings.dataSource} onchange={() => updateSetting('dataSource', settings.dataSource)}>
-          <option value="binance">Binance Futures</option>
-          <option value="simulation">Simulation</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <div class="sr-info">
-          <div class="sr-label">Game Speed</div>
-          <div class="sr-desc">Arena battle speed multiplier</div>
-        </div>
-        <div class="speed-btns">
-          {#each [1, 2, 3] as s}
-            <button
-              class="speed-btn"
-              class:active={settings.speed === s}
-              onclick={() => updateSetting('speed', s)}
-            >{s}x</button>
-          {/each}
-        </div>
+        <a class="sr-link-btn" href="/settings/status">Plan Details →</a>
       </div>
     </section>
 
-    <!-- Display -->
-    <section class="settings-section">
-      <div class="ss-head">
-        <span class="surface-kicker">Display</span>
-      </div>
-
-      <div class="setting-row">
-        <div class="sr-info">
-          <div class="sr-label">Chart Theme</div>
-          <div class="sr-desc">Chart color scheme</div>
-        </div>
-        <select class="sr-select" bind:value={settings.chartTheme} onchange={() => updateSetting('chartTheme', settings.chartTheme)}>
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <div class="sr-info">
-          <div class="sr-label">Language</div>
-          <div class="sr-desc">Interface language</div>
-        </div>
-        <select class="sr-select" bind:value={settings.language} onchange={() => updateSetting('language', settings.language)}>
-          <option value="kr">한국어</option>
-          <option value="en">English</option>
-        </select>
-      </div>
-    </section>
-
-    <!-- AI (DOUNI) -->
+    <!-- AI (DOUNI) — moved to 2nd -->
     <section class="settings-section">
       <div class="ss-head">
         <span class="surface-kicker">AI (DOUNI)</span>
@@ -379,6 +325,81 @@
       {/if}
     </section>
 
+    <!-- Trading -->
+    <section class="settings-section">
+      <div class="ss-head">
+        <span class="surface-kicker">Trading</span>
+      </div>
+
+      <div class="setting-row">
+        <div class="sr-info">
+          <div class="sr-label">Default Timeframe</div>
+          <div class="sr-desc">Set default chart timeframe</div>
+        </div>
+        <select class="sr-select" bind:value={settings.defaultTF} onchange={() => updateSetting('defaultTF', settings.defaultTF)}>
+          {#each CORE_TIMEFRAME_OPTIONS as option}
+            <option value={option.value}>{formatTimeframeLabel(option.value)}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <div class="sr-info">
+          <div class="sr-label">Data Source</div>
+          <div class="sr-desc">Real-time market data provider</div>
+        </div>
+        <select class="sr-select" bind:value={settings.dataSource} onchange={() => updateSetting('dataSource', settings.dataSource)}>
+          <option value="binance">Binance Futures</option>
+          <option value="simulation">Simulation</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <div class="sr-info">
+          <div class="sr-label">Game Speed</div>
+          <div class="sr-desc">Arena battle speed multiplier</div>
+        </div>
+        <div class="speed-btns">
+          {#each [1, 2, 3] as s}
+            <button
+              class="speed-btn"
+              class:active={settings.speed === s}
+              onclick={() => updateSetting('speed', s)}
+            >{s}x</button>
+          {/each}
+        </div>
+      </div>
+    </section>
+
+    <!-- Display -->
+    <section class="settings-section">
+      <div class="ss-head">
+        <span class="surface-kicker">Display</span>
+      </div>
+
+      <div class="setting-row">
+        <div class="sr-info">
+          <div class="sr-label">Chart Theme</div>
+          <div class="sr-desc">Chart color scheme</div>
+        </div>
+        <select class="sr-select" bind:value={settings.chartTheme} onchange={() => updateSetting('chartTheme', settings.chartTheme)}>
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <div class="sr-info">
+          <div class="sr-label">Language</div>
+          <div class="sr-desc">Interface language</div>
+        </div>
+        <select class="sr-select" bind:value={settings.language} onchange={() => updateSetting('language', settings.language)}>
+          <option value="kr">한국어</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </section>
+
     <!-- Notifications -->
     <section class="settings-section">
       <div class="ss-head">
@@ -410,6 +431,21 @@
           class:on={settings.sfx}
           aria-label="Toggle sound effects"
           onclick={() => { settings.sfx = !settings.sfx; updateSetting('sfx', settings.sfx); }}
+        >
+          <div class="toggle-dot"></div>
+        </button>
+      </div>
+
+      <div class="setting-row">
+        <div class="sr-info">
+          <div class="sr-label">Alert Patterns</div>
+          <div class="sr-desc">Pattern scan match alerts</div>
+        </div>
+        <button
+          class="toggle-btn"
+          class:on={settings.signals}
+          aria-label="Toggle alert patterns"
+          onclick={() => { settings.signals = !settings.signals; updateSetting('signals', settings.signals); }}
         >
           <div class="toggle-dot"></div>
         </button>
@@ -490,6 +526,21 @@
     color: var(--sc-text-2);
     margin-top: 2px;
   }
+
+  .sr-link-btn {
+    font-family: var(--sc-font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--sc-accent);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .sr-link-btn:hover { background: rgba(255, 255, 255, 0.08); }
 
   .sr-select {
     font-family: var(--sc-font-body);
