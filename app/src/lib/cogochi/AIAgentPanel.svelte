@@ -3,6 +3,7 @@
   import { shellStore, activeRightPanelTab, activeTabState } from './shell.store';
   import type { RightPanelTab, TabState } from './shell.store';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
+  import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import AIPanel from './AIPanel.svelte';
   import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
   import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
@@ -95,6 +96,24 @@
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   });
+
+  // ── DEC tab — auto-refresh on tab switch or symbol change ─────────────────
+  let decisionData = $state<AnalyzeEnvelope | null>(null);
+  let decisionLoading = $state(false);
+  let decisionCacheKey = $state('');
+
+  async function loadDecision() {
+    const key = `${symbol}:${timeframe}`;
+    if (decisionLoading || decisionCacheKey === key) return;
+    decisionLoading = true;
+    try {
+      const res = await fetch(`/api/cogochi/analyze?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(timeframe)}`);
+      if (res.ok) { decisionData = await res.json() as AnalyzeEnvelope; decisionCacheKey = key; }
+    } catch { /* leave null */ } finally { decisionLoading = false; }
+  }
+
+  $effect(() => { if (activeTab === 'decision') void loadDecision(); });
+  $effect(() => { void symbol; void timeframe; decisionData = null; decisionCacheKey = ''; });
 
   // ── PAT tab ───────────────────────────────────────────────────────────────
   function capToPatternRecord(cap: EngineCapture): PatternCaptureRecord {
@@ -254,7 +273,7 @@
     {#if activeTab === 'decision'}
       <div class="tab-inner">
         <div class="tab-scroll">
-          <DecisionHUDAdapter />
+          <DecisionHUDAdapter analysisData={decisionData} isLoading={decisionLoading} />
         </div>
         <div class="more-btn">
           <button onclick={() => openMoreDrawer('evidence-grid')}>Evidence →</button>
@@ -290,7 +309,16 @@
         </div>
         <div class="pat-list" role="listbox" aria-label="Pattern captures">
           {#if patternLoading}
-            <span class="pat-empty">loading…</span>
+            <div class="pat-skeleton-list" aria-hidden="true">
+              {#each [80, 60, 72] as w}
+                <div class="pat-skel-row">
+                  <span class="skel-block" style="width:{w}px"></span>
+                  <span class="skel-block" style="width:28px"></span>
+                  <span class="skel-block" style="width:52px"></span>
+                  <span class="skel-block" style="width:32px"></span>
+                </div>
+              {/each}
+            </div>
           {:else if filteredPatterns.length === 0}
             <span class="pat-empty">{patternLoaded ? 'no patterns' : 'no data'}</span>
           {:else}
@@ -604,6 +632,24 @@
 .pat-verdict.pos { color: var(--pos, #4ade80); }
 .pat-verdict.neg { color: var(--neg, #f87171); }
 .pat-empty { display: block; padding: 20px 12px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--g4, #272320); text-align: center; }
+
+/* ── Pattern skeleton ── */
+.pat-skeleton-list { display: flex; flex-direction: column; gap: 1px; padding: 4px 0; }
+.pat-skel-row {
+  display: flex; align-items: center; gap: 8px;
+  height: 30px; padding: 0 10px;
+  border-left: 2px solid var(--g3, #1e1c1a);
+}
+.skel-block {
+  height: 8px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--g2, #131110) 25%, var(--g3, #1e1c1a) 50%, var(--g2, #131110) 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
 /* ── Drawer placeholder ── */
 .drawer-placeholder {
