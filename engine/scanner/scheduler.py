@@ -133,6 +133,9 @@ _BETA_JOB_FLAGS = {
     "extreme_event_detector": os.environ.get("EXTREME_EVENT_TRACKER_JOB", "false"),
     "extreme_event_outcome": os.environ.get("EXTREME_EVENT_OUTCOME_JOB", "false"),
     "backtest_stats_refresh": os.environ.get("ENABLE_BACKTEST_STATS_REFRESH_JOB", "false"),
+    # W-0385: blocked-candidate resolver + formula-evidence materializer
+    "blocked_candidate_resolver": os.environ.get("ENABLE_BLOCKED_RESOLVER_JOB", "true"),
+    "formula_evidence_materializer": os.environ.get("ENABLE_FORMULA_EVIDENCE_JOB", "true"),
 }
 
 
@@ -289,6 +292,18 @@ async def _auto_evaluate_job() -> None:
 
 async def _outcome_resolver_job() -> None:
     await outcome_resolver_job()
+
+
+async def _blocked_candidate_resolve_job() -> None:
+    from scanner.jobs.blocked_candidate_resolver import resolve_batch
+    filled = await asyncio.to_thread(resolve_batch)
+    log.info("blocked_candidate_resolver: %d rows filled", filled)
+
+
+async def _formula_evidence_materialize_job() -> None:
+    from scanner.jobs.formula_evidence_materializer import materialize_all
+    n = await asyncio.to_thread(materialize_all)
+    log.info("formula_evidence_materializer: %d rows upserted", n)
 
 
 async def _pattern_refinement_job() -> None:
@@ -538,6 +553,33 @@ def start_scheduler() -> None:
     if os.environ.get("ENABLE_SIGNAL_EVENTS", "true").lower() == "true":
         from research.verification_loop import register_scheduler as _reg_vloop
         _reg_vloop(_scheduler)
+
+    # W-0385: blocked candidate P&L resolver — hourly
+    if _job_enabled("blocked_candidate_resolver"):
+        _scheduler.add_job(
+            _blocked_candidate_resolve_job,
+            trigger="interval",
+            hours=1,
+            id="blocked_candidate_resolver",
+            name="Blocked candidate forward P&L resolver (W-0385)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=600,
+        )
+
+    # W-0385: Formula evidence materializer — daily 03:30 UTC
+    if _job_enabled("formula_evidence_materializer"):
+        _scheduler.add_job(
+            _formula_evidence_materialize_job,
+            trigger="cron",
+            hour=3,
+            minute=30,
+            id="formula_evidence_materializer",
+            name="Daily formula evidence materializer (W-0385)",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=1800,
+        )
 
     # W-0369: Daily pattern backtest stats refresh — 03:00 UTC
     if _job_enabled("backtest_stats_refresh"):

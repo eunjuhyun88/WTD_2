@@ -9,9 +9,9 @@ import asyncio
 import logging
 import os
 import time
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
-from typing import Optional
+from typing import Literal, Optional
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -524,3 +524,73 @@ def get_top_patterns(
         total_available=total_available,
         limit_applied=limit_applied,
     )
+
+
+# ---------------------------------------------------------------------------
+# W-0385: GET /research/formula-evidence
+# ---------------------------------------------------------------------------
+
+@router.get("/formula-evidence")
+async def get_formula_evidence(
+    scope: Literal["filter_rule", "pattern", "reason_code"] = "filter_rule",
+    period_days: int = Query(default=30, ge=1, le=365),
+    min_sample: int = Query(default=10, ge=1),
+):
+    """Return formula_evidence rows sorted by drag_score DESC.
+
+    scope: group by filter_rule (reason codes) or pattern (pattern slugs).
+    min_sample: rows with sample_n < min_sample are excluded (noise floor).
+    """
+    from api.ctx import get_supabase
+    sb = get_supabase()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=period_days)).isoformat()
+    rows = (
+        sb.table("formula_evidence")
+        .select("*")
+        .eq("scope_kind", scope)
+        .gte("computed_at", cutoff)
+        .gte("sample_n", min_sample)
+        .order("drag_score", desc=True)
+        .limit(100)
+        .execute()
+        .data
+    )
+    return {"rows": rows, "scope": scope, "period_days": period_days}
+
+
+# ---------------------------------------------------------------------------
+# W-0385: GET /research/blocked-candidates
+# ---------------------------------------------------------------------------
+
+@router.get("/blocked-candidates")
+async def get_blocked_candidates(
+    reason: Optional[str] = None,
+    symbol: Optional[str] = None,
+    from_ts: Optional[str] = None,
+    to_ts: Optional[str] = None,
+    filled_only: bool = False,
+    limit: int = Query(default=200, ge=1, le=1000),
+):
+    """Return blocked_candidates rows in reverse chronological order.
+
+    filled_only=true returns only rows where forward_24h IS NOT NULL.
+    """
+    from api.ctx import get_supabase
+    sb = get_supabase()
+    q = (
+        sb.table("blocked_candidates")
+        .select("*")
+        .order("blocked_at", desc=True)
+        .limit(limit)
+    )
+    if reason:
+        q = q.eq("reason", reason)
+    if symbol:
+        q = q.eq("symbol", symbol)
+    if from_ts:
+        q = q.gte("blocked_at", from_ts)
+    if to_ts:
+        q = q.lt("blocked_at", to_ts)
+    if filled_only:
+        q = q.not_.is_("forward_24h", "null")
+    return {"rows": q.execute().data}
