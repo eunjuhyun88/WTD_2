@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`c130b860` — HEAD (2026-05-02) — fix(cogochi): TerminalHub 마운트 + MobileBottomNav 터미널 제외 (#922)
+`a5dff7c6` — HEAD (2026-05-02) — chore: CURRENT.md SHA c130b860 — TerminalHub 마운트 (#922) + 세션 로그 (#923)
 
 ---
 
@@ -33,8 +33,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0370-strategy-live-signals` | P1 | 🔵 구현 중 |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
+| `W-0389-ux-visual-typography-restructure` | P1 | 🟡 Design Draft |
 
 ---
 
@@ -55,9 +55,10 @@
 완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
 완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
 완료:  W-0387 ✅ — /agent/judge + /agent/save AI agent LLM verdict + idempotent capture (#904)
-즉시:  W-0370 Phase 1 — GET /patterns/{slug}/signals engine API (signal_event_store + patterns route)
-추후:  W-0370 Phase 2 — frontend signal badges on strategy cards
-추후:  W-0304 per-pane indicator (after W-0370 complete)
+완료:  W-0370 ✅ — strategy live signals engine API + frontend (#915)
+완료:  fix(cogochi) ✅ — TerminalHub 마운트 + MobileBottomNav 터미널 제외 (#922)
+즉시:  W-0389 — UX visual typography restructure (PRODUCT-DESIGN-PAGES-V2.md P-02 기반)
+추후:  W-0304 per-pane indicator
 ```
 
 ---
@@ -81,12 +82,11 @@
 
 ---
 
-## 다음 실행 — W-0370 Phase 1
+## 다음 실행 — W-0389 UX Visual Typography
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0370-strategy-live-signals.md
-# Phase 1: engine/research/signal_event_store.py — fetch_recent_signals()
-# Phase 1: engine/api/routes/patterns.py — GET /patterns/{slug}/signals
-# Phase 1: engine/tests/test_pattern_signal_api.py — ≥ 5 tests
+cat work/active/W-0389-ux-visual-typography-restructure.md
+cat work/active/PRODUCT-DESIGN-PAGES-V2.md
+# P-02 /cogochi 스펙 기준 미구현 항목 파악 후 구현
 ```
