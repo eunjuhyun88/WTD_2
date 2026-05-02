@@ -91,7 +91,7 @@
   }
 
   .label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--g6, rgba(255, 255, 255, 0.5));
@@ -105,7 +105,7 @@
   }
 
   .meta {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6, rgba(255, 255, 255, 0.55));
   }
 

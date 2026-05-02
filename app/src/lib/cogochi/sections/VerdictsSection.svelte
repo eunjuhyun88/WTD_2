@@ -89,7 +89,7 @@
 
   .verdict {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     color: var(--amb);
   }
@@ -100,14 +100,14 @@
 
   .symbol {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g9);
     font-weight: 500;
   }
 
   .time {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     margin-left: auto;
   }
@@ -118,7 +118,7 @@
     margin-left: 16px;
     margin-top: 2px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
   }
 
   .setup {

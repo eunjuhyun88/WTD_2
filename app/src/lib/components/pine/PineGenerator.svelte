@@ -320,7 +320,7 @@
   .cat-label {
     width: 64px;
     text-transform: uppercase;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.08em;
     color: #888;
     padding-top: 4px;
@@ -389,7 +389,7 @@
   .type {
     color: #666;
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
   .slot input {
     background: rgba(255, 255, 255, 0.04);

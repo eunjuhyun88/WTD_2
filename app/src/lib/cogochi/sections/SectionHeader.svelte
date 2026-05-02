@@ -30,14 +30,14 @@
 
   .label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     letter-spacing: 0.16em;
   }
 
   .hint {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
   }
 
@@ -47,7 +47,7 @@
 
   .action {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     background: none;
     border: none;

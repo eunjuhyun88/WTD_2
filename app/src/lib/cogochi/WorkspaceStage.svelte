@@ -303,7 +303,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: color-mix(in srgb, var(--g9) 88%, var(--g6));
   }
 
@@ -405,7 +405,7 @@
 
   .workspace-empty-kicker {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--g5);

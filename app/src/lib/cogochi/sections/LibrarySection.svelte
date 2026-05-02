@@ -80,26 +80,26 @@
 
   .slash {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--brand);
   }
 
   .tag {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g8);
     font-weight: 500;
   }
 
   .matches {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--amb);
     margin-left: auto;
   }
 
   .item-text {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     line-height: 1.4;
     margin-top: 2px;
@@ -108,7 +108,7 @@
 
   .empty {
     padding: 12px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     text-align: center;
   }

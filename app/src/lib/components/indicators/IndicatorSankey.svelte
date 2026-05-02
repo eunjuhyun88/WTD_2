@@ -79,7 +79,7 @@
   }
 
   .label {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--g6, rgba(255,255,255,0.5));
@@ -100,7 +100,7 @@
   .value.dn { color: #e05c5c; }
 
   .unit {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, rgba(255,255,255,0.38));
   }
 
@@ -119,7 +119,7 @@
   }
 
   .flow-label {
-    font-size: 8px;
+    font-size: var(--ui-text-xs);
     color: var(--g5, rgba(255,255,255,0.38));
     width: 28px;
     overflow: hidden;

@@ -74,7 +74,7 @@
 .drawer-title {
   flex: 1;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: var(--ui-text-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--g6, #5a534c);
