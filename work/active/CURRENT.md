@@ -27,7 +27,7 @@
 
 ## main SHA
 
-`8f998e73` — HEAD (2026-05-02) — W-0385 complete: PR1+PR2+PR3 merged (#896#901#903)
+`78eec131` — HEAD (2026-05-02) — W-0382-D merged: lib/cogochi + components/terminal 삭제 (#906)
 
 ---
 
