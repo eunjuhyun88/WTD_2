@@ -55,13 +55,13 @@
   const isStale = $derived(stale || (data ? Date.now() - data.ts * 1000 > STALE_THRESHOLD_MS : false));
   const tooltip = $derived(
     data
-      ? `Kimchi Premium: Upbit BTC vs Binance BTC × USD/KRW\nUSD/KRW: ${data.usd_krw ? data.usd_krw.toFixed(0) : 'n/a'}\n갱신: ${new Date(data.ts * 1000).toLocaleTimeString('ko-KR')}`
+      ? `Kimchi Premium: Upbit BTC vs Binance BTC × USD/KRW\nUSD/KRW: ${data.usd_krw ? data.usd_krw.toFixed(0) : 'n/a'}\nUpdated: ${new Date(data.ts * 1000).toLocaleTimeString()}`
       : 'Upbit BTC vs Binance BTC × USD/KRW'
   );
 </script>
 
 {#if loading}
-  <span class="kp-badge kp-loading" title="김치 프리미엄 로딩 중…">🇰🇷 …</span>
+  <span class="kp-badge kp-loading" title="Kimchi Premium loading…">🇰🇷 …</span>
 {:else}
   <span
     class="kp-badge kp-{color} {isStale ? 'kp-stale' : ''}"

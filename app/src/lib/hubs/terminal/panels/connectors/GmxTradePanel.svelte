@@ -291,35 +291,35 @@
     {:else if step === 'approving'}
       <div class="gmx-status">
         <div class="status-spinner"></div>
-        <p>USDC 승인을 확인해주세요</p>
+        <p>Please confirm USDC approval</p>
         <p class="status-sub">Approve USDC in your wallet (one-time)</p>
       </div>
 
     {:else if step === 'signing'}
       <div class="gmx-status">
         <div class="status-spinner"></div>
-        <p>지갑에서 트랜잭션을 확인하세요</p>
+        <p>Confirm transaction in your wallet</p>
         <p class="status-sub">Confirm transaction in your wallet</p>
       </div>
 
     {:else if step === 'confirming'}
       <div class="gmx-status">
         <div class="status-spinner"></div>
-        <p>트랜잭션 전송됨</p>
+        <p>Transaction submitted</p>
         <p class="status-sub">Waiting for confirmation...</p>
       </div>
 
     {:else if step === 'done'}
       <div class="gmx-status success">
         <span class="status-icon">✓</span>
-        <p>주문 제출 완료!</p>
+        <p>Order submitted!</p>
         <p class="status-sub">{direction} ${sizeUsd.toLocaleString()} {selectedMarket?.label ?? ''}</p>
         {#if resultTxHash}
           <a class="tx-link" href="https://arbiscan.io/tx/{resultTxHash}" target="_blank" rel="noopener">
-            Arbiscan에서 보기 ↗
+            View on Arbiscan ↗
           </a>
         {/if}
-        <button class="gmx-submit" on:click={handleClose}>닫기</button>
+        <button class="gmx-submit" on:click={handleClose}>Close</button>
       </div>
 
     {:else if step === 'error'}
