@@ -35,8 +35,8 @@ from data_cache.parquet_store import ParquetStore
 from data_cache.loader import load_macro_bundle
 from data_cache.universe_builder import load_universe
 from data_cache.fetch_sector_momentum import fetch_sector_scores
-from research.pattern_scan.scanner import PatternScanner
-from research.pattern_scan.pattern_object_combos import LIBRARY_COMBOS
+from research.discovery.pattern_scan.scanner import PatternScanner
+from research.discovery.pattern_scan.pattern_object_combos import LIBRARY_COMBOS
 from research.validation.stats import (
     bootstrap_ci,
     hit_rate,

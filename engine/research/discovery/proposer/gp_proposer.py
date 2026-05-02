@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from engine.research.proposer.schemas import ChangeProposal
+from research.discovery.proposer.schemas import ChangeProposal
 
 
 @dataclass(frozen=True)

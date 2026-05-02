@@ -11,7 +11,7 @@ import yaml
 
 from engine.llm.cost_tracker import CostTracker
 from engine.llm.provider import call_text
-from engine.research.proposer.schemas import ChangeProposal, ProposalBatch
+from research.discovery.proposer.schemas import ChangeProposal, ProposalBatch
 
 
 PROPOSER_TRACKS: list[str] = [

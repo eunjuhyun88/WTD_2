@@ -8,13 +8,13 @@ import asyncio
 from dataclasses import dataclass
 from typing import Literal, Optional
 
-from engine.research.proposer.llm_proposer import LLMProposer
-from engine.research.ratchet import Ratchet, CycleResult
-from engine.research.validation.facade import (
+from research.discovery.proposer.llm_proposer import LLMProposer
+from research.validation.ratchet import Ratchet, CycleResult
+from research.validation.facade import (
     run_layer2_through_layer6,
     compute_dsr_holdout,
 )
-from engine.research.autoresearch_ledger_store import (
+from research.artifacts.autoresearch_ledger_store import (
     AutoresearchLedgerStore,
     LedgerEntry,
 )

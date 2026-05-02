@@ -1,6 +1,6 @@
 """Mixture of Agents ensemble."""
 from __future__ import annotations
-from engine.research.proposer.schemas import ChangeProposal
+from research.discovery.proposer.schemas import ChangeProposal
 
 class MoAStrategy:
     """Mixture of Agents layer-by-layer synthesis."""
