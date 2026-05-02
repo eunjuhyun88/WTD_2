@@ -2,9 +2,10 @@
 
 > Wave: 5+1 | Priority: P1 | Effort: L (4 phases, 4 PRs)
 > Charter: In-Scope (ADR-001 engine-is-canonical)
-> Status: 🟡 Design Draft
+> Status: ✅ Complete (2026-05-02 11:03 UTC)
 > Created: 2026-05-02
 > Issue: #877
+> Merged: PR #880 (A) + PR #881 (B) + PR #892 (C) + PR #897 (D) — Main SHA `504b023b`
 > Sub-tickets: W-0386-A, W-0386-B, W-0386-C, W-0386-D
 
 ## Goal
