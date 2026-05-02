@@ -15,7 +15,7 @@ from typing import Literal, Sequence
 import numpy as np
 import pandas as pd
 
-from engine.research.validation.costs import CostModel, BINANCE_PERP_TAKER_15BPS_V1
+from .costs import CostModel, BINANCE_PERP_TAKER_15BPS_V1
 
 
 @dataclass
