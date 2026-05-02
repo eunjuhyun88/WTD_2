@@ -2,7 +2,7 @@
 
 > Wave: 5 | Priority: P0 | Effort: L (8-10일, 4 Phase × 4 PR)
 > Charter: In-Scope (AI Agent, 알파탐색, 유사구간탐색)
-> Status: 🟡 Design Draft
+> Status: 🟢 Phase 1 구현 완료 — PR #871 (merged)
 > Issue: #850
 > Created: 2026-05-01
 > Dependency: W-0377 (Core Loop Pipeline) 머지 후 시작
