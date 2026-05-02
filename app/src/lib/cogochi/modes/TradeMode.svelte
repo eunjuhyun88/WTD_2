@@ -1564,11 +1564,11 @@
                 executionProposal: analyzeExecutionProposal,
               }}
               actions={{
-                onOpenCompareWorkspace,
+                onOpenCompareWorkspace: openCompareWorkspace,
                 onSetJudgeVerdict: (v) => judgeVerdict = v,
-                onOpenJudgeWorkspace,
-                onOpenAnalyzeAIDetail,
-                onStartSaveSetup,
+                onOpenJudgeWorkspace: openJudgeWorkspace,
+                onOpenAnalyzeAIDetail: openAnalyzeAIDetail,
+                onStartSaveSetup: startSaveSetup,
               }}
               state={{ microstructureView }}
             />
@@ -1583,7 +1583,7 @@
                 pastCaptures,
               }}
               actions={{
-                onOpenAnalyze,
+                onOpenAnalyze: openAnalyze,
                 onSetScanSelected: (id) => scanSelected = id,
                 onOpenTradeTab: (x) => shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` }),
               }}

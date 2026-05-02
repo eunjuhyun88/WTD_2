@@ -1,0 +1,122 @@
+/* Shared base styles for all panels */
+
+/* Global mobile fixes */
+:global(.mobile-chart-section .chart-toolbar) { display: none; }
+:global(.mobile-chart-section .chart-header--tv) { display: none; }
+:global(.mobile-chart-section .chart-board) { min-height: 0 !important; }
+
+/* Shared primitives */
+.spacer { flex: 1; }
+
+/* Shared animations */
+@keyframes peekSlide {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Shared drawer/peek styles */
+.pb-tab.active {
+  background: var(--g1);
+  border-bottom-color: var(--tc);
+}
+
+.pb-tab.active .pb-n { color: var(--tc); opacity: 0.7; }
+.pb-tab.active .pb-label { color: var(--g9); }
+.pb-tab.active .pb-chevron { color: var(--tc); }
+
+.dh-tab.active {
+  background: var(--g1);
+  border-top-color: var(--tc);
+}
+
+.dh-tab.active .dh-n { color: var(--tc); opacity: 0.7; }
+.dh-tab.active .dh-label { color: var(--g9); }
+
+/* Shared microstructure toggle styles */
+.ind-tog.active {
+  background: rgba(122,162,224,0.1);
+  border-color: rgba(122,162,224,0.4);
+  color: #7aa2e0;
+}
+
+.micro-toggle-btn.active {
+  color: #d9edf8;
+  background: linear-gradient(135deg, rgba(74,187,142,0.22), rgba(122,162,224,0.18));
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--pos) 38%, var(--g4));
+}
+
+.micro-heat-strip.active, .micro-depth-strip.active {
+  border-color: color-mix(in srgb, var(--amb) 48%, var(--g4));
+  box-shadow: inset 0 0 0 1px rgba(232,184,106,0.08);
+}
+
+/* Shared phase-node (used in analyze but referenced across panels) */
+.phase-node.active {
+  border-color: color-mix(in srgb, var(--amb) 55%, var(--g4));
+  background: color-mix(in srgb, var(--amb) 11%, var(--g0));
+}
+
+.phase-node.active .phase-dot { background: var(--amb); box-shadow: 0 0 0 4px var(--amb-dd); }
+.phase-node.active .phase-label { color: var(--g9); font-weight: 700; }
+
+/* Shared action button styles */
+.hud-action.active {
+  background: var(--g2);
+  border-color: var(--brand);
+  color: var(--g9);
+}
+
+/* Shared observe mode styles */
+.observe-mode :global(.chart-live .chart-toolbar),
+.observe-mode :global(.chart-live .chart-header--tv) {
+  display: none !important;
+}
+
+.observe-mode :global(.chart-live .chart-board) {
+  border: none !important;
+  border-radius: 0 !important;
+  background: #0f131d !important;
+}
+
+/* Mobile layout */
+.mts-tab.active {
+  color: var(--brand);
+  background: var(--g1);
+  border-top: 1.5px solid var(--brand);
+}
+
+/* Visual refinement pass */
+.micro-toggle-btn.active {
+  color: #f3d58d;
+  background: rgba(232,184,106,0.105);
+  box-shadow: inset 0 0 0 1px rgba(232,184,106,0.22);
+}
+
+.pb-tab.active {
+  background: rgba(255,255,255,0.028);
+}
+
+.dh-tab.active {
+  background: rgba(255,255,255,0.026);
+}
+
+.phase-node.active {
+  background: rgba(232,184,106,0.105);
+}
+
+.multichart-toggle.active {
+  border-color: rgba(59,130,246,0.5);
+  background: rgba(59,130,246,0.12);
+  color: #93c5fd;
+}
+
+.multichart-toggle.active:hover {
+  border-color: rgba(59,130,246,0.7);
+  background: rgba(59,130,246,0.2);
+  color: #bfdbfe;
+}
+
+/* Row styles for layouts */
+.scan-row.active { background: var(--g2); }
