@@ -10,6 +10,8 @@
   import DecisionHUDAdapter from './DecisionHUDAdapter.svelte';
   import DrawerSlide from './components/DrawerSlide.svelte';
   import { routeQuery } from './aiQueryRouter';
+  import { parseAgentCommand } from './parseAgentCommand';
+  import { scrollAnalysis } from '$lib/stores/scrollAnalysis';
 
   // ── Types ─────────────────────────────────────────────────────────────────
   interface EngineCapture {
@@ -56,9 +58,50 @@
   const drawerOpen = $derived($activeTabState.drawerOpen);
   const drawerKind = $derived($activeTabState.drawerKind);
 
-  // ── AI Search ─────────────────────────────────────────────────────────────
+  // ── AI Search + Agent Commands ────────────────────────────────────────────
   let searchQuery = $state('');
   let searchEl = $state<HTMLInputElement | null>(null);
+  let agentText = $state<string | null>(null);
+  let agentLoading = $state(false);
+
+  async function dispatchAgentCommand(cmd: string, args: string) {
+    agentLoading = true;
+    agentText = null;
+    try {
+      const snapshot = $scrollAnalysis.result?.segment?.indicator_snapshot ?? {};
+      const alphScore = $scrollAnalysis.result?.alpha_score ?? undefined;
+      const body: Record<string, unknown> = { cmd, args };
+      if (cmd === 'explain') {
+        body.context = {
+          symbol: args || symbol,
+          timeframe,
+          indicator_snapshot: snapshot,
+          anomaly_flags: $scrollAnalysis.result?.segment?.anomaly_flags ?? [],
+          alpha_score: alphScore ?? null,
+        };
+      } else if (cmd === 'scan') {
+        body.context = { top_n: 5 };
+      } else if (cmd === 'similar') {
+        body.context = {
+          symbol: args || symbol,
+          timeframe,
+          similar: $scrollAnalysis.result?.similar ?? { similar_segments: [], confidence: 'low' },
+        };
+      }
+      const res = await fetch('/api/terminal/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { agentText = '에러: 엔진 응답 실패'; return; }
+      const data = await res.json() as { text?: string };
+      agentText = data.text ?? null;
+    } catch {
+      agentText = '에러: 요청 실패';
+    } finally {
+      agentLoading = false;
+    }
+  }
 
   function handleSearchKey(e: KeyboardEvent) {
     if (e.key === 'Enter') submitSearch();
@@ -67,6 +110,14 @@
   function submitSearch() {
     const q = searchQuery.trim();
     if (!q) return;
+
+    const agentCmd = parseAgentCommand(q);
+    if (agentCmd) {
+      searchQuery = '';
+      void dispatchAgentCommand(agentCmd.cmd, agentCmd.args);
+      return;
+    }
+
     const action = routeQuery(q);
     if (action) {
       if (action.type === 'set-tab') {
@@ -260,12 +311,21 @@
   <div class="ai-search-bar">
     <input
       class="ai-search-input"
-      placeholder="AI search… (⌘L)"
+      placeholder="AI search… or /explain /scan /similar (⌘L)"
       bind:value={searchQuery}
       bind:this={searchEl}
       onkeydown={handleSearchKey}
     />
   </div>
+
+  {#if agentLoading}
+    <div class="agent-response agent-response--loading">분석 중…</div>
+  {:else if agentText}
+    <div class="agent-response">
+      <button class="agent-response__close" onclick={() => (agentText = null)}>✕</button>
+      <p class="agent-response__text">{agentText}</p>
+    </div>
+  {/if}
 
   <!-- ── Tab content ── -->
   <div class="tab-content">
@@ -518,6 +578,39 @@
   box-sizing: border-box;
 }
 .ai-search-input:focus { border-color: var(--amb, #f5a623); }
+
+/* ── Agent response ── */
+.agent-response {
+  position: relative;
+  margin: 4px 8px;
+  padding: 8px 28px 8px 10px;
+  background: hsl(220 20% 10%);
+  border: 1px solid hsl(220 60% 35% / 0.5);
+  border-radius: 4px;
+  font-size: 11px;
+  color: hsl(220 15% 75%);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.agent-response--loading {
+  color: hsl(220 15% 45%);
+  border-color: hsl(220 15% 22%);
+  padding: 8px 10px;
+}
+.agent-response__close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: hsl(220 15% 45%);
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.agent-response__close:hover { color: hsl(0 70% 65%); }
+.agent-response__text { margin: 0; }
 
 /* ── Tab content ── */
 .tab-content {
