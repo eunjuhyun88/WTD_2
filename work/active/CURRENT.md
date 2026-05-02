@@ -25,16 +25,22 @@
 
 ## main SHA
 
-`a5dff7c6` — HEAD (2026-05-02) — chore: CURRENT.md SHA c130b860 — TerminalHub 마운트 (#922) + 세션 로그 (#923)
+`97493957` — HEAD (2026-05-03) — W-0389 Phase 1 font fix (#929)
 
 ---
 
 ## 활성 Work Items
 
-| Work Item | Priority | 상태 |
-|---|---|---|
-| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
-| `W-0389-ux-visual-typography-restructure` | P1 | 🟡 Design Draft |
+| Work Item | Priority | 상태 | PR |
+|---|---|---|---|
+| `W-A108-verification-framework` | P0 | 🔵 CI running | [#926](https://github.com/eunjuhyun88/WTD_2/pull/926) |
+| `W-0389-ux-visual-typography-restructure` | P1 | 🔵 Ph1 merged, Ph2-5 다음 | — |
+| `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft | — |
+
+완료 (이번 세션):
+- W-0380 ✅ #927 merged — dead handlers 제거 + aiQueryRouter 34 tests
+- W-0386 ✅ #928 merged — scheduler 347 / pipeline 118 / imports 12
+- W-0389 Ph1 ✅ #929 merged — font-size 357→0 violations
 
 ---
 
