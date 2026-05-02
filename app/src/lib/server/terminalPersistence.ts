@@ -374,6 +374,16 @@ export async function replaceTerminalWatchlist(
         [userId, item.symbol, item.timeframe, item.sortOrder, item.symbol === activeSymbol || item.active],
       );
     }
+
+    // Sync to user_watchlist so engine pattern scanner picks up user's symbols
+    await client.query(`DELETE FROM user_watchlist WHERE user_id = $1`, [userId]);
+    for (let i = 0; i < items.length; i++) {
+      await client.query(
+        `INSERT INTO user_watchlist (user_id, symbol, position) VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, symbol) DO UPDATE SET position = $3`,
+        [userId, items[i].symbol, i],
+      );
+    }
   });
   return listTerminalWatchlist(userId);
 }

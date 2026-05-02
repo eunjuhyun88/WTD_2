@@ -90,6 +90,7 @@ FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION
 FEATURE_MATERIALIZATION_INTERVAL = int(os.environ.get("FEATURE_MATERIALIZATION_INTERVAL_SECONDS", "900"))
 
 _BETA_JOB_FLAGS = {
+    "lightgbm_retrain": os.environ.get("ENABLE_LIGHTGBM_RETRAIN_JOB", "false"),
     "outcome_resolver": os.environ.get("ENABLE_OUTCOME_RESOLVER_JOB", "true"),
     "refinement_trigger": os.environ.get("ENABLE_REFINEMENT_TRIGGER_JOB", "true"),
     "fetch_okx_signals": os.environ.get("ENABLE_FETCH_OKX_SIGNALS_JOB", "true"),
@@ -159,7 +160,7 @@ async def _pattern_scan_job() -> None:
         universe_name=UNIVERSE_NAME,
         scan_telegram_enabled=SCAN_TELEGRAM_ENABLED,
         last_pattern_entry_keys=_last_pattern_entry_keys,
-        load_universe_async=load_universe_async,
+        load_universe_async=_load_universe_with_watches,
         send_pattern_scan_summary=send_pattern_scan_summary,
     )
 
@@ -274,6 +275,12 @@ def start_scheduler() -> None:
     if os.environ.get("ENABLE_SIGNAL_EVENTS", "true").lower() == "true":
         from scanner.jobs.signal_events_job import register_signal_events  # noqa: PLC0415
         register_signal_events(_scheduler)
+
+    if _job_enabled("lightgbm_retrain"):
+        from scanner.jobs.lightgbm_retrain import lightgbm_retrain_job as _lgbm  # noqa: PLC0415
+        _add(_lgbm, "cron", day_of_week="sun", hour=2, minute=0,
+             id="lightgbm_retrain", name="Global LightGBM weekly retrain",
+             max_instances=1, coalesce=True, misfire_grace_time=3600)
 
     if _job_enabled("backtest_stats_refresh"):
         from scanner.jobs.backtest_stats_refresh import backtest_stats_refresh_job as _bsr  # noqa: PLC0415
