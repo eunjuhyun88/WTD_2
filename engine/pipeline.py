@@ -1,14 +1,10 @@
-"""Research Pipeline facade — delegates to engine.core_loop + pipeline_stages.
+"""Research Pipeline facade — backward-compatible entrypoint.
 
-Backward-compatible entrypoint. Prefer CoreLoopBuilder for new code.
-
-Usage (unchanged):
-    uv run python -m engine.pipeline
-    uv run python -m engine.pipeline --symbols BTCUSDT ETHUSDT
-    uv run python -m engine.pipeline --refresh --top 20
+Prefer CoreLoopBuilder for new code.
 """
 from __future__ import annotations
 import argparse
+import asyncio
 import logging
 import os
 import sys
@@ -17,8 +13,7 @@ from pathlib import Path
 
 try:
     import env_bootstrap  # noqa: F401
-except ModuleNotFoundError:
-    pass
+except ModuleNotFoundError: pass
 
 from pipeline_stages import (
     ResearchPipelineResult as PipelineResult,
@@ -51,7 +46,6 @@ class ResearchPipeline:
 
     def _verify(self, df):
         """Backward-compat: run VerifyStage logic on a DataFrame."""
-        import asyncio
         import pandas as pd
         from pipeline_stages import ScanStage, ValidateStage, VerifyStage
         from core_loop.contracts import PipelineRequest, PipelineResult as CoreResult
@@ -68,7 +62,6 @@ class ResearchPipeline:
 
     def _score(self, df):
         """Backward-compat: run ScoreStage logic on a DataFrame."""
-        import asyncio
         import pandas as pd
         from pipeline_stages import ScanStage, ValidateStage, ScoreStage
         from core_loop.contracts import PipelineRequest, PipelineResult as CoreResult
@@ -85,10 +78,8 @@ class ResearchPipeline:
 
 
 def _parse_args(argv=None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description="Research pipeline: data → scan → validate → report",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+    p = argparse.ArgumentParser(description="Research pipeline: data → scan → validate → report",
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--symbols", nargs="*")
     p.add_argument("--symbols-file")
     p.add_argument("--refresh", action="store_true")
@@ -102,11 +93,9 @@ def _parse_args(argv=None) -> argparse.Namespace:
 
 def main(argv=None) -> int:
     args = _parse_args(argv)
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s  %(message)s",
-        datefmt="%H:%M:%S", stream=sys.stderr,
-    )
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s  %(message)s",
+                        datefmt="%H:%M:%S", stream=sys.stderr)
     if args.skip_verification:
         os.environ["PIPELINE_SKIP_VERIFICATION"] = "1"
 
@@ -120,10 +109,8 @@ def main(argv=None) -> int:
     elif args.symbols:
         symbols = args.symbols
 
-    result = run_research_pipeline(
-        symbols=symbols, refresh=args.refresh, top_n=args.top,
-        scan_workers=args.workers, out_dir=Path(args.out) if args.out else None,
-    )
+    result = run_research_pipeline(symbols=symbols, refresh=args.refresh, top_n=args.top,
+                                   scan_workers=args.workers, out_dir=Path(args.out) if args.out else None)
     return 0 if result.n_bh_passed > 0 or result.n_candidates >= 0 else 1
 
 
