@@ -115,6 +115,39 @@ Parent가 사실 수집 → 에이전트는 구현에만 집중.
 - 같은 파일 동시 수정 = merge conflict → 순차 실행으로 전환
 - migration 번호 = 항상 `./tools/claim-migration.sh` 먼저
 
+### 새 탭 에이전트 시작 전 파일 충돌 체크 (필수)
+
+```bash
+./tools/file-lock-check.sh [건드릴파일1.ts 건드릴파일2.svelte]
+# 0 반환 = 시작 가능. 1 = 충돌 — 락된 Work Item 완료 대기
+```
+
+충돌 발견 시 대안:
+1. 해당 Work Item PR 머지 대기
+2. 다른 파일로 작업 분리 (Work Item 파일 경계 분해)
+3. 순서 의존성 확인 후 직렬 전환
+
+### 도메인-에이전트 매핑 (D-7009)
+
+같은 도메인 파일을 두 에이전트가 동시에 수정하지 않는다:
+
+| 도메인 | 경로 | 동시 접근 금지 |
+|---|---|---|
+| Chart | `app/src/lib/features/chart/**` | 1 에이전트만 |
+| Hubs | `app/src/lib/hubs/**` | Hub별 1 에이전트 |
+| Engine | `engine/**` | 1 에이전트만 (migration 포함) |
+| Shared | `app/src/lib/components/shared/**` | 락 테이블 확인 필수 |
+
+도메인 횡단 작업 (예: chart + engine 동시) = 락 테이블에 양쪽 도메인 Files 모두 명시.
+
+### Work Item 파일 경계 (D-7008)
+
+- ≤3 파일/Work Item 권장 (가이드라인, 강제 아님)
+- 4파일+ 계획 = Phase로 분해 검토
+- 순서 의존성 있는 Phase = 직렬 / 독립 = 병렬
+
+상세: `docs/runbooks/parallel-agent-file-isolation.md`
+
 ---
 
 ## Branch 명명
