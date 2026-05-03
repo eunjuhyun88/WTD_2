@@ -2,33 +2,43 @@
   /**
    * WatchlistRail.svelte (peek/)
    *
-   * Displays recent watch_hits (up to 20) with 30s SWR.
+   * Displays watchlist items + lab candidates (up to 20 combined) with 30s SWR.
    * Dispatches 'symbolSelect' event on row click.
    * Mobile: hidden (desktop-only rail).
    *
-   * TODO(W-0395): wire to real /api/cogochi/watchlist endpoint once available.
-   * Currently uses mock data.
+   * Sources:
+   *   - /api/terminal/watchlist  — user's saved watchlist symbols
+   *   - /api/terminal/candidates — symbols sent from /lab via SendToTerminalButton
    */
 
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 
-  type WatchStatus = 'WATCHING' | 'HIT' | 'EXPIRED';
+  type WatchStatus = 'WATCHING' | 'HIT' | 'EXPIRED' | 'CANDIDATE';
 
   interface WatchHit {
     id: string;
     symbol: string;
-    confidence: number; // 0–100
+    confidence: number; // 0–100; 0 = no data
     status: WatchStatus;
   }
 
-  // TODO(W-0395): replace with real API call
-  const MOCK_HITS: WatchHit[] = [
-    { id: '1', symbol: 'BTCUSDT', confidence: 82, status: 'WATCHING' },
-    { id: '2', symbol: 'ETHUSDT', confidence: 74, status: 'HIT' },
-    { id: '3', symbol: 'SOLUSDT', confidence: 61, status: 'WATCHING' },
-    { id: '4', symbol: 'BNBUSDT', confidence: 55, status: 'EXPIRED' },
-    { id: '5', symbol: 'AVAXUSDT', confidence: 79, status: 'HIT' },
-  ];
+  interface WatchlistApiItem {
+    symbol: string;
+    timeframe?: string;
+    sortOrder?: number;
+    active?: boolean;
+    preview?: {
+      confidence?: string;
+    };
+  }
+
+  interface CandidateApiItem {
+    id: string;
+    symbol: string;
+    source: string;
+    strategy_id: string | null;
+    created_at: string;
+  }
 
   const dispatch = createEventDispatcher<{ symbolSelect: { symbol: string } }>();
 
@@ -36,12 +46,59 @@
   let loading = $state(true);
   let error = $state(false);
 
+  function confidenceFromPreview(preview?: WatchlistApiItem['preview']): number {
+    if (!preview?.confidence) return 0;
+    switch (preview.confidence) {
+      case 'high': return 85;
+      case 'medium': return 60;
+      case 'low': return 35;
+      default: return 0;
+    }
+  }
+
   async function loadWatchHits() {
-    // TODO(W-0395): swap for real endpoint: GET /api/cogochi/watchlist?limit=20
     try {
-      // Simulate async load
-      await Promise.resolve();
-      hits = MOCK_HITS;
+      const [watchlistRes, candidatesRes] = await Promise.all([
+        fetch('/api/terminal/watchlist'),
+        fetch('/api/terminal/candidates'),
+      ]);
+
+      const combined: WatchHit[] = [];
+      const seenSymbols = new Set<string>();
+
+      // Watchlist items
+      if (watchlistRes.ok) {
+        const wData = (await watchlistRes.json()) as { items?: WatchlistApiItem[] };
+        for (const item of wData.items ?? []) {
+          if (!seenSymbols.has(item.symbol)) {
+            seenSymbols.add(item.symbol);
+            combined.push({
+              id: `wl-${item.symbol}`,
+              symbol: item.symbol,
+              confidence: confidenceFromPreview(item.preview),
+              status: item.active ? 'HIT' : 'WATCHING',
+            });
+          }
+        }
+      }
+
+      // Lab candidates
+      if (candidatesRes.ok) {
+        const cData = (await candidatesRes.json()) as { candidates?: CandidateApiItem[] };
+        for (const c of cData.candidates ?? []) {
+          if (!seenSymbols.has(c.symbol)) {
+            seenSymbols.add(c.symbol);
+            combined.push({
+              id: c.id,
+              symbol: c.symbol,
+              confidence: 0,
+              status: 'CANDIDATE',
+            });
+          }
+        }
+      }
+
+      hits = combined.slice(0, 20);
       error = false;
     } catch {
       error = true;
@@ -69,6 +126,7 @@
     WATCHING: 'WATCH',
     HIT: 'HIT',
     EXPIRED: 'EXP',
+    CANDIDATE: 'LAB',
   };
 </script>
 
@@ -107,6 +165,7 @@
               class:chip-watching={hit.status === 'WATCHING'}
               class:chip-hit={hit.status === 'HIT'}
               class:chip-expired={hit.status === 'EXPIRED'}
+              class:chip-candidate={hit.status === 'CANDIDATE'}
             >{STATUS_LABEL[hit.status]}</span>
           </button>
         </li>
@@ -259,5 +318,11 @@
     background: color-mix(in srgb, var(--g5, rgba(255,255,255,0.4)) 10%, transparent);
     color: var(--g5, rgba(255, 255, 255, 0.40));
     border: 1px solid color-mix(in srgb, var(--g5, rgba(255,255,255,0.4)) 25%, transparent);
+  }
+
+  .chip-candidate {
+    background: color-mix(in srgb, var(--amb, #f5a623) 12%, transparent);
+    color: var(--amb, #f5a623);
+    border: 1px solid color-mix(in srgb, var(--amb, #f5a623) 30%, transparent);
   }
 </style>

@@ -4,6 +4,7 @@
   import InlinePriceChartBlock from './InlinePriceChartBlock.svelte';
   import DualPaneFlowChartBlock from './DualPaneFlowChartBlock.svelte';
   import HeatmapFlowChartBlock from './HeatmapFlowChartBlock.svelte';
+  import SendToTerminalButton from '../SendToTerminalButton.svelte';
 
   let {
     envelope,
@@ -54,6 +55,7 @@
       <button type="button" class="rbs-detail-btn" onclick={handleSelect}>
         More detail
       </button>
+      <SendToTerminalButton symbol={envelope.symbol} />
     </div>
   </div>
 {:else}
@@ -82,6 +84,10 @@
     {#if envelope.summary}
       <div class="rbs-summary">{envelope.summary}</div>
     {/if}
+
+    <div class="rbs-actions">
+      <SendToTerminalButton symbol={envelope.symbol} />
+    </div>
   </div>
 {/if}
 
