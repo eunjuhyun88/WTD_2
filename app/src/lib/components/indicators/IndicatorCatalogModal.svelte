@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
   import { catalogSearch, initCatalogSearch } from '$lib/indicators/catalogSearch';
+  import { catalogFavorites } from '$lib/indicators/catalogFavorites';
   import { indicatorInstances } from '$lib/chart/indicatorInstances';
   import type { IndicatorDef } from '$lib/indicators/types';
 
@@ -16,10 +17,20 @@
   let query = $state('');
   let inputEl: HTMLInputElement | undefined = $state();
   let backdropEl: HTMLDivElement | undefined = $state();
+  let favoriteIds = $state<Set<string>>(new Set());
 
   const allDefs = Object.values(INDICATOR_REGISTRY);
   const taDefs = allDefs.filter(d => d.category === 'TA');
   const marketDefs = allDefs.filter(d => !d.category || d.category === 'MarketData');
+
+  let recentDefs = $derived.by(() => {
+    const ids = catalogFavorites.getRecents();
+    return ids.map(id => allDefs.find(d => d.id === id)).filter(Boolean) as IndicatorDef[];
+  });
+
+  let favoriteDefs = $derived.by(() => {
+    return allDefs.filter(d => favoriteIds.has(d.id));
+  });
 
   let results = $derived.by(() => {
     if (!query.trim()) return allDefs;
@@ -28,10 +39,9 @@
 
   $effect(() => {
     if (open) {
-      // Focus search on open
       setTimeout(() => inputEl?.focus(), 50);
-      // Init Fuse.js lazy load
       initCatalogSearch(allDefs);
+      favoriteIds = new Set(catalogFavorites.getAll());
     } else {
       query = '';
     }
@@ -59,9 +69,17 @@
   function addIndicator(def: IndicatorDef) {
     if (!def.engineKey) return;
     const params = defaultParamsFor(def);
-    const instanceId = indicatorInstances.add(def.id, def.engineKey, params);
+    indicatorInstances.add(def.id, def.engineKey, params);
+    catalogFavorites.recordRecent(def.id);
     onAdd?.(def.id, def.engineKey, params);
     close();
+  }
+
+  function toggleFavorite(e: MouseEvent, def: IndicatorDef) {
+    e.stopPropagation();
+    const isFav = catalogFavorites.toggle(def.id);
+    favoriteIds = new Set(catalogFavorites.getAll());
+    return isFav;
   }
 
   function countActive(def: IndicatorDef): number {
@@ -113,38 +131,11 @@
           <div class="catalog-section">
             <div class="catalog-grid">
               {#each results as def}
-                <button
-                  class="catalog-item"
-                  onclick={() => addIndicator(def)}
-                  disabled={!def.engineKey}
-                  title={def.description}
-                >
-                  <div class="item-top">
-                    <span class="item-label">{def.label ?? def.id}</span>
-                    {#if countActive(def) > 0}
-                      <span class="item-badge">{countActive(def)}</span>
-                    {/if}
-                  </div>
-                  {#if def.description}
-                    <p class="item-desc">{def.description}</p>
-                  {/if}
-                  {#if !def.engineKey}
-                    <span class="item-unavail">Engine only</span>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          </div>
-        {:else}
-          <!-- Ungrouped: TA first, then market data -->
-          {#if taDefs.length > 0}
-            <div class="catalog-section">
-              <h3 class="section-title">Technical Analysis</h3>
-              <div class="catalog-grid">
-                {#each taDefs as def}
+                <div class="catalog-item-wrap">
                   <button
                     class="catalog-item"
                     onclick={() => addIndicator(def)}
+                    disabled={!def.engineKey}
                     title={def.description}
                   >
                     <div class="item-top">
@@ -153,14 +144,120 @@
                         <span class="item-badge">{countActive(def)}</span>
                       {/if}
                     </div>
-                    {#if def.paramSchema}
-                      <p class="item-params">
-                        {Object.entries(def.paramSchema)
-                          .map(([k, v]) => `${v.label ?? k}: ${v.default}`)
-                          .join(' · ')}
-                      </p>
+                    {#if def.description}
+                      <p class="item-desc">{def.description}</p>
+                    {/if}
+                    {#if !def.engineKey}
+                      <span class="item-unavail">Engine only</span>
                     {/if}
                   </button>
+                  <button
+                    class="item-star"
+                    class:item-star--active={favoriteIds.has(def.id)}
+                    onclick={(e) => toggleFavorite(e, def)}
+                    aria-label={favoriteIds.has(def.id) ? 'Remove from favorites' : 'Add to favorites'}
+                  >★</button>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {:else}
+          <!-- Recents section (if any) -->
+          {#if recentDefs.length > 0}
+            <div class="catalog-section">
+              <h3 class="section-title">Recently Used</h3>
+              <div class="catalog-grid">
+                {#each recentDefs as def}
+                  <div class="catalog-item-wrap">
+                    <button
+                      class="catalog-item"
+                      onclick={() => addIndicator(def)}
+                      disabled={!def.engineKey}
+                      title={def.description}
+                    >
+                      <div class="item-top">
+                        <span class="item-label">{def.label ?? def.id}</span>
+                        {#if countActive(def) > 0}
+                          <span class="item-badge">{countActive(def)}</span>
+                        {/if}
+                      </div>
+                    </button>
+                    <button
+                      class="item-star"
+                      class:item-star--active={favoriteIds.has(def.id)}
+                      onclick={(e) => toggleFavorite(e, def)}
+                      aria-label={favoriteIds.has(def.id) ? 'Remove from favorites' : 'Add to favorites'}
+                    >★</button>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
+
+          <!-- Favorites section (if any) -->
+          {#if favoriteDefs.length > 0}
+            <div class="catalog-section">
+              <h3 class="section-title">Favorites</h3>
+              <div class="catalog-grid">
+                {#each favoriteDefs as def}
+                  <div class="catalog-item-wrap">
+                    <button
+                      class="catalog-item"
+                      onclick={() => addIndicator(def)}
+                      disabled={!def.engineKey}
+                      title={def.description}
+                    >
+                      <div class="item-top">
+                        <span class="item-label">{def.label ?? def.id}</span>
+                        {#if countActive(def) > 0}
+                          <span class="item-badge">{countActive(def)}</span>
+                        {/if}
+                      </div>
+                    </button>
+                    <button
+                      class="item-star item-star--active"
+                      onclick={(e) => toggleFavorite(e, def)}
+                      aria-label="Remove from favorites"
+                    >★</button>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
+
+          <!-- Ungrouped: TA first, then market data -->
+          {#if taDefs.length > 0}
+            <div class="catalog-section">
+              <h3 class="section-title">Technical Analysis</h3>
+              <div class="catalog-grid">
+                {#each taDefs as def}
+                  <div class="catalog-item-wrap">
+                    <button
+                      class="catalog-item"
+                      onclick={() => addIndicator(def)}
+                      title={def.description}
+                    >
+                      <div class="item-top">
+                        <span class="item-label">{def.label ?? def.id}</span>
+                        {#if countActive(def) > 0}
+                          <span class="item-badge">{countActive(def)}</span>
+                        {/if}
+                      </div>
+                      {#if def.paramSchema}
+                        <p class="item-params">
+                          {Object.entries(def.paramSchema)
+                            .map(([k, v]) => `${v.label ?? k}: ${v.default}`)
+                            .join(' · ')}
+                        </p>
+                      {/if}
+                    </button>
+                    <button
+                      class="item-star"
+                      class:item-star--active={favoriteIds.has(def.id)}
+                      onclick={(e) => toggleFavorite(e, def)}
+                      aria-label={favoriteIds.has(def.id) ? 'Remove from favorites' : 'Add to favorites'}
+                    >★</button>
+                  </div>
                 {/each}
               </div>
             </div>
@@ -334,6 +431,14 @@
     text-overflow: ellipsis;
   }
 
+  .catalog-item-wrap {
+    position: relative;
+  }
+  .catalog-item-wrap .catalog-item {
+    width: 100%;
+    padding-right: 22px; /* room for star */
+  }
+
   .item-badge {
     background: rgba(245, 166, 35, 0.2);
     color: rgba(245, 166, 35, 0.9);
@@ -343,6 +448,23 @@
     font-weight: 700;
     flex-shrink: 0;
   }
+
+  .item-star {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px;
+    line-height: 1;
+    transition: color 80ms;
+    z-index: 1;
+  }
+  .item-star:hover { color: rgba(245, 166, 35, 0.7); }
+  .item-star--active { color: rgba(245, 166, 35, 0.9); }
 
   .item-desc {
     font-size: 0.65rem;
