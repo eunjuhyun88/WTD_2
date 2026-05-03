@@ -10,7 +10,7 @@
     if (v == null) return 'var(--g6, rgba(255,255,255,0.4))';
     if (v < 5) return 'var(--g4, rgba(255,255,255,0.25))';
     if (v < 20) return 'var(--amb, #f5a623)';
-    return 'var(--pos, #4ade80)';
+    return 'var(--neg, #f87171)';
   }
 
   function fmt(v: number | null): string {
