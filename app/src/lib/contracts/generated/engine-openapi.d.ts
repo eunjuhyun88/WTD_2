@@ -3237,6 +3237,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extreme-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Extreme Events
+         * @description Return recent extreme events from the JSONL event log.
+         */
+        get: operations["get_extreme_events_extreme_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -4011,6 +4031,35 @@ export interface components {
             } | null;
             /** User Id */
             user_id?: string | null;
+        };
+        /** ExtremeEventOut */
+        ExtremeEventOut: {
+            /** Symbol */
+            symbol: string;
+            /** Kind */
+            kind: string;
+            /** Magnitude */
+            magnitude: number;
+            /**
+             * Detected At
+             * Format: date-time
+             */
+            detected_at: string;
+            /** Outcome 24H */
+            outcome_24h?: number | null;
+            /** Outcome 48H */
+            outcome_48h?: number | null;
+            /** Outcome 72H */
+            outcome_72h?: number | null;
+            /** Is Predictive */
+            is_predictive?: boolean | null;
+        };
+        /** ExtremeEventsResponse */
+        ExtremeEventsResponse: {
+            /** Items */
+            items: components["schemas"]["ExtremeEventOut"][];
+            /** Generated At */
+            generated_at: number;
         };
         /** FindingsResponse */
         FindingsResponse: {
@@ -11677,6 +11726,41 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_extreme_events_extreme_events_get: {
+        parameters: {
+            query?: {
+                /** @description Lookback window e.g. 24h, 48h, 72h */
+                since?: string;
+                limit?: number;
+                /** @description funding | oi | price | all */
+                kind?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtremeEventsResponse"];
                 };
             };
             /** @description Validation Error */
