@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`0eca402b` — origin/main (2026-05-04) — feat(W-0392 Ph3): verdict_json write side + PatternOutcome verdict fields (#972)
+`e712477d` — origin/main (2026-05-04) — fix(chart): TV-style pane indicator labels + dynamic priceFrac positioning (#989)
 
 ---
 
@@ -33,8 +33,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0400-layer-c-observability-f60-dashboard` | P0 | 🟡 이슈 #980, 구현 대기 |
-| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Wave 6 구현 대기 |
+| `W-0400-layer-c-observability-f60-dashboard` | P0 | ✅ 완료 PR #987 |
+| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Phase 2-7 구현 대기 (Phase 1 ✅ #988) |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
 ---
@@ -80,6 +80,10 @@
 완료:  docs ✅ — PRIORITIES.md Wave 5 complete + 갱신 규칙 (#964)
 완료:  W-0397 ✅ — VerdictInboxPanel 키보드 단축키 + 5s undo + Layer C ETA (#965)
 완료:  W-0398 ✅ — Layer C auto-train scheduler wiring + verdict hook (#968)
+완료:  W-0397 ✅ — VerdictInboxPanel keyboard shortcuts + 5s undo + Layer C ETA (#965)
+완료:  W-0400 ✅ — Layer C training observability + F-60 progress dashboard (#987)
+완료:  W-0395 Phase 1 ✅ — /cogochi cogochiDataStore v2 + localStorage migration + 18 analytics events (#988)
+완료:  fix(chart) ✅ — TV-style pane indicator labels + dynamic priceFrac positioning (#989)
 ```
 
 ---
