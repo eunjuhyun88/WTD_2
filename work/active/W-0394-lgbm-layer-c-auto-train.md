@@ -4,7 +4,7 @@
 > Charter: In-Scope (검색·랭킹 품질 개선)
 > Status: 🟡 Design Draft
 > Created: 2026-05-03
-> Issue: TBD (저장 후 발행)
+> Issue: #950
 > Depends-On: W-0392 (Issue #947) — strict blocker (verdict_json 필요)
 
 ## Goal

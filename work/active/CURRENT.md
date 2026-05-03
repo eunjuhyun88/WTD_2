@@ -33,8 +33,9 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0393-tv-idea-twin` | P1 | 🔵 Implementation |
 | `W-0388-eslint-hub-boundaries` | P2 | 🟡 Design Draft |
-| `W-0371-tv-chart-import-gateway` | P2 | 🟡 Design Draft |
+| `W-0371-tv-chart-import-gateway` | P2 | ⛔ Superseded by W-0393 |
 
 ---
 
