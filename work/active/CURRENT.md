@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`054edd7c` — origin/main (2026-05-03) — docs: PRIORITIES.md Wave 5 complete + PRIORITIES 갱신 규칙 (#964)
+`f81723f1` — origin/main (2026-05-03) — chore: Wave 6 state sync — CURRENT.md + PRIORITIES.md + 4 sweep (#969)
 
 ---
 
@@ -33,9 +33,9 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0398-layer-c-autotrainer-wiring` | P0 | 🟡 이슈 #963, 구현 대기 |
-| `W-0397-verdict-throughput-booster` | P0 | 🟢 PR #965 open, CI 대기 |
-| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, 설계 보강 필요 |
+| `W-0398-layer-c-autotrainer-wiring` | P0 | ✅ PR #968 merged |
+| `W-0397-verdict-throughput-booster` | P0 | ✅ PR #965 merged |
+| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Wave 6 구현 대기 |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
 ---
@@ -79,6 +79,8 @@
 완료:  W-PF-100 P1 ✅ — PropFirm paper auto-execution (PatternRunPanel + router/entry/match/exit + HL feed #783 #787 #802)
 완료:  W-0388 ✅ — ESLint hub boundary enforcement (#958)
 완료:  docs ✅ — PRIORITIES.md Wave 5 complete + 갱신 규칙 (#964)
+완료:  W-0397 ✅ — VerdictInboxPanel 키보드 단축키 + 5s undo + Layer C ETA (#965)
+완료:  W-0398 ✅ — Layer C auto-train scheduler wiring + verdict hook (#968)
 ```
 
 ---
@@ -107,6 +109,6 @@
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0398-layer-c-autotrainer-wiring.md
-# W-0398 (S): auto_trainer 스케줄러 배선 → Layer C 실 활성화
+cat work/active/W-0395-cogochi-pages-v2.md
+# W-0395 (XL): Cogochi 10페이지 전면 개편 — Phase 0 baseline 수집 → Phase 1 /cogochi
 ```
