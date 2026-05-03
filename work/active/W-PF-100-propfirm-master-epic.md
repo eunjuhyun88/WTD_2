@@ -1,9 +1,9 @@
 # W-PF-100 — PropFirm MVP 3-Phase Master Epic
 
-> Wave: 5 | Priority: P0 | Effort: XL (P1=M, P2=L, P3=L+legal)
+> Wave: 5→6 | Priority: P0 | Effort: XL (P1=✅ 완료, P2=L, P3=L+legal)
 > Charter: In-Scope (Paper trading 검증 도구) + P3 Entry Gate (실자금 별도 레인)
-> Status: 🟡 Design Draft
-> Created: 2026-04-30
+> Status: 🟢 P1 완료 (PR #783 #787 #802) | P2 대기 | P3 Entry Gate 미개방
+> Created: 2026-04-30 | P1 완료: 2026-04-30
 > Issue: #769
 > Ptrack: [work/ptrack/P-00-master.md](../ptrack/P-00-master.md)
 > Related: [P-01-prd](../ptrack/P-01-prd.md) · [P-02-architecture](../ptrack/P-02-architecture.md) · [P-03-phases](../ptrack/P-03-phases.md)

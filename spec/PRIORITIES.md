@@ -23,9 +23,10 @@ Wave 5 PRs: #826 #829 #830 #835 #834 #836 #839 #865 #869 #870
             #861 #862 #904 #915 #922 #927 #928 #929 #931 #926
             #933 #934 #936 #939 #940 #941 #944 #945 #946
             #951 #952 #953 #954 #958 (총 34 PRs)
-열린 P0:    **W-PF-100** PropFirm paper auto-execution (설계 ✅ #769, 구현 대기)
-즉시 P0:   W-PF-100 Phase 1 (ScanSignal→PatternFireRouter→EntryDecider→LimitMatcher→ExitMonitor)
-다음 P1:   Wave 6 설계 필요 — /설계 스킬로 신규 work item 발굴
+W-PF-100:  Phase 1 ✅ 완료 (PR #783 #787 #802) — 24h live AC 검증 대기
+열린 P0:   **W-0398** Layer C scheduler wiring (S, #963) → **W-0397** verdict kbd (S, #962) → **W-0395** Pages V2 (XL, #955)
+즉시 P0:   W-0398 (auto_trainer scheduler 배선, S effort) — Layer C 실 활성화 필수 경로
+다음:      W-0397 (verdict throughput S) + W-0395 Phase 0~1 (Pages V2 첫 PR)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: verdicts 누적 속도 — Layer C LightGBM은 코드 완성이나 verdicts 50+ 전까지 실질 가중 A:0.60/B:0.40 유지. PropFirm 자동 집행 → verdict 속도 가속이 핵심.
@@ -134,27 +135,37 @@ H-08 / F-30 / F-17
 
 ## 4. P0 — 현재 집중 (Wave 6, 즉시)
 
-> Wave 4 P0 항목 전부 완료. Wave 5 전 항목 완료. Wave 6 P0 = W-PF-100.
+> Wave 5 전 항목 완료. W-PF-100 Phase 1도 이미 머지됨 (PR #783 #787 #802).
+> Wave 6 신규 P0 3개:
 
-| Work Item | Feature | 상태 | 비고 |
-|---|---|---|---|
-| **W-PF-100** | PropFirm Paper Auto-Execution (Phase 1) | 🟡 Design Draft | Issue #769. 3-Phase Epic. |
+| Work Item | Feature | Effort | Issue | 상태 |
+|---|---|---|---|---|
+| **W-0398** | Layer C Auto-Train Scheduler Wiring + E2E Verification | S | #963 | 🟡 이슈 등록, 구현 대기 |
+| **W-0397** | Verdict Throughput Booster (1-tap kbd + undo + Layer C ETA) | S | #962 | 🟡 이슈 등록, 구현 대기 |
+| **W-0395** | Cogochi Pages V2 전면 UX 개편 (10 Pages, 8-Phase) | XL | #955 | 🟡 이슈 등록, 설계 보강 필요 |
 
-### W-PF-100 Phase 1 개요 (즉시 시작 가능)
+### W-0398 핵심 (즉시 가능, S)
 
 ```
-ScanSignal → PatternFireRouter → EntryDecider → LimitMatcher → ExitMonitor
-- /lab "패턴 런" 탭에서 paper account 자동 집행 실시간 확인
-- Charter In-Scope (Paper trading 검증 도구)
-- 설계 완료: work/active/W-PF-100-propfirm-master-epic.md
-- 선행 조건: 없음 (독립)
+W-0394 auto_trainer.py가 scheduler에 미연결 → is_trained=False 고착
+verdict hook + 1h scheduler job 배선 → Layer C 실 활성화
+AC3: synthetic 50 verdicts → 1 cycle 완주 → is_trained=True
 ```
+
+### W-0397 핵심 (즉시 가능, S)
+
+```
+VerdictInboxPanel keyboard 1-5 단축키 + 5초 undo toast
+verdict throughput ~3-5s → ≤2s → Layer C 훈련 속도 직결
+```
+
+### W-PF-100 Phase 2 (P1 24h 검증 후)
 
 | Phase | 내용 | Effort | 상태 |
 |---|---|---|---|
-| P1 | Paper Auto-Execution (/lab 패턴 런 탭) | M | 🟡 설계 완료, 구현 대기 |
-| P2 | Eval Challenge 결제·통과 | L | ⬜ P1 완료 후 |
-| P3 | Entry Gate → 실 USDC funded 계정 | L + legal | ⬜ P2 완료 후 |
+| P1 | Paper Auto-Execution | M | ✅ **완료** (PR #783 #787 #802) — 24h live 검증 대기 |
+| P2 | Eval Challenge (Stripe + MLL 룰) | L | ⬜ P1 24h AC 통과 후 |
+| P3 | Entry Gate → funded 계정 | L+legal | ⬜ 법무 7-checklist 통과 후 |
 
 ---
 
