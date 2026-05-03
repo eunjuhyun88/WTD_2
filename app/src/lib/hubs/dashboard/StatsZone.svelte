@@ -83,8 +83,8 @@
     align-items: center;
     margin-bottom: 8px;
   }
-  .zone-label { font-size: 10px; font-weight: 700; color: var(--g9); text-transform: uppercase; letter-spacing: 0.04em; }
-  .zone-link  { font-size: 9px; color: var(--g7); text-decoration: none; }
+  .zone-label { font-size: var(--ui-text-xs); font-weight: 700; color: var(--g9); text-transform: uppercase; letter-spacing: 0.04em; }
+  .zone-link  { font-size: var(--ui-text-xs); color: var(--g7); text-decoration: none; }
   .zone-link:hover { color: var(--g9); }
 
   .stats-grid {
@@ -93,14 +93,14 @@
     gap: 6px;
   }
   .stat-item { display: flex; flex-direction: column; gap: 1px; }
-  .stat-val  { font-size: 13px; font-weight: 700; color: var(--g9); }
-  .stat-lbl  { font-size: 9px; color: var(--g7); }
+  .stat-val  { font-size: var(--ui-text-md); font-weight: 700; color: var(--g9); }
+  .stat-lbl  { font-size: var(--ui-text-xs); color: var(--g7); }
   .pos { color: var(--pos); }
   .neg { color: var(--neg); }
 
   .stats-gate-hint {
     margin-top: 6px;
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--amb);
     border-top: 1px solid var(--g4);
     padding-top: 6px;

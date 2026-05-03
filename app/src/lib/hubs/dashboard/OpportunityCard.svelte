@@ -77,17 +77,17 @@
     justify-content: space-between;
     align-items: baseline;
   }
-  .opp-sym { font-size: 11px; font-weight: 700; color: var(--g9); }
-  .opp-dir { font-size: 10px; font-weight: 600; }
+  .opp-sym { font-size: var(--ui-text-xs); font-weight: 700; color: var(--g9); }
+  .opp-dir { font-size: var(--ui-text-xs); font-weight: 600; }
 
   .opp-conf-row { display: flex; align-items: center; gap: 4px; }
-  .opp-conf-label { font-size: 9px; color: var(--g7); flex-shrink: 0; }
-  .opp-conf-val   { font-size: 10px; font-weight: 600; flex-shrink: 0; min-width: 30px; }
+  .opp-conf-label { font-size: var(--ui-text-xs); color: var(--g7); flex-shrink: 0; }
+  .opp-conf-val   { font-size: var(--ui-text-xs); font-weight: 600; flex-shrink: 0; min-width: 30px; }
   .opp-conf-bar   { flex: 1; height: 3px; background: var(--g4); border-radius: 2px; overflow: hidden; }
   .opp-conf-fill  { height: 100%; border-radius: 2px; transition: width 0.3s; }
 
   .opp-reason {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: var(--g7);
     margin: 0;
     overflow: hidden;
@@ -98,7 +98,7 @@
   .opp-analyze-btn {
     margin-top: 2px;
     padding: 4px 8px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     color: var(--g9);
     background: var(--g4);

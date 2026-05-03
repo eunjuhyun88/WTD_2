@@ -80,7 +80,7 @@
     align-items: center;
     margin-bottom: 8px;
   }
-  .zone-label { font-size: 10px; font-weight: 700; color: var(--g9); text-transform: uppercase; letter-spacing: 0.04em; }
+  .zone-label { font-size: var(--ui-text-xs); font-weight: 700; color: var(--g9); text-transform: uppercase; letter-spacing: 0.04em; }
   .sys-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--g5); }
   .sys-dot.ok  { background: var(--pos); }
   .sys-dot.err { background: var(--neg); }
@@ -91,8 +91,8 @@
     align-items: center;
     gap: 4px;
   }
-  .sys-icon { font-size: 7px; color: var(--g7); flex-shrink: 0; }
-  .sys-text { font-size: 10px; color: var(--g7); flex: 1; }
-  .sys-val  { font-size: 10px; font-weight: 600; color: var(--g9); }
+  .sys-icon { font-size: var(--ui-text-xs); color: var(--g7); flex-shrink: 0; }
+  .sys-text { font-size: var(--ui-text-xs); color: var(--g7); flex: 1; }
+  .sys-val  { font-size: var(--ui-text-xs); font-weight: 600; color: var(--g9); }
   .pos { color: var(--pos); }
 </style>
