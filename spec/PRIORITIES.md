@@ -1,6 +1,6 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (2f92ba84) | 2026-05-03
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (054edd7c) | 2026-05-03
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
@@ -9,23 +9,23 @@
 ## 0. CTO 현황 요약 (2026-05-03) ← Wave 5 완전 완료
 
 ```
-시스템 성숙도: ~96% Built — Wave 5 전 항목 완료
-최신 main:   2f92ba84 (2026-05-03, chore: W-0386 sweep)
+시스템 성숙도: ~97% Built — Wave 5 전 항목 완료 + W-PF-100 P1 완료
+최신 main:   054edd7c (2026-05-03, docs: PRIORITIES.md Wave 5 complete #964)
 5-Hub 확정:  dashboard / lab / patterns / settings / terminal (W-0372 ✅ #826~#830)
 핵심 신규:   LightGBM Layer C auto-train flywheel ✅ (W-0394 #952+#954)
+            PropFirm paper auto-execution P1 ✅ (W-PF-100 #783+#787+#802)
             6-layer AutoResearch orchestrator ✅ (W-0379 #861+#862)
             TradingView Idea Twin + Hypothesis Compiler ✅ (W-0393 #951)
             Strategy Live Signals engine+frontend ✅ (W-0370 #915)
             Quant UX data layer (TopBar L2/OI/FR + kbd) ✅ (W-0390 #936)
             ESLint hub boundary enforcement ✅ (W-0388 #958)
-            Upstash rate limiter + engine SWR cache ✅ (W-0364 #933)
 Wave 5 PRs: #826 #829 #830 #835 #834 #836 #839 #865 #869 #870
             #861 #862 #904 #915 #922 #927 #928 #929 #931 #926
             #933 #934 #936 #939 #940 #941 #944 #945 #946
-            #951 #952 #953 #954 #958 (총 34 PRs)
-열린 P0:    **W-PF-100** PropFirm paper auto-execution (설계 ✅ #769, 구현 대기)
-즉시 P0:   W-PF-100 Phase 1 (ScanSignal→PatternFireRouter→EntryDecider→LimitMatcher→ExitMonitor)
-다음 P1:   Wave 6 설계 필요 — /설계 스킬로 신규 work item 발굴
+            #951 #952 #953 #954 #958 #964 (총 35 PRs)
+W-PF-100:  Phase 1 ✅ 완료 (PR #783 #787 #802) — 24h live AC 검증 대기
+열린 P0:   **W-0398** Layer C scheduler wiring (S, #963) → **W-0397** verdict kbd (S, #962) → **W-0395** Pages V2 (XL, #955)
+즉시 P0:   W-0398 (auto_trainer 스케줄러 배선 + verdict hook, S effort)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: verdicts 누적 속도 — Layer C LightGBM은 코드 완성이나 verdicts 50+ 전까지 실질 가중 A:0.60/B:0.40 유지. PropFirm 자동 집행 → verdict 속도 가속이 핵심.
@@ -134,26 +134,29 @@ H-08 / F-30 / F-17
 
 ## 4. P0 — 현재 집중 (Wave 6, 즉시)
 
-> Wave 4 P0 항목 전부 완료. Wave 5 전 항목 완료. Wave 6 P0 = W-PF-100.
+> Wave 5 전 항목 완료. W-PF-100 Phase 1도 이미 머지됨 (PR #783 #787 #802).
+> Wave 6 신규 P0 3개:
 
-| Work Item | Feature | 상태 | 비고 |
-|---|---|---|---|
-| **W-PF-100** | PropFirm Paper Auto-Execution (Phase 1) | 🟡 Design Draft | Issue #769. 3-Phase Epic. |
+| Work Item | Feature | Effort | Issue | 상태 |
+|---|---|---|---|---|
+| **W-0398** | Layer C Auto-Train Scheduler Wiring | S | #963 | 🟡 구현 대기 |
+| **W-0397** | Verdict Throughput Booster (kbd + undo + ETA) | S | #962 | 🟡 구현 대기 |
+| **W-0395** | Cogochi Pages V2 전면 UX 개편 | XL | #955 | 🟡 설계 보강 필요 |
+| **W-PF-100** | PropFirm Paper Auto-Execution | XL | #769 | 🟢 P1 완료, P2 대기 |
 
-### W-PF-100 Phase 1 개요 (즉시 시작 가능)
+### W-0398 핵심 (즉시 가능, S)
 
 ```
-ScanSignal → PatternFireRouter → EntryDecider → LimitMatcher → ExitMonitor
-- /lab "패턴 런" 탭에서 paper account 자동 집행 실시간 확인
-- Charter In-Scope (Paper trading 검증 도구)
-- 설계 완료: work/active/W-PF-100-propfirm-master-epic.md
-- 선행 조건: 없음 (독립)
+W-0394 auto_trainer.py가 스케줄러에 미연결 → is_trained=False 고착
+verdict hook + 1h scheduler job 배선 → Layer C 실 활성화
 ```
+
+### W-PF-100 Phase 상태
 
 | Phase | 내용 | Effort | 상태 |
 |---|---|---|---|
-| P1 | Paper Auto-Execution (/lab 패턴 런 탭) | M | 🟡 설계 완료, 구현 대기 |
-| P2 | Eval Challenge 결제·통과 | L | ⬜ P1 완료 후 |
+| P1 | Paper Auto-Execution (/lab 패턴 런 탭) | M | ✅ 완료 (PR #783 #787 #802) |
+| P2 | Eval Challenge 결제·통과 | L | ⬜ 24h live AC 검증 후 |
 | P3 | Entry Gate → 실 USDC funded 계정 | L + legal | ⬜ P2 완료 후 |
 
 ---
