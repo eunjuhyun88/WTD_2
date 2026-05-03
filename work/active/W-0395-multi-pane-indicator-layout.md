@@ -136,6 +136,6 @@ app
 - [x] crosshairChips fallback 패턴 (`crosshairChips?.oi ?? oiChips.chips`)
 - [x] svelte-check 0 new errors
 - [x] commit 7e2c350c pushed to feat/W-0364-rebase
-- [ ] Phase 4: resize handle
+- [x] Phase 4: resize handle (commit 95c0f844) — pane-resizer + pibTops + priceStretch
 - [ ] Playwright 시각 회귀 테스트
 - [ ] PR merge
