@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`d28b6ef3` — origin/main (2026-05-04) — feat(W-0400 Ph2B): engineSeriesAdapter + /api/indicators proxy + 135-entry registry (#1033)
+`c39646f7` — origin/main (2026-05-04) — feat(W-0400 Ph1C): catalogFavorites localStorage + Recents/Favorites sections (#1023)
 
 ---
 
@@ -45,8 +45,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
-| `W-0401-verdict-accumulation-flywheel` | P0 | 🟡 설계 완료 #1004, 구현 대기 |
-| `W-0400-tv-indicator-catalog-full` | P1 | ✅ Ph1A/1B/1C/2A/2B 전체 완료 (#1010/#1020/#1024/#1030/#1033) |
+| `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
 
@@ -113,7 +112,8 @@
 
 ```bash
 ./tools/start.sh
-# P0-A: gh pr merge 1023 --squash  (CSS cleanup — 충돌 없음)
-# P0-B: W-0401 구현 또는 W-PF-100 P2 (24h live AC 검증 완료 후)
-cat work/active/W-0401-verdict-accumulation-flywheel.md
+# P0-A: W-0395B PR-A (GTM 이벤트 3종, Effort S — 가장 빠름)
+#        또는 PR-G (Decisions table, 독립)
+# P0-B: W-PF-100 P2 (24h live AC 검증 완료 후)
+cat work/active/W-0395B-cogochi-pages-v2-remaining.md
 ```
