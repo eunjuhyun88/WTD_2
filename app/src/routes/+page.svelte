@@ -6,6 +6,7 @@
   import { track } from '$lib/analytics';
   import HomeFinalCta from '../components/home/HomeFinalCta.svelte';
   import HomeHero from '../components/home/HomeHero.svelte';
+  import HomeTicker from '../components/home/HomeTicker.svelte';
   import SiteFooter from '../components/home/SiteFooter.svelte';
   import HomeLearningLoop from '../components/home/HomeLearningLoop.svelte';
   import HomeSurfaceCards from '../components/home/HomeSurfaceCards.svelte';
@@ -229,6 +230,7 @@
     onOpen={openPath}
   />
 
+  <HomeTicker />
   <HomeLearningLoop steps={HOME_LEARNING_STEPS} />
   <HomeSurfaceCards surfaces={HOME_SURFACES} onOpen={openPath} />
   <HomeFinalCta onOpen={openPath} />
