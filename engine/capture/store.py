@@ -382,4 +382,5 @@ class CaptureStore:
             outcome_id=row["outcome_id"],
             status=row["status"],
             is_watching=bool(row["is_watching"]) if "is_watching" in keys else False,
+            verdict_json=_json_loads(row["verdict_json"], None) if "verdict_json" in keys else None,
         )

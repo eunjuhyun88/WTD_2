@@ -63,6 +63,91 @@
   const GRID  = 'rgba(42,46,57,0.9)';
   const TEXT  = 'rgba(177,181,189,0.85)';
 
+  // ── Drag state ─────────────────────────────────────────────────────────────
+  let dragStartX = $state<number | null>(null);
+  let isDragging = $state(false);
+  let lastMoveMoveTs = 0;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  const DRAG_THRESHOLD_PX = 40;
+  const MOVE_THROTTLE_MS = 16;
+  const LONG_PRESS_MS = 400;
+
+  function xToUnixSeconds(clientX: number): number | null {
+    if (!chart || !containerEl) return null;
+    const rect = containerEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const t = chart.timeScale().coordinateToTime(x);
+    if (t === null || t === undefined) return null;
+    return typeof t === 'number' ? t : Math.floor(new Date(t as string).getTime() / 1000);
+  }
+
+  function handlePointerDown(e: PointerEvent): void {
+    if (!$chartSaveMode.active) return;
+    dragStartX = e.clientX;
+    isDragging = false;
+
+    // Mobile: long-press → drag mode entry
+    if (e.pointerType === 'touch') {
+      longPressTimer = setTimeout(() => {
+        if (dragStartX !== null) {
+          const t = xToUnixSeconds(dragStartX);
+          if (t !== null) {
+            chartSaveMode.startDrag(t);
+            isDragging = true;
+          }
+        }
+      }, LONG_PRESS_MS);
+    }
+  }
+
+  function handlePointerMove(e: PointerEvent): void {
+    if (!$chartSaveMode.active || dragStartX === null) return;
+
+    const dx = Math.abs(e.clientX - dragStartX);
+
+    // Mouse: threshold-based drag start
+    if (e.pointerType !== 'touch' && !isDragging && dx >= DRAG_THRESHOLD_PX) {
+      const t = xToUnixSeconds(dragStartX);
+      if (t !== null) {
+        chartSaveMode.startDrag(t);
+        isDragging = true;
+      }
+    }
+
+    if (!isDragging) return;
+
+    const now = Date.now();
+    if (now - lastMoveMoveTs < MOVE_THROTTLE_MS) return;
+    lastMoveMoveTs = now;
+
+    const t = xToUnixSeconds(e.clientX);
+    if (t !== null) chartSaveMode.adjustAnchor('B', t);
+  }
+
+  function handlePointerUp(e: PointerEvent): void {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+
+    if (!$chartSaveMode.active) {
+      dragStartX = null;
+      isDragging = false;
+      return;
+    }
+
+    if (isDragging) {
+      const t = xToUnixSeconds(e.clientX);
+      if (t !== null) chartSaveMode.adjustAnchor('B', t);
+    }
+
+    dragStartX = null;
+    isDragging = false;
+  }
+
+  function handlePointerCancel(): void {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    dragStartX = null;
+    isDragging = false;
+  }
+
   // ── Range mode store subscription ─────────────────────────────────────────
   let saveModeUnsubscribe: (() => void) | null = null;
 
@@ -184,14 +269,25 @@
     // ESC key listener
     window.addEventListener('keydown', handleKeydown);
 
+    // Drag pointer listeners (attached to container for proper coordinate mapping)
+    containerEl.addEventListener('pointerdown', handlePointerDown);
+    containerEl.addEventListener('pointermove', handlePointerMove);
+    containerEl.addEventListener('pointerup', handlePointerUp);
+    containerEl.addEventListener('pointercancel', handlePointerCancel);
+
     onChartReady?.();
 
     return () => {
       ro.disconnect();
+      containerEl?.removeEventListener('pointerdown', handlePointerDown);
+      containerEl?.removeEventListener('pointermove', handlePointerMove);
+      containerEl?.removeEventListener('pointerup', handlePointerUp);
+      containerEl?.removeEventListener('pointercancel', handlePointerCancel);
     };
   });
 
   onDestroy(() => {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
     rangeClickUnsubscribe?.();
     saveModeUnsubscribe?.();
     window.removeEventListener('keydown', handleKeydown);
