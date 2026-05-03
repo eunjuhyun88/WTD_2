@@ -1,2 +1,5 @@
-// Dashboard hub entry — shell TBD in W-0382-B
+// Dashboard hub entry
 export { default as AlertStrip } from './AlertStrip.svelte';
+export { default as OpportunityCard } from './OpportunityCard.svelte';
+export { default as StatsZone } from './StatsZone.svelte';
+export { default as SystemStatusZone } from './SystemStatusZone.svelte';
