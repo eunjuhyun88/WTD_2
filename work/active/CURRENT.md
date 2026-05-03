@@ -46,7 +46,7 @@
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-0401-verdict-accumulation-flywheel` | P0 | 🟡 설계 완료 #1004, 구현 대기 |
-| `W-0400-tv-indicator-catalog-full` | P1 | ✅ Ph1A/1B/1C/2A/2B 전체 완료 (#1010/#1020/#1024/#1030/#1033) |
+| ~~`W-0400-tv-indicator-catalog-full`~~ | P1 | ✅ 완료 — work/completed/ 이동 (#1010–#1033) |
 
 ---
 
