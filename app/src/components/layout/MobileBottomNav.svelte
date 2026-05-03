@@ -1,7 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { inboxCount } from '$lib/stores/inboxCountStore';
 
   const activePath = $derived($page.url.pathname);
+  const pendingCount = $derived($inboxCount);
 
   const items = [
     { label: 'Home',      href: '/dashboard', icon: 'home'      },
@@ -28,6 +30,9 @@
       aria-current={active(item.href) ? 'page' : undefined}
     >
       <span class="nav-icon" aria-hidden="true">
+        {#if item.icon === 'patterns' && pendingCount >= 10}
+          <span class="inbox-dot"></span>
+        {/if}
         {#if item.icon === 'home'}
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M2 8L9 2L16 8V16H12V12H6V16H2V8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
@@ -128,5 +133,17 @@
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+
+  .inbox-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(219, 154, 159, 0.9);
+    box-shadow: 0 0 5px rgba(219, 154, 159, 0.5);
+    pointer-events: none;
   }
 </style>

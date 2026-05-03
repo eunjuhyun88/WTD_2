@@ -17,6 +17,7 @@
   import { page } from '$app/stores';
   import { setActiveView } from '$lib/stores/activePairStore';
   import { startGlobalPriceFeed } from '$lib/layout/globalPriceFeed';
+  import { startInboxCountPolling } from '$lib/stores/inboxCountStore';
   import { derived } from 'svelte/store';
   import { onMount, onDestroy } from 'svelte';
 
@@ -47,12 +48,14 @@
 
   let stopGlobalPriceFeed: (() => void) | null = null;
   let stopResizeTracking: (() => void) | null = null;
+  let stopInboxPolling: (() => void) | null = null;
 
   onMount(async () => {
     const handleResize = () => { windowWidth = window.innerWidth; };
     window.addEventListener('resize', handleResize);
     stopResizeTracking = () => window.removeEventListener('resize', handleResize);
     stopGlobalPriceFeed = startGlobalPriceFeed();
+    stopInboxPolling = startInboxCountPolling();
 
     const { initWalletListeners, trySilentReconnect } = await import('$lib/stores/walletStore');
     const stopWalletListeners = initWalletListeners();
@@ -65,6 +68,7 @@
   onDestroy(() => {
     if (stopGlobalPriceFeed) stopGlobalPriceFeed();
     if (stopResizeTracking) stopResizeTracking();
+    if (stopInboxPolling) stopInboxPolling();
   });
 </script>
 
