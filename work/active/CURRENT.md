@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`b7679065` — origin/main (2026-05-03) — feat(W-0391-D): Dashboard Alert Strip — OI/FR/Kimchi real-time alerts (#939)
+`55838c34` — origin/main (2026-05-03) — feat(W-0391-E): Verdict swipe gesture + Passport public URL (#944)
 
 ---
 
@@ -37,7 +37,7 @@
 | `W-0391-A-chart-accuracy` | P1 | ✅ Merged #940 |
 | `W-0391-B-landing-gtm` | P1 | ✅ Merged #941 |
 | `W-0391-D-dashboard-alerts` | P1 | ✅ Merged #939 |
-| `W-0391-E-verdict-passport` | P2 | 🔄 PR #944 CI 대기 |
+| `W-0391-E-verdict-passport` | P2 | ✅ Merged #944 |
 | `W-0391-C-tv-import` | P2 | 🔴 Blocked (OQ-1) |
 | `W-0391-F-commandpalette-onboarding` | P1 | ✅ Merged #941 |
 | `W-0388-eslint-hub-boundaries` | P2 | 🟡 Design Draft |
@@ -74,7 +74,7 @@
 완료:  W-0391-A ✅ — client RSI/MACD/BB calc + crosshair rAF throttle (#940)
 완료:  W-0391-BF ✅ — analytics.ts + ⌘K CommandPalette 5액션 + Landing track (#941)
 완료:  W-0391-D ✅ — Dashboard Alert Strip OI/FR/Kimchi 실시간 (#939)
-진행:  W-0391-E 🔄 — Verdict swipe + Passport 공개 URL (PR #944 CI 대기)
+완료:  W-0391-E ✅ — Verdict swipe + Passport 공개 URL (#944)
 ```
 
 ---
