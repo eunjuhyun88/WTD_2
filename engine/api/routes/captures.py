@@ -519,6 +519,28 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody, request: Requ
     except Exception:
         pass  # reranker feedback is best-effort; must not affect verdict response
 
+    # Fire Layer C auto-train check on every verdict (fire-and-forget, W-0398).
+    try:
+        import threading as _threading  # noqa: PLC0415
+        from scoring.auto_trainer import (  # noqa: PLC0415
+            count_labelled_verdicts,
+            evaluate_trigger,
+            run_auto_train_pipeline,
+        )
+
+        def _maybe_train_layer_c() -> None:
+            try:
+                n = count_labelled_verdicts()
+                if evaluate_trigger(n):
+                    result = run_auto_train_pipeline()
+                    log.info("layer_c_verdict_hook: n=%d result=%s", n, result)
+            except Exception:
+                pass  # best-effort; never affects verdict response
+
+        _threading.Thread(target=_maybe_train_layer_c, daemon=True).start()
+    except Exception:
+        pass
+
     return {
         "ok": True,
         "capture_id": capture_id,

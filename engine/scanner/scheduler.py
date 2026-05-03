@@ -103,6 +103,7 @@ _BETA_JOB_FLAGS = {
     "backtest_stats_refresh": os.environ.get("ENABLE_BACKTEST_STATS_REFRESH_JOB", "false"),
     "blocked_candidate_resolver": os.environ.get("ENABLE_BLOCKED_CANDIDATE_RESOLVER_JOB", "true"),
     "formula_evidence_materializer": os.environ.get("ENABLE_FORMULA_EVIDENCE_MATERIALIZER_JOB", "true"),
+    "layer_c_trainer_check": os.environ.get("ENABLE_LAYER_C_TRAINER_CHECK_JOB", "false"),
 }
 
 
@@ -305,6 +306,22 @@ def start_scheduler() -> None:
         _add(_formula_evidence_materialize_job, "cron", hour=3, minute=30,
              id="formula_evidence_materializer", name="Formula evidence daily materializer (W-0385)",
              max_instances=1, coalesce=True, misfire_grace_time=1800)
+
+    if _job_enabled("layer_c_trainer_check"):
+        async def _layer_c_trainer_check_job() -> None:  # noqa: E306
+            from scoring.auto_trainer import count_labelled_verdicts, evaluate_trigger, run_auto_train_pipeline  # noqa: PLC0415
+            try:
+                n = await asyncio.to_thread(count_labelled_verdicts)
+                if evaluate_trigger(n):
+                    result = await asyncio.to_thread(run_auto_train_pipeline)
+                    log.info("layer_c_trainer_check: %s", result)
+                else:
+                    log.debug("layer_c_trainer_check: no trigger at n=%d", n)
+            except Exception as exc:
+                log.warning("layer_c_trainer_check failed (non-fatal): %s", exc)
+        _add(_layer_c_trainer_check_job, "interval", seconds=3600,
+             id="layer_c_trainer_check", name="Layer C LightGBM auto-train check (W-0398)",
+             max_instances=1, coalesce=True, misfire_grace_time=600)
 
     _scheduler.start()
     log.info(
