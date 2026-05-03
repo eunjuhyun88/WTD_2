@@ -12,6 +12,7 @@
   import HomeSurfaceCards from '../components/home/HomeSurfaceCards.svelte';
   import WebGLAsciiBackground from '../components/home/WebGLAsciiBackground.svelte';
   import { trackHomeFunnel } from '../components/home/homeData';
+  import LiveStatStrip from '$lib/components/landing/LiveStatStrip.svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
   import {
     HOME_EXAMPLE_PROMPTS,
@@ -230,6 +231,7 @@
     onOpen={openPath}
   />
 
+  <LiveStatStrip />
   <HomeTicker />
   <HomeLearningLoop steps={HOME_LEARNING_STEPS} />
   <HomeSurfaceCards surfaces={HOME_SURFACES} onOpen={openPath} />
