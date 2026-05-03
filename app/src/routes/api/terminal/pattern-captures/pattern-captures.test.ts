@@ -20,6 +20,7 @@ vi.mock('$lib/server/terminalPersistence', () => ({
     decision: body.decision ?? {},
     evidenceHash: body.evidenceHash,
     sourceFreshness: body.sourceFreshness ?? {},
+    verdictJson: body.verdictJson ?? null,
     createdAt: '2026-04-17T00:00:00+00:00',
     updatedAt: '2026-04-17T00:00:00+00:00',
   })),
@@ -89,5 +90,50 @@ describe('/api/terminal/pattern-captures', () => {
     expect(res.status).toBe(200);
     expect(createPatternCapture).toHaveBeenCalledTimes(1);
     expect(engineFetch).not.toHaveBeenCalled();
+  });
+
+  it('W-0392 Ph3: accepts and persists verdictJson when provided', async () => {
+    (getAuthUserFromCookies as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'user-1' });
+
+    const verdictJson = {
+      direction: 'bullish',
+      entry: 42500,
+      stop: 41500,
+      target: 44000,
+      p_win: 0.62,
+    };
+
+    const req = new Request('http://localhost/api/terminal/pattern-captures', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        symbol: 'BTCUSDT',
+        timeframe: '4h',
+        contextKind: 'symbol',
+        triggerOrigin: 'range_mode_save',
+        snapshot: {
+          viewport: {
+            timeFrom: 1713312000,
+            timeTo: 1713326400,
+            tf: '4h',
+            barCount: 4,
+            klines: [{ time: 1713312000, open: 42000, high: 43000, low: 41000, close: 42500, volume: 1000 }],
+            indicators: {},
+          },
+        },
+        decision: {},
+        sourceFreshness: { source: 'range_mode_save' },
+        verdictJson,
+      }),
+    });
+
+    const res = await POST({ cookies: {}, request: req } as any);
+
+    expect(res.status).toBe(200);
+    expect(createPatternCapture).toHaveBeenCalledTimes(1);
+    const call = (createPatternCapture as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[1]).toMatchObject({
+      verdictJson,
+    });
   });
 });

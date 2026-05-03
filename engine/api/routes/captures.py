@@ -150,6 +150,7 @@ class CaptureCreateBody(BaseModel):
     research_context: ResearchContextBody | None = None
     feature_snapshot: dict[str, Any] | None = None
     block_scores: dict[str, Any] = Field(default_factory=dict)
+    verdict_json: dict[str, Any] | None = None
 
 
 def _validate_transition(body: CaptureCreateBody) -> tuple[dict[str, Any] | None, dict[str, Any]]:

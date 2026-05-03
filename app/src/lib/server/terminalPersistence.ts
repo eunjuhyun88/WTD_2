@@ -634,10 +634,10 @@ export async function createPatternCapture(
     `
       INSERT INTO terminal_pattern_captures (
         id, user_id, symbol, timeframe, context_kind, trigger_origin, pattern_slug, reason, note,
-        snapshot, decision, evidence_hash, source_freshness
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13::jsonb)
+        snapshot, decision, evidence_hash, source_freshness, verdict_json
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13::jsonb, $14::jsonb)
       RETURNING id, symbol, timeframe, context_kind, trigger_origin, pattern_slug, reason, note,
-                snapshot, decision, evidence_hash, source_freshness, created_at, updated_at
+                snapshot, decision, evidence_hash, source_freshness, verdict_json, created_at, updated_at
     `,
     [
       id,
@@ -653,6 +653,7 @@ export async function createPatternCapture(
       JSON.stringify(input.decision ?? {}),
       input.evidenceHash ?? null,
       JSON.stringify(input.sourceFreshness ?? {}),
+      input.verdictJson ? JSON.stringify(input.verdictJson) : null,
     ],
   );
   return {

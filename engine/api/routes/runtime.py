@@ -159,6 +159,7 @@ async def create_runtime_capture(request: Request, body: capture_routes.CaptureC
         research_context=body.research_context.model_dump(mode="python") if body.research_context is not None else None,
         feature_snapshot=body.feature_snapshot if body.feature_snapshot is not None else transition_snapshot,
         block_scores=body.block_scores or transition_defaults.get("block_scores", {}),
+        verdict_json=body.verdict_json,
         status=capture_routes._status_for_kind(body.capture_kind),
     )
     get_capture_store().save(record)

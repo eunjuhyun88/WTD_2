@@ -71,6 +71,11 @@ class PatternOutcome:
     entry_threshold_passed: bool | None = None
     entry_ml_error: str | None = None
 
+    # v4: Verdict-provided entry/stop/target (W-0392)
+    verdict_entry: float | None = None       # AI verdict entry price (overrides pattern)
+    verdict_stop: float | None = None        # AI verdict stop loss price
+    verdict_target: float | None = None      # AI verdict target price
+
     # v2: Evaluation config
     evaluation_window_hours: float = 72.0    # configurable per pattern
 

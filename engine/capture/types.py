@@ -48,6 +48,7 @@ class CaptureRecord:
     feature_snapshot: dict[str, Any] | None = None
     block_scores: dict[str, Any] = field(default_factory=dict)
     verdict_id: str | None = None
+    verdict_json: dict[str, Any] | None = None
     outcome_id: str | None = None
     status: CaptureStatus = "pending_outcome"
     is_watching: bool = False
@@ -90,6 +91,7 @@ class CaptureRecord:
             "feature_snapshot_json": self.feature_snapshot,
             "block_scores_json": self.block_scores or {},
             "verdict_id": self.verdict_id,
+            "verdict_json": self.verdict_json,
             "outcome_id": self.outcome_id,
             "status": self.status,
             "is_watching": self.is_watching,

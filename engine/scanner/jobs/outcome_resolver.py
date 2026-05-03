@@ -73,6 +73,9 @@ def _build_pattern_outcome(
     decision: OutcomeDecision,
     accumulation_at: datetime,
     window_hours: float,
+    verdict_entry: float | None = None,
+    verdict_stop: float | None = None,
+    verdict_target: float | None = None,
 ) -> PatternOutcome:
     definition_ref = capture.definition_ref or build_definition_ref(
         capture.pattern_slug,
@@ -96,6 +99,9 @@ def _build_pattern_outcome(
         entry_scan_id=capture.scan_id,
         entry_block_scores=capture.block_scores or None,
         feature_snapshot=capture.feature_snapshot,
+        verdict_entry=verdict_entry,
+        verdict_stop=verdict_stop,
+        verdict_target=verdict_target,
         evaluation_window_hours=window_hours,
     )
 
@@ -252,11 +258,23 @@ def resolve_outcomes(
         if decision is None:
             continue
 
+        # Extract verdict prices from capture if present (W-0392)
+        verdict_entry = None
+        verdict_stop = None
+        verdict_target = None
+        if capture.verdict_json:
+            verdict_entry = capture.verdict_json.get("entry")
+            verdict_stop = capture.verdict_json.get("stop")
+            verdict_target = capture.verdict_json.get("target")
+
         outcome = _build_pattern_outcome(
             capture=capture,
             decision=decision,
             accumulation_at=captured_at,
             window_hours=policy.evaluation_window_hours,
+            verdict_entry=verdict_entry,
+            verdict_stop=verdict_stop,
+            verdict_target=verdict_target,
         )
         outcomes_store.save(outcome)
         records_store.append_outcome_record(outcome)
