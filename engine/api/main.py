@@ -25,6 +25,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
 from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user, research, propfirm as propfirm_routes, agent, passport as passport_routes, extreme_events, counterfactual as counterfactual_routes, tv_import
+from api.routes.scoring_status import router as scoring_status_router
 from personalization.api import router as personalization_router
 from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
@@ -169,6 +170,17 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
                 max_instances=1,
             )
             log.info("AutoResearch 4h scheduler registered")
+        # W-0394: nightly Layer C eval — re-score active model on fresh data
+        _kline_scheduler.add_job(
+            lambda: __import__("scoring.auto_trainer", fromlist=["evaluate_active_model"]).evaluate_active_model(),
+            "cron",
+            hour=3,
+            minute=0,
+            id="lgbm_nightly_eval",
+            replace_existing=True,
+            max_instances=1,
+        )
+        log.info("LightGBM Layer C nightly eval registered (03:00 UTC)")
         _kline_scheduler.start()
         start_scheduler()
         log.info("Engine started — Redis warm, GlobalCtx warm, background scanner active")
@@ -334,7 +346,12 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(passport_routes.router, tags=["passport"])
     target.include_router(extreme_events.router, prefix="/extreme-events", tags=["extreme-events"])
     target.include_router(counterfactual_routes.router, tags=["counterfactual"])
+<<<<<<< HEAD
     target.include_router(tv_import.router, prefix="/tv-import", tags=["tv-import"])
+||||||| parent of 61228feb (feat(W-0394 PR2): LightGBM Layer C auto-train + SearchLayerBadge)
+=======
+    target.include_router(scoring_status_router, tags=["scoring"])
+>>>>>>> 61228feb (feat(W-0394 PR2): LightGBM Layer C auto-train + SearchLayerBadge)
 
 
 def _include_worker_control_routes(target: FastAPI) -> None:

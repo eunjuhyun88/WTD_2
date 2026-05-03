@@ -39,7 +39,8 @@ function isAllowedPath(path: string, method: string): boolean {
       path === 'scanner/status' ||
       path === 'patterns/candidates' ||
       path === 'universe' ||
-      path.startsWith('challenge/')
+      path.startsWith('challenge/') ||
+      path === 'scoring/active-model'    // W-0394: Layer C badge
     );
   }
   if (method === 'POST') {

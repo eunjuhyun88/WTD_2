@@ -463,6 +463,18 @@ async def save(req: SaveRequest) -> SaveResponse:
                 log.debug("save: capture mirror failed (non-fatal): %s", _exc)
         asyncio.ensure_future(asyncio.to_thread(_mirror_capture))
 
+    # W-0394: auto-train trigger — fire on doubling thresholds (50/100/200/400...)
+    def _maybe_auto_train() -> None:
+        try:
+            from scoring.auto_trainer import count_labelled_verdicts, evaluate_trigger, run_auto_train_pipeline
+            n = count_labelled_verdicts()
+            if evaluate_trigger(n):
+                log.info("save: auto-train trigger fired at n=%d", n)
+                run_auto_train_pipeline()
+        except Exception as _exc:
+            log.debug("save: auto-train check failed (non-fatal): %s", _exc)
+    asyncio.ensure_future(asyncio.to_thread(_maybe_auto_train))
+
     verdict_to_llm = {"bullish": "buy", "bearish": "sell", "neutral": "watch"}
     llm_verdict = verdict_to_llm.get(req.decision.get("verdict", "neutral"), "watch")
 

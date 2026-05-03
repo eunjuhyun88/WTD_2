@@ -9,6 +9,7 @@
   import { onMount } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
   import SearchResultMiniChart from '$lib/components/search/SearchResultMiniChart.svelte';
+  import SearchLayerBadge from '$lib/components/search/SearchLayerBadge.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface SimilarCandidate {
@@ -185,6 +186,7 @@
         <span class="surface-kicker">Pattern Research</span>
         <h1 class="surface-title">Similarity Search</h1>
       </div>
+      <SearchLayerBadge />
       <p class="surface-subtitle">
         Finds historical windows similar to a pattern draft from the feature_windows store.
         Feature (0.45) + Phase sequence (0.45) + Context (0.10) 3-layer hybrid scoring.
