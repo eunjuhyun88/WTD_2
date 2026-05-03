@@ -177,6 +177,30 @@ class OutcomeTracker:
             result.append(ev)
         return result
 
+    def recent_events(
+        self,
+        since: timedelta,
+        limit: int = 20,
+    ) -> list[ExtremeEvent]:
+        """Return events detected within the last `since` window, newest first.
+
+        Args:
+            since: Lookback duration (e.g. timedelta(hours=24)).
+            limit: Maximum number of events to return.
+        """
+        cutoff = datetime.now(tz=timezone.utc) - since
+        result: list[ExtremeEvent] = []
+        for ev in self.load_all():
+            if ev.detected_at is None:
+                continue
+            detected = ev.detected_at
+            if detected.tzinfo is None:
+                detected = detected.replace(tzinfo=timezone.utc)
+            if detected >= cutoff:
+                result.append(ev)
+        result.sort(key=lambda e: e.detected_at or datetime.min, reverse=True)
+        return result[:limit]
+
     def get_pending_events(self) -> list[ExtremeEvent]:
         """Return events still awaiting outcome resolution."""
         return [ev for ev in self.load_all() if ev.outcome_72h is None]
