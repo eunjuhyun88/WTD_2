@@ -9,7 +9,7 @@
   } from '$lib/indicators/indicatorRegistry';
   import { addIndicator, removeIndicator, chartIndicators, type IndicatorKey } from '$lib/stores/chartIndicators';
   import { indicatorFavorites, indicatorRecents } from '$lib/stores/indicatorFavorites';
-  import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import { indicatorInstances, type IndicatorInstance } from '$lib/chart/indicatorInstances';
 
   interface Props {
     open?: boolean;
@@ -34,16 +34,52 @@
   let hoveredId = $state<string | null>(null);
   let activeTab = $state<'browse' | 'favorites' | 'recents' | 'active'>('browse');
 
-  // Inline param edit state: instanceId → pending param updates (debounced)
-  let editTimers = $state<Record<string, ReturnType<typeof setTimeout>>>({});
-  function handleParamChange(instanceId: string, params: Record<string, number | string | boolean>) {
-    clearTimeout(editTimers[instanceId]);
-    editTimers[instanceId] = setTimeout(() => {
-      onUpdateInstance?.(instanceId, params);
-    }, 250);
+  /** instanceId → whether the param edit row is expanded. */
+  let expandedEdit = $state<Set<string>>(new Set());
+  /** Debounce timer handles per instanceId. */
+  const debounceHandles = new Map<string, ReturnType<typeof setTimeout>>();
+
+  /** Total active indicator count (primary booleans + secondary instances). */
+  const totalActiveCount = $derived(
+    Object.values($chartIndicators).filter(Boolean).length
+    + indicatorInstances.instances.filter((i) => i.style.visible).length,
+  );
+
+  function toggleEditExpand(instanceId: string) {
+    const next = new Set(expandedEdit);
+    if (next.has(instanceId)) next.delete(instanceId);
+    else next.add(instanceId);
+    expandedEdit = next;
   }
 
-  const activeInstances = $derived(indicatorInstances.instances);
+  function handleParamInput(inst: IndicatorInstance, key: string, rawValue: string) {
+    const num = parseFloat(rawValue);
+    if (!Number.isFinite(num) || num <= 0) return;
+    clearTimeout(debounceHandles.get(inst.instanceId));
+    debounceHandles.set(inst.instanceId, setTimeout(() => {
+      const updated = { ...inst.params, [key]: num };
+      onUpdateInstance?.(inst.instanceId, updated);
+    }, 250));
+  }
+
+  function handleInstanceRemove(instanceId: string) {
+    onRemoveInstance?.(instanceId);
+    const next = new Set(expandedEdit);
+    next.delete(instanceId);
+    expandedEdit = next;
+  }
+
+  /** Param schema for each Tier-A kind (label + min/max/step). */
+  const PARAM_SCHEMA: Record<string, Array<{ key: string; label: string; min: number; max: number; step: number }>> = {
+    rsi:         [{ key: 'period', label: 'Period', min: 2, max: 200, step: 1 }],
+    macd:        [{ key: 'fast', label: 'Fast', min: 2, max: 50, step: 1 }, { key: 'slow', label: 'Slow', min: 5, max: 100, step: 1 }, { key: 'signal', label: 'Signal', min: 2, max: 50, step: 1 }],
+    ema:         [{ key: 'period', label: 'Period', min: 2, max: 500, step: 1 }],
+    bb:          [{ key: 'period', label: 'Period', min: 5, max: 200, step: 1 }, { key: 'multiplier', label: 'Mult', min: 0.5, max: 5, step: 0.1 }],
+    atr_bands:   [{ key: 'period', label: 'Period', min: 2, max: 100, step: 1 }, { key: 'multiplier', label: 'Mult', min: 0.5, max: 5, step: 0.1 }],
+    oi:          [{ key: 'window', label: 'MA Win', min: 1, max: 90, step: 1 }],
+    cvd:         [{ key: 'window', label: 'MA Win', min: 1, max: 90, step: 1 }],
+    derivatives: [{ key: 'window', label: 'MA Win', min: 1, max: 90, step: 1 }],
+  };
 
   const results = $derived(searchIndicators(query, filter, 100));
 
@@ -133,11 +169,11 @@
       <button class="lib-close" onclick={onClose} aria-label="Close">✕</button>
     </div>
 
-    <!-- Tabs: Browse / Favorites / Recents / Active -->
+    <!-- Tabs: Browse / Active / Favorites / Recents -->
     <div class="lib-tabs">
       <button class="lib-tab" class:active={activeTab === 'browse'} onclick={() => activeTab = 'browse'}>Browse</button>
       <button class="lib-tab" class:active={activeTab === 'active'} onclick={() => activeTab = 'active'}>
-        Active {activeInstances.length > 0 ? `(${activeInstances.length})` : ''}
+        ⚡ Active {totalActiveCount > 0 ? `(${totalActiveCount})` : ''}
       </button>
       <button class="lib-tab" class:active={activeTab === 'favorites'} onclick={() => activeTab = 'favorites'}>
         ★ Saved {favItems.length > 0 ? `(${favItems.length})` : ''}
@@ -193,39 +229,54 @@
     <!-- Results -->
     <div class="lib-results">
       {#if activeTab === 'active'}
-        {#if activeInstances.length === 0}
+        <!-- Active tab: secondary instances with param edit -->
+        {#if indicatorInstances.instances.length === 0}
           <div class="lib-empty">
-            <span class="lib-empty-icon">◈</span>
-            <p>No active multi-instance indicators — click a live indicator twice to add a second instance</p>
+            <span class="lib-empty-icon">⚡</span>
+            <p>No multi-instance indicators — add the same indicator twice from Browse</p>
           </div>
         {:else}
-          <div class="lib-flat-count">{activeInstances.length} active instance{activeInstances.length !== 1 ? 's' : ''}</div>
-          {#each activeInstances as inst (inst.instanceId)}
+          <div class="lib-flat-count">{indicatorInstances.instances.length} instance{indicatorInstances.instances.length !== 1 ? 's' : ''}</div>
+          {#each indicatorInstances.instances as inst (inst.instanceId)}
+            {@const def = INDICATOR_REGISTRY.find((d) => d.id === inst.defId)}
+            {@const schema = PARAM_SCHEMA[inst.engineKey] ?? []}
+            {@const isExpanded = expandedEdit.has(inst.instanceId)}
             <div class="inst-row">
               <div class="inst-header">
-                <span class="inst-key">{inst.engineKey.toUpperCase()}</span>
-                <span class="inst-id">#{inst.instanceId.slice(0, 4)}</span>
-                <button class="inst-remove" onclick={() => onRemoveInstance?.(inst.instanceId)} title="Remove instance">✕</button>
+                <span class="inst-kind">{inst.engineKey.toUpperCase()}</span>
+                <span class="inst-name">{def?.name ?? inst.defId}</span>
+                <span class="inst-params">
+                  {#each schema as s}
+                    {s.label}: {inst.params[s.key] ?? '—'}
+                  {/each}
+                </span>
+                <div class="inst-actions">
+                  {#if schema.length > 0}
+                    <button class="inst-edit-btn" onclick={() => toggleEditExpand(inst.instanceId)} aria-label="Edit params">
+                      {isExpanded ? '▴' : '▾'} Edit
+                    </button>
+                  {/if}
+                  <button class="inst-remove-btn" onclick={() => handleInstanceRemove(inst.instanceId)} aria-label="Remove instance">×</button>
+                </div>
               </div>
-              <div class="inst-params">
-                {#each Object.entries(inst.params) as [k, v] (k)}
-                  {#if typeof v === 'number'}
+              {#if isExpanded && schema.length > 0}
+                <div class="inst-edit-form">
+                  {#each schema as s}
                     <label class="inst-param-label">
-                      <span class="inst-param-key">{k}</span>
+                      <span>{s.label}</span>
                       <input
                         class="inst-param-input"
                         type="number"
-                        value={v}
-                        min="1"
-                        oninput={(e) => {
-                          const n = parseFloat((e.currentTarget as HTMLInputElement).value);
-                          if (Number.isFinite(n) && n > 0) handleParamChange(inst.instanceId, { [k]: n });
-                        }}
+                        min={s.min}
+                        max={s.max}
+                        step={s.step}
+                        value={inst.params[s.key] ?? s.min}
+                        oninput={(e) => handleParamInput(inst, s.key, (e.target as HTMLInputElement).value)}
                       />
                     </label>
-                  {/if}
-                {/each}
-              </div>
+                  {/each}
+                </div>
+              {/if}
             </div>
           {/each}
         {/if}
@@ -803,72 +854,105 @@
     font-family: var(--sc-font-mono, monospace);
   }
 
-  /* Active instances tab */
-  .inst-row {
-    padding: 8px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-  .inst-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-  .inst-key {
-    font-size: var(--ui-text-xs);
-    font-family: var(--sc-font-mono, monospace);
-    color: #a78bfa;
-    font-weight: 600;
-  }
-  .inst-id {
-    font-size: var(--ui-text-xs);
-    font-family: var(--sc-font-mono, monospace);
-    color: rgba(255,255,255,0.30);
-  }
-  .inst-remove {
-    margin-left: auto;
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.35);
-    cursor: pointer;
-    font-size: var(--ui-text-xs);
-    padding: 2px 4px;
-    border-radius: 3px;
-  }
-  .inst-remove:hover { color: #ef5350; }
-  .inst-params {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .inst-param-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .inst-param-key {
-    font-size: var(--ui-text-xs);
-    color: rgba(255,255,255,0.45);
-    font-family: var(--sc-font-mono, monospace);
-  }
-  .inst-param-input {
-    width: 52px;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 3px;
-    color: rgba(255,255,255,0.85);
-    font-size: var(--ui-text-xs);
-    padding: 2px 4px;
-    font-family: var(--sc-font-mono, monospace);
-  }
-  .inst-param-input:focus {
-    outline: none;
-    border-color: #a78bfa;
-  }
-
   @keyframes lib-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
   @media (max-width: 640px) {
     .lib-panel { width: 100vw; }
   }
+
+  /* ── Active tab: instance rows ─────────────────────────────────────────── */
+  .inst-row {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 0;
+  }
+  .inst-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    min-height: 40px;
+  }
+  .inst-header:hover { background: rgba(255,255,255,0.03); }
+  .inst-kind {
+    font: 600 10px/1 var(--sc-font-mono, monospace);
+    color: rgba(247,242,234,0.9);
+    background: rgba(255,255,255,0.07);
+    border-radius: 3px;
+    padding: 2px 5px;
+    flex-shrink: 0;
+  }
+  .inst-name {
+    font-size: var(--ui-text-xs);
+    color: rgba(247,242,234,0.7);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .inst-params {
+    font: 11px/1 var(--sc-font-mono, monospace);
+    color: rgba(177,181,189,0.6);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .inst-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .inst-edit-btn {
+    font: 600 10px/1 var(--sc-font-mono, monospace);
+    color: rgba(177,181,189,0.7);
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .inst-edit-btn:hover { color: rgba(247,242,234,0.9); border-color: rgba(255,255,255,0.2); }
+  .inst-remove-btn {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    color: rgba(247,242,234,0.6);
+    font: 600 13px/1 monospace;
+    cursor: pointer;
+    padding: 0;
+  }
+  .inst-remove-btn:hover { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.4); color: #f87171; }
+  .inst-edit-form {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px 10px;
+    background: rgba(255,255,255,0.02);
+    border-top: 1px solid rgba(255,255,255,0.04);
+    flex-wrap: wrap;
+  }
+  .inst-param-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font: 10px/1 var(--sc-font-mono, monospace);
+    color: rgba(177,181,189,0.7);
+  }
+  .inst-param-input {
+    width: 64px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 3px;
+    color: rgba(247,242,234,0.9);
+    font: 11px/1 var(--sc-font-mono, monospace);
+    padding: 3px 6px;
+    text-align: right;
+  }
+  .inst-param-input:focus { outline: none; border-color: rgba(100,149,237,0.5); }
 </style>

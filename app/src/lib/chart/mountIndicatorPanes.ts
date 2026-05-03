@@ -366,32 +366,6 @@ export function mountIndicatorPanes(
   return { positions, seriesRefs: refs };
 }
 
-/**
- * Mount a secondary RSI instance on a new pane (W-0399 multi-instance).
- * Returns the series reference keyed by instanceId.
- * The caller is responsible for picking nextPane (must not conflict with existing panes).
- */
-export function mountSecondaryRsi(
-  chart: IChartApi,
-  rsiData: Array<{ time: number; value: number }>,
-  paneIndex: number,
-  instanceId: string,
-  color = '#a78bfa',
-): ISeriesApi<'Line'> | null {
-  if (!rsiData.length) return null;
-  const line = chart.addSeries(
-    LineSeries,
-    { color, lineWidth: 2, lastValueVisible: true, priceLineVisible: false, title: `RSI ${instanceId.slice(0, 4)}` },
-    paneIndex,
-  );
-  line.setData(toLine(rsiData));
-  const ob = chart.addSeries(LineSeries, { color: 'rgba(239,83,80,0.35)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, paneIndex);
-  const os = chart.addSeries(LineSeries, { color: 'rgba(38,166,154,0.35)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, paneIndex);
-  ob.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 70 })));
-  os.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 30 })));
-  return line;
-}
-
 // ── mountSecondaryIndicator payload types ─────────────────────────────────────
 
 export type SecondaryIndicatorPayload =
