@@ -1,22 +1,7 @@
 <script lang="ts">
-  /**
-   * /patterns — Pattern Engine Dashboard
-   *
-   * Shows:
-   * 1. ACCUMULATION alerts (entry candidates — act now)
-   * 2. All active symbol states (phase timeline per pattern)
-   * 3. Pattern stats (hit rate, avg gain)
-   * 4. Pending ledger records — VALID / INVALID override buttons
-   */
   import { goto } from '$app/navigation';
-  import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
-  import {
-    adaptPatternCandidates,
-    flattenPatternStates,
-    patternCapturePayload,
-    phaseMetaFor,
-  } from '$lib/contracts';
+  import { patternCapturePayload, phaseMetaFor } from '$lib/contracts';
   import type { PatternCandidateView, PatternStateView } from '$lib/contracts';
   import { buildCanonicalHref } from '$lib/seo/site';
   import type { PatternStats } from '$lib/types/patternStats';
@@ -24,8 +9,8 @@
   import PatternCard from '$lib/components/patterns/PatternCard.svelte';
   import TransitionRow from '$lib/components/patterns/TransitionRow.svelte';
   import FeedbackButton from '$lib/components/FeedbackButton.svelte';
+  import type { PageData } from './$types';
 
-  // ── Types ──────────────────────────────────────────────────────────────────
   interface Transition {
     transition_id: string;
     symbol: string;
@@ -36,13 +21,14 @@
     transitioned_at: string | null;
   }
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  let candidates   = $state<PatternCandidateView[]>([]);
-  let states       = $state<PatternStateView[]>([]);
-  let stats        = $state<PatternStats[]>([]);
-  let transitions  = $state<Transition[]>([]);
-  let lastScan     = $state<string | null>(null);
-  let loading      = $state(true);
+  const { data }: { data: PageData } = $props();
+
+  // SSR data — mutable so scan refresh can update
+  let candidates   = $state<PatternCandidateView[]>(data.candidates);
+  let states       = $state<PatternStateView[]>(data.states);
+  let stats        = $state<PatternStats[]>(data.stats);
+  let transitions  = $state<Transition[]>(data.transitions);
+  let lastScan     = $state<string | null>(data.lastScan);
   let scanning     = $state(false);
   let savingCandidateIds = $state(new Set<string>());
   let error        = $state<string | null>(null);
@@ -50,11 +36,9 @@
   // Symbol filter — driven by ?symbol= URL param
   let symbolFilter = $state($page.url.searchParams.get('symbol') ?? '');
 
-  const symbolOptions = $derived(
-    [...new Set(states.map((s) => s.symbol))].sort()
-  );
+  const symbolOptions = $derived([...new Set(states.map((s) => s.symbol))].sort());
   const filteredStates = $derived(
-    symbolFilter ? states.filter((s) => s.symbol === symbolFilter) : states
+    symbolFilter ? states.filter((s) => s.symbol === symbolFilter) : states,
   );
 
   function setSymbolFilter(sym: string) {
@@ -65,47 +49,36 @@
     goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
   }
 
-  // ── Data loading ───────────────────────────────────────────────────────────
-  async function loadAll() {
-    error = null;
-    try {
-      const [candRes, stateRes, statsRes, transRes] = await Promise.allSettled([
-        fetch('/api/patterns'),
-        fetch('/api/patterns/states'),
-        fetch('/api/patterns/stats'),
-        fetch('/api/patterns/transitions?limit=30'),
-      ]);
-
-      if (candRes.status === 'fulfilled' && candRes.value.ok) {
-        const d = await candRes.value.json();
-        candidates = adaptPatternCandidates(d);
-        lastScan = null;
-      }
-      if (stateRes.status === 'fulfilled' && stateRes.value.ok) {
-        const d = await stateRes.value.json();
-        states = flattenPatternStates(d).sort((a, b) => b.phaseIdx - a.phaseIdx);
-      }
-      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-        const d = await statsRes.value.json();
-        stats = d.stats ?? [];
-      }
-      if (transRes.status === 'fulfilled' && transRes.value.ok) {
-        const d = await transRes.value.json();
-        transitions = (d.transitions ?? []) as Transition[];
-      }
-    } catch (e) {
-      error = String(e);
-    } finally {
-      loading = false;
-    }
-  }
-
   async function triggerScan() {
     if (scanning) return;
     scanning = true;
+    error = null;
     try {
       const res = await fetch('/api/patterns/scan', { method: 'POST' });
-      if (res.ok) await loadAll();
+      if (res.ok) {
+        // Refresh data client-side after scan
+        const [candRes, stateRes, transRes] = await Promise.allSettled([
+          fetch('/api/patterns'),
+          fetch('/api/patterns/states'),
+          fetch('/api/patterns/transitions?limit=30'),
+        ]);
+        if (candRes.status === 'fulfilled' && candRes.value.ok) {
+          const d = await candRes.value.json();
+          const { adaptPatternCandidates } = await import('$lib/contracts');
+          candidates = adaptPatternCandidates(d);
+        }
+        if (stateRes.status === 'fulfilled' && stateRes.value.ok) {
+          const d = await stateRes.value.json();
+          const { flattenPatternStates } = await import('$lib/contracts');
+          states = flattenPatternStates(d).sort((a, b) => b.phaseIdx - a.phaseIdx);
+        }
+        if (transRes.status === 'fulfilled' && transRes.value.ok) {
+          const d = await transRes.value.json();
+          transitions = (d.transitions ?? []) as Transition[];
+        }
+      }
+    } catch (e) {
+      error = String(e);
     } finally {
       scanning = false;
     }
@@ -123,7 +96,11 @@
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error((body as { detail?: string; error?: string }).detail ?? (body as { error?: string }).error ?? `HTTP ${res.status}`);
+        throw new Error(
+          (body as { detail?: string; error?: string }).detail ??
+          (body as { error?: string }).error ??
+          `HTTP ${res.status}`,
+        );
       }
     } catch (e) {
       error = `Save setup failed: ${e}`;
@@ -132,10 +109,9 @@
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   function sinceHours(iso: string): string {
     const diff = (Date.now() - new Date(iso).getTime()) / 1000 / 60;
-    if (diff < 60)  return `${Math.round(diff)}m ago`;
+    if (diff < 60) return `${Math.round(diff)}m ago`;
     if (diff < 1440) return `${Math.round(diff / 60)}h ago`;
     return `${Math.round(diff / 1440)}d ago`;
   }
@@ -148,17 +124,10 @@
   const accumulationCount = $derived(candidates.filter((c) => c.phaseId === 'ACCUMULATION').length);
   const breakoutCount = $derived(states.filter((s) => s.phaseId === 'BREAKOUT').length);
   const filteredTransitions = $derived(
-    symbolFilter ? transitions.filter((t) => t.symbol === symbolFilter) : transitions
+    symbolFilter ? transitions.filter((t) => t.symbol === symbolFilter) : transitions,
   );
 
   let verdictInboxOpen = $state(false);
-
-  let refreshInterval: ReturnType<typeof setInterval>;
-  onMount(() => {
-    loadAll();
-    refreshInterval = setInterval(loadAll, 60_000);
-  });
-  onDestroy(() => clearInterval(refreshInterval));
 </script>
 
 <svelte:head>
@@ -213,21 +182,15 @@
   </header>
 
   <div class="surface-scroll-body patterns-content">
-    {#if loading}
-      <section class="surface-card page-loading">
-        <span class="pulse"></span>
-        <span>Loading pattern data…</span>
-      </section>
-
-    {:else if error}
+    {#if error}
       <section class="surface-card page-error">
-        <p>⚠ Engine connection failed — make sure the Python engine is running</p>
+        <p>⚠ Scan failed</p>
         <p class="error-detail">{error}</p>
-        <button class="surface-button-secondary" onclick={loadAll}>Retry</button>
+        <button class="surface-button-secondary" onclick={() => { error = null; }}>Dismiss</button>
       </section>
+    {/if}
 
-    {:else}
-      <section class="surface-grid">
+    <section class="surface-grid">
         <div class="surface-section-head">
           <div>
             <span class="surface-kicker">Entry Candidates</span>
@@ -450,7 +413,6 @@
           <VerdictInboxSection />
         {/if}
       </section>
-    {/if}
   </div>
 </div>
 
