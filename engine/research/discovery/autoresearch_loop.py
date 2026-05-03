@@ -37,12 +37,21 @@ from data_cache.universe_builder import load_universe
 from data_cache.fetch_sector_momentum import fetch_sector_scores
 from research.discovery.pattern_scan.scanner import PatternScanner
 from research.discovery.pattern_scan.pattern_object_combos import LIBRARY_COMBOS
+from research.discovery.pattern_scan.user_combos import load_active_user_combos
 from research.validation.stats import (
     bootstrap_ci,
     hit_rate,
 )
 
 log = logging.getLogger("engine.autoresearch_loop")
+
+
+def load_research_combos() -> list:
+    """Return LIBRARY_COMBOS + active user tv_import combos.
+
+    W-0393: user combos append-only — LIBRARY_COMBOS never modified.
+    """
+    return LIBRARY_COMBOS + load_active_user_combos()
 
 _EXPERIMENT_DB = Path(__file__).parent / "experiments" / "autoresearch_db.parquet"
 _COMPRESS = "zstd"
@@ -233,7 +242,7 @@ class AutoResearchLoop:
         if _sector is None:
             log.debug("Sector scores unavailable — sector_momentum_strong block will be inactive")
         self.scanner = PatternScanner(
-            store=self.store, combos=LIBRARY_COMBOS, macro=_macro, sector_scores=_sector,
+            store=self.store, combos=load_research_combos(), macro=_macro, sector_scores=_sector,
         )
         self.scan_workers = scan_workers
         self._cycle_count = 0
@@ -273,7 +282,7 @@ class AutoResearchLoop:
             )
 
         # Step 2: Pattern scan
-        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(LIBRARY_COMBOS))
+        log.info("Step 2: Scanning %d symbols × %d patterns...", len(symbols), len(load_research_combos()))
         scan_df = self.scanner.scan_universe(symbols, workers=self.scan_workers)
 
         if scan_df.empty:
