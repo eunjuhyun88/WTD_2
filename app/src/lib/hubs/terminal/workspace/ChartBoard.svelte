@@ -283,6 +283,27 @@
     return n;
   });
 
+  /** Sub-pane kinds that create a separate pane (not overlays on pane 0). */
+  const SUB_PANE_KINDS = new Set(['rsi', 'macd', 'oi', 'cvd', 'derivatives']);
+
+  /** Top % for each secondary instance sub-pane (instanceId → %). */
+  let instancePibTops = $derived.by((): Map<string, number> => {
+    const subPaneInstances = indicatorInstances.instances.filter(
+      (i) => i.style.visible && SUB_PANE_KINDS.has(i.engineKey),
+    );
+    if (subPaneInstances.length === 0) return new Map();
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    const fixedStretch = activeKinds.reduce((s, k) => s + paneLayout.state.stretch[k], 0);
+    const totalStretch = priceStretch + fixedStretch + subPaneInstances.length;
+    let cumPct = (priceStretch + fixedStretch) / totalStretch * 100;
+    const tops = new Map<string, number>();
+    for (const inst of subPaneInstances) {
+      tops.set(inst.instanceId, cumPct);
+      cumPct += 1 / totalStretch * 100;
+    }
+    return tops;
+  });
+
   /**
    * Price pane takes stretchFactor=4 (adjustable); each sub-pane takes its
    * stored stretch factor. Used as a CSS custom property for pib-anchor overlays.
@@ -444,6 +465,8 @@
   let secondaryPaneInfos = $state<Array<{ instanceId: string; engineKey: string; paneIndex: number }>>([]);
   /** Series refs returned by mountIndicatorPanes — used by crosshair sync. */
   let indicatorSeriesRefs: IndicatorSeriesRefs | null = null;
+  /** Pane index assigned to each secondary indicator instance (instanceId → paneIndex). */
+  let instancePaneMap = $state<Map<string, number>>(new Map());
   /** Unsubscribe handle for the active crosshair sync subscription. */
   let crosshairUnsub: CrosshairUnsubscribe | null = null;
   /** Per-pane layout store (visibility + stretch persistence). */
@@ -1415,7 +1438,6 @@
         }
       }
     }
-
     // Wire crosshair → live chip updates (rAF throttled)
     crosshairUnsub?.();
     crosshairUnsub = createCrosshairSync(
@@ -1645,6 +1667,7 @@
         indicatorLibraryOpen = false;
         return;
       }
+      // First add: use the existing chartIndicators toggle
       toggleChartIndicator(key);
     }
     indicatorLibraryOpen = false;
@@ -2031,14 +2054,17 @@
             />
           </div>
         {/if}
-        {#each secondaryPaneInfos as sec (sec.instanceId)}
-          <div class="pib-anchor pib-anchor--secondary" style="top: {((sec.paneIndex / (sec.paneIndex + 1)) * 100).toFixed(1)}%">
+        <!-- Secondary indicator instances (W-0399-P2) -->
+        {#each indicatorInstances.instances.filter(i => i.style.visible && SUB_PANE_KINDS.has(i.engineKey)) as inst (inst.instanceId)}
+          {@const top = instancePibTops.get(inst.instanceId) ?? 0}
+          {@const label = inst.engineKey.toUpperCase() + (inst.params.period ? ` ${inst.params.period}` : inst.params.fast ? ` ${inst.params.fast}/${inst.params.slow}` : '')}
+          <div class="pib-anchor" style="top: {top.toFixed(2)}%">
             <PaneInfoBar
-              title={sec.engineKey.toUpperCase()}
+              title={label}
               sublabel={tf}
               chips={[]}
               closable
-              onClose={() => removeInstance(sec.instanceId)}
+              onClose={() => { indicatorInstances.remove(inst.instanceId); if (chartData) renderCharts(chartData); }}
             />
           </div>
         {/each}
