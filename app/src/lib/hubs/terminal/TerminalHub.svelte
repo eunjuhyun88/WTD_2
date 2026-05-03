@@ -35,7 +35,12 @@
   import DrawingRail from './panels/DrawingRail.svelte';
   import type { DrawingTool } from './shell.store';
   import CommandPalette from '$lib/shared/panels/CommandPalette.svelte';
+  import TerminalHoldTimeAdapter from './panels/TerminalHoldTimeAdapter.svelte';
   import { track } from '$lib/analytics';
+
+  // ── W-0395: HoldTime stats for StatusBar ──────────────────────────────────
+  let holdP50 = $state<number | null>(null);
+  let holdP90 = $state<number | null>(null);
 
   let paletteOpen = $state(false);
   let paletteQ = $state('');
@@ -562,12 +567,15 @@
       </div>
     </div>
 
+    <TerminalHoldTimeAdapter onStats={(p50, p90) => { holdP50 = p50; holdP90 = p90; }} />
     <StatusBar
       verdicts={$verdictCount}
       modelDelta={$modelDelta}
       sidebarVisible={$shellStore.sidebarVisible}
       lastVerdictKind={lastVerdictKind}
       lastUpdatedAt={$chartFreshness}
+      holdP50={holdP50}
+      holdP90={holdP90}
     />
   {/if}
 

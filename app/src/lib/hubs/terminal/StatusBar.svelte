@@ -1,4 +1,6 @@
 <script lang="ts">
+  import HoldTimeStrip from '$lib/components/shared/HoldTimeStrip.svelte';
+
   interface Props {
     verdicts: number;
     modelDelta: number;
@@ -7,11 +9,16 @@
     lastVerdictKind?: 'LONG' | 'SHORT' | 'WAIT' | null;
     /** D-10: epoch ms of latest data tick (chart price). null = unknown. */
     lastUpdatedAt?: number | null;
+    /** W-0395: hold time p50 in hours for unresolved watch patterns. null = no data. */
+    holdP50?: number | null;
+    /** W-0395: hold time p90 in hours for unresolved watch patterns. null = no data. */
+    holdP90?: number | null;
   }
 
   const {
     verdicts, modelDelta, sidebarVisible,
     lastVerdictKind = null, lastUpdatedAt = null,
+    holdP50 = null, holdP90 = null,
   }: Props = $props();
 
   function getTime(): string {
@@ -123,6 +130,11 @@
   {/if}
 
   <span class="spacer"></span>
+
+  <span class="divider">│</span>
+  <span class="status-item hold-time-item" data-testid="hold-time-strip">
+    <HoldTimeStrip p50={holdP50} p90={holdP90} label="hold" />
+  </span>
 
   <span class="shortcuts">
     <span class="status-item">⌘B <span class="divider">·</span> sidebar</span>
