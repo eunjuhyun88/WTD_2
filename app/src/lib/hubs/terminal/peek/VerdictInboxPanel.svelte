@@ -54,9 +54,10 @@
   interface Props {
     userId?: string;
     onVerdictSubmit?: (captureId: string, verdict: string) => void;
+    onPendingCountChange?: (count: number) => void;
   }
 
-  let { userId, onVerdictSubmit }: Props = $props();
+  let { userId, onVerdictSubmit, onPendingCountChange }: Props = $props();
 
   // Section 2: outcome_ready
   let items = $state<OutcomeItem[]>([]);
@@ -282,6 +283,10 @@
   $effect(() => {
     load();
     void loadLayerCStatus();
+  });
+
+  $effect(() => {
+    onPendingCountChange?.(items.length + watchHits.length);
   });
 </script>
 

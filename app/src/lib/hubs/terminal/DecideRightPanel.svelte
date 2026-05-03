@@ -7,10 +7,12 @@
    */
   import DecisionHUDAdapter from './workspace/DecisionHUDAdapter.svelte';
   import VerdictInboxPanel from './peek/VerdictInboxPanel.svelte';
+  import UnverifiedDot from '$lib/components/header/UnverifiedDot.svelte';
   import { shellStore } from './shell.store';
 
   type Tab = 'hud' | 'verdicts';
   let activeTab = $state<Tab>('hud');
+  let pendingVerdictCount = $state(0);
 
   function onVerdictSubmit(captureId: string, verdict: string) {
     shellStore.selectVerdict(captureId);
@@ -39,7 +41,7 @@
       class="tab-btn"
       class:active={activeTab === 'verdicts'}
       onclick={() => (activeTab = 'verdicts')}
-    >VERDICTS</button>
+    >VERDICTS <UnverifiedDot count={pendingVerdictCount} /></button>
     <button
       class="mode-exit-btn"
       onclick={() => shellStore.setWorkMode('analyze')}
@@ -54,6 +56,7 @@
     {:else}
       <VerdictInboxPanel
         onVerdictSubmit={onVerdictSubmit}
+        onPendingCountChange={(n) => { pendingVerdictCount = n; }}
       />
     {/if}
   </div>
