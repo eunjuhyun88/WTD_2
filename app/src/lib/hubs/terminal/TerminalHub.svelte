@@ -24,7 +24,11 @@
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
-  import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { chartSaveMode, selectedRange } from '$lib/stores/chartSaveMode';
+  import RangeSelectionPanel from '$lib/shared/chart/overlays/RangeSelectionPanel.svelte';
+  import type { JudgeVerdict } from '$lib/shared/chart/overlays/RangeSelectionPanel.svelte';
+  import { buildIndicatorSnapshotFromRange } from '$lib/terminal/buildIndicatorSnapshotFromRange';
+  import type { RangeSelectionBar } from '$lib/terminal/rangeSelectionCapture';
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
   import ModeSheet from './ModeSheet.svelte';
   import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
@@ -38,6 +42,116 @@
   let paletteQ = $state('');
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
+
+  // ── W-0392: Judge-Save flywheel state ─────────────────────────────────────
+  let judgeLoading = $state(false);
+  let judgeVerdict = $state<JudgeVerdict | null>(null);
+
+  /** Bars sliced to the selected anchor range (anchorA..anchorB). */
+  const slicedBars = $derived.by<RangeSelectionBar[]>(() => {
+    const range = $selectedRange;
+    const payload = $chartSaveMode.payload;
+    if (!range || !payload?.klines) return [];
+    return payload.klines
+      .filter((k: { time: number }) => k.time >= range.from && k.time <= range.to)
+      .map((k: { time: number; open: number; high: number; low: number; close: number; volume: number }) => ({
+        time: k.time,
+        open: k.open,
+        high: k.high,
+        low: k.low,
+        close: k.close,
+        volume: k.volume ?? 0,
+      }));
+  });
+
+  /** Indicator snapshot derived from sliced bars. */
+  const rangeSnapshot = $derived(buildIndicatorSnapshotFromRange(slicedBars));
+
+  /** Session-level judge cache key. */
+  function judgeCacheKey(from: number, to: number, sym: string, tf: string): string {
+    return `judge_cache_${sym}_${tf}_${from}_${to}`;
+  }
+
+  async function handleJudge(): Promise<void> {
+    const range = $selectedRange;
+    if (!range) return;
+    const sym = desktopSymbol;
+    const tf = $activeTabState.timeframe ?? '4h';
+    const snap = rangeSnapshot;
+    if (!snap || Object.keys(snap).length < 3) return;
+
+    // Check sessionStorage cache (5 min TTL)
+    const cacheKey = judgeCacheKey(range.from, range.to, sym, tf);
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { verdict: v, ts } = JSON.parse(cached) as { verdict: JudgeVerdict; ts: number };
+        if (Date.now() - ts < 5 * 60_000) {
+          judgeVerdict = v;
+          return;
+        }
+      }
+    } catch { /* ignore storage errors */ }
+
+    judgeLoading = true;
+    try {
+      const res = await fetch('/api/engine/agent/judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: sym,
+          timeframe: tf,
+          indicator_snapshot: snap,
+          context: { from_ts: range.from, to_ts: range.to },
+        }),
+      });
+      if (!res.ok) throw new Error(`judge ${res.status}`);
+      const verdict = (await res.json()) as JudgeVerdict;
+      judgeVerdict = verdict;
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ verdict, ts: Date.now() }));
+      } catch { /* ignore */ }
+    } catch (e) {
+      console.error('[W-0392] judge failed', e);
+    } finally {
+      judgeLoading = false;
+    }
+  }
+
+  async function handleSaveWithVerdict(): Promise<void> {
+    const range = $selectedRange;
+    if (!range) return;
+    const sym = desktopSymbol;
+    const tf = $activeTabState.timeframe ?? '4h';
+    try {
+      await fetch('/api/engine/agent/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: sym,
+          timeframe: tf,
+          snapshot: rangeSnapshot ?? {},
+          decision: judgeVerdict ? { ...judgeVerdict } : undefined,
+          trigger_origin: 'agent_judge',
+        }),
+      });
+    } catch (e) {
+      console.error('[W-0392] save failed', e);
+    }
+    judgeVerdict = null;
+    chartSaveMode.exitRangeMode();
+  }
+
+  async function handleSaveOnly(): Promise<void> {
+    const range = $selectedRange;
+    if (!range) return;
+    await chartSaveMode.save({
+      symbol: desktopSymbol,
+      tf: $activeTabState.timeframe ?? '4h',
+      ohlcvBars: slicedBars,
+    });
+    judgeVerdict = null;
+  }
   let symbolPickerOpen = $state(false);
   let desktopSymbolPickerOpen = $state(false);
   let desktopSymbolPickerTabId = $state<string | null>(null);
@@ -397,7 +511,7 @@
                 indicators: {},
               } satisfies ChartViewportSnapshot}
               onClose={() => chartSaveMode.exitRangeMode()}
-              onSaved={(captureId) => {
+              onSaved={(_captureId) => {
                 shellStore.setDecisionBundle({
                   symbol: desktopSymbol,
                   timeframe: $activeTabState.timeframe ?? '4h',
@@ -406,6 +520,21 @@
                 shellStore.setRightPanelTab('verdict');
                 chartSaveMode.exitRangeMode();
               }}
+            />
+          </div>
+
+          <!-- W-0392: RangeSelectionPanel — judge-save flywheel dock -->
+          <div class="range-selection-dock">
+            <RangeSelectionPanel
+              symbol={desktopSymbol}
+              tf={$activeTabState.timeframe ?? '4h'}
+              bars={slicedBars}
+              snapshot={rangeSnapshot}
+              onJudge={handleJudge}
+              onSaveOnly={handleSaveOnly}
+              onSave={handleSaveWithVerdict}
+              loading={judgeLoading}
+              verdict={judgeVerdict}
             />
           </div>
         {/if}
@@ -564,6 +693,15 @@
   @keyframes slide-in-right {
     from { transform: translateX(100%); opacity: 0; }
     to   { transform: translateX(0);   opacity: 1; }
+  }
+
+  /* W-0392: judge-save dock at bottom of chart column */
+  .range-selection-dock {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 21;
   }
 
   .ai-pane {
