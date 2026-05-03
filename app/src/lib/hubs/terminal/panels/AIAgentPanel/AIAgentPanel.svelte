@@ -4,6 +4,7 @@
   import type { RightPanelTab, TabState } from '../../shell.store';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
+  import { selectedRange } from '$lib/stores/chartSaveMode';
   import AIPanel from './AIPanel.svelte';
   import VerdictInboxPanel from '../../peek/VerdictInboxPanel.svelte';
   import JudgePanel from '../../peek/JudgePanel.svelte';
@@ -189,6 +190,27 @@
   let judgeLoading     = $state(false);
   let judgeCacheKey    = $state('');
 
+  // W-0392 Phase 3: Extract entry/stop/target from selected range for prefill
+  function extractPricesFromSelectedRange(range: any): { entry: number | null; stop: number | null; target: number | null } {
+    if (!range?.payload?.klines) return { entry: null, stop: null, target: null };
+
+    const klines = range.payload.klines.filter((k: any) =>
+      k.time >= Math.min(range.anchorA, range.anchorB) &&
+      k.time <= Math.max(range.anchorA, range.anchorB)
+    );
+
+    if (klines.length === 0) return { entry: null, stop: null, target: null };
+
+    const entry = klines[0]?.close ?? null;
+    const stops = klines.map((k: any) => k.low).filter((v: any) => v != null);
+    const targets = klines.map((k: any) => k.high).filter((v: any) => v != null);
+
+    const stop = stops.length > 0 ? Math.min(...stops) : null;
+    const target = targets.length > 0 ? Math.max(...targets) : null;
+
+    return { entry, stop, target };
+  }
+
   async function loadJudgeCaptures() {
     try {
       const res = await fetch('/api/captures?limit=30');
@@ -254,6 +276,20 @@
       await loadJudgeCaptures();
     } catch { /* leave empty */ } finally { judgeSaving = false; }
   }
+
+  // W-0392 Phase 3: Derive displayed prices from judge result or selected range
+  const displayedJudgePrices = $derived.by(() => {
+    if (judgeResult) {
+      return {
+        entry: judgeResult.entry,
+        stop: judgeResult.stop,
+        target: judgeResult.target,
+      };
+    }
+    const range = $selectedRange;
+    if (range) return extractPricesFromSelectedRange(range);
+    return { entry: null, stop: null, target: null };
+  });
 
   $effect(() => {
     if (activeTab === 'judge') {
@@ -368,9 +404,9 @@
             {symbol}
             {timeframe}
             verdict={judgeResult ? { direction: judgeResult.verdict as 'bullish' | 'bearish' | 'neutral' } : null}
-            entry={judgeResult?.entry ?? null}
-            stop={judgeResult?.stop ?? null}
-            target={judgeResult?.target ?? null}
+            entry={displayedJudgePrices.entry}
+            stop={displayedJudgePrices.stop}
+            target={displayedJudgePrices.target}
             pWin={judgeResult?.p_win ?? null}
             captures={judgeCaptures}
             saving={judgeSaving || judgeLoading}
@@ -419,9 +455,9 @@
       {symbol}
       {timeframe}
       verdict={judgeResult ? { direction: judgeResult.verdict as 'bullish' | 'bearish' | 'neutral' } : null}
-      entry={judgeResult?.entry ?? null}
-      stop={judgeResult?.stop ?? null}
-      target={judgeResult?.target ?? null}
+      entry={displayedJudgePrices.entry}
+      stop={displayedJudgePrices.stop}
+      target={displayedJudgePrices.target}
       pWin={judgeResult?.p_win ?? null}
       captures={judgeCaptures}
       saving={judgeSaving || judgeLoading}
