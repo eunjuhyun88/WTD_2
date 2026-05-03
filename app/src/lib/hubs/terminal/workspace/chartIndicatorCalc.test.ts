@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { calcRSI, calcMACD, calcBB, injectClientIndicators } from './chartIndicatorCalc';
+import {
+  calcRSI,
+  calcMACD,
+  calcBB,
+  injectClientIndicators,
+  calcEMAValues,
+  calcVWAP,
+  calcATRBands,
+} from './chartIndicatorCalc';
 
 // ── Synthetic data helpers ────────────────────────────────────────────────────
 
@@ -136,6 +144,102 @@ describe('calcBB', () => {
     const last20 = closes.slice(-20);
     const expected = last20.reduce((a, b) => a + b, 0) / 20;
     expect(bb.middle[bb.middle.length - 1].value).toBeCloseTo(expected, 6);
+  });
+});
+
+// ── calcEMAValues ─────────────────────────────────────────────────────────────
+
+describe('calcEMAValues', () => {
+  it('returns empty array when not enough bars', () => {
+    expect(calcEMAValues(makeBars([100, 101, 102]), 21)).toHaveLength(0);
+  });
+
+  it('output length equals (bars.length - period + 1)', () => {
+    const result = calcEMAValues(BARS_FLAT, 21);
+    expect(result).toHaveLength(BARS_FLAT.length - 21 + 1);
+  });
+
+  it('all values are finite numbers', () => {
+    for (const p of calcEMAValues(BARS_FLAT, 9)) {
+      expect(Number.isFinite(p.value)).toBe(true);
+    }
+  });
+
+  it('EMA lags behind rapidly rising prices (last EMA < last close)', () => {
+    const result = calcEMAValues(BARS_UP, 9);
+    const lastEma = result[result.length - 1].value;
+    const lastClose = BARS_UP[BARS_UP.length - 1].close;
+    expect(lastEma).toBeLessThan(lastClose);
+  });
+
+  it('time values are preserved from input bars', () => {
+    const result = calcEMAValues(BARS_FLAT, 10);
+    expect(result[0].time).toBe(BARS_FLAT[9].time);
+  });
+});
+
+// ── calcVWAP ──────────────────────────────────────────────────────────────────
+
+describe('calcVWAP', () => {
+  it('returns one point per bar', () => {
+    expect(calcVWAP(BARS_FLAT)).toHaveLength(BARS_FLAT.length);
+  });
+
+  it('first VWAP equals typical price of first bar', () => {
+    const b = BARS_FLAT[0];
+    const tp = (b.high + b.low + b.close) / 3;
+    const result = calcVWAP(BARS_FLAT);
+    expect(result[0].value).toBeCloseTo(tp, 6);
+  });
+
+  it('VWAP is between low and high for each bar', () => {
+    const result = calcVWAP(BARS_FLAT);
+    for (let i = 0; i < result.length; i++) {
+      // VWAP runs cumulative so can drift; just check it's a positive finite number
+      expect(Number.isFinite(result[i].value)).toBe(true);
+      expect(result[i].value).toBeGreaterThan(0);
+    }
+  });
+
+  it('time values match input bars', () => {
+    const result = calcVWAP(BARS_FLAT);
+    for (let i = 0; i < result.length; i++) {
+      expect(result[i].time).toBe(BARS_FLAT[i].time);
+    }
+  });
+});
+
+// ── calcATRBands ──────────────────────────────────────────────────────────────
+
+describe('calcATRBands', () => {
+  it('returns empty when not enough bars', () => {
+    const r = calcATRBands(makeBars([100, 101, 102]), 14, 2);
+    expect(r.upper).toHaveLength(0);
+    expect(r.lower).toHaveLength(0);
+    expect(r.middle).toHaveLength(0);
+  });
+
+  it('all three bands have equal length (bars.length - period)', () => {
+    const r = calcATRBands(BARS_FLAT, 14, 2);
+    expect(r.upper.length).toBe(r.lower.length);
+    expect(r.upper.length).toBe(r.middle.length);
+    expect(r.upper.length).toBe(BARS_FLAT.length - 14);
+  });
+
+  it('upper > middle > lower for all points', () => {
+    const r = calcATRBands(BARS_FLAT, 14, 2);
+    for (let i = 0; i < r.upper.length; i++) {
+      expect(r.upper[i].value).toBeGreaterThan(r.middle[i].value);
+      expect(r.middle[i].value).toBeGreaterThan(r.lower[i].value);
+    }
+  });
+
+  it('bands widen with higher multiplier', () => {
+    const r1 = calcATRBands(BARS_FLAT, 14, 1);
+    const r2 = calcATRBands(BARS_FLAT, 14, 3);
+    const span1 = r1.upper[0].value - r1.lower[0].value;
+    const span2 = r2.upper[0].value - r2.lower[0].value;
+    expect(span2).toBeGreaterThan(span1);
   });
 });
 

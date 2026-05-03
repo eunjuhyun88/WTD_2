@@ -88,6 +88,100 @@ function ema(values: number[], period: number): number[] {
   return out;
 }
 
+// ── EMA (public) ─────────────────────────────────────────────────────────────
+
+/**
+ * Compute EMA over bars.
+ * @param bars   Array of { time, close } (ascending by time)
+ * @param period Default 21
+ */
+export function calcEMAValues(
+  bars: ReadonlyArray<{ time: number; close: number }>,
+  period = 21,
+): TimePoint[] {
+  const closes = bars.map((b) => b.close);
+  const raw = ema(closes, period);
+  const result: TimePoint[] = [];
+  for (let i = period - 1; i < bars.length; i++) {
+    if (!Number.isNaN(raw[i])) result.push({ time: bars[i].time, value: raw[i] });
+  }
+  return result;
+}
+
+// ── VWAP ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Compute running VWAP (typical price × volume, cumulative).
+ * @param bars  Array of { time, high, low, close, volume }
+ */
+export function calcVWAP(
+  bars: ReadonlyArray<{ time: number; high: number; low: number; close: number; volume: number }>,
+): TimePoint[] {
+  let cumTPV = 0;
+  let cumVol = 0;
+  const result: TimePoint[] = [];
+  for (const b of bars) {
+    const tp = (b.high + b.low + b.close) / 3;
+    cumTPV += tp * b.volume;
+    cumVol += b.volume;
+    result.push({ time: b.time, value: cumVol === 0 ? tp : cumTPV / cumVol });
+  }
+  return result;
+}
+
+// ── ATR Bands ────────────────────────────────────────────────────────────────
+
+export interface ATRBandsResult {
+  upper: TimePoint[];
+  lower: TimePoint[];
+  middle: TimePoint[];
+}
+
+/**
+ * Compute ATR bands (SMA ± mult × ATR).
+ * @param bars    Array of { time, high, low, close }
+ * @param period  ATR period, default 14
+ * @param mult    Band multiplier, default 2
+ */
+export function calcATRBands(
+  bars: ReadonlyArray<{ time: number; high: number; low: number; close: number }>,
+  period = 14,
+  mult = 2,
+): ATRBandsResult {
+  if (bars.length < period + 1) return { upper: [], lower: [], middle: [] };
+
+  // True range
+  const tr: number[] = [bars[0].high - bars[0].low];
+  for (let i = 1; i < bars.length; i++) {
+    const hl = bars[i].high - bars[i].low;
+    const hc = Math.abs(bars[i].high - bars[i - 1].close);
+    const lc = Math.abs(bars[i].low - bars[i - 1].close);
+    tr.push(Math.max(hl, hc, lc));
+  }
+
+  // Wilder-smoothed ATR (seed = SMA of first `period` TRs)
+  let atr = 0;
+  for (let i = 0; i < period; i++) atr += tr[i];
+  atr /= period;
+
+  const upper: TimePoint[] = [];
+  const lower: TimePoint[] = [];
+  const middle: TimePoint[] = [];
+
+  // SMA over a rolling window for the band midline
+  for (let i = period; i < bars.length; i++) {
+    atr = (atr * (period - 1) + tr[i]) / period;
+    const window = bars.slice(i - period + 1, i + 1);
+    const sma = window.reduce((s, b) => s + b.close, 0) / period;
+    const t = bars[i].time;
+    middle.push({ time: t, value: sma });
+    upper.push({ time: t, value: sma + mult * atr });
+    lower.push({ time: t, value: sma - mult * atr });
+  }
+
+  return { upper, lower, middle };
+}
+
 // ── MACD (12, 26, 9) ──────────────────────────────────────────────────────────
 
 /**
