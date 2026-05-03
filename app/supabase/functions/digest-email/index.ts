@@ -1,9 +1,9 @@
 // Supabase Edge Function: digest-email (W-0401-P3)
-// Schedule: 21:00 UTC daily = 06:00 KST
+// Schedule: 21:00 UTC daily = 06:00 KST next day
 // Setup: Supabase dashboard → Edge Functions → digest-email → Schedule: "0 21 * * *"
 //
 // Required secrets (supabase secrets set --env-file):
-//   RESEND_API_KEY
+//   RESEND_API_KEY  (optional — omit for dry-run / console.log only)
 //   SUPABASE_URL (auto-injected)
 //   SUPABASE_SERVICE_ROLE_KEY (auto-injected)
 
@@ -12,151 +12,155 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
-const FROM_EMAIL = 'Cogotchi <digest@cogotchi.app>';
-const STREAK_THRESHOLDS = [1, 3, 7, 14, 30];
+const FROM_EMAIL = 'Cogochi <noreply@cogochi.io>';
+const APP_BASE = 'https://cogochi.io';
+const LAYER_C_THRESHOLD = 50;
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
-  if (!RESEND_API_KEY) {
-    return new Response(JSON.stringify({ error: 'RESEND_API_KEY not configured' }), {
+
+  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  // Fetch subscribers and their stats
+  const { data: subs, error } = await sb
+    .from('digest_subscriptions')
+    .select('user_id, email, unsubscribe_token')
+    .eq('subscribed', true);
+
+  if (error) {
+    console.error('digest: failed to fetch subscriptions', error);
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const results = await Promise.allSettled(
+    (subs ?? []).map(sub => sendDigestToUser(sb, sub.user_id, sub.email, sub.unsubscribe_token))
+  );
 
-  // Fetch opted-out list and distinct user IDs in parallel.
-  // verdict_streak_history (migration 055) already GROUP BY user_id — O(users) not O(rows).
-  const [optoutRes, usersRes] = await Promise.all([
-    sb.from('digest_subscriptions').select('user_id').eq('opt_in', false),
-    sb.from('verdict_streak_history').select('user_id'),
-  ]);
-
-  const optedOut = new Set((optoutRes.data ?? []).map((r: { user_id: string }) => r.user_id));
-  const userIds = (usersRes.data ?? [])
-    .map((r: { user_id: string }) => r.user_id)
-    .filter((id: string) => !optedOut.has(id));
-
-  const results = await Promise.allSettled(userIds.map(uid => sendDigestToUser(sb, uid)));
   const sent = results.filter(r => r.status === 'fulfilled' && r.value).length;
+  const total = (subs ?? []).length;
+
+  console.log(`digest: ${sent}/${total} sent`);
 
   return new Response(
-    JSON.stringify({ sent, total: userIds.length }),
+    JSON.stringify({ sent, total }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   );
 });
 
-async function sendDigestToUser(sb: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+async function sendDigestToUser(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+  email: string,
+  unsubscribeToken: string,
+): Promise<boolean> {
   try {
-    const [{ data: { user } }, { data: profile }, stats] = await Promise.all([
-      sb.auth.admin.getUserById(userId),
-      sb.from('user_profiles').select('username').eq('user_id', userId).maybeSingle(),
-      getUserStats(sb, userId),
-    ]);
-    if (!user?.email || stats.totalCount === 0) return false;
+    const stats = await getUserStats(sb, userId);
+    if (stats.total === 0) return false;
+
+    const body = renderPlainText(stats, unsubscribeToken);
+
+    if (!RESEND_API_KEY) {
+      // Dry-run mode: log instead of sending (AC1)
+      console.log(`[DRY RUN] digest to ${email}:\n${body}`);
+      return true;
+    }
+
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         from: FROM_EMAIL,
-        to: [user.email],
-        subject: `Cogotchi 일일 요약 — 이번 주 ${stats.weekCount}건 🔥`,
-        html: renderHtml({ name: (profile as { username?: string } | null)?.username ?? '트레이더', ...stats }),
+        to: [email],
+        subject: 'Cogochi 일일 요약',
+        text: body,
       }),
     });
-    return res.ok;
+
+    if (!res.ok) {
+      const msg = await res.text();
+      console.error(`digest: resend error for ${userId}: ${msg}`);
+      return false;
+    }
+    return true;
   } catch (err) {
     console.error('digest error for', userId, err);
     return false;
   }
 }
 
-async function getUserStats(sb: ReturnType<typeof createClient>, userId: string) {
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+async function getUserStats(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<{ yesterday: number; streak: number; total: number; remaining: number }> {
+  const yesterday = new Date();
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const yDate = yesterday.toISOString().slice(0, 10);
 
-  const [weekRes, totalRes, streakRes] = await Promise.all([
-    sb.from('pattern_ledger_records')
-      .select('id', { count: 'exact', head: true })
+  // verdict_streak_history is a view: SELECT user_id, day_utc, verdict_count
+  const [streakRes, yesterdayRes] = await Promise.all([
+    sb
+      .from('verdict_streak_history')
+      .select('day_utc, verdict_count')
       .eq('user_id', userId)
-      .gte('created_at', weekAgo),
-    sb.from('pattern_ledger_records')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId),
-    sb.from('pattern_ledger_records')
-      .select('created_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .order('day_utc', { ascending: false })
       .limit(365),
+    sb
+      .from('verdict_streak_history')
+      .select('verdict_count')
+      .eq('user_id', userId)
+      .eq('day_utc', yDate)
+      .maybeSingle(),
   ]);
 
-  const streak = computeStreak((streakRes.data ?? []) as { created_at: string }[]);
-  const next = nextThreshold(streak);
+  const rows = (streakRes.data ?? []) as { day_utc: string; verdict_count: number }[];
+  const yesterdayCount = (yesterdayRes.data as { verdict_count: number } | null)?.verdict_count ?? 0;
+  const total = rows.reduce((s, r) => s + r.verdict_count, 0);
+  const streak = computeStreak(rows.map(r => r.day_utc));
 
   return {
-    weekCount: weekRes.count ?? 0,
-    totalCount: totalRes.count ?? 0,
+    yesterday: yesterdayCount,
     streak,
-    daysToNext: next != null ? next - streak : null,
+    total,
+    remaining: Math.max(0, LAYER_C_THRESHOLD - total),
   };
 }
 
-function computeStreak(rows: { created_at: string }[]): number {
-  if (!rows.length) return 0;
-  const days = new Set(rows.map(r => r.created_at.slice(0, 10)));
-  const today = new Date().toISOString().slice(0, 10);
+function computeStreak(days: string[]): number {
+  if (!days.length) return 0;
+  const daySet = new Set(days);
   let streak = 0;
-  let cur = new Date(today);
+  const cur = new Date();
+  cur.setUTCHours(0, 0, 0, 0);
   while (true) {
     const d = cur.toISOString().slice(0, 10);
-    if (days.has(d)) { streak++; cur.setDate(cur.getDate() - 1); }
-    else break;
+    if (daySet.has(d)) {
+      streak++;
+      cur.setUTCDate(cur.getUTCDate() - 1);
+    } else {
+      break;
+    }
   }
   return streak;
 }
 
-function nextThreshold(streak: number): number | null {
-  for (const t of STREAK_THRESHOLDS) {
-    if (streak < t) return t;
-  }
-  return null;
-}
-
-function renderHtml(opts: {
-  name: string; weekCount: number; totalCount: number; streak: number; daysToNext: number | null;
-}): string {
-  const nextLine = opts.daysToNext != null
-    ? `<p>다음 streak 배지까지 <strong>${opts.daysToNext}일</strong> 남았습니다!</p>`
-    : `<p>모든 streak 배지를 달성했습니다! 🎉</p>`;
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:sans-serif;background:#0a0a0b;color:#faf7eb;max-width:480px;margin:0 auto;padding:24px">
-  <h1 style="font-size:18px;font-weight:700;margin-bottom:4px">안녕하세요, ${opts.name}!</h1>
-  <p style="color:rgba(250,247,235,0.55);font-size:13px">오늘의 Cogotchi 요약입니다.</p>
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(249,216,194,0.08);border-radius:12px;padding:16px;margin:16px 0">
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <span style="color:rgba(250,247,235,0.55);font-size:12px">이번 주 verdict</span>
-      <strong>${opts.weekCount}개</strong>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <span style="color:rgba(250,247,235,0.55);font-size:12px">연속 일수</span>
-      <strong>🔥 ${opts.streak}일</strong>
-    </div>
-    <div style="display:flex;justify-content:space-between">
-      <span style="color:rgba(250,247,235,0.55);font-size:12px">전체 누적</span>
-      <strong>${opts.totalCount}개</strong>
-    </div>
-  </div>
-  ${nextLine}
-  <a href="https://cogotchi.app/patterns"
-     style="display:block;background:linear-gradient(180deg,rgba(250,247,235,0.98),rgba(249,246,241,0.96));color:#0e0e12;text-align:center;padding:12px;border-radius:999px;text-decoration:none;font-weight:700;font-size:13px;margin:16px 0">
-    패턴 검증하기 →
-  </a>
-  <p style="font-size:11px;color:rgba(250,247,235,0.25);text-align:center;margin-top:24px">
-    <a href="https://cogotchi.app/settings" style="color:rgba(250,247,235,0.4)">알림 설정 변경</a>
-  </p>
-</body></html>`;
+function renderPlainText(
+  stats: { yesterday: number; streak: number; total: number; remaining: number },
+  unsubscribeToken: string,
+): string {
+  return [
+    '안녕하세요!',
+    `어제 판정: ${stats.yesterday}건 · 연속 ${stats.streak}일째`,
+    `Layer C 학습까지: ${stats.remaining}건 남았습니다 (${stats.total}/${LAYER_C_THRESHOLD})`,
+    '',
+    `[판정하러 가기] ${APP_BASE}/cogochi`,
+    `[수신거부] ${APP_BASE}/api/digest/unsubscribe?token=${unsubscribeToken}`,
+  ].join('\n');
 }
