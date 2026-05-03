@@ -40,6 +40,7 @@ def _make_capture(
     symbol: str,
     captured_at: datetime,
     pattern_slug: str = "tradoor-oi-reversal-v1",
+    verdict_json: dict | None = None,
 ) -> CaptureRecord:
     return CaptureRecord(
         capture_id=capture_id,
@@ -57,6 +58,7 @@ def _make_capture(
         feature_snapshot={"oi_change_1h": 0.18},
         block_scores={"funding_flip": {"passed": True, "score": 1.0}},
         status="pending_outcome",
+        verdict_json=verdict_json,
     )
 
 
@@ -234,3 +236,47 @@ def test_resolver_idempotent_on_second_run(tmp_path) -> None:
 
     assert len(first) == 1
     assert second == []  # status is now outcome_ready → skipped
+
+
+def test_resolver_extracts_verdict_prices_from_verdict_json(tmp_path) -> None:
+    """W-0392 Ph3: verdict_json prices stored as separate fields on outcome."""
+    captures = CaptureStore(tmp_path / "capture.sqlite")
+    ledger = LedgerStore(base_dir=tmp_path / "ledger_data")
+    record_store = LedgerRecordStore(base_dir=tmp_path / "ledger_records")
+
+    captured_at = datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc)
+    verdict_json = {
+        "direction": "bullish",
+        "entry": 42500,
+        "stop": 41500,
+        "target": 44000,
+        "p_win": 0.62,
+    }
+    capture = _make_capture(
+        capture_id="cap-with-verdict",
+        symbol="BTCUSDT",
+        captured_at=captured_at,
+        verdict_json=verdict_json,
+    )
+    captures.save(capture)
+
+    closes = [100.0] + [100.0 + i * 0.25 for i in range(1, 81)]
+    klines = _make_klines(captured_at, closes)
+    now_ms_val = int((captured_at + timedelta(hours=80)).timestamp() * 1000)
+
+    resolved = resolve_outcomes(
+        now_ms_val=now_ms_val,
+        capture_store=captures,
+        ledger_store=ledger,
+        record_store=record_store,
+        klines_loader=lambda *a, **k: klines,
+    )
+
+    assert len(resolved) == 1
+    outcome = resolved[0]
+    # Verdict prices stored in dedicated fields
+    assert outcome.verdict_entry == 42500
+    assert outcome.verdict_stop == 41500
+    assert outcome.verdict_target == 44000
+    # entry_price overridden by verdict_json.entry (main behavior)
+    assert outcome.entry_price == 42500.0

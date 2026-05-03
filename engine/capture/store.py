@@ -129,6 +129,12 @@ class CaptureStore:
                 "is_watching",
                 "INTEGER NOT NULL DEFAULT 0",
             )
+            self._ensure_column(
+                conn,
+                "capture_records",
+                "verdict_json",
+                "TEXT",
+            )
             conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_capture_records_definition
@@ -168,8 +174,8 @@ class CaptureStore:
                   pattern_version, definition_id, definition_ref_json, phase, timeframe, captured_at_ms,
                   candidate_transition_id, candidate_id, scan_id, user_note,
                   chart_context_json, research_context_json, feature_snapshot_json, block_scores_json,
-                  verdict_id, outcome_id, status, is_watching
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  verdict_id, verdict_json, outcome_id, status, is_watching
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(capture_id) DO UPDATE SET
                   capture_kind=excluded.capture_kind,
                   user_id=excluded.user_id,
@@ -190,6 +196,7 @@ class CaptureStore:
                   feature_snapshot_json=excluded.feature_snapshot_json,
                   block_scores_json=excluded.block_scores_json,
                   verdict_id=excluded.verdict_id,
+                  verdict_json=excluded.verdict_json,
                   outcome_id=excluded.outcome_id,
                   status=excluded.status
                 """,
@@ -214,6 +221,7 @@ class CaptureStore:
                     _json_dumps(capture.feature_snapshot),
                     _json_dumps(capture.block_scores),
                     capture.verdict_id,
+                    _json_dumps_optional(capture.verdict_json),
                     capture.outcome_id,
                     capture.status,
                     int(capture.is_watching),
@@ -379,8 +387,8 @@ class CaptureStore:
             feature_snapshot=_json_loads(row["feature_snapshot_json"], None),
             block_scores=_json_loads(row["block_scores_json"], {}),
             verdict_id=row["verdict_id"],
+            verdict_json=_json_loads(row["verdict_json"], None) if "verdict_json" in keys else None,
             outcome_id=row["outcome_id"],
             status=row["status"],
             is_watching=bool(row["is_watching"]) if "is_watching" in keys else False,
-            verdict_json=_json_loads(row["verdict_json"], None) if "verdict_json" in keys else None,
         )
