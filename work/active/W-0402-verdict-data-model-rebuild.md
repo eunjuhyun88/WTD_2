@@ -60,7 +60,7 @@ verdict 누적 → streak 집계 → digest 발송 → inbox dot count의 정확
 
 | ID | 질문 | 결정 (잠정) | 거절 옵션 + 이유 |
 |---|---|---|---|
-| **D-1** | base table | **A**: `pattern_ledger_records` 유지 + 인덱스 + record_type 필터 | B 거절: migration 033 실가동 미확인 (Q-1). C 거절: capture_records.verdict_json nullable + 049 이전 데이터 없음 |
+| **D-1** | base table | **C (revised)**: `capture_records WHERE verdicted_at IS NOT NULL` — migration 057에서 `verdicted_at` 컬럼 추가 + 트리거 | A 거절: `pattern_ledger_records`에 verdict 0행 (실측 확인) — write 경로 미연결. B 거절: `verdicts` 테이블 미존재 (실측 확인) |
 | **D-2** | 집계 캐싱 | **A**: MATERIALIZED VIEW + nightly REFRESH CONCURRENTLY | B 거절: counter table 트리거 race condition. C 거절: view 그대로는 AC1 p95<5s 미달성 |
 | **D-3** | P2 멀티인스턴스 | **B**: SQLite 유지 + outcomes_summary만 Supabase 동기 | A 거절: 전체 마이그 effort XL. C 거절: Realtime은 서버사이드 불일치 직접 해결 못함 |
 | **D-4** | count endpoint | **A**: Supabase `count: 'exact', head: true` | row 페치 후 len() 거절: AC4 p95<50ms 미달성 |
@@ -71,8 +71,9 @@ verdict 누적 → streak 집계 → digest 발송 → inbox dot count의 정확
 
 | ID | 질문 | 답을 얻는 방법 | Blocker for |
 |---|---|---|---|
-| **Q-1** | migration 033 4-table split 실가동? `verdicts` 테이블 존재? | `SELECT to_regclass('public.verdicts'); SELECT count(*) FROM verdicts;` | D-1 최종 |
-| **Q-2** | `pattern_ledger_records` row 수 + record_type별 분포? | `SELECT record_type, count(*) FROM pattern_ledger_records GROUP BY 1;` | PR 1 backfill 시간 추정 |
+| **Q-1** | migration 033 4-table split 실가동? `verdicts` 테이블 존재? | ✅ **확인**: `verdicts` 테이블 없음. `pattern_ledger_records`에 `verdict` record_type 0행 | D-1 → C로 결정 |
+| **Q-2** | `pattern_ledger_records` row 수 + record_type별 분포? | ✅ **확인**: entry 1590 / outcome 2306 / score 1590 / phase_attempt 515. 총 6001행, verdict 0행 | D-1 확정 |
+| **Q-2b** | `capture_records WHERE verdict_json IS NOT NULL` row 수? | ✅ **확인**: 131행 — 진짜 verdict 소스 | D-1 확정 |
 | **Q-3** | local SQLite captures.db row 수 + outcome_ready 비율? | Cloud Run ssh 또는 dump endpoint | D-3 sync 부하 추정 |
 | **Q-4** | Cloud Run 인스턴스 수 (current + autoscale max)? | `gcloud run services describe ... --max-instances` | D-3 우선순위 |
 | **Q-5** | Supabase plan connection pool 한계? | Supabase dashboard → Settings → Database | D-3B sync 빈도 |
@@ -85,32 +86,61 @@ verdict 누적 → streak 집계 → digest 발송 → inbox dot count의 정확
 
 ### PR 1 — Schema correctness (Effort: S)
 
-**목적**: streak이 verdict 행만 카운트하도록 + user_id 쿼리에 인덱스 적용
-**검증 포인트**: EXPLAIN ANALYZE Index Scan 확인 + capture-only fixture user streak = 0
+**목적**: `verdicted_at` 컬럼 추가 + view를 `capture_records` 기반으로 재정의 → streak이 실제 verdict 제출일 기준으로 계산
+**검증 포인트**: verdict_json 있는 user는 streak ≥1, capture_records만 있는 user는 streak = 0
 
 **신규:**
-- `app/supabase/migrations/057_pattern_ledger_user_idx.sql`
+- `app/supabase/migrations/057_capture_records_verdicted_at.sql`
   ```sql
+  -- verdicted_at: verdict 제출 시각 (captured_at_ms와 다름)
+  ALTER TABLE capture_records
+    ADD COLUMN IF NOT EXISTS verdicted_at TIMESTAMPTZ;
+
+  CREATE OR REPLACE FUNCTION set_verdicted_at()
+  RETURNS TRIGGER AS $$
+  BEGIN
+    IF OLD.verdict_json IS NULL AND NEW.verdict_json IS NOT NULL THEN
+      NEW.verdicted_at = now();
+    END IF;
+    RETURN NEW;
+  END;
+  $$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER trg_capture_records_verdicted_at
+    BEFORE UPDATE ON capture_records
+    FOR EACH ROW EXECUTE FUNCTION set_verdicted_at();
+
+  -- 기존 131행 백필 (정확한 시각 불명 → NOW() 처리)
+  UPDATE capture_records
+    SET verdicted_at = NOW()
+    WHERE verdict_json IS NOT NULL AND verdicted_at IS NULL;
+
   CREATE INDEX CONCURRENTLY IF NOT EXISTS
-    idx_pattern_ledger_user_type_created
-    ON pattern_ledger_records (user_id, record_type, created_at DESC)
-    WHERE user_id IS NOT NULL;
+    idx_capture_records_user_verdicted
+    ON capture_records (user_id, verdicted_at DESC)
+    WHERE verdicted_at IS NOT NULL;
   ```
 - `app/supabase/migrations/058_verdict_streak_history_fix.sql`
   ```sql
   DROP VIEW IF EXISTS verdict_streak_history;
   CREATE VIEW verdict_streak_history AS
-  SELECT user_id, DATE(created_at) AS day, COUNT(*) AS verdict_count
-  FROM pattern_ledger_records
-  WHERE user_id IS NOT NULL AND record_type = 'verdict'
-  GROUP BY user_id, DATE(created_at);
+  SELECT
+    user_id,
+    DATE(verdicted_at AT TIME ZONE 'UTC') AS day,
+    COUNT(*) AS verdict_count
+  FROM capture_records
+  WHERE user_id IS NOT NULL AND verdicted_at IS NOT NULL
+  GROUP BY user_id, DATE(verdicted_at AT TIME ZONE 'UTC');
   GRANT SELECT ON verdict_streak_history TO service_role;
   ```
-- `engine/tests/test_migration_058_streak_correctness.py` — capture/score만 있는 user → streak 0
+- `engine/tests/test_migration_058_streak_correctness.py` — capture만 있는 user → streak 0
+
+**⚠️ 백필 주의**: 기존 131행은 정확한 verdict 제출 시각 불명. NOW() 백필 시 streak 1일 발생.
+허용 여부 사용자 확인 필요 (대안: verdicted_at NULL 유지 → 신규 verdict부터만 추적).
 
 **Exit Criteria:**
-- [ ] AC1-1: capture/score만 있는 fixture user → streak 0 (pytest)
-- [ ] AC1-2: EXPLAIN ANALYZE `WHERE user_id=? AND record_type='verdict'` → Index Scan
+- [ ] AC1-1: verdict_json 있는 user → streak ≥1, capture만 있는 user → streak 0 (pytest)
+- [ ] AC1-2: EXPLAIN ANALYZE `WHERE user_id=? AND verdicted_at IS NOT NULL` → Index Scan
 - [ ] AC1-3: CI green
 
 ### PR 2 — Aggregation tier (Effort: M)
@@ -119,7 +149,7 @@ verdict 누적 → streak 집계 → digest 발송 → inbox dot count의 정확
 **검증 포인트**: digest 1회 실행 latency baseline vs after 비교
 
 **신규:**
-- `app/supabase/migrations/059_verdict_streak_matview.sql` — view → MATERIALIZED VIEW + unique index `(user_id, day)`
+- `app/supabase/migrations/059_verdict_streak_matview.sql` — view → MATERIALIZED VIEW + unique index `(user_id, day)` (base: capture_records)
 - `engine/jobs/refresh_streak_matview.py` — APScheduler nightly 03:00 UTC `REFRESH MATERIALIZED VIEW CONCURRENTLY verdict_streak_history`
 - `engine/tests/test_refresh_streak_matview.py`
 
