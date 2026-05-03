@@ -14,3 +14,4 @@
 | Agent | Domain | Branch | Started |
 |---|---|---|---|
 | A026 | .git/hooks/, tools/, .github/workflows/, work/active/W-0221-* | docs/agent8-session-20260426 | 11:42 |
+| A111 | app/src/lib/hubs/terminal/peek/VerdictInboxPanel.svelte,app/src/routes/api/captures | claude/stupefied-pike-34dba0 | 13:13 | 55121 |

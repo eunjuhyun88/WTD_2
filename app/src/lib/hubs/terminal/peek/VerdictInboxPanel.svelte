@@ -5,6 +5,8 @@
    * Section 1 — WATCH HITS: pending_outcome captures from watch-hit scanner
    * Section 2 — REVIEW: outcome_ready captures awaiting user verdict
    * Section 3 — RECENT: verdict_ready captures (last 10 closed)
+   *
+   * W-0397: keyboard shortcuts (1-5), 5s undo, Layer C ETA counter
    */
 
   import WatchToggle from '../../../shared/panels/WatchToggle.svelte';
@@ -39,6 +41,16 @@
     research_context?: Record<string, unknown>;
   }
 
+  type VerdictCat = 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late';
+
+  interface UndoPending {
+    captureId: string;
+    verdict: VerdictCat;
+    label: string;
+    timerId: ReturnType<typeof setTimeout>;
+    expiresAt: number;
+  }
+
   interface Props {
     userId?: string;
     onVerdictSubmit?: (captureId: string, verdict: string) => void;
@@ -58,6 +70,39 @@
   let submitting = $state<Record<string, boolean>>({});
   let dismissed = $state<Set<string>>(new Set());
   let parserOpen = $state(false);
+
+  // W-0397: undo state
+  let undoPending = $state<UndoPending | null>(null);
+  let undoProgress = $state(100); // 0–100 countdown bar
+  let undoTick: ReturnType<typeof setInterval> | null = null;
+
+  // W-0397: Layer C ETA
+  const LAYER_C_TARGET = 50;
+  let layerCCount = $state<number | null>(null);
+
+  // W-0397: consecutive same-verdict outlier detection
+  let consecutiveVerdict = $state<{ cat: string; count: number }>({ cat: '', count: 0 });
+  let showOutlierWarn = $state(false);
+
+  // keyboard focus
+  let panelEl = $state<HTMLDivElement | undefined>(undefined);
+  let focused = $state(false);
+
+  const VERDICT_KEYS: Record<string, VerdictCat> = {
+    '1': 'valid',
+    '2': 'invalid',
+    '3': 'near_miss',
+    '4': 'too_early',
+    '5': 'too_late',
+  };
+
+  const VERDICT_LABELS: Record<VerdictCat, string> = {
+    valid: '✓ Valid',
+    invalid: '✗ Invalid',
+    near_miss: '~ Near Miss',
+    too_early: '⏫ Too Early',
+    too_late: '⏰ Too Late',
+  };
 
   async function load() {
     loading = true;
@@ -89,10 +134,20 @@
     }
   }
 
-  async function submitVerdict(
-    captureId: string,
-    verdict: 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late',
-  ) {
+  async function loadLayerCStatus() {
+    if (!userId) return;
+    try {
+      const res = await fetch(`/api/users/${userId}/f60-status`);
+      if (!res.ok) return;
+      const data = await res.json() as { verdict_count?: number };
+      if (typeof data.verdict_count === 'number') layerCCount = data.verdict_count;
+    } catch {
+      // non-critical, fail silently
+    }
+  }
+
+  // Commit the verdict to the API (called after undo window expires)
+  async function commitVerdict(captureId: string, verdict: VerdictCat) {
     submitting = { ...submitting, [captureId]: true };
     try {
       const res = await fetch(`/api/captures/${captureId}/verdict`, {
@@ -104,12 +159,98 @@
       dismissed = new Set([...dismissed, captureId]);
       items = items.filter(i => i.capture.capture_id !== captureId);
       onVerdictSubmit?.(captureId, verdict);
+      // refresh Layer C count after submit
+      void loadLayerCStatus();
     } catch {
-      // keep item visible on error
+      // restore item visibility on error
+      dismissed = new Set([...dismissed].filter(id => id !== captureId));
+      items = items; // trigger reactivity
     } finally {
       const { [captureId]: _, ...rest } = submitting;
       submitting = rest;
     }
+  }
+
+  function startUndoCountdown(pending: UndoPending) {
+    undoProgress = 100;
+    if (undoTick) clearInterval(undoTick);
+    const tickMs = 50;
+    const totalMs = 5000;
+    undoTick = setInterval(() => {
+      const remaining = pending.expiresAt - Date.now();
+      undoProgress = Math.max(0, (remaining / totalMs) * 100);
+      if (remaining <= 0) {
+        if (undoTick) clearInterval(undoTick);
+        undoTick = null;
+      }
+    }, tickMs);
+  }
+
+  function submitVerdict(captureId: string, verdict: VerdictCat) {
+    // Cancel any existing undo for a different item (commit it immediately)
+    if (undoPending && undoPending.captureId !== captureId) {
+      clearTimeout(undoPending.timerId);
+      if (undoTick) { clearInterval(undoTick); undoTick = null; }
+      void commitVerdict(undoPending.captureId, undoPending.verdict);
+      undoPending = null;
+    }
+    // Cancel existing undo for same item (re-verdict)
+    if (undoPending && undoPending.captureId === captureId) {
+      clearTimeout(undoPending.timerId);
+      if (undoTick) { clearInterval(undoTick); undoTick = null; }
+      undoPending = null;
+    }
+
+    // Optimistically hide item
+    items = items.filter(i => i.capture.capture_id !== captureId);
+
+    // Track outlier
+    if (consecutiveVerdict.cat === verdict) {
+      consecutiveVerdict = { cat: verdict, count: consecutiveVerdict.count + 1 };
+    } else {
+      consecutiveVerdict = { cat: verdict, count: 1 };
+    }
+    if (consecutiveVerdict.count >= 5) {
+      showOutlierWarn = true;
+      setTimeout(() => { showOutlierWarn = false; }, 4000);
+    }
+
+    const expiresAt = Date.now() + 5000;
+    const timerId = setTimeout(() => {
+      undoPending = null;
+      if (undoTick) { clearInterval(undoTick); undoTick = null; }
+      void commitVerdict(captureId, verdict);
+    }, 5000);
+
+    undoPending = { captureId, verdict, label: VERDICT_LABELS[verdict], timerId, expiresAt };
+    startUndoCountdown(undoPending);
+  }
+
+  function undoVerdict() {
+    if (!undoPending) return;
+    clearTimeout(undoPending.timerId);
+    if (undoTick) { clearInterval(undoTick); undoTick = null; }
+    // Restore the item
+    void load();
+    undoPending = null;
+    undoProgress = 100;
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (!focused) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // Escape = undo
+    if (e.key === 'Escape' && undoPending) {
+      e.preventDefault();
+      undoVerdict();
+      return;
+    }
+    const verdict = VERDICT_KEYS[e.key];
+    if (!verdict) return;
+    const firstItem = items[0];
+    if (!firstItem || submitting[firstItem.capture.capture_id]) return;
+    e.preventDefault();
+    submitVerdict(firstItem.capture.capture_id, verdict);
   }
 
   function formatPnl(pct: number | null): string {
@@ -138,13 +279,41 @@
     return `${Math.floor(h / 24)}d ago`;
   }
 
-  $effect(() => { load(); });
+  $effect(() => {
+    load();
+    void loadLayerCStatus();
+  });
 </script>
 
-<div class="verdict-inbox">
+<div
+  class="verdict-inbox"
+  bind:this={panelEl}
+  tabindex="0"
+  role="region"
+  aria-label="Verdict Inbox"
+  onfocus={() => { focused = true; }}
+  onblur={() => { focused = false; }}
+  onkeydown={handleKeydown}
+>
   <div class="inbox-header">
     <span class="inbox-title">VERDICT INBOX</span>
     <span class="inbox-count">{watchHits.length + items.length} active</span>
+
+    <!-- Layer C ETA counter -->
+    {#if layerCCount !== null}
+      <span
+        class="layer-c-badge"
+        class:layer-c-active={layerCCount >= LAYER_C_TARGET}
+        title="Layer C LightGBM training progress"
+      >
+        {#if layerCCount >= LAYER_C_TARGET}
+          Layer C ✓
+        {:else}
+          Layer C {layerCCount}/{LAYER_C_TARGET}
+        {/if}
+      </span>
+    {/if}
+
     <button
       class="parser-btn"
       onclick={() => { parserOpen = true; }}
@@ -152,6 +321,24 @@
     >📝 Memo → Pattern</button>
     <button class="reload-btn" onclick={load} disabled={loading} title="Reload">↺</button>
   </div>
+
+  <!-- Undo banner -->
+  {#if undoPending}
+    <div class="undo-bar">
+      <span class="undo-label">
+        <span class="undo-verdict">{undoPending.label}</span> submitting…
+      </span>
+      <button class="undo-btn" onclick={undoVerdict}>Undo</button>
+      <div class="undo-progress" style="width: {undoProgress}%"></div>
+    </div>
+  {/if}
+
+  <!-- Outlier warning -->
+  {#if showOutlierWarn}
+    <div class="outlier-warn">
+      ⚠️ Same verdict 5× in a row — 맞나요?
+    </div>
+  {/if}
 
   <AIParserModal
     open={parserOpen}
@@ -192,6 +379,9 @@
       <div class="section-header" data-section="review">
         <span class="section-label">REVIEW</span>
         <span class="section-badge">{items.length} pending</span>
+        {#if items.length > 0 && focused}
+          <span class="kbd-hint">1-5 keys</span>
+        {/if}
       </div>
       {#if items.length === 0}
         <div class="inbox-empty section-empty">
@@ -199,11 +389,11 @@
           <span>No captures awaiting verdict</span>
         </div>
       {:else}
-        {#each items as item (item.capture.capture_id)}
+        {#each items as item, idx (item.capture.capture_id)}
           {@const cap = item.capture}
           {@const out = item.outcome}
           {@const busy = !!submitting[cap.capture_id]}
-          <div class="inbox-card" class:busy>
+          <div class="inbox-card" class:busy class:first-item={idx === 0}>
             <div class="card-top">
               <span class="card-sym">{cap.symbol.replace('USDT', '')}</span>
               <span class="card-pattern">{cap.pattern_slug || 'manual'}</span>
@@ -237,32 +427,32 @@
                 class="verdict-btn verdict-valid"
                 onclick={() => submitVerdict(cap.capture_id, 'valid')}
                 disabled={busy}
-                title="Setup was correct"
-              >✓ Valid</button>
+                title="Setup was correct [1]"
+              >{idx === 0 && focused ? '1 ' : ''}✓ Valid</button>
               <button
                 class="verdict-btn verdict-invalid"
                 onclick={() => submitVerdict(cap.capture_id, 'invalid')}
                 disabled={busy}
-                title="Setup was wrong"
-              >✗ Invalid</button>
+                title="Setup was wrong [2]"
+              >{idx === 0 && focused ? '2 ' : ''}✗ Invalid</button>
               <button
                 class="verdict-btn verdict-too-late"
                 onclick={() => submitVerdict(cap.capture_id, 'too_late')}
                 disabled={busy}
-                title="Setup was valid but entry timing too late"
-              >⏰ Too Late</button>
+                title="Setup valid but entry too late [3]"
+              >{idx === 0 && focused ? '3 ' : ''}⏰ Too Late</button>
               <button
                 class="verdict-btn verdict-near-miss"
                 onclick={() => submitVerdict(cap.capture_id, 'near_miss')}
                 disabled={busy}
-                title="Setup was valid but entry missed by a little"
-              >~ Near Miss</button>
+                title="Setup valid but entry missed [4]"
+              >{idx === 0 && focused ? '4 ' : ''}~ Near Miss</button>
               <button
                 class="verdict-btn verdict-too-early"
                 onclick={() => submitVerdict(cap.capture_id, 'too_early')}
                 disabled={busy}
-                title="Entry too early — structure not confirmed yet"
-              >⏫ Too Early</button>
+                title="Entry too early [5]"
+              >{idx === 0 && focused ? '5 ' : ''}⏫ Too Early</button>
             </div>
           </div>
         {/each}
@@ -308,6 +498,7 @@
     height: 100%;
     background: var(--sc-bg-0, #0b0e14);
     overflow: hidden;
+    outline: none;
   }
 
   .inbox-header {
@@ -333,6 +524,24 @@
     background: rgba(99,179,237,0.15);
     color: rgba(131,188,255,0.9);
   }
+
+  /* Layer C ETA badge */
+  .layer-c-badge {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs);
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(147,51,234,0.12);
+    border: 1px solid rgba(147,51,234,0.25);
+    color: rgba(196,168,255,0.8);
+    white-space: nowrap;
+  }
+  .layer-c-badge.layer-c-active {
+    background: rgba(34,171,148,0.12);
+    border-color: rgba(34,171,148,0.25);
+    color: #22AB94;
+  }
+
   .parser-btn {
     margin-left: auto;
     background: rgba(219, 154, 159, 0.10);
@@ -362,6 +571,61 @@
     display: flex; align-items: center; justify-content: center;
   }
   .reload-btn:hover { color: rgba(247,242,234,1); }
+
+  /* Undo bar */
+  .undo-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    background: rgba(99,179,237,0.08);
+    border-bottom: 1px solid rgba(99,179,237,0.15);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .undo-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs);
+    color: rgba(247,242,234,0.6);
+    flex: 1;
+  }
+  .undo-verdict {
+    color: rgba(131,188,255,0.9);
+    font-weight: 700;
+  }
+  .undo-btn {
+    background: rgba(99,179,237,0.15);
+    border: 1px solid rgba(99,179,237,0.3);
+    color: rgba(131,188,255,1);
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs);
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 1;
+  }
+  .undo-btn:hover { background: rgba(99,179,237,0.25); }
+  .undo-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: rgba(99,179,237,0.5);
+    transition: width 50ms linear;
+  }
+
+  /* Outlier warning */
+  .outlier-warn {
+    padding: 4px 12px;
+    background: rgba(250,204,21,0.08);
+    border-bottom: 1px solid rgba(250,204,21,0.15);
+    font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs);
+    color: rgba(250,204,21,0.85);
+    flex-shrink: 0;
+  }
 
   .inbox-empty {
     display: flex;
@@ -397,6 +661,9 @@
     transition: opacity 0.2s;
   }
   .inbox-card.busy { opacity: 0.5; pointer-events: none; }
+  .inbox-card.first-item {
+    border-color: rgba(99,179,237,0.18);
+  }
 
   .card-top {
     display: flex;
@@ -484,6 +751,7 @@
     display: flex;
     gap: 5px;
     margin-top: 2px;
+    flex-wrap: wrap;
   }
   .verdict-btn {
     flex: 1;
@@ -495,6 +763,7 @@
     font-weight: 700;
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
+    min-width: 60px;
   }
   .verdict-valid {
     background: rgba(34,171,148,0.1);
@@ -533,12 +802,13 @@
 
   .verdict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* 5-button row needs flex-wrap on narrow screens */
-  .card-actions {
-    flex-wrap: wrap;
-  }
-  .verdict-btn {
-    min-width: 60px;
+  .kbd-hint {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs);
+    color: rgba(247,242,234,0.25);
+    padding: 1px 4px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
   }
 
   .section-header {
