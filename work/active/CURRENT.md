@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`1c7edf4f` — origin/main (2026-05-03) — feat(W-0395 Phase 2): dashboard 3-zone redesign (#974)
+`0eca402b` — origin/main (2026-05-04) — feat(W-0392 Ph3): verdict_json write side + PatternOutcome verdict fields (#972)
 
 ---
 
