@@ -47,6 +47,36 @@
   let judgeLoading = $state(false);
   let judgeVerdict = $state<JudgeVerdict | null>(null);
 
+  // ── Pattern recall (core loop: drag → recall → verdict → Layer C) ─────────
+  interface PatternMatch { slug: string; label: string; similarity: number; outcome: string; }
+  let recallResults = $state<PatternMatch[]>([]);
+  let recallLoading = $state(false);
+
+  async function handleRecall(): Promise<void> {
+    const range = $selectedRange;
+    if (!range) return;
+    recallLoading = true;
+    try {
+      const res = await fetch('/api/patterns/recall', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          symbol: desktopSymbol,
+          timeframe: $activeTabState.timeframe ?? '4h',
+          fromTime: range.from,
+          toTime: range.to,
+        }),
+      });
+      if (!res.ok) throw new Error(`recall ${res.status}`);
+      const data = (await res.json()) as { patterns: PatternMatch[] };
+      recallResults = data.patterns ?? [];
+    } catch (e) {
+      console.error('[core-loop] recall failed', e);
+    } finally {
+      recallLoading = false;
+    }
+  }
+
   /** Bars sliced to the selected anchor range (anchorA..anchorB). */
   const slicedBars = $derived.by<RangeSelectionBar[]>(() => {
     const range = $selectedRange;
@@ -139,6 +169,7 @@
       console.error('[W-0392] save failed', e);
     }
     judgeVerdict = null;
+    recallResults = [];
     chartSaveMode.exitRangeMode();
   }
 
@@ -151,6 +182,7 @@
       ohlcvBars: slicedBars,
     });
     judgeVerdict = null;
+    recallResults = [];
   }
   let symbolPickerOpen = $state(false);
   let desktopSymbolPickerOpen = $state(false);
@@ -533,7 +565,10 @@
               onJudge={handleJudge}
               onSaveOnly={handleSaveOnly}
               onSave={handleSaveWithVerdict}
+              onRecall={handleRecall}
               loading={judgeLoading}
+              recallLoading={recallLoading}
+              recallResults={recallResults}
               verdict={judgeVerdict}
             />
           </div>

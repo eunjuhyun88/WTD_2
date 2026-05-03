@@ -23,6 +23,8 @@
     text: string;
   }
 
+  interface PatternMatch { slug: string; label: string; similarity: number; outcome: string; }
+
   interface Props {
     symbol: string;
     tf: string;
@@ -31,11 +33,14 @@
     onJudge: () => void;
     onSaveOnly: () => void;
     onSave?: () => void;
+    onRecall?: () => void;
     loading: boolean;
+    recallLoading?: boolean;
+    recallResults?: PatternMatch[];
     verdict: JudgeVerdict | null;
   }
 
-  let { symbol, tf, bars, snapshot, onJudge, onSaveOnly, onSave, loading, verdict }: Props = $props();
+  let { symbol, tf, bars, snapshot, onJudge, onSaveOnly, onSave, onRecall, loading, recallLoading = false, recallResults = [], verdict }: Props = $props();
 
   // ── OHLCV summary ─────────────────────────────────────────────────────────
   const summary = $derived.by(() => {
@@ -163,6 +168,18 @@
     </div>
   {/if}
 
+  <!-- Recall results (core loop: similar past patterns) -->
+  {#if recallResults.length > 0}
+    <div class="rsp-recall">
+      {#each recallResults.slice(0, 4) as r}
+        <span class="rsp-recall-item" class:rsp-win={r.outcome === 'win'} class:rsp-loss={r.outcome === 'loss'}>
+          <span class="rsp-recall-sim">{Math.round(r.similarity * 100)}%</span>
+          <span class="rsp-recall-label">{r.label}</span>
+        </span>
+      {/each}
+    </div>
+  {/if}
+
   <!-- Actions -->
   <div class="rsp-actions">
     <button
@@ -178,6 +195,17 @@
         판정
       {/if}
     </button>
+
+    {#if onRecall}
+      <button class="rsp-btn rsp-btn--recall" onclick={onRecall} disabled={recallLoading || tooShort}>
+        {#if recallLoading}
+          <span class="rsp-spinner" aria-hidden="true"></span>
+          찾는 중…
+        {:else}
+          패턴 찾기
+        {/if}
+      </button>
+    {/if}
 
     <button class="rsp-btn rsp-btn--save" onclick={onSaveOnly}>
       구간만 저장
@@ -315,6 +343,35 @@
     border-color: var(--pos);
     color: var(--pos);
   }
+
+  .rsp-btn--recall {
+    border-color: #3B82F6;
+    color: #3B82F6;
+  }
+
+  .rsp-recall {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-1, 4px) var(--sp-2, 8px);
+    padding: var(--sp-1, 4px) 0;
+    border-top: 1px solid var(--border-1, rgba(255,255,255,0.06));
+  }
+
+  .rsp-recall-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1, 3px);
+    font-size: var(--ui-text-xs);
+    color: var(--text-2, rgba(177,181,189,0.6));
+  }
+
+  .rsp-recall-sim {
+    font-weight: 600;
+    color: #3B82F6;
+  }
+
+  .rsp-recall-item.rsp-win .rsp-recall-label { color: var(--pos); }
+  .rsp-recall-item.rsp-loss .rsp-recall-label { color: var(--neg); }
 
   .rsp-spinner {
     display: inline-block;
