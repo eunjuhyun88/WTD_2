@@ -1,4 +1,4 @@
-name: Update main pointer (state branch)
+name: Update CURRENT.md SHA on main push
 
 on:
   push:
@@ -16,7 +16,6 @@ jobs:
       - name: Write main_pointer.json
         run: |
           SHA="${{ github.sha }}"
-          PR_NUM="${{ github.event.head_commit.message }}"
           cat > main_pointer.json <<EOF
           {
             "sha": "${SHA:0:8}",
@@ -32,5 +31,38 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
           git add main_pointer.json
-          git diff --staged --quiet || git commit -m "state: main → ${{ github.sha && github.sha[:8] || 'update' }}"
+          git diff --staged --quiet || git commit -m "state: main → ${GITHUB_SHA:0:8}"
           git push origin state
+
+  update-current-md:
+    runs-on: ubuntu-latest
+    # skip if this push IS the CURRENT.md auto-update commit (loop guard)
+    if: ${{ !contains(github.event.head_commit.message, 'chore: CURRENT.md SHA') }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Update work/active/CURRENT.md main SHA line
+        env:
+          SHA: ${{ github.sha }}
+          MSG: ${{ github.event.head_commit.message }}
+          DATE: ${{ github.event.head_commit.timestamp }}
+        run: |
+          SHORT="${SHA:0:8}"
+          DATE_FMT=$(date -u -d "$DATE" +%Y-%m-%d 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$DATE" +%Y-%m-%d 2>/dev/null || echo "$(date -u +%Y-%m-%d)")
+          # Escape special chars in MSG for sed
+          MSG_SAFE=$(printf '%s\n' "$MSG" | sed 's/[&/\]/\\&/g' | head -1)
+          sed -i "s|^\`[0-9a-f]\{8\}\` — origin/main.*|\`${SHORT}\` — origin/main (${DATE_FMT}) — ${MSG_SAFE}|" work/active/CURRENT.md
+
+      - name: Commit and push
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add work/active/CURRENT.md
+          git diff --staged --quiet && echo "No change needed" && exit 0
+          git commit -m "chore: CURRENT.md SHA ${{ github.sha && github.sha || 'update' }} [skip ci]"
+          git push origin main
