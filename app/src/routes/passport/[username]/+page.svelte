@@ -17,45 +17,59 @@
 
   const accuracy = $derived(stats ? (stats.accuracy * 100).toFixed(1) : null);
 
-  const BADGE_LABELS: Record<string, string> = {
-    '7일 연속': '7일 연속',
-    '첫 50 verdict': '첫 50 verdict',
-    '정확도 70%+': '정확도 70%+',
-  };
+  let copied = $state(false);
+
+  const BADGE_DEFS: { key: string; label: string; check: (s: PassportStats) => boolean }[] = [
+    { key: 'first_verdict',  label: '첫 Verdict',    check: (s) => s.verdict_count >= 1 },
+    { key: 'fifty_verdicts', label: '50 Verdict',    check: (s) => s.verdict_count >= 50 },
+    { key: 'seven_streak',   label: '7일 연속',       check: (s) => s.streak_days >= 7 },
+    { key: 'acc_70',         label: '정확도 70%+',    check: (s) => s.accuracy >= 0.7 },
+    { key: 'acc_80',         label: '정확도 80%+',    check: (s) => s.accuracy >= 0.8 },
+  ];
 
   function computeBadges(s: PassportStats): string[] {
+    const serverBadges = new Set(s.badges ?? []);
     const earned: string[] = [];
-    if (s.streak_days >= 7) earned.push('7일 연속');
-    if (s.verdict_count >= 50) earned.push('첫 50 verdict');
-    if (s.accuracy >= 0.7) earned.push('정확도 70%+');
-    // also include server-supplied badges
-    for (const b of s.badges ?? []) {
-      if (!earned.includes(b)) earned.push(b);
+    for (const def of BADGE_DEFS) {
+      if (def.check(s) || serverBadges.has(def.key) || serverBadges.has(def.label)) {
+        earned.push(def.label);
+      }
     }
     return earned;
   }
 
   const earnedBadges = $derived(stats ? computeBadges(stats) : []);
+
+  async function copyShareUrl() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      copied = true;
+      setTimeout(() => { copied = false; }, 2000);
+    } catch {
+      // fallback: select + copy
+    }
+  }
 </script>
 
 <svelte:head>
   <title>@{username} — Cogochi 트레이더</title>
-  <meta name="description" content="@{username} 의 Cogochi 트레이딩 패스포트" />
+  <meta name="description" content="@{username}의 Cogochi 트레이딩 패스포트" />
   {#if stats}
     <meta property="og:title" content="@{username} — Cogochi 트레이더" />
-    <meta property="og:description" content="정확도 {accuracy}% · verdict {stats.verdict_count}개" />
+    <meta property="og:description" content="정확도 {accuracy}% · verdict {stats.verdict_count}개 · {earnedBadges.length}개 배지" />
     <meta property="og:image" content="/api/og/passport/{username}" />
     <meta property="og:type" content="profile" />
+    <meta property="og:url" content="https://cogotchi.com/passport/{username}" />
   {:else}
     <meta property="og:title" content="@{username} — Cogochi" />
     <meta property="og:description" content="Cogochi 트레이더 패스포트" />
   {/if}
   <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://cogotchi.com/passport/{username}" />
 </svelte:head>
 
 <div class="passport-public">
   {#if !stats}
-    <!-- 404 state -->
     <div class="passport-card passport-card--not-found">
       <div class="passport-not-found-icon">?</div>
       <h1 class="passport-username">@{username}</h1>
@@ -74,6 +88,15 @@
           <h1 class="passport-username">@{username}</h1>
           <p class="passport-desc">Cogochi 트레이더</p>
         </div>
+        <button class="share-btn" onclick={copyShareUrl} title="링크 복사">
+          {#if copied}
+            <span class="share-icon">✓</span>
+            <span class="share-label">복사됨</span>
+          {:else}
+            <span class="share-icon">⎘</span>
+            <span class="share-label">공유</span>
+          {/if}
+        </button>
       </header>
 
       <div class="passport-stats">
@@ -98,16 +121,17 @@
         </div>
       {/if}
 
-      {#if earnedBadges.length > 0}
-        <div class="passport-badges">
-          <span class="passport-section-label">Badges</span>
-          <div class="passport-badge-row">
-            {#each earnedBadges as badge}
-              <span class="passport-badge">{BADGE_LABELS[badge] ?? badge}</span>
-            {/each}
-          </div>
+      <div class="passport-badges">
+        <span class="passport-section-label">Badges ({earnedBadges.length} / {BADGE_DEFS.length})</span>
+        <div class="passport-badge-row">
+          {#each BADGE_DEFS as def}
+            {@const earned = earnedBadges.includes(def.label)}
+            <span class="passport-badge" class:passport-badge--earned={earned} class:passport-badge--locked={!earned}>
+              {def.label}
+            </span>
+          {/each}
         </div>
-      {/if}
+      </div>
 
       <a class="passport-cta" href="/cogochi">나도 만들기 →</a>
     </div>
@@ -181,6 +205,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
+    min-width: 0;
   }
 
   .passport-username {
@@ -189,6 +215,9 @@
     color: rgba(255,255,255,0.95);
     margin: 0;
     letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .passport-desc {
@@ -199,6 +228,37 @@
 
   .passport-desc--muted {
     color: rgba(255,255,255,0.3);
+  }
+
+  .share-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    cursor: pointer;
+    color: rgba(255,255,255,0.5);
+    transition: border-color 80ms, color 80ms;
+    flex-shrink: 0;
+  }
+
+  .share-btn:hover {
+    border-color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.8);
+  }
+
+  .share-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .share-label {
+    font-size: var(--ui-text-xs, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
 
   .passport-stats {
@@ -271,10 +331,20 @@
   .passport-badge {
     padding: 5px 12px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.1);
     font-size: var(--ui-text-xs, 0.75rem);
-    color: rgba(255,255,255,0.7);
+    transition: opacity 80ms;
+  }
+
+  .passport-badge--earned {
+    background: rgba(245, 166, 35, 0.12);
+    border: 1px solid rgba(245, 166, 35, 0.35);
+    color: var(--amb, #f5a623);
+  }
+
+  .passport-badge--locked {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.25);
   }
 
   .passport-cta {
