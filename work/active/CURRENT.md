@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`d28b6ef3` — origin/main (2026-05-04) — feat(W-0400 Ph2B): engineSeriesAdapter + /api/indicators proxy + 135-entry registry (#1033)
+`2a2fe318` — origin/main (2026-05-04) — fix(core-loop): duplicate ResearchPanel + real recall API (#1037)
 
 ---
 
@@ -47,6 +47,7 @@
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-0401-verdict-accumulation-flywheel` | P0 | 🟡 설계 완료 #1004, 구현 대기 |
 | `W-0400-tv-indicator-catalog-full` | P1 | ✅ Ph1A/1B/1C/2A/2B 전체 완료 (#1010/#1020/#1024/#1030/#1033) |
+| `W-0395B-cogochi-pages-v2-remaining` | P1 | 🟡 8개 PR 대기 — PR #1038 (핸드오프 문서) CI 대기 |
 
 ---
 
@@ -113,7 +114,8 @@
 
 ```bash
 ./tools/start.sh
-# P0-A: gh pr merge 1023 --squash  (CSS cleanup — 충돌 없음)
-# P0-B: W-0401 구현 또는 W-PF-100 P2 (24h live AC 검증 완료 후)
+# P0-A: W-0401 구현 (설계 완료 #1004)
+# P0-B: W-0395B — 8개 PR 중 PR-A(GTM, S) 또는 PR-G(Decisions, 독립) 먼저
 cat work/active/W-0401-verdict-accumulation-flywheel.md
+cat work/active/W-0395B-cogochi-pages-v2-remaining.md
 ```
