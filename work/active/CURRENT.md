@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`dfe79a9f` — origin/main (2026-05-03) — feat(W-0364): Upstash distributed rate limiter + engine SWR cache (#933)
+`b7679065` — origin/main (2026-05-03) — feat(W-0391-D): Dashboard Alert Strip — OI/FR/Kimchi real-time alerts (#939)
 
 ---
 
@@ -33,9 +33,15 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0391-ux-master-overhaul` | P1 | 🟠 In Progress |
+| `W-0391-A-chart-accuracy` | P1 | ✅ Merged #940 |
+| `W-0391-B-landing-gtm` | P1 | ✅ Merged #941 |
+| `W-0391-D-dashboard-alerts` | P1 | ✅ Merged #939 |
+| `W-0391-E-verdict-passport` | P2 | 🔄 PR #944 CI 대기 |
+| `W-0391-C-tv-import` | P2 | 🔴 Blocked (OQ-1) |
+| `W-0391-F-commandpalette-onboarding` | P1 | ✅ Merged #941 |
 | `W-0388-eslint-hub-boundaries` | P2 | 🟡 Design Draft |
-| `W-0390-quant-ux-data-layer` | P2 | 🟡 Design Draft |
-| `W-0371-tv-chart-import-gateway` | P2 | 🟡 Design Draft |
+| `W-0390-quant-ux-data-layer` | P2 | ✅ Merged #936 |
 
 ---
 
@@ -64,7 +70,11 @@
 완료:  W-A108 ✅ — verification framework CI gates + 13 typography tests (#926)
 완료:  W-0364 ✅ — Upstash distributed rate limiter + engine SWR cache (#933)
 완료:  W-0304 ✅ — per-pane indicator store + ChartPane paneId prop (#934)
-즉시:  W-0390 — quant UX data layer (SignalFeed Phase 2 배지 + chart pane indicator wiring)
+완료:  W-0390 ✅ — quant UX data layer TopBar L2 OI/FR/Kimchi + keyboard shortcuts (#936)
+완료:  W-0391-A ✅ — client RSI/MACD/BB calc + crosshair rAF throttle (#940)
+완료:  W-0391-BF ✅ — analytics.ts + ⌘K CommandPalette 5액션 + Landing track (#941)
+완료:  W-0391-D ✅ — Dashboard Alert Strip OI/FR/Kimchi 실시간 (#939)
+진행:  W-0391-E 🔄 — Verdict swipe + Passport 공개 URL (PR #944 CI 대기)
 ```
 
 ---
