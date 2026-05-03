@@ -45,11 +45,8 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
-| `W-0401-verdict-accumulation-flywheel` | P0 | ✅ P1+P2+P3 완료 (#1028/#1032) |
-| `W-0400-tv-indicator-catalog-full` | P1 | ✅ Ph1A/1B/1C/2A/2B 전체 완료 (#1010/#1020/#1024/#1030/#1033) |
 | `W-0395B-cogochi-pages-v2-remaining` | P1 | 🟡 8개 PR 대기 — PR #1038 CI 대기 |
-| `W-1003-karpathy-token-efficient` | P2 | ✅ #1029 MERGED |
-| `W-1004-agent-isolation` | P2 | ✅ #1034 MERGED |
+| `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 
 ---
 
