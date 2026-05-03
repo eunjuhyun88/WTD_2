@@ -4016,6 +4016,10 @@ export interface components {
             block_scores?: {
                 [key: string]: unknown;
             };
+            /** Verdict Json */
+            verdict_json?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** ChallengeCreateRequest */
         ChallengeCreateRequest: {

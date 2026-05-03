@@ -19,6 +19,7 @@
 		min_sample_pass: boolean;
 		warnings: string[];
 		filter_dropoff: Array<{ filter: string; retained_pct: number }>;
+		suggested_relaxations?: string[];
 	}
 
 	interface Draft {
