@@ -2,6 +2,8 @@
 
 Returns the current active Layer C model version and its eval metrics,
 or {"status": "off"} if no model is trained and active yet.
+
+W-0394 PR2 — auto-train pipeline status endpoint.
 """
 from __future__ import annotations
 
