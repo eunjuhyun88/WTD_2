@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`9cfe7a72` — origin/main (2026-05-04) — feat(W-0400 Ph1C): catalogFavorites localStorage + Recents/Favorites sections (#1024)
+`d28b6ef3` — origin/main (2026-05-04) — feat(W-0400 Ph2B): engineSeriesAdapter + /api/indicators proxy + 135-entry registry (#1033)
 
 ---
 
@@ -46,7 +46,7 @@
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-0401-verdict-accumulation-flywheel` | P0 | 🟡 설계 완료 #1004, 구현 대기 |
-| `W-0400-tv-indicator-catalog-full` | P1 | 🟡 Ph1A/1B/1C 완료, Ph2A 대기 |
+| `W-0400-tv-indicator-catalog-full` | P1 | ✅ Ph1A/1B/1C/2A/2B 전체 완료 (#1010/#1020/#1024/#1030/#1033) |
 
 ---
 
