@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import KpiCard from './panels/KpiCard.svelte';
   import EquityCurve from './panels/EquityCurve.svelte';
+  import DecisionsTable from './panels/DecisionsTable.svelte';
   import HoldTimeStrip from '$lib/components/shared/HoldTimeStrip.svelte';
 
   interface AgentStats {
@@ -144,13 +145,13 @@
           Overview
         </button>
         <button
-          class="tab-item tab-item--disabled"
+          class="tab-item"
+          class:tab-item--active={activeTab === 'decisions'}
           role="tab"
-          aria-selected={false}
-          aria-disabled="true"
-          disabled
+          aria-selected={activeTab === 'decisions'}
+          onclick={() => (activeTab = 'decisions')}
         >
-          Decisions <span class="tab-soon">준비 중</span>
+          Decisions
         </button>
         <button
           class="tab-item tab-item--disabled"
@@ -164,6 +165,10 @@
       </nav>
 
       <!-- Tab content: Overview -->
+      {#if activeTab === 'decisions'}
+        <DecisionsTable agentId={agentStats?.agent_id ?? ''} />
+      {/if}
+
       {#if activeTab === 'overview'}
         <div class="overview-section">
           <div class="overview-card">
