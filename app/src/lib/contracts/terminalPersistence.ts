@@ -169,7 +169,7 @@ export const TerminalSessionResponseSchema = z.object({
 });
 export type TerminalSessionResponse = z.infer<typeof TerminalSessionResponseSchema>;
 
-export const PatternCaptureOriginSchema = z.enum(['manual', 'alert', 'anomaly', 'pattern_transition']);
+export const PatternCaptureOriginSchema = z.enum(['manual', 'alert', 'anomaly', 'pattern_transition', 'range_mode_save']);
 export type PatternCaptureOrigin = z.infer<typeof PatternCaptureOriginSchema>;
 
 export const PatternCaptureContextKindSchema = z.enum(['symbol', 'alert', 'anomaly', 'preset', 'compare']);
@@ -379,6 +379,7 @@ export const PatternCaptureCreateRequestSchema = z.object({
   researchContext: PatternCaptureResearchContextSchema.optional(),
   evidenceHash: z.string().optional(),
   sourceFreshness: z.record(z.string(), z.string()).default({}),
+  verdictJson: z.record(z.string(), z.any()).optional(),
 });
 export type PatternCaptureCreateRequest = z.infer<typeof PatternCaptureCreateRequestSchema>;
 

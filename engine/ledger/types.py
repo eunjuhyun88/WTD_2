@@ -71,6 +71,11 @@ class PatternOutcome:
     entry_threshold_passed: bool | None = None
     entry_ml_error: str | None = None
 
+    # v4: Verdict-provided entry/stop/target (W-0392)
+    verdict_entry: float | None = None
+    verdict_stop: float | None = None
+    verdict_target: float | None = None
+
     # v2: Evaluation config
     evaluation_window_hours: float = 72.0    # configurable per pattern
 
