@@ -98,7 +98,7 @@ jobs:
 
       - name: Stylelint font-size gate (≤ 400 violations)
         run: |
-          RAW=$(pnpm stylelint 2>&1)
+          RAW=$(pnpm stylelint 2>&1 || true)
           COUNT=$(echo "$RAW" | grep -c "declaration-property" || true)
           COUNT=$(echo "$COUNT" | tr -d ' \n')
           echo "font-size violations: $COUNT (budget 400)"
