@@ -1143,7 +1143,7 @@
       {/each}
     </div>
     {#if mobileView !== 'chart'}
-    <div class="mobile-panel" ontouchstart={onSwipeStart} ontouchend={onSwipeEnd}>
+    <div class="mobile-panel" role="region" aria-label="Mobile panel" ontouchstart={onSwipeStart} ontouchend={onSwipeEnd}>
       {#if mobileView === 'verdict'}
         {#if chartLoading}
           <div class="mobile-loading">
@@ -2231,16 +2231,6 @@
   .ev-key { font-size: var(--ui-text-xs); color: var(--g7); width: 80px; }
   .ev-val { font-size: 11px; color: var(--g9); font-weight: 600; }
 
-  .analyze-action-btn.ai {
-    border-color: color-mix(in srgb, var(--amb) 34%, var(--g4));
-    background: color-mix(in srgb, var(--amb) 10%, var(--g1));
-  }
-
-  .analyze-action-btn.ai:hover {
-    border-color: color-mix(in srgb, var(--amb) 52%, var(--g4));
-    background: color-mix(in srgb, var(--amb) 14%, var(--g2));
-  }
-
   .proposal-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: var(--ui-text-xs);
@@ -2267,8 +2257,6 @@
   /* ── SCAN panel (trade_scan.jsx) ── */
 
   @keyframes scan-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-
-  .scan-card.active { background: var(--g2); border-color: var(--sc); box-shadow: 0 0 0 0.5px var(--sc); }
 
   @keyframes skeleton-fade { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
@@ -2318,10 +2306,6 @@
   }
   .outcome-btn:hover { border-color: var(--g5); color: var(--g8); }
   .outcome-btn.active { background: var(--obg); color: var(--oc); border-color: var(--oc); }
-
-  .rj-pos.active { background: var(--pos-d); border-color: var(--pos); }
-
-  .rj-neg.active { background: var(--neg-d); border-color: var(--neg); }
 
   /* PeekBar rich summary */
   .pb-sep { font-size: var(--ui-text-xs); color: var(--g5); flex-shrink: 0; }
@@ -2726,41 +2710,6 @@
     color: var(--g5);
   }
 
-  /* ── Analyze workspace: bottom owns verification/comparison/refinement ── */
-
-  .workspace-thesis .bull { color: var(--pos); font-weight: 700; }
-
-  .phase-node.active {
-    border-color: color-mix(in srgb, var(--amb) 55%, var(--g4));
-    background: color-mix(in srgb, var(--amb) 11%, var(--g0));
-  }
-
-  .phase-node.active .phase-dot { background: var(--amb); box-shadow: 0 0 0 4px var(--amb-dd); }
-
-  .phase-node.active .phase-label { color: var(--g9); font-weight: 700; }
-
-  .dom-row.mid {
-    min-height: 16px;
-    border-block: 0.5px solid color-mix(in srgb, var(--amb) 32%, var(--g4));
-    color: var(--g9);
-    background: rgba(232,184,106,0.055);
-  }
-
-  .footprint-row.buy span:nth-child(4) { color: var(--pos); font-weight: 900; }
-  .footprint-row.sell span:nth-child(4) { color: var(--neg); font-weight: 900; }
-
-  .heat-cell.buy {
-    color: var(--pos);
-    background: linear-gradient(180deg, rgba(74,187,142,0.95), rgba(74,187,142,0.32));
-  }
-  .heat-cell.sell {
-    color: var(--neg);
-    background: linear-gradient(180deg, rgba(226,91,91,0.95), rgba(226,91,91,0.3));
-  }
-
-  .judgment-option.tone-pos { border-color: color-mix(in srgb, var(--pos) 40%, var(--g4)); color: var(--pos); }
-  .judgment-option.tone-neg { border-color: color-mix(in srgb, var(--neg) 40%, var(--g4)); color: var(--neg); }
-
   /* Visual salvage pass: less card noise, more trading-terminal density. */
   .trade-mode {
     background:
@@ -2892,10 +2841,6 @@
     background: rgba(255,255,255,0.026);
   }
 
-  .phase-node.active {
-    background: rgba(232,184,106,0.105);
-  }
-
   .hud-card {
     margin: 0 8px;
     padding: 8px;
@@ -2973,10 +2918,6 @@
     height: 28px;
     padding: 0 12px;
     gap: 8px;
-  }
-
-  .observe-mode .pattern {
-    opacity: 0.52;
   }
 
   .observe-mode .ind-label-hdr {

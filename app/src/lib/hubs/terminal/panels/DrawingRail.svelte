@@ -43,7 +43,7 @@
   }
 </script>
 
-<aside class="drawing-rail" role="toolbar" aria-label="Drawing tools">
+<div class="drawing-rail" role="toolbar" aria-label="Drawing tools">
   {#each TOOLS as tool (tool.key)}
     <button
       class="dr-btn"
@@ -76,7 +76,7 @@
       aria-label="Clear all drawings"
     >⌫</button>
   {/if}
-</aside>
+</div>
 
 <style>
   .drawing-rail {

@@ -628,10 +628,6 @@
     gap: 6px;
   }
 
-  .tab-bar.tab-bar-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .tab-bar.tab-bar-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

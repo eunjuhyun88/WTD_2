@@ -114,7 +114,7 @@
 {#if open}
   <div class="overlay" onclick={onClose} role="presentation"></div>
 
-  <aside class="library" role="dialog" aria-label="Indicator library" aria-modal="false" onkeydown={onKey}>
+  <div class="library" role="dialog" aria-label="Indicator library" aria-modal="false" tabindex="-1" onkeydown={onKey}>
     <header class="lib-head">
       <span class="lib-title">INDICATORS</span>
       <span class="lib-count">{totalMatches}</span>
@@ -211,7 +211,7 @@
         {/if}
       {/each}
     </div>
-  </aside>
+  </div>
 {/if}
 
 <style>

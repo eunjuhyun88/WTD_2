@@ -113,7 +113,7 @@
 
 <svelte:window onkeydown={onKey} />
 
-<aside class="range-toast" role="dialog" aria-label="Range actions">
+<div class="range-toast" role="dialog" aria-label="Range actions">
   <div class="rt-head">
     <span class="rt-title">RANGE</span>
     <span class="rt-meta">
@@ -157,7 +157,7 @@
       {/each}
     </ul>
   {/if}
-</aside>
+</div>
 
 <style>
   .range-toast {

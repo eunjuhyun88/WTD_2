@@ -67,10 +67,8 @@
     <div
       class="split-handle"
       onmousedown={onMousedown}
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Resize panel"
-      tabindex="0"
+      role="presentation"
+      aria-hidden="true"
     ></div>
     <div class="split-right">
       {@render rightPane()}

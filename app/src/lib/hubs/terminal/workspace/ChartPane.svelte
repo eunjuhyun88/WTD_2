@@ -102,11 +102,14 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="chart-pane"
   class:active
+  role="region"
+  aria-label="Chart pane"
   onclick={handlePaneClick}
+  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handlePaneClick(); }}
 >
   <!-- Pane header: symbol badge + tf badge + close button -->
   <div class="pane-header" role="toolbar" aria-label="Chart pane controls">

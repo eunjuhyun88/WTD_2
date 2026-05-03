@@ -38,7 +38,7 @@
     aria-label="Close drawer"
     onclick={onBackdropClick}
   ></button>
-  <aside
+  <div
     class="drawer"
     style:width={`${width}px`}
     role="dialog"
@@ -56,7 +56,7 @@
     <div class="drawer-body">
       {#if children}{@render children()}{/if}
     </div>
-  </aside>
+  </div>
 {/if}
 
 <style>

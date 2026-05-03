@@ -48,12 +48,14 @@
 </script>
 
 <li class="symbol-item">
-  <button
-    type="button"
+  <div
     class="symbol-row"
     class:active
     class:focused
+    role="button"
+    tabindex="0"
     onclick={() => onSelect(sym)}
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(sym); }}
     title={sym}
   >
     <span class="sym-name">{shortName(sym)}</span>
@@ -100,7 +102,7 @@
         aria-label="Remove {sym}"
       >×</button>
     {/if}
-  </button>
+  </div>
 </li>
 
 <style>

@@ -8,6 +8,7 @@
    * - Persisted: open state + height + active tab in localStorage.
    */
   import { onMount } from 'svelte';
+  import type { Snippet } from 'svelte';
 
   type Tab = 'analyze' | 'scan' | 'judge';
 
@@ -15,11 +16,17 @@
     analyzeCount?: number;
     scanCount?: number;
     judgeCount?: number;
+    analyze?: Snippet;
+    scan?: Snippet;
+    judge?: Snippet;
   }
   let {
     analyzeCount = 0,
     scanCount = 0,
     judgeCount = 0,
+    analyze,
+    scan,
+    judge,
   }: Props = $props();
 
   // ── State ───────────────────────────────────────────────────────────────
@@ -143,11 +150,11 @@
   {#if open}
     <div class="drawer">
       {#if activeTab === 'analyze'}
-        <slot name="analyze" />
+        {@render analyze?.()}
       {:else if activeTab === 'scan'}
-        <slot name="scan" />
+        {@render scan?.()}
       {:else if activeTab === 'judge'}
-        <slot name="judge" />
+        {@render judge?.()}
       {/if}
     </div>
   {/if}

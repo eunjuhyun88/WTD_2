@@ -397,76 +397,6 @@
     padding: 8px 16px 0;
   }
 
-  /* ── Alert Strip (W-0390 Phase 5) ── */
-  .dash-alert-strip {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 0 16px;
-    height: 48px;
-    background: var(--g0, #080706);
-    border-bottom: 1px solid var(--g3, #1c1918);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: var(--ui-text-xs, 11px);
-    overflow-x: auto;
-    flex-shrink: 0;
-  }
-
-  .dash-alert-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-    color: var(--g7);
-    padding: 3px 8px;
-    border: 0.5px solid var(--g4);
-    border-radius: 3px;
-    background: var(--g1);
-  }
-  .dash-alert-item.oi-up { color: #22AB94; border-color: rgba(34,171,148,.3); }
-  .dash-alert-item.oi-dn { color: #F23645; border-color: rgba(242,54,69,.3); }
-  .dash-alert-item.fr-hi { color: var(--amb, #d6a347); border-color: rgba(214,163,71,.3); }
-  .dash-alert-item.fr-lo { color: #38bdf8; border-color: rgba(56,189,248,.3); }
-
-  /* ── Kimchi Bar (W-0390 Phase 5) ── */
-  .dash-kimchi-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 16px;
-    height: 48px;
-    background: var(--g1, #0c0a09);
-    border-bottom: 1px solid var(--g3, #1c1918);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: var(--ui-text-xs, 11px);
-    flex-shrink: 0;
-  }
-
-  .kimchi-label {
-    color: var(--g5);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-size: var(--ui-text-xs);
-  }
-
-  .kimchi-value {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--g8);
-    letter-spacing: 0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-  .kimchi-value.kim-hot { color: var(--amb, #d6a347); }
-  .kimchi-value.kim-cold { color: #38bdf8; }
-
-  .kimchi-arrow { font-size: var(--ui-text-xs); margin-left: 2px; }
-
-  .kimchi-hint {
-    color: var(--g5);
-    font-size: var(--ui-text-xs);
-    margin-left: 4px;
-  }
-
   /* ── Trader Strips ── */
   .trader-strip {
     display: flex;
@@ -760,110 +690,6 @@
     font-size: 0.82rem;
   }
 
-  .challenge-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-
-  .challenge-card {
-    display: grid;
-    gap: 16px;
-    text-align: left;
-    cursor: pointer;
-    transition: transform var(--sc-duration-fast), border-color var(--sc-duration-fast);
-  }
-
-  .challenge-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(249, 216, 194, 0.2);
-  }
-
-  .challenge-top,
-  .challenge-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    gap: 10px;
-  }
-
-  .challenge-top strong {
-    display: block;
-    margin-top: 2px;
-    color: var(--sc-text-0);
-    font-size: 1.05rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-  }
-
-  .challenge-stats {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .challenge-stats strong {
-    display: block;
-    margin-top: 3px;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--sc-text-0);
-  }
-
-  .progress-block {
-    display: grid;
-    gap: 6px;
-  }
-
-  .progress-track {
-    height: 5px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-  }
-
-  .progress-fill {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, rgba(255, 127, 133, 0.92), rgba(249, 216, 194, 0.84));
-  }
-
-  .untested-copy,
-  .empty-card p {
-    margin: 0;
-    color: var(--sc-text-1);
-    font-size: 0.88rem;
-    line-height: 1.5;
-  }
-
-  .surface-code {
-    display: inline-flex;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 8px 10px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--sc-text-1);
-    font-size: 0.82rem;
-  }
-
-  .empty-card {
-    display: grid;
-    gap: 12px;
-    justify-items: start;
-  }
-
-  @media (max-width: 960px) {
-    .challenge-stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-
   @media (max-width: 640px) {
     .dashboard-title-stack {
       align-items: flex-start;
@@ -872,16 +698,6 @@
     }
     .dashboard-workbar-note {
       white-space: normal;
-    }
-    .challenge-grid {
-      grid-template-columns: 1fr;
-    }
-    .challenge-card {
-      gap: 12px;
-    }
-    .surface-code {
-      white-space: normal;
-      word-break: break-word;
     }
     .topbar-actions {
       width: 100%;

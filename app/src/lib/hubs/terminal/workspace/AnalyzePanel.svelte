@@ -318,49 +318,6 @@
 
   /* Chart section */
 
-  .ind-tog.active {
-    background: rgba(122,162,224,0.1);
-    border-color: rgba(122,162,224,0.4);
-    color: #7aa2e0;
-  }
-
-  .micro-toggle-btn.active {
-    color: #d9edf8;
-    background: linear-gradient(135deg, rgba(74,187,142,0.22), rgba(122,162,224,0.18));
-    box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--pos) 38%, var(--g4));
-  }
-
-  .micro-stat.buy { color: var(--pos); }
-  .micro-stat.sell { color: var(--neg); }
-
-  .micro-heat-cell.buy { color: var(--pos); background: var(--pos); }
-  .micro-heat-cell.sell { color: var(--neg); background: var(--neg); }
-
-  .micro-depth-row.mid {
-    color: var(--g9);
-    font-weight: 800;
-  }
-
-  .micro-heat-strip.active, .micro-depth-strip.active {
-    border-color: color-mix(in srgb, var(--amb) 48%, var(--g4));
-    box-shadow: inset 0 0 0 1px rgba(232,184,106,0.08);
-  }
-
-  /* PEEK bar */
-
-  /* W-0122-Phase3: small confluence chip appended to peek-bar */
-
-  .pb-tab.active {
-    background: var(--g1);
-    border-bottom-color: var(--tc);
-  }
-
-  .pb-tab.active .pb-n { color: var(--tc); opacity: 0.7; }
-
-  .pb-tab.active .pb-label { color: var(--g9); }
-
-  .pb-tab.active .pb-chevron { color: var(--tc); }
-
   /* PEEK overlay */
 
   @keyframes peekSlide {
@@ -368,22 +325,7 @@
     to { transform: translateY(0); opacity: 1; }
   }
 
-  /* Drawer header */
-
-  .dh-tab.active {
-    background: var(--g1);
-    border-top-color: var(--tc);
-  }
-
-  .dh-tab.active .dh-n { color: var(--tc); opacity: 0.7; }
-
-  .dh-tab.active .dh-label { color: var(--g9); }
-
-  /* Drawer content */
-
   /* ANALYZE workspace shared primitives */
-
-  .narrative .bull { color: var(--pos); font-weight: 600; }
 
   .analyze-action-btn {
     display: flex;
@@ -440,57 +382,7 @@
 
   @keyframes scan-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 
-  .scan-card.active { background: var(--g2); border-color: var(--sc); box-shadow: 0 0 0 0.5px var(--sc); }
-
   @keyframes skeleton-fade { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-
-  /* ── ACT panel (trade_act.jsx) ── */
-
-  /* Plan col */
-
-  /* Judge col */
-
-  .judge-btn.agree.active { background: rgba(52,196,112,0.18); border-color: var(--pos); box-shadow: inset 0 0 0 0.5px var(--pos); }
-
-  .judge-btn.disagree.active { background: rgba(248,81,73,0.18); border-color: var(--neg); box-shadow: inset 0 0 0 0.5px var(--neg); }
-
-  /* After col */
-
-  .outcome-btn.active { background: var(--obg); color: var(--oc); border-color: var(--oc); }
-
-  .rj-pos.active { background: var(--pos-d); border-color: var(--pos); }
-
-  .rj-neg.active { background: var(--neg-d); border-color: var(--neg); }
-
-  /* PeekBar rich summary */
-
-  /* MiniChart */
-
-  /* ── Layout switcher strip ─────────────────────────────────────────────── */
-
-  /* scan-row: compact horizontal scan item for C sidebar */
-
-  .scan-row.active { background: var(--g2); }
-
-  /* ── Layout C — chart + peek bar + sidebar (merged C+D) ─────────────────── */
-
-  /* merged layout: chart-section.lc-main = left pane (chart + peek) */
-
-  /* Responsive: hide sidebar below 860px, chart-section goes full width */
-  
-
-  /* ── Decision HUD: right rail owns conclusions only ───────────────────── */
-
-  .hud-action.active {
-    background: var(--g2);
-    border-color: var(--brand);
-    color: var(--g9);
-  }
-
-  .hud-action.ai {
-    border-color: color-mix(in srgb, var(--amb) 34%, var(--g4));
-    color: var(--amb);
-  }
 
   /* ── Analyze workspace: bottom owns verification/comparison/refinement ── */
   .workspace-body {
@@ -897,19 +789,6 @@
 
   /* Visual salvage pass: less card noise, more trading-terminal density. */
 
-  .micro-toggle-btn.active {
-    color: #f3d58d;
-    background: rgba(232,184,106,0.105);
-    box-shadow: inset 0 0 0 1px rgba(232,184,106,0.22);
-  }
-
-  .pb-tab.active {
-    background: rgba(255,255,255,0.028);
-  }
-
-  .dh-tab.active {
-    background: rgba(255,255,255,0.026);
-  }
   .workspace-body {
     padding: 8px;
     gap: 8px;
@@ -955,27 +834,6 @@
     min-height: 13px;
   }
 
-  .multichart-toggle.active {
-    border-color: rgba(59,130,246,0.5);
-    background: rgba(59,130,246,0.12);
-    color: #93c5fd;
-  }
-  .multichart-toggle.active:hover {
-    border-color: rgba(59,130,246,0.7);
-    background: rgba(59,130,246,0.2);
-    color: #bfdbfe;
-  }
-
-  .observe-mode :global(.chart-live .chart-toolbar), .observe-mode :global(.chart-live .chart-header--tv) {
-    display: none !important;
-  }
-
-  .observe-mode :global(.chart-live .chart-board) {
-    border: none !important;
-    border-radius: 0 !important;
-    background: #0f131d !important;
-  }
-
   @media (max-width: 1120px) {
 
     .workspace-hero, .market-depth-grid, .workspace-grid, .workspace-bottom-grid {
@@ -994,12 +852,6 @@
   }
 
   /* ── Mobile layout ── */
-
-  .mts-tab.active {
-    color: var(--brand);
-    background: var(--g1);
-    border-top: 1.5px solid var(--brand);
-  }
 
   /* ── Accessibility: Screen reader only text ── */
 
