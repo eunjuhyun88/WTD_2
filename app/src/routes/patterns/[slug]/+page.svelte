@@ -1,7 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { page } from '$app/stores';
-  import { flattenPatternStates } from '$lib/contracts';
   import type { PatternStateView } from '$lib/contracts';
   import type { PatternStats } from '$lib/types/patternStats';
   import type { PnLStats } from '$lib/types/pnlStats';
@@ -9,8 +6,7 @@
   import PatternStatsCard from '$lib/components/patterns/PatternStatsCard.svelte';
   import PatternEquityCurve from '$lib/components/patterns/PatternEquityCurve.svelte';
   import TradeHistoryTab from '$lib/components/patterns/TradeHistoryTab.svelte';
-
-  const slug = $derived($page.params.slug ?? '');
+  import type { PageData } from './$types';
 
   interface Transition {
     transition_id: string;
@@ -23,64 +19,21 @@
     transitioned_at: string | null;
     confidence: number;
   }
-  let states = $state<PatternStateView[]>([]);
-  let transitions = $state<Transition[]>([]);
-  let stats = $state<PatternStats | null>(null);
-  let pnlStats = $state<PnLStats | null>(null);
-  let pnlLoading = $state(true);
-  let loading = $state(true);
-  let error = $state<string | null>(null);
 
-  // Phase distribution: count symbols per phase_id
-  let phaseCounts = $derived(
+  const { data }: { data: PageData } = $props();
+
+  const slug = data.slug;
+  let states = $state<PatternStateView[]>(data.states);
+  let transitions = $state<Transition[]>(data.transitions);
+  let stats = $state<PatternStats | null>(data.stats);
+  let pnlStats = $state<PnLStats | null>(data.pnlStats);
+
+  const phaseCounts = $derived(
     states.reduce((acc: Record<string, number>, s) => {
       acc[s.phaseId] = (acc[s.phaseId] ?? 0) + 1;
       return acc;
-    }, {})
+    }, {}),
   );
-
-  async function loadAll() {
-    loading = true;
-    pnlLoading = true;
-    error = null;
-    try {
-      const [statesRes, transRes, statsRes, pnlRes] = await Promise.allSettled([
-        fetch(`/api/patterns/states`),
-        fetch(`/api/patterns/transitions?slug=${encodeURIComponent(slug)}&limit=30`),
-        fetch(`/api/patterns/${encodeURIComponent(slug)}/stats`),
-        fetch(`/api/patterns/${encodeURIComponent(slug)}/pnl-stats`),
-      ]);
-
-      if (statesRes.status === 'fulfilled' && statesRes.value.ok) {
-        const d = await statesRes.value.json();
-        states = flattenPatternStates(d)
-          .filter((state) => state.patternSlug === slug)
-          .sort((a, b) => b.phaseIdx - a.phaseIdx);
-      }
-
-      if (transRes.status === 'fulfilled' && transRes.value.ok) {
-        const d = await transRes.value.json();
-        transitions = (d.transitions ?? []) as Transition[];
-      }
-
-      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
-        const d = await statsRes.value.json();
-        stats = d ?? null;
-      }
-
-      if (pnlRes.status === 'fulfilled' && pnlRes.value.ok) {
-        const d = await pnlRes.value.json();
-        pnlStats = d ?? null;
-      }
-    } catch (e) {
-      error = String(e);
-    } finally {
-      loading = false;
-      pnlLoading = false;
-    }
-  }
-
-  onMount(loadAll);
 
   function fmt(iso: string | null): string {
     if (!iso) return '—';
@@ -92,10 +45,18 @@
       return iso;
     }
   }
+
+  const slugTitle = slug.replace(/-v\d+$/, '').replace(/-/g, ' ');
+  const hitRate = stats?.hit_rate != null ? `${(stats.hit_rate * 100).toFixed(0)}% hit rate` : '';
 </script>
 
 <svelte:head>
-  <title>{slug} — Pattern Detail</title>
+  <title>{slugTitle} — Pattern Detail · Cogochi</title>
+  <meta name="description" content="Pattern analysis for {slugTitle}.{hitRate ? ` ${hitRate} across ${stats?.total_instances ?? 0} instances.` : ''}" />
+  <meta property="og:title" content="{slugTitle} Pattern — Cogochi" />
+  <meta property="og:description" content="{hitRate ? `${hitRate} · ` : ''}{states.length} active symbols tracking this pattern." />
+  <meta property="og:type" content="article" />
+  <link rel="canonical" href="https://cogotchi.com/patterns/{slug}" />
 </svelte:head>
 
 <main>
@@ -104,13 +65,8 @@
     <h1>{slug}</h1>
   </header>
 
-  {#if loading}
-    <p class="loading">Loading…</p>
-  {:else if error}
-    <p class="error">{error}</p>
-  {:else}
     <section class="section">
-      <PatternLifecycleCard slug={slug} ontransition={loadAll} />
+      <PatternLifecycleCard {slug} />
     </section>
 
     <!-- Stats strip -->
@@ -139,7 +95,7 @@
     <section class="section">
       <div class="pnl-row">
         <div class="pnl-card-wrap">
-          <PatternStatsCard stats={pnlStats} loading={pnlLoading} />
+          <PatternStatsCard stats={pnlStats} loading={false} />
         </div>
         {#if pnlStats && pnlStats.equity_curve.length >= 2}
           <div class="equity-wrap">
@@ -227,8 +183,6 @@
         </table>
       {/if}
     </section>
-
-  {/if}
 </main>
 
 <style>
