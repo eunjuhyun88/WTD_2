@@ -23,6 +23,13 @@ export interface FlywheelHealth {
   promotion_gate_pass_rate_30d: number;
 }
 
+export interface UserStats {
+  accuracy: number | null;
+  pass: boolean;
+  verdicts_remaining: number;
+  min_verdicts: number;
+}
+
 export interface OpportunityScore {
   symbol: string;
   name: string;
@@ -47,7 +54,7 @@ export interface OpportunityScore {
 export const load: PageServerLoad = async ({ locals }) => {
   const userId = locals.user?.id;
 
-  const [verdictResp, flywheelResp, opportunityResp] = await Promise.allSettled([
+  const [verdictResp, flywheelResp, opportunityResp, userStatsResp] = await Promise.allSettled([
     userId
       ? engineFetch(`/captures?user_id=${encodeURIComponent(userId)}&status=outcome_ready&limit=50`, {
           signal: AbortSignal.timeout(5000),
@@ -65,8 +72,13 @@ export const load: PageServerLoad = async ({ locals }) => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ limit: 10, user_id: userId ?? null }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(5000),
     }),
+    userId
+      ? engineFetch(`/users/${encodeURIComponent(userId)}/f60-status`, {
+          signal: AbortSignal.timeout(3000),
+        })
+      : Promise.resolve(new Response('null', { status: 200 })),
   ]);
 
   let pendingVerdicts: CaptureRow[] = [];
@@ -93,5 +105,23 @@ export const load: PageServerLoad = async ({ locals }) => {
     opportunityPersonalized = !!userId && topOpportunities.length > 0;
   }
 
-  return { pendingVerdicts, flywheelHealth, topOpportunities, macroRegime, opportunityPersonalized };
+  let userStats: UserStats | null = null;
+  if (userStatsResp.status === 'fulfilled' && userStatsResp.value.ok) {
+    const raw = (await userStatsResp.value.json()) as {
+      accuracy?: number;
+      pass?: boolean;
+      verdicts_remaining?: number;
+      min_verdicts?: number;
+    } | null;
+    if (raw && typeof raw === 'object') {
+      userStats = {
+        accuracy: raw.accuracy ?? null,
+        pass: raw.pass ?? false,
+        verdicts_remaining: raw.verdicts_remaining ?? 0,
+        min_verdicts: raw.min_verdicts ?? 0,
+      };
+    }
+  }
+
+  return { pendingVerdicts, flywheelHealth, topOpportunities, macroRegime, opportunityPersonalized, userStats };
 };

@@ -2,14 +2,13 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { buildCanonicalHref } from '$lib/seo/site';
-  import { allStrategies, setActiveStrategy } from '$lib/stores/strategyStore';
-  import type { StrategyEntry } from '$lib/stores/strategyStore';
-  import { MARKET_CYCLES } from '$lib/data/cycles';
+  import { allStrategies } from '$lib/stores/strategyStore';
   import { priceStore } from '$lib/stores/priceStore';
   import { walletStore, openWalletModal } from '$lib/stores/walletStore';
   import KimchiPremiumBadge from '$lib/components/market/KimchiPremiumBadge.svelte';
   import DashActivityGrid from '$lib/components/dashboard/DashActivityGrid.svelte';
-  import { AlertStrip } from '$lib/hubs/dashboard';
+  import { AlertStrip, OpportunityCard, StatsZone, SystemStatusZone } from '$lib/hubs/dashboard';
+  import { track } from '$lib/analytics';
   import type { CaptureRow, OpportunityScore } from './+page.server';
 
   interface PassportSummary {
@@ -34,12 +33,20 @@
         if (d.passport) passport = d.passport;
       }
     } catch { /* silent */ }
+
+    track('dashboard_view', {
+      opportunities_count: topOpportunities.length,
+      streak: passport?.streak ?? 0,
+    });
   });
 
   const sourcePendingVerdicts = $derived(data.pendingVerdicts ?? []);
   const topOpportunities = $derived((data.topOpportunities ?? []) as OpportunityScore[]);
   const macroRegime = $derived(data.macroRegime ?? 'neutral');
   const opportunityPersonalized = $derived(data.opportunityPersonalized ?? false);
+  const userStats = $derived(data.userStats ?? null);
+  const flywheelHealth = $derived(data.flywheelHealth ?? null);
+  const top3Opportunities = $derived(topOpportunities.slice(0, 3));
 
   let pendingVerdicts = $state<CaptureRow[]>([]);
   $effect(() => {
@@ -125,23 +132,9 @@
     return `${sign}${v.toFixed(1)}%`;
   }
 
-  function fmtNum(v: number | null | undefined): string {
-    if (v == null) return '—';
-    return v.toFixed(2);
-  }
-
   function fmtPrice(v: number): string {
     if (!v) return '—';
     return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  }
-
-  function pnlClass(v: number | null | undefined): string {
-    if (v == null) return '';
-    return v >= 0 ? 'surface-value-positive' : 'surface-value-negative';
-  }
-
-  function cyclesTested(entry: StrategyEntry): number {
-    return entry.lastResult?.cycleBreakdown.length ?? 0;
   }
 
   function timeSince(ms: number): string {
@@ -155,75 +148,6 @@
     return `${days}d ago`;
   }
 
-  function goToLab(strategyId: string) {
-    setActiveStrategy(strategyId);
-    goto('/lab');
-  }
-
-  // ── Phase 5: Alert Strip + Kimchi bar ──────────────────────────────
-  interface AlertItem { sym: string; kind: 'OI' | 'FR'; label: string; value: number; }
-
-  const ALERT_SYMS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
-  const OI_SPIKE_THRESH  = 0.10;  // +10%/30m
-  const FR_HIGH_THRESH   = 0.0005; // +0.05%
-  const FR_LOW_THRESH    = -0.0003; // -0.03%
-
-  let alertItems    = $state<AlertItem[]>([]);
-  let dashKimchi    = $state<number | null>(null);
-  let dashKimchiUp  = $state<boolean | null>(null);
-
-  async function loadAlerts() {
-    const next: AlertItem[] = [];
-    await Promise.allSettled(ALERT_SYMS.map(async (sym) => {
-      const [oiRes, frRes] = await Promise.allSettled([
-        fetch(`/api/market/oi?symbol=${sym}&period=30m&limit=4`),
-        fetch(`/api/market/funding?symbol=${sym}&limit=1`),
-      ]);
-      if (oiRes.status === 'fulfilled' && oiRes.value.ok) {
-        const d = (await oiRes.value.json()) as { bars?: { c: number }[] };
-        const bars = d.bars ?? [];
-        if (bars.length >= 2) {
-          const cur = bars[bars.length - 1].c, prev = bars[0].c;
-          const delta = prev > 0 ? (cur - prev) / prev : 0;
-          if (Math.abs(delta) >= OI_SPIKE_THRESH) {
-            next.push({ sym: sym.replace('USDT', ''), kind: 'OI', label: `OI ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%/30m`, value: delta });
-          }
-        }
-      }
-      if (frRes.status === 'fulfilled' && frRes.value.ok) {
-        const d = (await frRes.value.json()) as { bars?: { delta: number }[] };
-        const bars = d.bars ?? [];
-        if (bars.length > 0) {
-          const fr = bars[bars.length - 1].delta;
-          if (fr > FR_HIGH_THRESH || fr < FR_LOW_THRESH) {
-            next.push({ sym: sym.replace('USDT', ''), kind: 'FR', label: `FR ${fr > 0 ? '+' : ''}${(fr * 100).toFixed(3)}%`, value: fr });
-          }
-        }
-      }
-    }));
-    alertItems = next;
-  }
-
-  async function loadDashKimchi() {
-    try {
-      const r = await fetch('/api/market/kimchi-premium');
-      if (!r.ok) return;
-      const d = (await r.json()) as { ok: boolean; data: { premium_pct: number } };
-      if (d.ok) {
-        const prev = dashKimchi;
-        dashKimchi = d.data.premium_pct;
-        if (prev !== null) dashKimchiUp = dashKimchi > prev;
-      }
-    } catch { /* silent */ }
-  }
-
-  $effect(() => {
-    void loadAlerts();
-    void loadDashKimchi();
-    const t1 = setInterval(loadAlerts, 60_000);
-    const t2 = setInterval(loadDashKimchi, 30_000);
-    return () => { clearInterval(t1); clearInterval(t2); };
-  });
 
 </script>
 
@@ -269,28 +193,29 @@
 
   <div class="surface-scroll-body">
 
-  <!-- ── Alert Strip (AC10) ── -->
-  {#if alertItems.length > 0}
-    <div class="dash-alert-strip">
-      {#each alertItems as a (a.sym + a.kind)}
-        <span class="dash-alert-item" class:oi-up={a.kind === 'OI' && a.value > 0} class:oi-dn={a.kind === 'OI' && a.value < 0} class:fr-hi={a.kind === 'FR' && a.value > FR_HIGH_THRESH} class:fr-lo={a.kind === 'FR' && a.value < FR_LOW_THRESH}>
-          ⚡ <strong>{a.sym}</strong> {a.label}
-        </span>
-      {/each}
-    </div>
+  <!-- ── Alert Strip ── -->
+  <AlertStrip />
+
+  <!-- ── Zone A: 오늘의 기회 ── -->
+  {#if top3Opportunities.length > 0}
+    <section class="dash-opportunity-zone">
+      <div class="dash-zone-header">
+        <h2 class="dash-zone-title">오늘의 기회</h2>
+        <a href="/patterns/search" class="dash-zone-more">전체보기 →</a>
+      </div>
+      <div class="opp-cards-row">
+        {#each top3Opportunities as opp, i}
+          <OpportunityCard {opp} rank={i} />
+        {/each}
+      </div>
+    </section>
   {/if}
 
-  <!-- ── Kimchi Premium Bar (AC11) ── -->
-  {#if dashKimchi !== null}
-    <div class="dash-kimchi-bar">
-      <span class="kimchi-label">Kimchi Premium</span>
-      <span class="kimchi-value" class:kim-hot={dashKimchi > 1.5} class:kim-cold={dashKimchi < -0.5}>
-        {dashKimchi > 0 ? '+' : ''}{dashKimchi.toFixed(2)}%
-        {#if dashKimchiUp !== null}<span class="kimchi-arrow">{dashKimchiUp ? '▲' : '▼'}</span>{/if}
-      </span>
-      <span class="kimchi-hint">Upbit / Binance BTC spread</span>
-    </div>
-  {/if}
+  <!-- ── Zone B+C: 내 통계 / 시스템 상태 ── -->
+  <div class="dash-meta-row">
+    <StatsZone {passport} {userStats} />
+    <SystemStatusZone {flywheelHealth} />
+  </div>
 
   <!-- ── Section 1: Portfolio Strip (64px) ── -->
   <div class="trader-strip portfolio-strip">
@@ -429,78 +354,47 @@
     onVerdict={submitVerdict}
   />
 
-  <!-- My Challenges -->
-  <section class="surface-grid">
-    <div class="surface-section-head">
-      <div>
-        <span class="surface-kicker">My Challenges</span>
-        <h2>Saved Setups</h2>
-      </div>
-      <span class="surface-chip">{strategies.length} saved</span>
-    </div>
-
-    {#if strategies.length === 0}
-      <div class="surface-card empty-card">
-        <p>No saved setups yet.</p>
-        <button class="surface-button" onclick={() => goto('/cogochi')}>Start from Terminal</button>
-      </div>
-    {:else}
-      <div class="challenge-grid">
-        {#each strategies as entry (entry.strategy.id)}
-          {@const s = entry.strategy}
-          {@const r = entry.lastResult}
-          <button class="surface-card challenge-card" onclick={() => goToLab(s.id)}>
-            <div class="challenge-top">
-              <div>
-                <span class="surface-meta">Challenge</span>
-                <strong>{s.name}</strong>
-              </div>
-              <span class="surface-chip">v{s.version}</span>
-            </div>
-
-            {#if r}
-              <div class="challenge-stats">
-                <div>
-                  <span class="surface-meta">Win</span>
-                  <strong class={pnlClass(r.winRate >= 55 ? 1 : r.winRate < 45 ? -1 : 0)}>{r.winRate.toFixed(0)}%</strong>
-                </div>
-                <div>
-                  <span class="surface-meta">Sharpe</span>
-                  <strong class={pnlClass(r.sharpeRatio)}>{fmtNum(r.sharpeRatio)}</strong>
-                </div>
-                <div>
-                  <span class="surface-meta">MDD</span>
-                  <strong class="surface-value-negative">-{r.maxDrawdownPercent.toFixed(1)}%</strong>
-                </div>
-                <div>
-                  <span class="surface-meta">PnL</span>
-                  <strong class={pnlClass(r.totalPnlPercent)}>{fmtPct(r.totalPnlPercent)}</strong>
-                </div>
-              </div>
-
-              <div class="progress-block">
-                <div class="progress-track">
-                  <div class="progress-fill" style:width={`${(cyclesTested(entry) / MARKET_CYCLES.length) * 100}%`}></div>
-                </div>
-                <span class="surface-meta">{cyclesTested(entry)}/{MARKET_CYCLES.length} cycles</span>
-              </div>
-            {:else}
-              <p class="untested-copy">Not yet validated. Run from Lab.</p>
-            {/if}
-
-            <div class="challenge-footer">
-              <span class="surface-meta">{timeSince(entry.lastModified)}</span>
-              <span class="surface-chip">Open Lab</span>
-            </div>
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </section>
   </div>
 </div>
 
 <style>
+  /* ── Zone A: 오늘의 기회 ── */
+  .dash-opportunity-zone {
+    padding: 12px 16px 0;
+  }
+  .dash-zone-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .dash-zone-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--g9);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+  }
+  .dash-zone-more {
+    font-size: 9px;
+    color: var(--g7);
+    text-decoration: none;
+  }
+  .dash-zone-more:hover { color: var(--g9); }
+  .opp-cards-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  /* ── Zone B+C: 내 통계 / 시스템 상태 ── */
+  .dash-meta-row {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px 0;
+  }
+
   /* ── Alert Strip (W-0390 Phase 5) ── */
   .dash-alert-strip {
     display: flex;
