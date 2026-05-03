@@ -221,16 +221,21 @@ def resolve_outcomes(
         captured_at = datetime.fromtimestamp(
             capture.captured_at_ms / 1000, tz=timezone.utc
         )
+        timeframe = capture.timeframe or "1h"
         try:
-            klines = loader(capture.symbol, capture.timeframe or "1h", offline=True)
-        except Exception as exc:
-            log.warning(
-                "outcome_resolver: klines load failed for %s/%s: %s",
-                capture.symbol,
-                capture.capture_id,
-                exc,
-            )
-            continue
+            klines = loader(capture.symbol, timeframe, offline=True)
+        except Exception:
+            try:
+                klines = loader(capture.symbol, timeframe, offline=False)
+                log.debug("outcome_resolver: online fallback succeeded for %s", capture.symbol)
+            except Exception as exc:
+                log.warning(
+                    "outcome_resolver: klines load failed for %s/%s: %s",
+                    capture.symbol,
+                    capture.capture_id,
+                    exc,
+                )
+                continue
 
         entry_price, closes = _entry_and_forward_closes(
             klines=klines,
