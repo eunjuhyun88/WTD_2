@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
-  onMount(() => { goto('/lab', { replaceState: true }); });
+  import { AgentHub } from '$lib/hubs/agent';
+  import type { PageData } from './$types';
+
+  let { data }: { data: PageData } = $props();
 </script>
 
-<p>Redirecting to /lab…</p>
+<AgentHub agentStats={data.agentStats} notFound={data.notFound} />
