@@ -97,3 +97,5 @@ memory/events/*.jsonl
 state/current_trace.txt
 state/current_session_span.txt
 state/spans/
+state/agent-inbox/*.lock
+state/agent-inbox/*.lockdir
