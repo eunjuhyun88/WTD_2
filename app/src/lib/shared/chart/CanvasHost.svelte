@@ -65,16 +65,118 @@
 
   // ── Range mode store subscription ─────────────────────────────────────────
   let saveModeUnsubscribe: (() => void) | null = null;
+  // Drag state
+  let dragActive = false;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let pointerDownX = 0;
+  let pointerDownY = 0;
+  const LONG_PRESS_MS = 400;
+  const DRAG_THRESHOLD_PX = 8;
+
+  function clientXToChartTime(clientX: number): number | null {
+    if (!chart || !containerEl) return null;
+    const rect = containerEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const t = chart.timeScale().coordinateToTime(x);
+    if (t === null) return null;
+    return typeof t === 'number' ? t : Math.floor(new Date(t as string).getTime() / 1000);
+  }
+
+  // Pointer handlers — only active when range mode is on
+  let _pointerMove: ((e: PointerEvent) => void) | null = null;
+  let _pointerUp: ((e: PointerEvent) => void) | null = null;
+
+  function attachPointerHandlers() {
+    if (!containerEl || _pointerMove) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!$chartSaveMode.active) {
+        // Mobile long-press to enter range mode
+        if (e.pointerType === 'touch') {
+          pointerDownX = e.clientX;
+          pointerDownY = e.clientY;
+          longPressTimer = setTimeout(() => {
+            longPressTimer = null;
+            chartSaveMode.enterRangeMode();
+            const t = clientXToChartTime(pointerDownX);
+            if (t !== null) {
+              chartSaveMode.startDrag(t);
+              dragActive = true;
+              containerEl?.setPointerCapture(e.pointerId);
+              chart?.applyOptions({ handleScroll: false, handleScale: false });
+            }
+          }, LONG_PRESS_MS);
+        }
+        return;
+      }
+      // Range mode already active — start drag immediately
+      const t = clientXToChartTime(e.clientX);
+      if (t === null) return;
+      chartSaveMode.startDrag(t);
+      dragActive = true;
+      containerEl?.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    };
+
+    _pointerMove = (e: PointerEvent) => {
+      // Cancel long-press if finger moved too much
+      if (longPressTimer !== null) {
+        const dx = Math.abs(e.clientX - pointerDownX);
+        const dy = Math.abs(e.clientY - pointerDownY);
+        if (dx > DRAG_THRESHOLD_PX || dy > DRAG_THRESHOLD_PX) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+        return;
+      }
+      if (!dragActive) return;
+      const t = clientXToChartTime(e.clientX);
+      if (t !== null) chartSaveMode.adjustAnchor('B', t);
+    };
+
+    _pointerUp = (e: PointerEvent) => {
+      if (longPressTimer !== null) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      if (!dragActive) return;
+      const t = clientXToChartTime(e.clientX);
+      if (t !== null) chartSaveMode.adjustAnchor('B', t);
+      dragActive = false;
+      try { containerEl?.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+    };
+
+    containerEl.addEventListener('pointerdown', onPointerDown);
+    containerEl.addEventListener('pointermove', _pointerMove);
+    containerEl.addEventListener('pointerup', _pointerUp);
+    containerEl.addEventListener('pointercancel', _pointerUp);
+  }
+
+  function detachPointerHandlers() {
+    if (_pointerMove && containerEl) {
+      containerEl.removeEventListener('pointermove', _pointerMove);
+      containerEl.removeEventListener('pointerup', _pointerUp!);
+      containerEl.removeEventListener('pointercancel', _pointerUp!);
+    }
+    _pointerMove = null;
+    _pointerUp = null;
+    dragActive = false;
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
 
   function handleRangeModeChange(state: { active: boolean; anchorA: number | null; anchorB: number | null }) {
     if (!chart || !priceSeries) return;
 
     if (state.active) {
-      // Subscribe to chart clicks only while range-mode is active
+      // Disable LWC pan/zoom so drag sets range instead of panning
+      chart.applyOptions({ handleScroll: false, handleScale: false });
+      // Subscribe to chart clicks (two-click fallback for accessibility)
       if (!rangeClickUnsubscribe) {
         const handler = (param: { time?: Time; point?: { x: number; y: number } }) => {
-          if (!param.time) return;
-          // Convert LWC Time (UTCTimestamp / string) to unix seconds
+          if (!param.time || dragActive) return;
           const t = typeof param.time === 'number'
             ? param.time
             : Math.floor(new Date(param.time as string).getTime() / 1000);
@@ -84,7 +186,8 @@
         rangeClickUnsubscribe = () => chart?.unsubscribeClick(handler);
       }
     } else {
-      // Unsubscribe clicks when range mode exits
+      // Re-enable pan/zoom
+      chart.applyOptions({ handleScroll: true, handleScale: true });
       rangeClickUnsubscribe?.();
       rangeClickUnsubscribe = null;
     }
@@ -181,6 +284,9 @@
     // Subscribe to chartSaveMode store
     saveModeUnsubscribe = chartSaveMode.subscribe(handleRangeModeChange);
 
+    // Pointer drag handlers (desktop + mobile long-press)
+    attachPointerHandlers();
+
     // ESC key listener
     window.addEventListener('keydown', handleKeydown);
 
@@ -192,6 +298,7 @@
   });
 
   onDestroy(() => {
+    detachPointerHandlers();
     rangeClickUnsubscribe?.();
     saveModeUnsubscribe?.();
     window.removeEventListener('keydown', handleKeydown);
@@ -263,6 +370,7 @@
   class="canvas-host"
   bind:this={containerEl}
   class:range-cursor={$chartSaveMode.active}
+  class:drag-active={dragActive}
 ></div>
 
 <style>
@@ -271,10 +379,17 @@
     height: 100%;
     position: relative;
     /* Layer 0: no DOM overlay on this element */
+    touch-action: pan-y; /* allow vertical scroll outside range mode */
   }
 
   /* Crosshair-with-hint cursor during range selection */
   .canvas-host.range-cursor {
     cursor: crosshair;
+    touch-action: none; /* take over all touch during drag */
+  }
+
+  .canvas-host.drag-active {
+    cursor: col-resize;
+    user-select: none;
   }
 </style>
