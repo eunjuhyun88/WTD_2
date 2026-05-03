@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`f81723f1` — origin/main (2026-05-03) — chore: Wave 6 state sync — CURRENT.md + PRIORITIES.md + 4 sweep (#969)
+`1c7edf4f` — origin/main (2026-05-03) — feat(W-0395 Phase 2): dashboard 3-zone redesign (#974)
 
 ---
 
