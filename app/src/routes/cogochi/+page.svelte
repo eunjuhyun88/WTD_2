@@ -3,6 +3,8 @@
   import { TerminalHub } from '$lib/hubs/terminal';
   import { activateLegacyMode, readLegacyMode } from '$lib/hubs/terminal/shell.store';
   import { track } from '$lib/analytics';
+  import { workMode } from '$lib/hubs/terminal/workMode.store';
+  import TrainStage from '$lib/hubs/terminal/panels/TrainStage.svelte';
 
   const { data } = $props<{ data: { legacy: boolean } }>();
 
@@ -18,3 +20,6 @@
 </script>
 
 <TerminalHub />
+{#if $workMode === 'TRAIN'}
+  <TrainStage />
+{/if}
