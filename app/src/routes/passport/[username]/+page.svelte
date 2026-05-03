@@ -6,9 +6,18 @@
     accuracy: number;
     verdict_count: number;
     streak_days: number;
+    streak_next_threshold: number | null;
     best_pattern: string | null;
     badges: string[];
   }
+
+  const STREAK_TIERS = [
+    { days: 1,  label: '1일 시작',  icon: '🌱' },
+    { days: 3,  label: '3일 연속',  icon: '🔥' },
+    { days: 7,  label: '7일 연속',  icon: '⚡' },
+    { days: 14, label: '2주 연속',  icon: '💎' },
+    { days: 30, label: '30일 연속', icon: '👑' },
+  ];
 
   let { data }: { data: PageData } = $props();
 
@@ -22,7 +31,11 @@
   const BADGE_DEFS: { key: string; label: string; check: (s: PassportStats) => boolean }[] = [
     { key: 'first_verdict',  label: '첫 Verdict',    check: (s) => s.verdict_count >= 1 },
     { key: 'fifty_verdicts', label: '50 Verdict',    check: (s) => s.verdict_count >= 50 },
-    { key: 'seven_streak',   label: '7일 연속',       check: (s) => s.streak_days >= 7 },
+    { key: 'streak_1',       label: '1일 시작',       check: (s) => s.streak_days >= 1 },
+    { key: 'streak_3',       label: '3일 연속',       check: (s) => s.streak_days >= 3 },
+    { key: 'streak_7',       label: '7일 연속',       check: (s) => s.streak_days >= 7 },
+    { key: 'streak_14',      label: '2주 연속',       check: (s) => s.streak_days >= 14 },
+    { key: 'streak_30',      label: '30일 연속',      check: (s) => s.streak_days >= 30 },
     { key: 'acc_70',         label: '정확도 70%+',    check: (s) => s.accuracy >= 0.7 },
     { key: 'acc_80',         label: '정확도 80%+',    check: (s) => s.accuracy >= 0.8 },
   ];
@@ -120,6 +133,29 @@
           <span class="passport-pattern-name">{stats.best_pattern}</span>
         </div>
       {/if}
+
+      <div class="streak-card">
+        <div class="streak-card-header">
+          <span class="passport-section-label">Streak</span>
+          <span class="streak-days-count">{stats.streak_days}일 🔥</span>
+        </div>
+        <div class="streak-tiers">
+          {#each STREAK_TIERS as tier}
+            {@const earned = stats.streak_days >= tier.days}
+            {@const isCurrent = earned && (stats.streak_next_threshold === null || stats.streak_next_threshold > tier.days)}
+            <div class="streak-tier" class:streak-tier--earned={earned} class:streak-tier--current={isCurrent}>
+              <span class="streak-tier-icon">{tier.icon}</span>
+              <span class="streak-tier-label">{tier.label}</span>
+              <span class="streak-tier-days">{tier.days}d</span>
+            </div>
+          {/each}
+        </div>
+        {#if stats.streak_next_threshold !== null}
+          <p class="streak-next-hint">다음 배지까지 {stats.streak_next_threshold - stats.streak_days}일</p>
+        {:else}
+          <p class="streak-next-hint streak-next-hint--complete">모든 streak 배지 달성 🎉</p>
+        {/if}
+      </div>
 
       <div class="passport-badges">
         <span class="passport-section-label">Badges ({earnedBadges.length} / {BADGE_DEFS.length})</span>
@@ -315,6 +351,90 @@
     font-size: 0.92rem;
     color: var(--amb, #f5a623);
     font-weight: 600;
+  }
+
+  .streak-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 100, 50, 0.18);
+    background: rgba(255, 100, 50, 0.04);
+  }
+
+  .streak-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .streak-days-count {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #ff6432;
+  }
+
+  .streak-tiers {
+    display: flex;
+    gap: 6px;
+  }
+
+  .streak-tier {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 4px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    opacity: 0.35;
+    transition: opacity 80ms;
+  }
+
+  .streak-tier--earned {
+    opacity: 1;
+    border-color: rgba(255, 100, 50, 0.25);
+    background: rgba(255, 100, 50, 0.08);
+  }
+
+  .streak-tier--current {
+    border-color: rgba(255, 100, 50, 0.5);
+    box-shadow: 0 0 0 1px rgba(255, 100, 50, 0.2);
+  }
+
+  .streak-tier-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .streak-tier-label {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .streak-tier--earned .streak-tier-label {
+    color: rgba(255, 100, 50, 0.9);
+  }
+
+  .streak-tier-days {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .streak-next-hint {
+    font-size: var(--ui-text-xs, 0.75rem);
+    color: rgba(255,255,255,0.4);
+    margin: 0;
+    text-align: center;
+  }
+
+  .streak-next-hint--complete {
+    color: #ff6432;
   }
 
   .passport-badges {
