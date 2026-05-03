@@ -1,34 +1,36 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (47c8b148) | 2026-04-28
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (2f92ba84) | 2026-05-03
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
 ---
 
-## 0. CTO 현황 요약 (2026-04-28)
+## 0. CTO 현황 요약 (2026-05-03) ← Wave 5 완전 완료
 
 ```
-시스템 성숙도: 88.3% Built (166/188 features)
-핵심 인프라: 52 PatternObjects × 85 Building Blocks
-           L1~L7 전 레이어 구조 완성
-           11 APScheduler jobs 자동 운영 중
-           138,915 feature_window rows
-주요 엔진:   POST /patterns/parse      ✅ 코드 존재 (Wave 1)
-           POST /patterns/draft-from-range ✅ 코드 존재 (Wave 1)
-           POST /captures/{id}/watch  ✅ 코드 존재 (Wave 1)
-열린 갭:    17개 → **0개** (P0=0 / P1=0 / P2=6 / P3=10) — +F-12 ✅ (#671) kimchi badge + F-14 ✅ (#672) lifecycle promote UI
-즉시 P0:   없음 (P0 클리어)
-다음 P1:   없음 (P1 클리어) — W-0304 per-pane indicator (Codex 🟡) + W-0317 SplitPane wire-up (Codex 🟡)
-퀀트 경화:  **W-0286 ✅ PR #560** + **W-0290~W-0293 ✅ PR #587** + **W-0290 Ph2 ✅ PR #591** + **W-0294 ✅ PR #592**
-하네스:     **PR #574 ✅** (verify.py + inventory) + **PR #575 ✅** (Supabase timeout) + **PR #588 ✅** (PID stale lock) + **PR #609 ✅** (reliability repair + cycle-smoke)
+시스템 성숙도: ~96% Built — Wave 5 전 항목 완료
+최신 main:   2f92ba84 (2026-05-03, chore: W-0386 sweep)
+5-Hub 확정:  dashboard / lab / patterns / settings / terminal (W-0372 ✅ #826~#830)
+핵심 신규:   LightGBM Layer C auto-train flywheel ✅ (W-0394 #952+#954)
+            6-layer AutoResearch orchestrator ✅ (W-0379 #861+#862)
+            TradingView Idea Twin + Hypothesis Compiler ✅ (W-0393 #951)
+            Strategy Live Signals engine+frontend ✅ (W-0370 #915)
+            Quant UX data layer (TopBar L2/OI/FR + kbd) ✅ (W-0390 #936)
+            ESLint hub boundary enforcement ✅ (W-0388 #958)
+            Upstash rate limiter + engine SWR cache ✅ (W-0364 #933)
+Wave 5 PRs: #826 #829 #830 #835 #834 #836 #839 #865 #869 #870
+            #861 #862 #904 #915 #922 #927 #928 #929 #931 #926
+            #933 #934 #936 #939 #940 #941 #944 #945 #946
+            #951 #952 #953 #954 #958 (총 34 PRs)
+열린 P0:    **W-PF-100** PropFirm paper auto-execution (설계 ✅ #769, 구현 대기)
+즉시 P0:   W-PF-100 Phase 1 (ScanSignal→PatternFireRouter→EntryDecider→LimitMatcher→ExitMonitor)
+다음 P1:   Wave 6 설계 필요 — /설계 스킬로 신규 work item 발굴
 ```
 
-**가장 위험한 갭 (AI Researcher 진단)**: ~~F-02 레이블 불일치~~ → **✅ 해소 (PR #472, 2026-04-28)**.
-audit 결과 `engine/ledger/types.py:54` + `engine/stats/engine.py:40-41` + `app/supabase/migrations/023` + `VerdictInboxPanel.svelte` 모두 5-cat (`valid/invalid/near_miss/too_early/too_late`) 정합 확인. 회귀 테스트 17/17 통과.
-**잔여 ⚠️ WARN**: 운영 Supabase에 023 적용 여부 미검증 (issue #481).
+**가장 위험한 갭 (AI Researcher 진단)**: verdicts 누적 속도 — Layer C LightGBM은 코드 완성이나 verdicts 50+ 전까지 실질 가중 A:0.60/B:0.40 유지. PropFirm 자동 집행 → verdict 속도 가속이 핵심.
 
-**다음 위험 갭**: V-08 validation pipeline 미통합 (#423) — V-01/02/04/06 머지됐으나 통합 검증 pipeline 부재.
+**PRIORITIES.md 갱신 규칙**: Wave 완료 or main SHA 5+ 커밋 전진 시 §0 즉시 업데이트 (담당 에이전트 의무). 갱신 없이 `/닫기` 금지.
 
 ---
 
@@ -112,23 +114,47 @@ H-07(F-60 gate) / A-03-app(AI Parser UI) / A-04-app(Chart Drag UI) / D-03-app(Wa
 
 H-08 / F-30 / F-17
 
+### ✅ Wave 4 — 완료 (2026-04-28~2026-04-30, PR #396~#756)
+
+퀀트 경화 (W-0286/0290~0294) / MM Hunter V-track (V-05/V-11/F-60 gate) / Stripe tier (W-0248) / Sentry (W-0249) / Pattern lifecycle (W-0308) / WVPL personalization (W-0312) / Decision Ledger 4-table (W-0231) / Search recall@10=100% (W-0247) / F-3 Telegram deep link (W-0305) / IDE split-pane (W-0243) / 52 PatternObjects → Supabase (W-0350) / multi-exchange OHLCV (W-0358)
+
+### ✅ Wave 5 — 완료 (2026-05-01~2026-05-03, PR #826~#958, 총 34 PRs)
+
+| 그룹 | 완료 항목 | PR |
+|---|---|---|
+| 5-Hub IA | W-0372 Phase A-D (AppNavRail 7→5 + MobileBottomNav + hub layouts + WatchlistRail) | #826 #829 #830 #835 |
+| UI 기반 | W-0373 wallet auth Privy + W-0374 Bloomberg UX + W-0389 typography + W-A108 CI gates | #834 #839~#870 #929 #931 #926 |
+| Engine | W-0379 AutoResearch 6-layer + W-0387 /judge+/save + W-0370 strategy signals | #861 #862 #904 #915 |
+| 정리 | W-0380 dead handlers + W-0386 code shrink + W-0382-D 185파일 삭제 | #927 #928 #922 |
+| Infra | W-0364 Upstash rate limiter + W-0304 per-pane indicators + W-0388 ESLint | #933 #934 #958 |
+| Quant UX | W-0390 TopBar L2/OI/FR + W-0391-A/BF/D/E (차트+분석+CommandPalette+swipe) | #936 #939 #940 #941 #944 |
+| Intelligence | W-0355 extreme events + W-0383 counterfactual + W-0392/W-0393/W-0394 flywheel | #945 #946 #951 #952 #953 #954 |
+
 ---
 
-## 4. P0 — 현재 집중 (MM Hunter, 즉시)
+## 4. P0 — 현재 집중 (Wave 6, 즉시)
+
+> Wave 4 P0 항목 전부 완료. Wave 5 전 항목 완료. Wave 6 P0 = W-PF-100.
 
 | Work Item | Feature | 상태 | 비고 |
 |---|---|---|---|
-| **W-0214** | MM Hunter design D1~D8 | ✅ main (#396) | 설계 완료 |
-| **W-0252** | `engine/research/pattern_search.py` V-00 audit | ✅ main (#467) | 100% coverage, F1 미발동, 🔴 갭 2개(D3/D8) → augment-only 진행 |
-| **W-0256** | D3 cost + D8 phase taxonomy augment | ✅ main (#478) | 461줄 추가/0줄 삭제, 178/178 PASS |
-| **W-0253** | F-60 gate min-samples 경화 | ✅ PR #512 | `F60_MIN_SAMPLES_PER_WINDOW=10`, 13 tests |
-| **W-0223** | V-05 regime-conditional return M4 | ✅ PR #507 | RegimeLabel+G7 gate, 19 tests |
-| **W-0224** | V-11 gate v2 G1~G7 integration | ✅ PR #508 | GateV2+PromotionPolicy, 16 tests |
-| **W-0244** | F-7 meta automation workflows | ✅ PR #505 | CURRENT.md SHA auto-update + worktree cron |
-| **W-0254** | F60GateBar UI component | ✅ PR #509 | Svelte 5 dual progress bars + badge |
-| **W-0259** | `engine/research/validation/` pipeline 통합 (V-05+V-11 연결) | 🔴 **즉시** (W-0273) | regime_results 플레이스홀더 충전 + GateV2 export |
-| **W-0257** | D2 horizon parametrization (4h primary) | ✅ PR #489 MERGED | 구현 완료 2026-04-27 |
-| **W-0258** | D5 F-60 Layer B subjective gate | ⬜ Priority B2 (P1) | 설계 #477 머지 |
+| **W-PF-100** | PropFirm Paper Auto-Execution (Phase 1) | 🟡 Design Draft | Issue #769. 3-Phase Epic. |
+
+### W-PF-100 Phase 1 개요 (즉시 시작 가능)
+
+```
+ScanSignal → PatternFireRouter → EntryDecider → LimitMatcher → ExitMonitor
+- /lab "패턴 런" 탭에서 paper account 자동 집행 실시간 확인
+- Charter In-Scope (Paper trading 검증 도구)
+- 설계 완료: work/active/W-PF-100-propfirm-master-epic.md
+- 선행 조건: 없음 (독립)
+```
+
+| Phase | 내용 | Effort | 상태 |
+|---|---|---|---|
+| P1 | Paper Auto-Execution (/lab 패턴 런 탭) | M | 🟡 설계 완료, 구현 대기 |
+| P2 | Eval Challenge 결제·통과 | L | ⬜ P1 완료 후 |
+| P3 | Entry Gate → 실 USDC funded 계정 | L + legal | ⬜ P2 완료 후 |
 
 ---
 
@@ -388,20 +414,23 @@ promotion_gate_pass_rate_30d > 0
 
 ---
 
-## 14. 즉시 다음 액션 (CTO 지시)
+## 14. 즉시 다음 액션 (CTO 지시, 2026-05-03)
 
 ```
-1. [즉시]   W-0252 시작 — pattern_search.py:3283줄 audit (V-00) — Issue #462
-2. [완료]   F-02-fix — verdict 레이블 이관 PR #437 머지됨 (missed→near_miss + unclear→too_early)
-3. [이번 주] F-02-fix migration 022 배포 검증 + stats/engine.py 일관성 확인
-4. [이번 주] W-0216 — validation/ 모듈 구현 (W-0252 완료 후, ID 재발번 검토)
-5. [다음 주] F-3 Telegram→Verdict deep link / F-4 Decision HUD / F-7 메타 자동화
-6. [M1]     F-5 IDE split-pane + F-11 Dashboard WATCHING + H-07 F-60 Gate
+1. [즉시]   W-PF-100 Phase 1 구현 시작
+              work/active/W-PF-100-propfirm-master-epic.md 읽고
+              ScanSignal→PatternFireRouter→EntryDecider→LimitMatcher→ExitMonitor 5-컴포넌트 구현
+              /lab "패턴 런" 탭 UI 신설
+2. [병렬]   Wave 6 신규 설계 — /설계 스킬로 다음 P0/P1 발굴
+              후보: verdicts 가속 플라이휠 UX / copy signal Phase 1 gate 준비 / Layer C 모델 성능 모니터링 대시
+3. [정리]   work/active/ stale items sweep
+              W-0212/0231/0233/0245/0252/0263/0282/0371/0388/0392/0393/0394 → work/completed/ 이동 검토
+4. [유지]   PRIORITIES.md §0 갱신 의무 — Wave 완료·main SHA 5+ 전진 시마다 업데이트
 ```
 
 ---
 
-*코드 실측 SHA: 6d7de4fe | CTO+AI Researcher A024 | 2026-04-27 | D/Q 전체 lock-in 완료*
+*코드 실측 SHA: 2f92ba84 | CTO+AI Researcher | 2026-05-03 | Wave 5 완전 완료, Wave 6 W-PF-100 P0*
 
 ---
 

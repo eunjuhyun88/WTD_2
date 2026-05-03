@@ -21,6 +21,7 @@ Use this repository as a low-context AI research operating system.
 3. **`spec/NAMING.md`** — 이름 계약서 (**skip 금지**: 미확인 시 merge conflict. W-0374 사례)
 4. `work/log/` 최신 파일 — 직전 에이전트 완료 내역 (append-only)
 5. **`spec/PRIORITIES.md`** — Wave 우선순위 + **Frozen 항목** (**skip 금지**: Frozen 진입 즉시 중단)
+   ⚠️ **갱신 의무**: Wave 완료 or main SHA 5+ 커밋 전진 시 §0 CTO 현황 요약 업데이트 필수. `/닫기` 전 미갱신 = 종료 거부.
 6. **도메인 sub-file** (`agents/engine.md` or `agents/app.md` — 건드리는 경로 기준, **skip 금지**)
 
 ### 조건부 (해당 시만)
