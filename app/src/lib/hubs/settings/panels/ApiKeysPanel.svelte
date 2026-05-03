@@ -325,7 +325,7 @@
   .security-note {
     margin: 0;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs, 11px);
     color: var(--g5, #3d3830);
     line-height: 1.5;
     flex: 1;
@@ -402,7 +402,7 @@
 
   .key-badge {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs, 11px);
     padding: 1px 6px;
     border-radius: 8px;
     border: 1px solid;
@@ -430,7 +430,7 @@
 
   .key-date {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs, 11px);
     color: var(--g5, #3d3830);
   }
 
@@ -441,7 +441,7 @@
     background: rgba(255, 80, 80, 0.06);
     color: #ff9ca0;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs, 11px);
     cursor: pointer;
     transition: background 0.15s;
   }
