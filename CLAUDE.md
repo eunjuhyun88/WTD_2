@@ -70,11 +70,21 @@ Auto-generated `claude/*`, `codex/*` → `git branch -m feat/{ID}-{slug}` rename
 
 작업은 가능한 한 subagent로 위임하고, 작업이 감당 가능한 가장 저렴한 모델을 선택한다.
 
-| 모델 | 용도 |
-|---|---|
-| Haiku | 단순 반복 / 기계적 작업, 판단 불필요 (이름 바꾸기, 일괄 패턴 치환, 파일 목록 수집 등) |
-| Sonnet | 범위가 정해진 리서치, 코드 탐색, 정리·요약 |
-| Opus | 진짜 기획·트레이드오프 판단이 필요한 경우에만 |
+### 단계별 모델 분리 (설계 → 구현 → 기계적 작업)
+
+| 단계 | 모델 | 용도 |
+|---|---|---|
+| 설계 / 트레이드오프 | **Opus** | work item 설계, Phase breakdown, 거절 옵션 판단, Risk matrix |
+| **구현** | **Sonnet** | 실제 코드 작성, 기존 파일 리팩토링, 테스트 작성, wiring — **Haiku 금지** |
+| 기계적 반복 | **Haiku** | 파일 rename, import 일괄 치환, SQL fixture 생성, 상수 파일 초안, 파일 목록 수집 |
+
+> **Haiku로 구현하면 안 되는 이유**: 설계 문서가 아무리 상세해도, 기존 파일 컨텍스트 의존 판단(어디에 끼워넣을지, Svelte 5 reactivity 패턴, 수식 warm-up 처리 등)에서 Haiku는 설계 무시 + 잘못된 방향으로 구현 후 "완료" 보고를 반복한다.
+
+**구현 subagent에 반드시 포함할 정보:**
+- 수정 대상 파일 경로 + 현재 줄 수
+- 의존하는 기존 함수/타입 이름 (grep 결과 포함)
+- Exit Criteria 수치 (AC 번호 포함)
+- "판단이 필요하면 parent에 반환, 스스로 escalate 금지"
 
 **Spawn 제한**
 
