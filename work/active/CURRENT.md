@@ -25,7 +25,9 @@
 
 ## main SHA
 
-`f81723f1` — origin/main (2026-05-03) — chore: Wave 6 state sync — CURRENT.md + PRIORITIES.md + 4 sweep (#969)
+`1c7edf4f` — origin/main (2026-05-03) — feat(W-0395 Phase 2): dashboard 3-zone redesign (#974)
+
+최신 커밋: `37d5c89d` docs(W-0399-P2, W-0400): design docs Phase 2 + full catalog (#977)
 
 ---
 
@@ -33,8 +35,8 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0398-layer-c-autotrainer-wiring` | P0 | ✅ PR #968 merged |
-| `W-0397-verdict-throughput-booster` | P0 | ✅ PR #965 merged |
+| `W-0399-P2-tv-indicator-catalog-phase2` | P1 | 🟡 설계 완료 #975, 구현 대기 |
+| `W-0400-tv-indicator-catalog-full` | P1 | 🟡 설계 완료 #976, 구현 대기 |
 | `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Wave 6 구현 대기 |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
