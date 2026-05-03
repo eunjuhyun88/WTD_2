@@ -40,6 +40,27 @@
 - `app/src/lib/hubs/terminal/workspace/PaneInfoBar.svelte` — instanceId wiring
 - `app/src/lib/hubs/terminal/workspace/IndicatorLibrary.svelte` — 인라인 편집 폼 + 배지
 
+## Owner
+app
+
+## Facts
+- Issue: #975
+- Depends on: W-0399 Phase 1 (PR #970 merged)
+- 10 Tier-A indicators all multi-instance capable
+- clientIndicators.ts to be created new; no server-side indicator API changes
+
+## Canonical Files
+- `app/src/lib/chart/mountIndicatorPanes.ts`
+- `app/src/lib/chart/clientIndicators.ts` (신규)
+- `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte`
+- `app/src/lib/hubs/terminal/workspace/PaneInfoBar.svelte`
+- `app/src/lib/hubs/terminal/workspace/IndicatorLibrary.svelte`
+
+## Assumptions
+- Phase 1 (PR #970) is merged and indicatorInstances store exists
+- No new DB migration needed
+- Client-side TA calculations are accurate enough (±0.1 vs server)
+
 ## Non-Goals
 - Tier B/C 인디케이터 multi-instance (→ W-0400)
 - 인디케이터 drag reorder (Phase 3)
@@ -83,6 +104,22 @@
 ### 거절 옵션
 - **서버 RSI/MACD param 요청** — 거절: 매 period 변경마다 API 라운드트립, 클라이언트 계산으로 충분
 - **오버레이도 PaneInfoBar에 × 버튼** — 거절: price pane에 × 추가 시 price pane 자체 삭제 오인
+
+## Next Steps
+1. Create `clientIndicators.ts` with RSI/MACD/EMA/BB/VWAP/ATR functions
+2. Extend `mountIndicatorPanes.ts` with generic `mountSecondaryIndicator()`
+3. Update `ChartBoard.svelte` instance loop + hidePane
+4. Wire `PaneInfoBar.svelte` instanceId + closable
+5. Update `IndicatorLibrary.svelte` Saved tab + badge
+6. Add unit tests for clientIndicators.ts
+
+## Handoff Checklist
+- [ ] clientIndicators.ts created + unit tests pass (AC4, AC7)
+- [ ] All Tier-A indicators multi-instance (AC1)
+- [ ] × remove works in <100ms (AC2)
+- [ ] Parameter edit debounced (AC3)
+- [ ] svelte-check 0 errors (AC8)
+- [ ] CI green / PR merged
 
 ## Open Questions
 - [ ] [Q-1] EMA/BB 같은 period 중복 허용? (기본: 허용, TV 동작 일치)
