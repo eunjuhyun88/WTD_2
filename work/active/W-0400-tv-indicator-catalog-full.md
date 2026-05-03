@@ -27,7 +27,7 @@ app — hjj032549@gmail.com
 - Drawing tools, alert system — Wave 7 별도 W-itemize.
 - Custom Pine Script — TV parity 범위 밖, 별도 W로 분리.
 
-## Canonical Files (실측)
+## Canonical Files
 
 **기존 (수정 대상)**
 - `app/src/lib/indicators/registry.ts` (377 LoC, 21 IndicatorDef)
@@ -51,7 +51,7 @@ app — hjj032549@gmail.com
 - `app/src/lib/chart/engineSeriesAdapter.ts` (Phase 2B)
 - `scripts/check_indicator_params_parity.ts` (Phase 2B CI gate)
 
-## Facts (실측)
+## Facts
 - W-0399-P2 PR #997 머지(0cd3ee2a). `indicatorInstances.ts` 이미 nanoid+localStorage v1, mount 10종 완료.
 - `registry.ts` 21개 IndicatorDef는 모두 시장데이터(OI/Funding/CVD/Liq/Options/Netflow/Vol). TV TA 10종은 미등록 — Phase 1A에서 등록 필요.
 - `search.ts`는 AIPanel `convertPromptToSetup` 진입점이라 **유지**. 카탈로그 모달은 별도 `catalogSearch.ts` (Fuse.js fuzzy)로 분리.
@@ -239,7 +239,7 @@ App `engineSeriesAdapter`로 engine indicator series를 fetch → Lightweight-Ch
 
 ---
 
-## Exit Criteria (전체)
+## Exit Criteria
 
 **Phase 1 (PR1+PR2+PR3 모두 머지 후)**
 - [ ] AC1A-1~5 (registry 31개)
