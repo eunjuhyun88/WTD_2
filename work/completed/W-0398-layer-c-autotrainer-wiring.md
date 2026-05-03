@@ -119,10 +119,10 @@ synthetic_verdicts (50) → count_labelled_verdicts() = 50
 6. CI: pytest engine/tests/test_w0398_layer_c_e2e.py + dry-run 검증
 
 ## Exit Criteria
-- [ ] AC1: verdict submit → evaluate_trigger(50) True → train_and_register() 호출 확인 (integration test)
-- [ ] AC2: scheduler `layer_c_trainer_check` job APScheduler 등록 확인 (unit test)
-- [ ] AC3: synthetic 50 verdicts injection → 1 cycle 완주 → is_trained=True → layer_c_score ≠ None
-- [ ] AC4: Layer C promote 후 `/api/search/similar` recall@10 ≥ baseline (monkeypatch CI 완화)
-- [ ] AC5: SearchLayerBadge `layer_c: true` 반영 확인 (Playwright or unit)
-- [ ] AC6: 기존 refinement_trigger Hill Climbing 회귀 없음 (test_hill_climbing.py green)
+- [x] AC1: verdict submit → evaluate_trigger(50) True → train_and_register() 호출 확인 (integration test)
+- [x] AC2: scheduler `layer_c_trainer_check` job APScheduler 등록 확인 (unit test)
+- [x] AC3: synthetic 50 verdicts injection → 1 cycle 완주 → is_trained=True → layer_c_score ≠ None
+- [x] AC4: Layer C promote 후 `/api/search/similar` recall@10 ≥ baseline (monkeypatch CI 완화)
+- [x] AC5: SearchLayerBadge `layer_c: true` 반영 확인 (W-0394 PR2 merged — already shipped)
+- [x] AC6: 기존 refinement_trigger Hill Climbing 회귀 없음 (test_hill_climbing.py 9 passed)
 - [ ] AC7: CI green, PR merged, CURRENT.md main SHA 업데이트
