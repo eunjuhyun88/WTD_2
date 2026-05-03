@@ -210,6 +210,41 @@
     return `$${v.toFixed(0)}`;
   }
 
+  // ═══ Extreme Events (W-0355) ═══
+  interface ExtremeEventRow {
+    symbol: string;
+    kind: string;
+    magnitude: number;
+    detected_at: string;
+    outcome_24h: number | null;
+    outcome_48h: number | null;
+    outcome_72h: number | null;
+    is_predictive: boolean | null;
+  }
+  let extremeEvents: ExtremeEventRow[] = [];
+  let extremeEventsLoading = false;
+
+  async function fetchExtremeEvents() {
+    try {
+      const res = await fetch('/api/terminal/extreme-events?since=24h&limit=5', {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json?.ok && Array.isArray(json?.data?.items)) {
+        extremeEvents = json.data.items.slice(0, 5);
+      }
+    } catch { /* silent */ }
+    extremeEventsLoading = false;
+  }
+
+  function fmtKindBadge(kind: string): string {
+    if (kind === 'funding') return 'FUND';
+    if (kind === 'oi') return 'OI';
+    if (kind === 'price') return 'PRICE';
+    return kind.toUpperCase().slice(0, 5);
+  }
+
   // ═══ Trending data ═══
   interface TrendingCoin { rank: number; symbol: string; name: string; price: number; change1h: number; change24h: number; change7d: number; volume24h: number; sentiment?: number | null; socialVolume?: number | null; galaxyScore?: number | null; }
   interface GainerLoser extends TrendingCoin { direction: 'gainer' | 'loser'; }
@@ -978,6 +1013,7 @@
       fetchLiveEvents(),
       fetchLiveFlow(),
       fetchOnchainData(),
+      fetchExtremeEvents(),
     ]);
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -1188,6 +1224,27 @@
                   <span class="ev-src">{ev.source}</span>
                 </div>
               {/each}
+            </div>
+          {/if}
+
+          <!-- ═══ Extreme Events 24h (W-0355) ═══ -->
+          {#if feedFilter === 'all' || feedFilter === 'events'}
+            <div class="xev-section" data-testid="extreme-events-section">
+              <div class="xev-header">EXTREME EVENTS (24H)</div>
+              {#if extremeEventsLoading}
+                <div class="xev-empty">Loading...</div>
+              {:else if extremeEvents.length === 0}
+                <div class="xev-empty" data-testid="extreme-events-empty">최근 24h 이벤트 없음</div>
+              {:else}
+                {#each extremeEvents.slice(0, 5) as ev (ev.symbol + ev.detected_at)}
+                  <div class="xev-row" data-testid="extreme-event-row">
+                    <span class="xev-badge xev-badge-{ev.kind}">{fmtKindBadge(ev.kind)}</span>
+                    <span class="xev-sym">{ev.symbol}</span>
+                    <span class="xev-mag" class:xev-pos={ev.magnitude > 0} class:xev-neg={ev.magnitude < 0}>{ev.magnitude > 0 ? '+' : ''}{ev.magnitude.toFixed(4)}</span>
+                    <span class="xev-time">{formatRelativeTime(new Date(ev.detected_at).getTime())}</span>
+                  </div>
+                {/each}
+              {/if}
             </div>
           {/if}
 
@@ -1943,6 +2000,21 @@
   .ev-etime { font-family: var(--fm); font-size: var(--ui-text-xs); color: rgba(255,255,255,.6); }
   .ev-body { font-family: var(--fm); font-size: 11px; line-height: 1.45; color: rgba(255,255,255,.8); }
   .ev-src { font-family: var(--fm); font-size: var(--ui-text-xs); color: rgba(255,255,255,.3); display: block; margin-top: 3px; }
+
+  /* ── Extreme Events (W-0355) ── */
+  .xev-section { margin-bottom: 8px; }
+  .xev-header { font-family: var(--fm); font-size: var(--ui-text-xs); font-weight: 700; letter-spacing: 1.5px; color: #f97316; padding: 4px 0 6px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .xev-empty { font-family: var(--fm); font-size: var(--ui-text-xs); color: rgba(255,255,255,.4); text-align: center; padding: 10px 0; letter-spacing: .5px; }
+  .xev-row { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .xev-badge { font-family: var(--fm); font-size: var(--ui-text-xs); font-weight: 700; padding: 2px 5px; border-radius: 3px; color: #000; flex-shrink: 0; }
+  .xev-badge-funding { background: #f97316; }
+  .xev-badge-oi { background: #a855f7; }
+  .xev-badge-price { background: #3b82f6; }
+  .xev-sym { font-family: var(--fm); font-size: var(--ui-text-xs); font-weight: 700; color: rgba(255,255,255,.9); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .xev-mag { font-family: var(--fm); font-size: var(--ui-text-xs); font-weight: 600; flex-shrink: 0; }
+  .xev-mag.xev-pos { color: var(--pos, #22c55e); }
+  .xev-mag.xev-neg { color: var(--neg, #ef4444); }
+  .xev-time { font-family: var(--fm); font-size: var(--ui-text-xs); color: rgba(255,255,255,.4); flex-shrink: 0; }
 
   /* ── Flow ── */
   /* ── Onchain Dashboard ── */
