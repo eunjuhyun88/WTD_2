@@ -1,0 +1,184 @@
+"""GET /passport/{username} — Public passport stats endpoint (W-0391-E).
+
+No auth required. Returns public accuracy stats for a given username.
+If the user is not found or profile is private, returns 404.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+
+log = logging.getLogger("engine.api.routes.passport")
+router = APIRouter()
+
+
+def _sb():
+    from supabase import create_client
+    return create_client(
+        os.environ["SUPABASE_URL"],
+        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+    )
+
+
+def _compute_badges(accuracy: float, verdict_count: int, streak_days: int) -> list[str]:
+    badges: list[str] = []
+    if streak_days >= 7:
+        badges.append("7일 연속")
+    if verdict_count >= 50:
+        badges.append("첫 50 verdict")
+    if accuracy >= 0.7:
+        badges.append("정확도 70%+")
+    return badges
+
+
+@router.get("/passport/{username}")
+async def get_public_passport(username: str) -> dict[str, Any]:
+    """Return public passport stats for a user by username.
+
+    Looks up user by username (display_name / nickname) from user_profiles.
+    Returns 404 if not found or if the profile is set to private.
+    """
+    try:
+        sb = _sb()
+
+        # Look up the user_id from display name / username
+        profile_res = (
+            sb.table("user_profiles")
+            .select("user_id, display_tier, passport_public")
+            .eq("username", username)
+            .limit(1)
+            .execute()
+        )
+
+        if not profile_res.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        profile = profile_res.data[0]
+
+        # Respect privacy setting if present
+        if profile.get("passport_public") is False:
+            raise HTTPException(status_code=404, detail="Profile is private")
+
+        user_id = profile["user_id"]
+
+        # Fetch verdict accuracy stats
+        accuracy_res = (
+            sb.table("pattern_ledger_records")
+            .select("user_verdict, outcome")
+            .eq("user_id", user_id)
+            .not_.is_("outcome", "null")
+            .execute()
+        )
+
+        rows = accuracy_res.data or []
+        verdict_count = len(rows)
+        correct = 0
+        for row in rows:
+            verdict = row.get("user_verdict")
+            outcome = row.get("outcome")
+            if verdict == "valid" and outcome == "success":
+                correct += 1
+            elif verdict == "invalid" and outcome == "failure":
+                correct += 1
+
+        accuracy = (correct / verdict_count) if verdict_count > 0 else 0.0
+
+        # Streak: consecutive days with at least one verdict
+        streak_res = (
+            sb.table("pattern_ledger_records")
+            .select("created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(365)
+            .execute()
+        )
+
+        streak_days = _compute_streak(streak_res.data or [])
+
+        # Best pattern (pattern slug with highest win rate, min 3 verdicts)
+        best_pattern = _compute_best_pattern(rows)
+
+        badges = _compute_badges(accuracy, verdict_count, streak_days)
+
+        return {
+            "username": username,
+            "accuracy": round(accuracy, 4),
+            "verdict_count": verdict_count,
+            "streak_days": streak_days,
+            "best_pattern": best_pattern,
+            "badges": badges,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.error("passport lookup failed for %s: %s", username, exc)
+        raise HTTPException(status_code=500, detail="Internal error") from exc
+
+
+def _compute_streak(rows: list[dict]) -> int:
+    """Count consecutive days with at least one verdict (most recent first)."""
+    from datetime import datetime, timedelta, timezone
+
+    if not rows:
+        return 0
+
+    seen_days: set[str] = set()
+    for row in rows:
+        ts = row.get("created_at", "")
+        if ts:
+            try:
+                day = ts[:10]  # YYYY-MM-DD
+                seen_days.add(day)
+            except Exception:
+                continue
+
+    if not seen_days:
+        return 0
+
+    today = datetime.now(tz=timezone.utc).date()
+    streak = 0
+    current = today
+    while True:
+        day_str = current.isoformat()
+        if day_str in seen_days:
+            streak += 1
+            current -= timedelta(days=1)
+        else:
+            break
+    return streak
+
+
+def _compute_best_pattern(rows: list[dict]) -> str | None:
+    """Return the pattern slug with the highest win rate (min 3 verdicts)."""
+    from collections import defaultdict
+
+    pattern_stats: dict[str, dict[str, int]] = defaultdict(lambda: {"wins": 0, "total": 0})
+
+    for row in rows:
+        slug = row.get("pattern_slug")
+        if not slug:
+            continue
+        verdict = row.get("user_verdict")
+        outcome = row.get("outcome")
+        pattern_stats[slug]["total"] += 1
+        if verdict == "valid" and outcome == "success":
+            pattern_stats[slug]["wins"] += 1
+        elif verdict == "invalid" and outcome == "failure":
+            pattern_stats[slug]["wins"] += 1
+
+    best_slug: str | None = None
+    best_rate = -1.0
+
+    for slug, stats in pattern_stats.items():
+        if stats["total"] < 3:
+            continue
+        rate = stats["wins"] / stats["total"]
+        if rate > best_rate:
+            best_rate = rate
+            best_slug = slug
+
+    return best_slug
