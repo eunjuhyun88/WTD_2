@@ -136,11 +136,10 @@ def run_daily_digest() -> dict[str, int]:
     optout_res = sb.table("digest_subscriptions").select("user_id").eq("opt_in", False).execute()
     opted_out = {r["user_id"] for r in (optout_res.data or [])}
 
-    # All users with ≥1 verdict
+    # verdict_streak_history (migration 055) is GROUP BY user_id — O(users) not O(rows)
     users_res = (
-        sb.table("pattern_ledger_records")
+        sb.table("verdict_streak_history")
         .select("user_id")
-        .not_.is_("user_id", "null")
         .execute()
     )
     user_ids = {r["user_id"] for r in (users_res.data or [])} - opted_out

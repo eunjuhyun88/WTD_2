@@ -8,10 +8,11 @@ export const inboxCount = writable<number>(0);
 
 export async function loadInboxCount(): Promise<void> {
   try {
-    const res = await fetch('/api/captures/outcomes?limit=50');
+    // limit=10: we only need to know if ≥10 pending. `count` field = rows returned.
+    const res = await fetch('/api/captures/outcomes?limit=10');
     if (!res.ok) return;
-    const data = await res.json() as { items?: unknown[] };
-    inboxCount.set((data.items ?? []).length);
+    const data = await res.json() as { count?: number };
+    inboxCount.set(data.count ?? 0);
   } catch { /* non-critical, fail silently */ }
 }
 

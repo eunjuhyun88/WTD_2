@@ -28,71 +28,51 @@ Deno.serve(async (req: Request) => {
 
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Users who explicitly opted out
-  const { data: optouts } = await sb
-    .from('digest_subscriptions')
-    .select('user_id')
-    .eq('opt_in', false);
-  const optedOut = new Set((optouts ?? []).map((r: { user_id: string }) => r.user_id));
+  // Fetch opted-out list and distinct user IDs in parallel.
+  // verdict_streak_history (migration 055) already GROUP BY user_id — O(users) not O(rows).
+  const [optoutRes, usersRes] = await Promise.all([
+    sb.from('digest_subscriptions').select('user_id').eq('opt_in', false),
+    sb.from('verdict_streak_history').select('user_id'),
+  ]);
 
-  // All users with at least one verdict
-  const { data: verdictRows } = await sb
-    .from('pattern_ledger_records')
-    .select('user_id')
-    .not('user_id', 'is', null);
+  const optedOut = new Set((optoutRes.data ?? []).map((r: { user_id: string }) => r.user_id));
+  const userIds = (usersRes.data ?? [])
+    .map((r: { user_id: string }) => r.user_id)
+    .filter((id: string) => !optedOut.has(id));
 
-  const userIds = [...new Set(
-    (verdictRows ?? [])
-      .map((r: { user_id: string }) => r.user_id)
-      .filter((id: string) => !optedOut.has(id))
-  )];
-
-  let sent = 0;
-  for (const userId of userIds) {
-    try {
-      const { data: { user } } = await sb.auth.admin.getUserById(userId);
-      if (!user?.email) continue;
-
-      const { data: profile } = await sb
-        .from('user_profiles')
-        .select('username')
-        .eq('user_id', userId)
-        .limit(1)
-        .maybeSingle();
-
-      const stats = await getUserStats(sb, userId);
-      if (stats.totalCount === 0) continue;
-
-      const html = renderHtml({
-        name: profile?.username ?? '트레이더',
-        ...stats,
-      });
-
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: FROM_EMAIL,
-          to: [user.email],
-          subject: `Cogotchi 일일 요약 — 이번 주 ${stats.weekCount}건 🔥`,
-          html,
-        }),
-      });
-
-      if (res.ok) sent++;
-    } catch (err) {
-      console.error('digest error for', userId, err);
-    }
-  }
+  const results = await Promise.allSettled(userIds.map(uid => sendDigestToUser(sb, uid)));
+  const sent = results.filter(r => r.status === 'fulfilled' && r.value).length;
 
   return new Response(
     JSON.stringify({ sent, total: userIds.length }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   );
 });
+
+async function sendDigestToUser(sb: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+  try {
+    const [{ data: { user } }, { data: profile }, stats] = await Promise.all([
+      sb.auth.admin.getUserById(userId),
+      sb.from('user_profiles').select('username').eq('user_id', userId).maybeSingle(),
+      getUserStats(sb, userId),
+    ]);
+    if (!user?.email || stats.totalCount === 0) return false;
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [user.email],
+        subject: `Cogotchi 일일 요약 — 이번 주 ${stats.weekCount}건 🔥`,
+        html: renderHtml({ name: (profile as { username?: string } | null)?.username ?? '트레이더', ...stats }),
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('digest error for', userId, err);
+    return false;
+  }
+}
 
 async function getUserStats(sb: ReturnType<typeof createClient>, userId: string) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
