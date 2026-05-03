@@ -117,6 +117,7 @@ function createChartSaveModeStore() {
     phase?: CaptureSelectionPhase;
     note?: string;
     ohlcvBars?: RangeSelectionBar[];
+    verdictJson?: Record<string, any> | null;
   }): Promise<CaptureId | null> {
     let state: ChartSaveModeState = DEFAULT_STATE;
     const unsub = subscribe((s) => { state = s; });
@@ -137,6 +138,7 @@ function createChartSaveModeStore() {
         note: opts.note ?? state.noteDraft,
         phase: opts.phase ?? 'GENERAL',
         sourceFreshness: { source: 'range_mode_save' },
+        verdictJson: opts.verdictJson ?? undefined,
       });
 
       if (!capturePayload) {

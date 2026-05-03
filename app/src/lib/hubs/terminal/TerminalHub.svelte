@@ -60,6 +60,7 @@
     await chartSaveMode.save({
       symbol: desktopSymbol,
       tf: $activeTabState.timeframe ?? '4h',
+      verdictJson: verdictJson ?? undefined,
     });
     if (verdictJson) {
       shellStore.setDecisionBundle({

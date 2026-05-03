@@ -36,6 +36,7 @@ export type PatternCaptureRequestArgs = RangeSelectionArgs & {
   patternSlug?: string;
   evidenceHash?: string;
   sourceFreshness?: Record<string, string>;
+  verdictJson?: Record<string, any>;
   price?: number | null;
   change24h?: number | null;
   funding?: number | null;
@@ -129,6 +130,7 @@ export function buildPatternCaptureRequestFromSelection(
     decision: {},
     evidenceHash: args.evidenceHash,
     sourceFreshness: args.sourceFreshness ?? { source: 'terminal_save_setup' },
+    verdictJson: args.verdictJson,
   };
 }
 
