@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`55838c34` — origin/main (2026-05-03) — feat(W-0391-E): Verdict swipe gesture + Passport public URL (#944)
+`df0fd2d4` — origin/main (2026-05-03) — feat(W-0383): Counterfactual Review + Filter Attribution Dashboard (#946)
 
 ---
 
