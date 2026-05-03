@@ -8,6 +8,7 @@
     type IndicatorCategory,
   } from '$lib/indicators/indicatorRegistry';
   import { addIndicator, removeIndicator, chartIndicators, type IndicatorKey } from '$lib/stores/chartIndicators';
+  import { indicatorFavorites, indicatorRecents } from '$lib/stores/indicatorFavorites';
 
   interface Props {
     open?: boolean;
@@ -26,6 +27,7 @@
   let query = $state('');
   let filter = $state<FilterMode>('popular');
   let hoveredId = $state<string | null>(null);
+  let activeTab = $state<'browse' | 'favorites' | 'recents'>('browse');
 
   const results = $derived(searchIndicators(query, filter, 100));
 
@@ -43,7 +45,20 @@
   const totalCount = $derived(INDICATOR_REGISTRY.length);
   const engineCount = $derived(INDICATOR_REGISTRY.filter((i) => i.tier === 'A').length);
 
+  const favItems = $derived(
+    indicatorFavorites.list
+      .map((id) => INDICATOR_REGISTRY.find((i) => i.id === id))
+      .filter((i): i is IndicatorDef => i != null)
+  );
+
+  const recentItems = $derived(
+    indicatorRecents.list
+      .map((id) => INDICATOR_REGISTRY.find((i) => i.id === id))
+      .filter((i): i is IndicatorDef => i != null)
+  );
+
   function handleIndicatorClick(ind: IndicatorDef) {
+    indicatorRecents.push(ind.id);
     if (onAddIndicator) {
       onAddIndicator(ind);
       return;
@@ -92,11 +107,24 @@
     <!-- Header -->
     <div class="lib-header">
       <span class="lib-title">Indicator Library</span>
-      <span class="lib-count">{totalCount} indicators · {engineCount} live in chart</span>
+      <span class="lib-count">{totalCount} · {engineCount} live</span>
+      <span class="lib-shortcut">/ to open</span>
       <button class="lib-close" onclick={onClose} aria-label="Close">✕</button>
     </div>
 
-    <!-- Search + Filter -->
+    <!-- Tabs: Browse / Favorites / Recents -->
+    <div class="lib-tabs">
+      <button class="lib-tab" class:active={activeTab === 'browse'} onclick={() => activeTab = 'browse'}>Browse</button>
+      <button class="lib-tab" class:active={activeTab === 'favorites'} onclick={() => activeTab = 'favorites'}>
+        ★ Saved {favItems.length > 0 ? `(${favItems.length})` : ''}
+      </button>
+      <button class="lib-tab" class:active={activeTab === 'recents'} onclick={() => activeTab = 'recents'}>
+        ↺ Recent {recentItems.length > 0 ? `(${recentItems.length})` : ''}
+      </button>
+    </div>
+
+    <!-- Search + Filter (browse tab only) -->
+    {#if activeTab === 'browse'}
     <div class="lib-controls">
       <div class="lib-search-wrap">
         <span class="lib-search-icon">⌕</span>
@@ -105,7 +133,6 @@
           type="text"
           placeholder="Search: MVRV, Funding, TVL, RSI…"
           bind:value={query}
-
         />
         {#if query}
           <button class="lib-clear" onclick={() => query = ''}>✕</button>
@@ -137,10 +164,81 @@
         >All {totalCount}</button>
       </div>
     </div>
+    {/if}
 
     <!-- Results -->
     <div class="lib-results">
-      {#if query.trim() || !grouped}
+      {#if activeTab === 'favorites'}
+        {#if favItems.length === 0}
+          <div class="lib-empty">
+            <span class="lib-empty-icon">★</span>
+            <p>No saved indicators yet — click ★ on any indicator</p>
+          </div>
+        {:else}
+          <div class="lib-flat-count">{favItems.length} saved</div>
+          {#each favItems as ind (ind.id)}
+            {@const badge = tierBadge(ind.tier)}
+            {@const active = isActive(ind)}
+            {@const faved = indicatorFavorites.has(ind.id)}
+            <button
+              class="ind-row"
+              class:active
+              class:hovered={hoveredId === ind.id}
+              onmouseenter={() => hoveredId = ind.id}
+              onmouseleave={() => hoveredId = null}
+              onclick={() => handleIndicatorClick(ind)}
+            >
+              <span class="ind-cat-icon">{catIcon(ind.category)}</span>
+              <div class="ind-info">
+                <div class="ind-name-row">
+                  <span class="ind-name">{ind.name}</span>
+                  <span class="ind-badge {badge.cls}">{badge.label}</span>
+                </div>
+                <div class="ind-desc">{ind.description}</div>
+              </div>
+              <div class="ind-meta">
+                <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title="Remove from saved">★</span>
+                {#if active}<span class="ind-active-dot">●</span>{/if}
+              </div>
+            </button>
+          {/each}
+        {/if}
+      {:else if activeTab === 'recents'}
+        {#if recentItems.length === 0}
+          <div class="lib-empty">
+            <span class="lib-empty-icon">↺</span>
+            <p>No recently used indicators</p>
+          </div>
+        {:else}
+          <div class="lib-flat-count">{recentItems.length} recent</div>
+          {#each recentItems as ind (ind.id)}
+            {@const badge = tierBadge(ind.tier)}
+            {@const active = isActive(ind)}
+            {@const faved = indicatorFavorites.has(ind.id)}
+            <button
+              class="ind-row"
+              class:active
+              class:hovered={hoveredId === ind.id}
+              onmouseenter={() => hoveredId = ind.id}
+              onmouseleave={() => hoveredId = null}
+              onclick={() => handleIndicatorClick(ind)}
+            >
+              <span class="ind-cat-icon">{catIcon(ind.category)}</span>
+              <div class="ind-info">
+                <div class="ind-name-row">
+                  <span class="ind-name">{ind.name}</span>
+                  <span class="ind-badge {badge.cls}">{badge.label}</span>
+                </div>
+                <div class="ind-desc">{ind.description}</div>
+              </div>
+              <div class="ind-meta">
+                <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title={faved ? 'Remove from saved' : 'Save'}>★</span>
+                {#if active}<span class="ind-active-dot">●</span>{/if}
+              </div>
+            </button>
+          {/each}
+        {/if}
+      {:else if query.trim() || !grouped}
         <!-- Flat list when searching -->
         {#if results.length === 0}
           <div class="lib-empty">
@@ -152,6 +250,7 @@
           {#each results as ind (ind.id)}
             {@const badge = tierBadge(ind.tier)}
             {@const active = isActive(ind)}
+            {@const faved = indicatorFavorites.has(ind.id)}
             <button
               class="ind-row"
               class:active
@@ -175,6 +274,7 @@
                 {/if}
               </div>
               <div class="ind-meta">
+                <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title={faved ? 'Remove from saved' : 'Save'}>★</span>
                 <span class="ind-pop" title="Popularity">{popularDots(ind.popularity)}</span>
                 {#if active}
                   <span class="ind-active-dot">●</span>
@@ -198,6 +298,7 @@
               {#each catItems as ind (ind.id)}
                 {@const badge = tierBadge(ind.tier)}
                 {@const active = isActive(ind)}
+                {@const faved = indicatorFavorites.has(ind.id)}
                 <button
                   class="ind-row"
                   class:active
@@ -228,6 +329,7 @@
                     {/if}
                   </div>
                   <div class="ind-meta">
+                    <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title={faved ? 'Remove from saved' : 'Save'}>★</span>
                     <span class="ind-pop">{popularDots(ind.popularity)}</span>
                     {#if active}
                       <span class="ind-active-dot">●</span>
@@ -315,6 +417,59 @@
     transition: all 0.08s;
   }
   .lib-close:hover { color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.22); }
+
+  .lib-shortcut {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs);
+    color: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+
+  /* ── Tabs ── */
+  .lib-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.01);
+  }
+  .lib-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 10px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: var(--ui-text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.35);
+    cursor: pointer;
+    transition: all 0.08s;
+  }
+  .lib-tab:hover { color: rgba(255,255,255,0.65); }
+  .lib-tab.active {
+    color: #4b9efd;
+    border-bottom-color: #4b9efd;
+    background: rgba(75,158,253,0.05);
+  }
+
+  /* ── Fav button ── */
+  .fav-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.18);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.08s;
+  }
+  .fav-btn:hover { color: rgba(239,192,80,0.75); }
+  .fav-btn.faved { color: #efc050; }
 
   /* ── Controls ── */
   .lib-controls {

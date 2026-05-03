@@ -47,13 +47,17 @@
   import { DrawingManager, type DrawingToolType } from '$lib/chart/DrawingManager';
   import { PriceLineManager } from '$lib/chart/usePriceLines';
   // ── Multi-pane indicator layer (W-0211 follow-up) ──────────────────────────
-  import {
-    PANE_INDICATORS as PANE_SPECS,
-    computePaneLines,
-    type IndicatorKind,
-    type ValuePoint,
-  } from '$lib/chart/paneIndicators';
   import { computePaneChips, computeLiqChips } from '$lib/chart/paneCurrentValues';
+  // ── W-0395: modular indicator layout ───────────────────────────────────────
+  import {
+    mountIndicatorPanes as mountIndicatorPanesModule,
+    mountSecondaryRsi,
+    refreshLiqPane,
+    type IndicatorSeriesRefs,
+  } from '$lib/chart/mountIndicatorPanes';
+  import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
+  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore';
   import PaneInfoBar from './PaneInfoBar.svelte';
   import KpiStrip from './KpiStrip.svelte';
   import type { KpiInputBundle } from '$lib/chart/kpiStrip';
@@ -70,7 +74,6 @@
   import { shellStore, activeDrawingMode } from '$lib/hubs/terminal/shell.store';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
   import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
-  import { injectClientIndicators } from './chartIndicatorCalc';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -257,6 +260,58 @@
     return n;
   });
 
+  /** Number of sub-panes actually mounted below the price pane. */
+  let activePanelCount = $derived.by(() => {
+    let n = 0;
+    if (panePositions.rsiOrMacd >= 0) n++;
+    if (panePositions.oi >= 0) n++;
+    if (panePositions.cvd >= 0) n++;
+    if (panePositions.funding >= 0) n++;
+    if (panePositions.liq >= 0) n++;
+    return n;
+  });
+
+  /**
+   * Price pane takes stretchFactor=4 (adjustable); each sub-pane takes its
+   * stored stretch factor. Used as a CSS custom property for pib-anchor overlays.
+   */
+  const ORDERED_KINDS = ['rsiOrMacd', 'oi', 'cvd', 'funding', 'liq'] as const;
+  let priceFracPct = $derived.by(() => {
+    if (activePanelCount === 0) return 100;
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    const totalStretch = priceStretch + activeKinds.reduce((s, k) => s + paneLayout.state.stretch[k], 0);
+    return Math.round((priceStretch / totalStretch) * 10000) / 100;
+  });
+
+  /** Per-pane top position (%) derived from actual stretch ratios. */
+  let pibTops = $derived.by((): Partial<Record<PaneKind, number>> => {
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    if (activeKinds.length === 0) return {};
+    const totalStretch = priceStretch + activeKinds.reduce((s, k) => s + paneLayout.state.stretch[k], 0);
+    let cumPct = priceStretch / totalStretch * 100;
+    const tops: Partial<Record<PaneKind, number>> = {};
+    for (const kind of activeKinds) {
+      tops[kind] = cumPct;
+      cumPct += paneLayout.state.stretch[kind] / totalStretch * 100;
+    }
+    return tops;
+  });
+
+  /** Pane boundary lines: position + which pane is above (to resize on drag). */
+  let resizeBoundaries = $derived.by(() => {
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    if (activeKinds.length === 0) return [] as Array<{ upperKind: 'price' | PaneKind; top: number }>;
+    const result: Array<{ upperKind: 'price' | PaneKind; top: number }> = [];
+    // Price / first-indicator boundary
+    result.push({ upperKind: 'price', top: priceFracPct });
+    // Indicator / indicator boundaries
+    for (let i = 0; i < activeKinds.length - 1; i++) {
+      const nextTop = pibTops[activeKinds[i + 1]];
+      if (nextTop != null) result.push({ upperKind: activeKinds[i], top: nextTop });
+    }
+    return result;
+  });
+
   type StudyCategory = 'Favorites' | 'Overlays' | 'Pane' | 'Flow';
   type StudyId = 'ema' | 'vwap' | 'bb' | 'atr' | 'macd' | 'cvd' | 'overlay' | 'comparison';
   type StudyDefinition = {
@@ -373,9 +428,29 @@
   let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
   });
-  /** Liq histogram series, kept so WS refresh can update without full re-render. */
-  let liqLongSeries:  ISeriesApi<'Histogram'> | null = null;
-  let liqShortSeries: ISeriesApi<'Histogram'> | null = null;
+  /** Series refs returned by mountIndicatorPanes — used by crosshair sync. */
+  let indicatorSeriesRefs: IndicatorSeriesRefs | null = null;
+  /** Unsubscribe handle for the active crosshair sync subscription. */
+  let crosshairUnsub: CrosshairUnsubscribe | null = null;
+  /** Per-pane layout store (visibility + stretch persistence). */
+  const paneLayout = createPaneLayoutStore();
+  /**
+   * Live chips driven by crosshair. null = crosshair off chart;
+   * parent falls back to static last-bar chips from chartData.
+   */
+  let crosshairChips = $state<CrosshairChips | null>(null);
+
+  // ── Phase 4: pane resize handles ─────────────────────────────────────────
+  /** Price pane stretch factor; normally 4, adjustable by dragging the first boundary. */
+  let priceStretch = $state(4);
+  type ResizeHandle = {
+    upperKind: 'price' | PaneKind;
+    startY: number;
+    startStretch: number;
+    startTotalStretch: number;
+    containerH: number;
+  };
+  let activeResize: ResizeHandle | null = null;
 
   // ── DataFeed (resilient WS + polling) ─────────────────────────────────────
   let _dataFeed: DataFeed | null = null;
@@ -520,6 +595,49 @@
     _dragActive = false;
   }
 
+  // ── Pane resize handlers (Phase 4) ───────────────────────────────────────
+
+  function _onResizeMove(e: MouseEvent) {
+    if (!activeResize || !mainChart) return;
+    const deltaY = e.clientY - activeResize.startY;
+    const deltaStretch = (deltaY / activeResize.containerH) * activeResize.startTotalStretch;
+    if (activeResize.upperKind === 'price') {
+      priceStretch = Math.max(1, Math.min(12, activeResize.startStretch + deltaStretch));
+      try { mainChart.panes()[0]?.setStretchFactor(priceStretch); } catch { /* v5.0.8+ */ }
+    } else {
+      const newStretch = Math.max(0.5, Math.min(8, activeResize.startStretch + deltaStretch));
+      paneLayout.setStretch(activeResize.upperKind, newStretch);
+      try {
+        const idx = panePositions[activeResize.upperKind];
+        if (idx >= 0) mainChart.panes()[idx]?.setStretchFactor(newStretch);
+      } catch { /* ignore */ }
+    }
+  }
+
+  function _onResizeUp() {
+    activeResize = null;
+    window.removeEventListener('mousemove', _onResizeMove);
+    window.removeEventListener('mouseup', _onResizeUp);
+  }
+
+  function startPaneResize(e: MouseEvent, upperKind: 'price' | PaneKind) {
+    if (!mainEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    const totalStretch = priceStretch + activeKinds.reduce((s, k) => s + paneLayout.state.stretch[k], 0);
+    const startStretch = upperKind === 'price' ? priceStretch : paneLayout.state.stretch[upperKind];
+    activeResize = {
+      upperKind,
+      startY: e.clientY,
+      startStretch,
+      startTotalStretch: totalStretch,
+      containerH: Math.max(1, mainEl.clientHeight),
+    };
+    window.addEventListener('mousemove', _onResizeMove);
+    window.addEventListener('mouseup', _onResizeUp);
+  }
+
   function handleSaveModeChange(state: { active: boolean; anchorA: number | null; anchorB: number | null }) {
     if (!mainChart) return;
 
@@ -554,6 +672,18 @@
     if ((e.key === 'd' || e.key === 'D') && !$chartSaveMode.active) {
       e.preventDefault();
       shellStore.setDrawingTool('trendLine');
+    }
+  }
+
+  function handleIndicatorLibraryKeydown(e: KeyboardEvent) {
+    const target = e.target as HTMLElement;
+    const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+    if (e.key === '/' && !inInput) {
+      e.preventDefault();
+      indicatorLibraryOpen = !indicatorLibraryOpen;
+    }
+    if (e.key === 'Escape' && indicatorLibraryOpen) {
+      indicatorLibraryOpen = false;
     }
   }
 
@@ -730,6 +860,33 @@
     if (!chartData?.liqBars?.length) return null;
     return computeLiqChips(chartData.liqBars, tf);
   });
+  const rsiOrMacdChips = $derived.by(() => {
+    if (!chartData) return null;
+    if (showMACD) {
+      const macdArr = (chartData.indicators as Record<string, unknown>)?.macd as
+        Array<{ time: number; macd: number; signal: number; hist: number }> | undefined;
+      if (!macdArr?.length) return null;
+      const last = macdArr[macdArr.length - 1];
+      return [
+        { key: 'macd',   color: '#63b3ed', label: 'MACD',   value: last.macd.toFixed(4) },
+        { key: 'signal', color: '#fbbf24', label: 'signal', value: last.signal.toFixed(4) },
+        {
+          key: 'hist', label: 'hist',
+          color: last.hist >= 0 ? 'rgba(38,166,154,0.9)' : 'rgba(239,83,80,0.9)',
+          value: last.hist.toFixed(4),
+          tone: (last.hist >= 0 ? 'bull' : 'bear') as 'bull' | 'bear',
+        },
+      ];
+    }
+    if (showRSI) {
+      const rsiArr = (chartData.indicators as Record<string, unknown>)?.rsi14 as
+        Array<{ time: number; value: number }> | undefined;
+      if (!rsiArr?.length) return null;
+      const v = rsiArr[rsiArr.length - 1].value;
+      return [{ key: 'rsi', color: '#fbbf24', label: 'RSI 14', value: v.toFixed(2) }];
+    }
+    return null;
+  });
 
   // Bundle for the KPI strip
   const kpiBundle = $derived<KpiInputBundle>({
@@ -804,8 +961,8 @@
 
     const w = containerEl?.offsetWidth ?? 900;
 
+    const ind = data.indicators as Record<string, Array<{ time: number; value: number }>>;
     const klines = data.klines as Array<{ time: number; open: number; close: number; high: number; low: number; volume: number }>;
-    const ind = injectClientIndicators(klines, data.indicators) as Record<string, Array<{ time: number; value: number }>>;
     const oiBars = data.oiBars as Array<{ time: number; value: number; color: string }>;
     const fundingBars = data.fundingBars as Array<{ time: number; value: number; color: string }> | undefined;
     const cvdRaw = data.cvdBars as Array<{ time: number; value: number }> | undefined;
@@ -1136,19 +1293,15 @@
     // W-0210 Layer 1: Alpha overlay — ATR levels + phase markers from analysisData
     syncAlphaOverlay();
 
-    let _crosshairRafId = 0;
     mainChart.subscribeCrosshairMove((param) => {
-      cancelAnimationFrame(_crosshairRafId);
-      _crosshairRafId = requestAnimationFrame(() => {
-        if (param.time) {
-          const series = priceSeries;
-          const d = series ? param.seriesData.get(series) as { close?: number; value?: number } | undefined : undefined;
-          liveTick.update({
-            time:  param.time as number,
-            price: d?.close ?? d?.value ?? liveTick.price,
-          });
-        }
-      });
+      if (param.time) {
+        const series = priceSeries;
+        const d = series ? param.seriesData.get(series) as { close?: number; value?: number } | undefined : undefined;
+        liveTick.update({
+          time:  param.time as number,
+          price: d?.close ?? d?.value ?? liveTick.price,
+        });
+      }
     });
 
     // W-0358: note marker click — open NotePanel view for matching note
@@ -1184,7 +1337,37 @@
     // ── Indicator panes (native lightweight-charts v5.1 multi-pane) ─────────
     // Volume sits inside pane 0 (price) on its own price scale, pinned to the
     // bottom 20% — keeps price + volume colocated, the way most traders read.
-    panePositions = mountIndicatorPanes(mainChart, data, klines, ind);
+    const mountResult = mountIndicatorPanesModule(mainChart, data, klines, ind, {
+      showVolume,
+      showRSI,
+      showMACD,
+      showOI,
+      showCVD,
+      showFundingPane,
+      showLiqPane,
+    }, tf);
+    panePositions = mountResult.positions;
+    indicatorSeriesRefs = mountResult.seriesRefs;
+
+    // Mount secondary indicator instances (multi-instance — W-0399)
+    let nextExtraPane = Math.max(...Object.values(mountResult.positions).filter((v) => v >= 0), 0) + 1;
+    for (const inst of indicatorInstances.instances) {
+      if (!inst.style.visible) continue;
+      if (inst.engineKey === 'rsi') {
+        const rsiData = (ind.rsi14 ?? []) as Array<{ time: number; value: number }>;
+        mountSecondaryRsi(mainChart!, rsiData, nextExtraPane, inst.instanceId, inst.style.color);
+        nextExtraPane++;
+      }
+    }
+
+    // Wire crosshair → live chip updates (rAF throttled)
+    crosshairUnsub?.();
+    crosshairUnsub = createCrosshairSync(
+      mainChart,
+      indicatorSeriesRefs,
+      panePositions,
+      (chips) => { crosshairChips = chips; },
+    );
 
     subscribeMainTimeScale();
 
@@ -1203,170 +1386,6 @@
         drawingMgr.attach(mainChart, priceSeries as ISeriesApi<SeriesType>);
       }
     });
-  }
-
-  /**
-   * Build all enabled indicator panes on `chart` and return their pane indices.
-   * Native panes share crosshair + time-axis with pane 0 — no manual sync.
-   */
-  function mountIndicatorPanes(
-    chart: IChartApi,
-    payload: ChartSeriesPayload,
-    klines: ChartSeriesPayload['klines'],
-    ind: Record<string, unknown>,
-  ): { rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number } {
-    const positions = { rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1 };
-    let nextPaneIndex = 1; // pane 0 reserved for price + volume overlay
-
-    // Volume — overlay on pane 0, pinned to bottom 20%
-    if (showVolume && klines.length) {
-      const volSeries = chart.addSeries(
-        HistogramSeries,
-        {
-          color: 'rgba(99,179,237,0.35)',
-          priceFormat: { type: 'volume' as const },
-          priceScaleId: 'volume',
-          lastValueVisible: false,
-        },
-        0,
-      );
-      try {
-        chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-      } catch { /* ignore */ }
-      volSeries.setData(toHisto(klines.map((k) => ({
-        time: k.time, value: k.volume,
-        color: k.close >= k.open ? 'rgba(38,166,154,0.45)' : 'rgba(239,83,80,0.45)',
-      }))));
-    }
-
-    // RSI or MACD (mutex)
-    if (showMACD) {
-      const macdData = (ind.macd ?? []) as Array<{ time: number; macd: number; signal: number; hist: number }>;
-      if (macdData.length) {
-        const idx = nextPaneIndex++;
-        positions.rsiOrMacd = idx;
-        const histSeries = chart.addSeries(
-          HistogramSeries,
-          { priceFormat: { type: 'price', precision: 6, minMove: 0.000001 }, lastValueVisible: false, title: 'hist' },
-          idx,
-        );
-        histSeries.setData(macdData.map((d) => ({
-          time:  d.time as UTCTimestamp,
-          value: d.hist,
-          color: d.hist >= 0 ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)',
-        })));
-        const macdLine_ = chart.addSeries(LineSeries, { color: '#63b3ed', lineWidth: 1, lastValueVisible: true, priceLineVisible: false, title: 'MACD' }, idx);
-        macdLine_.setData(macdData.map((d) => ({ time: d.time as UTCTimestamp, value: d.macd })));
-        const sigLine = chart.addSeries(LineSeries, { color: '#fbbf24', lineWidth: 1, lastValueVisible: true, priceLineVisible: false, title: 'signal' }, idx);
-        sigLine.setData(macdData.map((d) => ({ time: d.time as UTCTimestamp, value: d.signal })));
-      }
-    } else if (showRSI) {
-      const rsiData = (ind.rsi14 ?? []) as Array<{ time: number; value: number }>;
-      if (rsiData.length) {
-        const idx = nextPaneIndex++;
-        positions.rsiOrMacd = idx;
-        const rsiS = chart.addSeries(LineSeries, { color: '#fbbf24', lineWidth: 2, lastValueVisible: true, priceLineVisible: false, title: 'RSI 14' }, idx);
-        rsiS.setData(toLine(rsiData));
-        const ob = chart.addSeries(LineSeries, { color: 'rgba(239,83,80,0.45)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, idx);
-        const os = chart.addSeries(LineSeries, { color: 'rgba(38,166,154,0.45)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, idx);
-        ob.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 70 })));
-        os.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 30 })));
-      }
-    }
-
-    // Helper: mount a generic raw + multi-window MA pane
-    const mountWindowedPane = (kind: IndicatorKind, rawBars: ValuePoint[]): number => {
-      if (rawBars.length === 0) return -1;
-      const idx = nextPaneIndex++;
-      const spec = PANE_SPECS[kind];
-      const { rawLine, windowLines } = computePaneLines(spec, rawBars, tf);
-      if (spec.includeRaw && rawLine.length > 0) {
-        const raw = chart.addSeries(
-          LineSeries,
-          { color: spec.rawColor, lineWidth: 1, lastValueVisible: false, priceLineVisible: false, title: 'raw' },
-          idx,
-        );
-        raw.setData(rawLine);
-      }
-      for (const { window, data: wd } of windowLines) {
-        const line = chart.addSeries(
-          LineSeries,
-          { color: window.color, lineWidth: window.lineWidth ?? 2, lastValueVisible: true, priceLineVisible: false, title: window.label },
-          idx,
-        );
-        line.setData(wd);
-      }
-      return idx;
-    };
-
-    // OI pane
-    if (showOI && (payload.oiBars?.length ?? 0) > 0) {
-      positions.oi = mountWindowedPane('oi', payload.oiBars.map((b) => ({ time: b.time, value: b.value })));
-    }
-
-    // CVD pane (raw cumulative + 7d/14d/30d MA)
-    if (showCVD) {
-      const cvdRaw: ValuePoint[] = (payload.cvdBars && payload.cvdBars.length > 0)
-        ? payload.cvdBars.map((b) => ({ time: b.time, value: b.value }))
-        : (() => {
-            // Fallback: synthesize cumulative CVD from candles
-            let cum = 0;
-            return klines.map((k) => {
-              cum += (k.close >= k.open ? 1 : -1) * k.volume;
-              return { time: k.time, value: cum };
-            });
-          })();
-      positions.cvd = mountWindowedPane('cvd', cvdRaw);
-    }
-
-    // Funding pane
-    const fb = (payload.fundingBars ?? []) as Array<{ time: number; value: number }>;
-    if (showFundingPane && fb.length > 0) {
-      positions.funding = mountWindowedPane('funding', fb.map((b) => ({ time: b.time, value: b.value })));
-    }
-
-    // Liquidations pane — special: long histogram + short histogram + net MA
-    if (showLiqPane && (payload.liqBars?.length ?? 0) > 0) {
-      const liqBars = payload.liqBars!;
-      const idx = nextPaneIndex++;
-      positions.liq = idx;
-      const longS = chart.addSeries(
-        HistogramSeries,
-        { color: 'rgba(52,211,153,0.65)', priceFormat: { type: 'volume' }, lastValueVisible: false, title: 'long' },
-        idx,
-      );
-      const shortS = chart.addSeries(
-        HistogramSeries,
-        { color: 'rgba(248,113,113,0.65)', priceFormat: { type: 'volume' }, lastValueVisible: false, title: 'short' },
-        idx,
-      );
-      longS.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: b.longUsd })));
-      shortS.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: -b.shortUsd })));
-      liqLongSeries = longS;
-      liqShortSeries = shortS;
-      const netSpec = PANE_SPECS.liq;
-      const netBars: ValuePoint[] = liqBars.map((b) => ({ time: b.time, value: b.longUsd - b.shortUsd }));
-      const { windowLines } = computePaneLines(netSpec, netBars, tf);
-      for (const { window, data: wd } of windowLines) {
-        const line = chart.addSeries(
-          LineSeries,
-          { color: window.color, lineWidth: window.lineWidth ?? 2, lastValueVisible: true, priceLineVisible: false, title: window.label },
-          idx,
-        );
-        line.setData(wd);
-      }
-    }
-
-    // Stretch factors: price 4×, every indicator pane 1×
-    try {
-      const allPanes = chart.panes();
-      if (allPanes.length > 0) {
-        allPanes[0].setStretchFactor(4);
-        for (let i = 1; i < allPanes.length; i++) allPanes[i].setStretchFactor(1);
-      }
-    } catch { /* setStretchFactor only available v5.0.8+ */ }
-
-    return positions;
   }
 
   // ── Verdict / whale level lines — delegated to PriceLineManager ─────────
@@ -1435,15 +1454,8 @@
 
   type LiqBarRaw = { time: number; longUsd: number; shortUsd: number };
 
-  /**
-   * Live-update the liquidations pane histograms when WS / polling delivers
-   * fresh `liqBars`. The pane is part of `mainChart` so we just push data
-   * onto the kept series references — no chart instance to re-create.
-   */
   function _initLiqPane(liqBars: LiqBarRaw[]) {
-    if (!liqLongSeries || !liqShortSeries || liqBars.length === 0) return;
-    liqLongSeries.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: b.longUsd })));
-    liqShortSeries.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: -b.shortUsd })));
+    if (indicatorSeriesRefs) refreshLiqPane(indicatorSeriesRefs, liqBars);
   }
 
   function _refreshLiqPane(liqBars: LiqBarRaw[]) {
@@ -1451,13 +1463,17 @@
   }
 
   function destroyCharts() {
+    // Tear down crosshair sync before removing the chart
+    crosshairUnsub?.();
+    crosshairUnsub = null;
+    indicatorSeriesRefs = null;
+    crosshairChips = null;
+
     priceLineMgr.clearAll();
     clearAIOverlay();
-    priceLineMgr = new PriceLineManager(); // reset for next chart instance
-    // W-0210: destroy alpha overlay before removing series
+    priceLineMgr = new PriceLineManager();
     _alphaOverlay?.destroy();
     _alphaOverlay = null;
-    // Detach Layer 1 primitive before removing chart (W-0086 / W-0117)
     detachDragHandlers();
     detachRangePrimitive();
     mainChart?.remove();
@@ -1465,9 +1481,9 @@
     priceSeries = null;
     candleMarkerApi = null;
     candleSeriesForAnnotations = null;
-    liqLongSeries = null;
-    liqShortSeries = null;
     panePositions = { rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1 };
+    priceStretch = 4;
+    activeResize = null;
   }
 
   function handleResize() {
@@ -1557,10 +1573,19 @@
     removeChartIndicator(key);
   }
 
-  /** W-0374 Phase D-4: Add indicator from IndicatorLibrary drawer. */
+  /** W-0399: Add indicator from IndicatorLibrary drawer. Supports multi-instance RSI. */
   function handleAddIndicator(indicator: IndicatorDef) {
     if (indicator.tier === 'A' && indicator.engineKey) {
-      toggleChartIndicator(indicator.engineKey as IndicatorKey);
+      const key = indicator.engineKey as IndicatorKey;
+      const alreadyActive = $chartIndicators[key];
+      if (alreadyActive && key === 'rsi') {
+        // Second RSI → spawn a new instance pane instead of toggling off
+        indicatorInstances.add(indicator.id, key);
+        if (chartData) renderCharts(chartData);
+        indicatorLibraryOpen = false;
+        return;
+      }
+      toggleChartIndicator(key);
     }
     indicatorLibraryOpen = false;
   }
@@ -1577,6 +1602,8 @@
     window.addEventListener('keydown', handleRangeModeKeydown);
     // D key toggles drawing mode (W-0374)
     window.addEventListener('keydown', handleDrawingModeKeydown);
+    // / key opens indicator library (W-0399)
+    window.addEventListener('keydown', handleIndicatorLibraryKeydown);
     // Initial viewport width
     onWin();
     return () => {
@@ -1588,6 +1615,7 @@
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleRangeModeKeydown);
       window.removeEventListener('keydown', handleDrawingModeKeydown);
+      window.removeEventListener('keydown', handleIndicatorLibraryKeydown);
     }
     disconnectWS();
     destroyCharts();
@@ -1849,57 +1877,81 @@
       pane plus N indicator panes (CVD / OI / Funding / Liq / RSI or MACD).
       All panes share crosshair + time axis natively (v5.1 pane API).
     -->
-    <div class="pane-main multi-pane-host" bind:this={mainEl}>
+    <div class="pane-main multi-pane-host" bind:this={mainEl}
+      style="--price-frac: {priceFracPct}%">
       <!-- W-0289: Drawing overlay canvas -->
       {#if $activeDrawingMode && drawingMgr}
         <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
       {/if}
+
+      <!-- W-0395 Phase 4: pane resize handles — 6px grab zone at each pane boundary -->
+      {#each resizeBoundaries as boundary}
+        <div
+          class="pane-resizer"
+          class:is-resizing={activeResize?.upperKind === boundary.upperKind}
+          style="top: {boundary.top.toFixed(2)}%"
+          role="separator"
+          aria-label="Drag to resize pane"
+          onmousedown={(e) => startPaneResize(e, boundary.upperKind)}
+        ></div>
+      {/each}
+
       <!--
-        Per-pane info bars — TradingView × Santiment style chips. Positioned
-        as overlays so the chart owns the pane geometry; the bars float on top.
-        Vertical position is rough-aligned via CSS (pane stretch factors put
-        price 4× and each indicator 1× — so price ≈ 50%, each indicator ≈ 12.5%).
+        Per-pane info bars — TV × Santiment style chips. Positioned via
+        inline `top` derived from actual stretch ratios so they stay
+        aligned after user resize (pibTops always matches setStretchFactor).
       -->
       {#if chartData}
+        {#if rsiOrMacdChips && panePositions.rsiOrMacd >= 0}
+          <div class="pib-anchor" style="top: {(pibTops.rsiOrMacd ?? 0).toFixed(2)}%">
+            <PaneInfoBar
+              title={showMACD ? 'MACD' : 'RSI'}
+              sublabel={tf}
+              chips={crosshairChips?.rsiOrMacd ?? rsiOrMacdChips}
+              closable
+              onClose={() => removeChartIndicator(showMACD ? 'macd' : 'rsi')}
+            />
+          </div>
+        {/if}
         {#if oiChips && panePositions.oi >= 0}
-          <div class="pib-anchor" data-pane={panePositions.oi}>
+          <div class="pib-anchor" style="top: {(pibTops.oi ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="OI Δ"
               sublabel={tf}
-              chips={oiChips.chips}
+              chips={crosshairChips?.oi ?? oiChips.chips}
               closable
               onClose={() => removeChartIndicator('oi')}
             />
           </div>
         {/if}
         {#if cvdChips && panePositions.cvd >= 0}
-          <div class="pib-anchor" data-pane={panePositions.cvd}>
+          <div class="pib-anchor" style="top: {(pibTops.cvd ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="CVD"
               sublabel={tf}
-              chips={cvdChips.chips}
+              chips={crosshairChips?.cvd ?? cvdChips.chips}
               closable
               onClose={() => removeChartIndicator('cvd')}
             />
           </div>
         {/if}
         {#if fundingChips && panePositions.funding >= 0}
-          <div class="pib-anchor" data-pane={panePositions.funding}>
+          <div class="pib-anchor" style="top: {(pibTops.funding ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="Funding"
               sublabel={tf}
-              chips={fundingChips.chips}
+              chips={crosshairChips?.funding ?? fundingChips.chips}
               closable
               onClose={() => removeChartIndicator('funding')}
             />
           </div>
         {/if}
         {#if liqChips && panePositions.liq >= 0}
-          <div class="pib-anchor" data-pane={panePositions.liq}>
+          <div class="pib-anchor" style="top: {(pibTops.liq ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="Liquidations"
               sublabel={tf}
-              chips={liqChips.chips}
+              chips={crosshairChips?.liq ?? liqChips.chips}
               closable
               onClose={() => removeChartIndicator('liq')}
             />
@@ -2213,24 +2265,40 @@
     flex: 1 1 100%;
     min-height: 480px;
   }
-  /* PaneInfoBar: approximate pane positions via stretch factors (price=4, indicator=1). */
+  /* PaneInfoBar: top is set via inline style from pibTops (stretch-aware). */
   .pib-anchor {
     position: absolute;
     left: 0;
     right: 0;
     pointer-events: none;
-    /* Default for pane 1; subsequent panes override below. */
-    --pane-step: calc((100% - var(--price-frac, 50%)) / 4);
-    top: var(--price-frac, 50%);
+    top: var(--price-frac, 50%); /* fallback only — overridden by inline style */
   }
-  .pib-anchor[data-pane='1'] { top: var(--price-frac, 50%); }
-  .pib-anchor[data-pane='2'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 1); }
-  .pib-anchor[data-pane='3'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 2); }
-  .pib-anchor[data-pane='4'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 3); }
-  .pib-anchor[data-pane='5'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 4); }
-  /* Tweak --price-frac per active-pane count: 4 stretch + N×1 panes. */
-  .pane-main.multi-pane-host {
-    --price-frac: 50%;
+  /* W-0395 Phase 4: pane resize handles */
+  .pane-resizer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 6px;
+    transform: translateY(-3px);
+    cursor: row-resize;
+    z-index: 6;
+    background: transparent;
+  }
+  .pane-resizer::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.08);
+    transition: background 0.12s;
+  }
+  .pane-resizer:hover::after,
+  .pane-resizer.is-resizing::after {
+    background: rgba(99,179,237,0.55);
+    height: 2px;
   }
   .chart-board[data-deriv-overlay='1'] .pane-main {
     min-height: 300px;
