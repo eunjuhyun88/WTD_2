@@ -34,7 +34,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0398-layer-c-autotrainer-wiring` | P0 | 🟡 이슈 #963, 구현 대기 |
-| `W-0397-verdict-throughput-booster` | P0 | 🟡 이슈 #962, 구현 대기 |
+| `W-0397-verdict-throughput-booster` | P0 | 🟢 PR #965 open, CI 대기 |
 | `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, 설계 보강 필요 |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
