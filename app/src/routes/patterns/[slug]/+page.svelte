@@ -216,8 +216,7 @@
     color: #6b7280;
     margin: 0 0 12px;
   }
-  .loading, .empty { color: #6b7280; font-size: 0.85rem; }
-  .error { color: #f87171; font-size: 0.85rem; }
+  .empty { color: #6b7280; font-size: 0.85rem; }
 
   .stats-strip {
     display: flex;
