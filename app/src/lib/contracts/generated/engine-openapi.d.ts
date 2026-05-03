@@ -3257,6 +3257,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lab/counterfactual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Counterfactual Review
+         * @description Return blocked vs traded distribution data for counterfactual analysis.
+         *
+         *     This engine-side endpoint is a thin stub — the primary implementation lives
+         *     in the SvelteKit API layer (`/api/lab/counterfactual`). This route is provided
+         *     for direct engine consumers and internal tooling.
+         *
+         *     Returns an empty payload with `outcomes_available: false` when the
+         *     `blocked_candidates` table is unavailable (e.g., local dev without W-0382
+         *     migrations).
+         */
+        get: operations["get_counterfactual_review_lab_counterfactual_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/filter-drag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Filter Drag
+         * @description Return simulated result if filter threshold changed.
+         *
+         *     Read-only simulation — production thresholds are NOT mutated.
+         *     The primary implementation lives in the SvelteKit API layer.
+         */
+        get: operations["get_filter_drag_patterns__slug__filter_drag_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/formula": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Formula
+         * @description Return pattern formula with buckets/evidence/suspect rows.
+         *
+         *     Read-only. The primary implementation lives in the SvelteKit API layer.
+         *     Falls back to an empty payload when Supabase is unavailable.
+         */
+        get: operations["get_pattern_formula_patterns__slug__formula_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -3879,6 +3953,17 @@ export interface components {
             /** Matches */
             matches: components["schemas"]["ScanMatch"][];
         };
+        /** CounterfactualReviewResponse */
+        CounterfactualReviewResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
+        };
         /** CreateAccountBody */
         CreateAccountBody: {
             /** User Id */
@@ -4061,6 +4146,17 @@ export interface components {
             /** Generated At */
             generated_at: number;
         };
+        /** FilterDragResponse */
+        FilterDragResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
+        };
         /** FindingsResponse */
         FindingsResponse: {
             /** Date */
@@ -4088,6 +4184,17 @@ export interface components {
             avg_missed_pnl?: number | null;
             /** Computed At */
             computed_at?: string | null;
+        };
+        /** FormulaResponse */
+        FormulaResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -11761,6 +11868,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExtremeEventsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_counterfactual_review_lab_counterfactual_get: {
+        parameters: {
+            query?: {
+                /** @description Look-back window in days */
+                days?: number;
+                /** @description Pattern slug or ALL */
+                pattern?: string;
+                /** @description Max rows in signal table */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CounterfactualReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_filter_drag_patterns__slug__filter_drag_get: {
+        parameters: {
+            query?: {
+                /** @description Simulated p_win threshold (0-1) */
+                threshold?: number;
+                /** @description Look-back in days */
+                since?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterDragResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pattern_formula_patterns__slug__formula_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaResponse"];
                 };
             };
             /** @description Validation Error */
