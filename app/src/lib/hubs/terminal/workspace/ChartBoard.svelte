@@ -55,7 +55,7 @@
     type IndicatorSeriesRefs,
   } from '$lib/chart/mountIndicatorPanes';
   import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
-  import { createPaneLayoutStore } from '$lib/chart/paneLayoutStore';
+  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore';
   import PaneInfoBar from './PaneInfoBar.svelte';
   import KpiStrip from './KpiStrip.svelte';
   import type { KpiInputBundle } from '$lib/chart/kpiStrip';
@@ -270,12 +270,45 @@
   });
 
   /**
-   * Price pane takes stretchFactor=4; each sub-pane takes 1.
-   * Used as a CSS custom property so pib-anchor overlays track actual pane boundaries.
+   * Price pane takes stretchFactor=4 (adjustable); each sub-pane takes its
+   * stored stretch factor. Used as a CSS custom property for pib-anchor overlays.
    */
-  let priceFracPct = $derived(
-    activePanelCount === 0 ? 100 : Math.round((4 / (4 + activePanelCount)) * 10000) / 100
-  );
+  const ORDERED_KINDS = ['rsiOrMacd', 'oi', 'cvd', 'funding', 'liq'] as const;
+  let priceFracPct = $derived.by(() => {
+    if (activePanelCount === 0) return 100;
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    const totalStretch = priceStretch + activeKinds.reduce((s, k) => s + paneLayout.state.stretch[k], 0);
+    return Math.round((priceStretch / totalStretch) * 10000) / 100;
+  });
+
+  /** Per-pane top position (%) derived from actual stretch ratios. */
+  let pibTops = $derived.by((): Partial<Record<PaneKind, number>> => {
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    if (activeKinds.length === 0) return {};
+    const totalStretch = priceStretch + activeKinds.reduce((s, k) => s + paneLayout.state.stretch[k], 0);
+    let cumPct = priceStretch / totalStretch * 100;
+    const tops: Partial<Record<PaneKind, number>> = {};
+    for (const kind of activeKinds) {
+      tops[kind] = cumPct;
+      cumPct += paneLayout.state.stretch[kind] / totalStretch * 100;
+    }
+    return tops;
+  });
+
+  /** Pane boundary lines: position + which pane is above (to resize on drag). */
+  let resizeBoundaries = $derived.by(() => {
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    if (activeKinds.length === 0) return [] as Array<{ upperKind: 'price' | PaneKind; top: number }>;
+    const result: Array<{ upperKind: 'price' | PaneKind; top: number }> = [];
+    // Price / first-indicator boundary
+    result.push({ upperKind: 'price', top: priceFracPct });
+    // Indicator / indicator boundaries
+    for (let i = 0; i < activeKinds.length - 1; i++) {
+      const nextTop = pibTops[activeKinds[i + 1]];
+      if (nextTop != null) result.push({ upperKind: activeKinds[i], top: nextTop });
+    }
+    return result;
+  });
 
   type StudyCategory = 'Favorites' | 'Overlays' | 'Pane' | 'Flow';
   type StudyId = 'ema' | 'vwap' | 'bb' | 'atr' | 'macd' | 'cvd' | 'overlay' | 'comparison';
@@ -404,6 +437,18 @@
    * parent falls back to static last-bar chips from chartData.
    */
   let crosshairChips = $state<CrosshairChips | null>(null);
+
+  // ── Phase 4: pane resize handles ─────────────────────────────────────────
+  /** Price pane stretch factor; normally 4, adjustable by dragging the first boundary. */
+  let priceStretch = $state(4);
+  type ResizeHandle = {
+    upperKind: 'price' | PaneKind;
+    startY: number;
+    startStretch: number;
+    startTotalStretch: number;
+    containerH: number;
+  };
+  let activeResize: ResizeHandle | null = null;
 
   // ── DataFeed (resilient WS + polling) ─────────────────────────────────────
   let _dataFeed: DataFeed | null = null;
@@ -546,6 +591,49 @@
     _dragOnMouseMove = null;
     _dragOnMouseUp = null;
     _dragActive = false;
+  }
+
+  // ── Pane resize handlers (Phase 4) ───────────────────────────────────────
+
+  function _onResizeMove(e: MouseEvent) {
+    if (!activeResize || !mainChart) return;
+    const deltaY = e.clientY - activeResize.startY;
+    const deltaStretch = (deltaY / activeResize.containerH) * activeResize.startTotalStretch;
+    if (activeResize.upperKind === 'price') {
+      priceStretch = Math.max(1, Math.min(12, activeResize.startStretch + deltaStretch));
+      try { mainChart.panes()[0]?.setStretchFactor(priceStretch); } catch { /* v5.0.8+ */ }
+    } else {
+      const newStretch = Math.max(0.5, Math.min(8, activeResize.startStretch + deltaStretch));
+      paneLayout.setStretch(activeResize.upperKind, newStretch);
+      try {
+        const idx = panePositions[activeResize.upperKind];
+        if (idx >= 0) mainChart.panes()[idx]?.setStretchFactor(newStretch);
+      } catch { /* ignore */ }
+    }
+  }
+
+  function _onResizeUp() {
+    activeResize = null;
+    window.removeEventListener('mousemove', _onResizeMove);
+    window.removeEventListener('mouseup', _onResizeUp);
+  }
+
+  function startPaneResize(e: MouseEvent, upperKind: 'price' | PaneKind) {
+    if (!mainEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const activeKinds = ORDERED_KINDS.filter(k => panePositions[k] >= 0);
+    const totalStretch = priceStretch + activeKinds.reduce((s, k) => s + paneLayout.state.stretch[k], 0);
+    const startStretch = upperKind === 'price' ? priceStretch : paneLayout.state.stretch[upperKind];
+    activeResize = {
+      upperKind,
+      startY: e.clientY,
+      startStretch,
+      startTotalStretch: totalStretch,
+      containerH: Math.max(1, mainEl.clientHeight),
+    };
+    window.addEventListener('mousemove', _onResizeMove);
+    window.addEventListener('mouseup', _onResizeUp);
   }
 
   function handleSaveModeChange(state: { active: boolean; anchorA: number | null; anchorB: number | null }) {
@@ -757,6 +845,33 @@
   const liqChips = $derived.by(() => {
     if (!chartData?.liqBars?.length) return null;
     return computeLiqChips(chartData.liqBars, tf);
+  });
+  const rsiOrMacdChips = $derived.by(() => {
+    if (!chartData) return null;
+    if (showMACD) {
+      const macdArr = (chartData.indicators as Record<string, unknown>)?.macd as
+        Array<{ time: number; macd: number; signal: number; hist: number }> | undefined;
+      if (!macdArr?.length) return null;
+      const last = macdArr[macdArr.length - 1];
+      return [
+        { key: 'macd',   color: '#63b3ed', label: 'MACD',   value: last.macd.toFixed(4) },
+        { key: 'signal', color: '#fbbf24', label: 'signal', value: last.signal.toFixed(4) },
+        {
+          key: 'hist', label: 'hist',
+          color: last.hist >= 0 ? 'rgba(38,166,154,0.9)' : 'rgba(239,83,80,0.9)',
+          value: last.hist.toFixed(4),
+          tone: (last.hist >= 0 ? 'bull' : 'bear') as 'bull' | 'bear',
+        },
+      ];
+    }
+    if (showRSI) {
+      const rsiArr = (chartData.indicators as Record<string, unknown>)?.rsi14 as
+        Array<{ time: number; value: number }> | undefined;
+      if (!rsiArr?.length) return null;
+      const v = rsiArr[rsiArr.length - 1].value;
+      return [{ key: 'rsi', color: '#fbbf24', label: 'RSI 14', value: v.toFixed(2) }];
+    }
+    return null;
   });
 
   // Bundle for the KPI strip
@@ -1342,6 +1457,8 @@
     candleMarkerApi = null;
     candleSeriesForAnnotations = null;
     panePositions = { rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1 };
+    priceStretch = 4;
+    activeResize = null;
   }
 
   function handleResize() {
@@ -1724,20 +1841,43 @@
       All panes share crosshair + time axis natively (v5.1 pane API).
     -->
     <div class="pane-main multi-pane-host" bind:this={mainEl}
-      style="--price-frac: {priceFracPct}%; --pane-step: calc((100% - {priceFracPct}%) / {Math.max(activePanelCount, 1)})">
+      style="--price-frac: {priceFracPct}%">
       <!-- W-0289: Drawing overlay canvas -->
       {#if $activeDrawingMode && drawingMgr}
         <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
       {/if}
+
+      <!-- W-0395 Phase 4: pane resize handles — 6px grab zone at each pane boundary -->
+      {#each resizeBoundaries as boundary}
+        <div
+          class="pane-resizer"
+          class:is-resizing={activeResize?.upperKind === boundary.upperKind}
+          style="top: {boundary.top.toFixed(2)}%"
+          role="separator"
+          aria-label="Drag to resize pane"
+          onmousedown={(e) => startPaneResize(e, boundary.upperKind)}
+        ></div>
+      {/each}
+
       <!--
-        Per-pane info bars — TradingView × Santiment style chips. Positioned
-        as overlays so the chart owns the pane geometry; the bars float on top.
-        Vertical position is rough-aligned via CSS (pane stretch factors put
-        price 4× and each indicator 1× — so price ≈ 50%, each indicator ≈ 12.5%).
+        Per-pane info bars — TV × Santiment style chips. Positioned via
+        inline `top` derived from actual stretch ratios so they stay
+        aligned after user resize (pibTops always matches setStretchFactor).
       -->
       {#if chartData}
+        {#if rsiOrMacdChips && panePositions.rsiOrMacd >= 0}
+          <div class="pib-anchor" style="top: {(pibTops.rsiOrMacd ?? 0).toFixed(2)}%">
+            <PaneInfoBar
+              title={showMACD ? 'MACD' : 'RSI'}
+              sublabel={tf}
+              chips={crosshairChips?.rsiOrMacd ?? rsiOrMacdChips}
+              closable
+              onClose={() => removeChartIndicator(showMACD ? 'macd' : 'rsi')}
+            />
+          </div>
+        {/if}
         {#if oiChips && panePositions.oi >= 0}
-          <div class="pib-anchor" data-pane={panePositions.oi}>
+          <div class="pib-anchor" style="top: {(pibTops.oi ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="OI Δ"
               sublabel={tf}
@@ -1748,7 +1888,7 @@
           </div>
         {/if}
         {#if cvdChips && panePositions.cvd >= 0}
-          <div class="pib-anchor" data-pane={panePositions.cvd}>
+          <div class="pib-anchor" style="top: {(pibTops.cvd ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="CVD"
               sublabel={tf}
@@ -1759,7 +1899,7 @@
           </div>
         {/if}
         {#if fundingChips && panePositions.funding >= 0}
-          <div class="pib-anchor" data-pane={panePositions.funding}>
+          <div class="pib-anchor" style="top: {(pibTops.funding ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="Funding"
               sublabel={tf}
@@ -1770,7 +1910,7 @@
           </div>
         {/if}
         {#if liqChips && panePositions.liq >= 0}
-          <div class="pib-anchor" data-pane={panePositions.liq}>
+          <div class="pib-anchor" style="top: {(pibTops.liq ?? 0).toFixed(2)}%">
             <PaneInfoBar
               title="Liquidations"
               sublabel={tf}
@@ -2088,20 +2228,41 @@
     flex: 1 1 100%;
     min-height: 480px;
   }
-  /* PaneInfoBar: pane positions via stretch factors (price=4, indicator=1).
-     --price-frac and --pane-step are set dynamically as inline styles. */
+  /* PaneInfoBar: top is set via inline style from pibTops (stretch-aware). */
   .pib-anchor {
     position: absolute;
     left: 0;
     right: 0;
     pointer-events: none;
-    top: var(--price-frac, 50%);
+    top: var(--price-frac, 50%); /* fallback only — overridden by inline style */
   }
-  .pib-anchor[data-pane='1'] { top: var(--price-frac, 50%); }
-  .pib-anchor[data-pane='2'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 1); }
-  .pib-anchor[data-pane='3'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 2); }
-  .pib-anchor[data-pane='4'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 3); }
-  .pib-anchor[data-pane='5'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 4); }
+  /* W-0395 Phase 4: pane resize handles */
+  .pane-resizer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 6px;
+    transform: translateY(-3px);
+    cursor: row-resize;
+    z-index: 6;
+    background: transparent;
+  }
+  .pane-resizer::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.08);
+    transition: background 0.12s;
+  }
+  .pane-resizer:hover::after,
+  .pane-resizer.is-resizing::after {
+    background: rgba(99,179,237,0.55);
+    height: 2px;
+  }
   .chart-board[data-deriv-overlay='1'] .pane-main {
     min-height: 300px;
   }
