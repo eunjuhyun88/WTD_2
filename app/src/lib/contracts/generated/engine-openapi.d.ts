@@ -3425,6 +3425,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/indicators/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Catalog
+         * @description Return all registered indicators as a JSON list.
+         */
+        get: operations["get_catalog_indicators_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/indicators/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Series
+         * @description Compute an indicator series for a symbol+timeframe.
+         */
+        get: operations["get_series_indicators_series_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scoring/active-model": {
         parameters: {
             query?: never;
@@ -12292,6 +12332,70 @@ export interface operations {
             path: {
                 import_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_catalog_indicators_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_series_indicators_series_get: {
+        parameters: {
+            query: {
+                /** @description Trading pair, e.g. BTCUSDT */
+                symbol?: string;
+                /** @description Timeframe, e.g. 15m / 1h */
+                timeframe?: string;
+                /** @description Indicator ID from /catalog */
+                indicator: string;
+                /** @description Param overrides: length:20,std:2.0 */
+                params?: string | null;
+                /** @description Number of input bars */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
