@@ -1,14 +1,24 @@
 # W-0399-P2 — TV-parity Indicator Catalog Phase 2: Add/Remove/Edit UX (전체 인디케이터)
 
-> Wave: 6 | Priority: P1 | Effort: L
+> Wave: 6 | Priority: P1 | Effort: L (총 3 PR)
 > Charter: TV feature parity — In-Scope
 > Issue: #975
-> Status: 🟡 Design Draft
+> Status: 🟡 Design Draft v2 (Phase Breakdown 강화 2026-05-04)
 > Created: 2026-05-03
 > Depends on: W-0399 Phase 1 (PR #970 merged f9452455)
 
 ## Goal
-모든 Tier-A 인디케이터(10종)를 트레이딩뷰처럼 여러 개 동시 표시하고, × 버튼으로 개별 제거하며, 파라미터(period 등)를 인라인으로 편집해 즉시 차트에 반영할 수 있다.
+사용자가 TradingView처럼 RSI 2개, MACD 2개, EMA 5개를 동시에 띄우고, × 버튼으로 개별 제거하며, period를 인라인 편집해 250ms 내 차트에 반영할 수 있다.
+
+## Phase Breakdown (3 PR — 난이도 오름차순 분할)
+
+| Phase | PR | Scope | Effort | AC 핵심 수치 |
+|---|---|---|---|---|
+| P2.1 | PR-A | `clientIndicators.ts` 신규 + RSI/MACD/EMA multi-instance (sub-pane 3종 + overlay 1종) | M | RSI(14) 클라이언트 vs 백엔드 \|err\| 평균 ≤0.05 (n=200, 3심볼) |
+| P2.2 | PR-B | BB/VWAP/ATR_bands overlay multi-instance + `mountSecondaryIndicator` 범용화 | M | overlay 5개 동시 mount, pane 0 series count 정확, × → 100ms 제거 |
+| P2.3 | PR-C | OI/CVD/derivatives/volume sub-pane multi-instance + 인라인 편집 폼 + 라이브러리 배지 | M | 10종 각 2개 동시, debounce 250±50ms, clientIndicators.ts ≤3KB gzip |
+
+**분할 근거**: P2.1(단순 클라이언트 계산) → P2.2(overlay 범용 함수 설계 필요) → P2.3(서버 raw+windowing 가장 복잡). 10종 한 PR = diff 800+줄, 회귀 bisect 어려움.
 
 ## Scope
 
