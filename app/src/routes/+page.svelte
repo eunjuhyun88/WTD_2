@@ -13,6 +13,8 @@
   import WebGLAsciiBackground from '../components/home/WebGLAsciiBackground.svelte';
   import { trackHomeFunnel } from '../components/home/homeData';
   import LiveStatStrip from '$lib/components/landing/LiveStatStrip.svelte';
+  import MiniLiveChart from '$lib/components/landing/MiniLiveChart.svelte';
+  import { trackCtaClick } from '$lib/components/landing/ctaTracking';
   import { buildCanonicalHref } from '$lib/seo/site';
   import {
     HOME_EXAMPLE_PROMPTS,
@@ -74,6 +76,15 @@
     void goto(path);
   }
 
+  function openPathFromLanding(
+    path: string,
+    cta: string,
+    position: 'hero' | 'strip' | 'loop' | 'final'
+  ) {
+    trackCtaClick(position, path);
+    openPath(path, cta);
+  }
+
   function buildTerminalHref(query: string) {
     const text = query.trim();
     if (!text) return '/cogochi';
@@ -83,6 +94,7 @@
 
   function handlePromptSubmit() {
     const target = buildTerminalHref(promptText);
+    trackCtaClick('hero', target);
     trackHomeFunnel('hero_cta_click', 'click', {
       cta: 'hero_start_bar',
       target,
@@ -231,11 +243,15 @@
     onOpen={openPath}
   />
 
-  <LiveStatStrip />
+  <LiveStatStrip onOpen={(path, cta) => openPathFromLanding(path, cta, 'strip')} />
+  <MiniLiveChart />
   <HomeTicker />
-  <HomeLearningLoop steps={HOME_LEARNING_STEPS} />
+  <HomeLearningLoop
+    steps={HOME_LEARNING_STEPS}
+    onOpen={(path, cta) => openPathFromLanding(path, cta, 'loop')}
+  />
   <HomeSurfaceCards surfaces={HOME_SURFACES} onOpen={openPath} />
-  <HomeFinalCta onOpen={openPath} />
+  <HomeFinalCta onOpen={(path, cta) => openPathFromLanding(path, cta, 'final')} />
   <SiteFooter />
 </div>
 
