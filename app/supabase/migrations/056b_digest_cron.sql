@@ -1,0 +1,22 @@
+-- Migration 056b: digest email cron schedule (W-0401-P3)
+-- Commented out: configure via Supabase Dashboard in production.
+--
+-- Supabase pg_cron + pg_net setup (if pg_cron is enabled):
+--
+-- SELECT cron.schedule(
+--   'digest-email',          -- job name
+--   '0 21 * * *',            -- 21:00 UTC = 06:00 KST
+--   $$
+--     SELECT net.http_post(
+--       url       := current_setting('app.supabase_functions_url') || '/digest-email',
+--       headers   := jsonb_build_object(
+--         'Content-Type',  'application/json',
+--         'Authorization', 'Bearer ' || current_setting('app.service_role_key')
+--       ),
+--       body      := '{}'::jsonb
+--     );
+--   $$
+-- );
+--
+-- Production setup: Supabase Dashboard → Edge Functions → digest-email → Schedule tab
+-- Set cron expression: 0 21 * * *
