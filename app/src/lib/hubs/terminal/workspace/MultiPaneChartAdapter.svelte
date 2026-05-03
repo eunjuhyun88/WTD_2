@@ -37,8 +37,8 @@
 
   let mainEl = $state<HTMLDivElement | undefined>(undefined);
   let drawingMgr = $state<DrawingManager | null>(null);
-  let chartRef: IChartApi | null = null;
-  let seriesRef: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
+  let chartRef = $state<IChartApi | null>(null);
+  let seriesRef = $state<ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null>(null);
   const priceLineMgr = new PriceLineManager();
 
   // Stable id per adapter instance — used as crosshair-bus origin.

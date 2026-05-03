@@ -63,7 +63,7 @@
       <span>No trades matched the entry conditions</span>
     </div>
   {:else}
-    <table role="table" aria-label="Trade log">
+    <table aria-label="Trade log">
       <thead>
         <tr>
           <th scope="col">#</th>
@@ -83,7 +83,6 @@
             class:selected={i === selectedIndex}
             class:win={t.netPnlPercent > 0}
             class:loss={t.netPnlPercent < 0}
-            role="row"
             tabindex="0"
             onclick={() => onSelectTrade?.(i)}
             onkeydown={(e) => handleKey(e, i)}
@@ -217,8 +216,6 @@ td {
 /* P&L color */
 td.pos { color: var(--pos); }
 td.neg { color: var(--neg); }
-td.muted { color: var(--g6); }
-
 /* Exit tag */
 .exit-tag {
   font-size: var(--ui-text-xs);

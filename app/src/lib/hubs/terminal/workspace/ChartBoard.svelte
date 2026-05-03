@@ -176,7 +176,7 @@
   // ── W-0289: Drawing tools ──────────────────────────────────────────────────
   let drawingActiveTool     = $state<DrawingToolType>('cursor');
   let drawingToolsVisible   = $state(false);
-  let drawingMgr: DrawingManager | null = null;
+  let drawingMgr = $state<DrawingManager | null>(null);
 
   const onToggleDrawingTools = () => { drawingToolsVisible = !drawingToolsVisible; shellStore.setDrawingTool(drawingToolsVisible ? 'trendLine' : 'cursor'); };
 
@@ -422,7 +422,7 @@
   });
 
   // ── Chart instance (single, native multi-pane) ────────────────────────────
-  let mainChart: IChartApi | null = null;
+  let mainChart = $state<IChartApi | null>(null);
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | ISeriesApi<'Area'> | ISeriesApi<'Bar'> | null = null;
   /** Pane indices for indicator panes — assigned during renderCharts(). */
   let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
@@ -450,7 +450,7 @@
     startTotalStretch: number;
     containerH: number;
   };
-  let activeResize: ResizeHandle | null = null;
+  let activeResize = $state<ResizeHandle | null>(null);
 
   // ── DataFeed (resilient WS + polling) ─────────────────────────────────────
   let _dataFeed: DataFeed | null = null;
@@ -1890,8 +1890,8 @@
           class="pane-resizer"
           class:is-resizing={activeResize?.upperKind === boundary.upperKind}
           style="top: {boundary.top.toFixed(2)}%"
-          role="separator"
-          aria-label="Drag to resize pane"
+          role="presentation"
+          aria-hidden="true"
           onmousedown={(e) => startPaneResize(e, boundary.upperKind)}
         ></div>
       {/each}

@@ -172,26 +172,26 @@
     <div class="create-form">
       <h3>Create INTERNAL_RUN Account</h3>
       <div class="field">
-        <label>TP (bps)</label>
-        <input type="number" bind:value={formTpBps} min="50" max="2000" />
+        <label for="form-tp-bps">TP (bps)</label>
+        <input id="form-tp-bps" type="number" bind:value={formTpBps} min="50" max="2000" />
         <span class="field-hint">{(formTpBps / 100).toFixed(1)}%</span>
       </div>
       <div class="field">
-        <label>SL (bps)</label>
-        <input type="number" bind:value={formSlBps} min="25" max="1000" />
+        <label for="form-sl-bps">SL (bps)</label>
+        <input id="form-sl-bps" type="number" bind:value={formSlBps} min="25" max="1000" />
         <span class="field-hint">{(formSlBps / 100).toFixed(1)}%</span>
       </div>
       <div class="field">
-        <label>TTL (min)</label>
-        <input type="number" bind:value={formTtlMin} min="5" max="1440" />
+        <label for="form-ttl-min">TTL (min)</label>
+        <input id="form-ttl-min" type="number" bind:value={formTtlMin} min="5" max="1440" />
       </div>
       <div class="field">
-        <label>Strategy Filter <span class="optional">(optional)</span></label>
-        <input type="text" bind:value={formStrategyId} placeholder="wtd.tradoor-oi-reversal-v1" />
+        <label for="form-strategy-id">Strategy Filter <span class="optional">(optional)</span></label>
+        <input id="form-strategy-id" type="text" bind:value={formStrategyId} placeholder="wtd.tradoor-oi-reversal-v1" />
       </div>
       <div class="field">
-        <label>Symbols</label>
-        <input type="text" bind:value={formSymbols} placeholder="BTC,ETH,SOL" />
+        <label for="form-symbols">Symbols</label>
+        <input id="form-symbols" type="text" bind:value={formSymbols} placeholder="BTC,ETH,SOL" />
       </div>
       {#if errorMsg}
         <p class="err-txt">{errorMsg}</p>

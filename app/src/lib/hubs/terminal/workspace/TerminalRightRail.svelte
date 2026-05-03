@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ShellSummaryCard, StatusStripItem } from '$lib/terminal/terminalDerived';
   import TerminalContextPanelSummary from './TerminalContextPanelSummary.svelte';
+  import type { Snippet } from 'svelte';
 
   interface Props {
     isStreaming?: boolean;
@@ -13,6 +14,7 @@
     statusItems?: StatusStripItem[];
     onBack?: () => void;
     onToggle?: () => void;
+    children?: Snippet;
   }
 
   let {
@@ -26,6 +28,7 @@
     statusItems = [],
     onBack,
     onToggle,
+    children,
   }: Props = $props();
 </script>
 
@@ -56,7 +59,7 @@
   />
 
   <div class="rail-body">
-    <slot />
+    {@render children?.()}
   </div>
 </div>
 

@@ -125,15 +125,15 @@
 	<section class="status-section" data-testid="cycle-budget">
 		<div class="budget-display">
 			<div class="budget-item">
-				<label>Total Budget</label>
+				<span class="label">Total Budget</span>
 				<span class="value">${totalCycleBudget}</span>
 			</div>
 			<div class="budget-item">
-				<label>Used</label>
+				<span class="label">Used</span>
 				<span class="value">${usedBudget.toFixed(2)}</span>
 			</div>
 			<div class="budget-item">
-				<label>Remaining</label>
+				<span class="label">Remaining</span>
 				<span class="value">${(totalCycleBudget - usedBudget).toFixed(2)}</span>
 			</div>
 			<div class="progress-bar">
@@ -353,7 +353,7 @@
 		margin-bottom: 8px;
 	}
 
-	.budget-item label {
+	.budget-item .label {
 		color: var(--g7);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;

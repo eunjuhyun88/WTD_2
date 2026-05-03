@@ -34,7 +34,7 @@
     aria-label="Close sheet"
     onclick={onClose}
   ></button>
-  <aside
+  <div
     class="sheet"
     style:height
     role="dialog"
@@ -54,7 +54,7 @@
     <div class="sheet-body">
       {#if children}{@render children()}{/if}
     </div>
-  </aside>
+  </div>
 {/if}
 
 <style>
