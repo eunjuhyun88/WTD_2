@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`d28b6ef3` — origin/main (2026-05-04) — feat(W-0400 Ph2B): engineSeriesAdapter + /api/indicators proxy + 135-entry registry (#1033)
+`5042e679` — origin/main (2026-05-04) — feat(W-0402): DB audit — migrations 057-063 (#1054)
 
 ---
 
@@ -45,8 +45,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
-| `W-0401-verdict-accumulation-flywheel` | P0 | 🟡 설계 완료 #1004, 구현 대기 |
-| `W-0400-tv-indicator-catalog-full` | P1 | ✅ Ph1A/1B/1C/2A/2B 전체 완료 (#1010/#1020/#1024/#1030/#1033) |
+| `W-PF-100-P2-eval-challenge` | P0 | 🟡 24h live AC 검증 완료 후 착수 |
 
 ---
 
@@ -65,6 +64,9 @@
 완료:  W-0395 Phase 7 ✅ — /settings /lab /agent thin + placeholder (#985)
 완료:  fix(chart) ✅ — TV-style pane indicator labels + dynamic priceFrac (#989)
 완료:  W-0399-p2 ✅ — multi-instance indicator × remove + count badge + clientIndicators.ts (#1009)
+완료:  W-0399-P2 ✅ — all Tier-A multi-instance + param edit + × remove + VWAP/ATR tests (#1042)
+완료:  W-0401-P1 ✅ — verdict streak distinct-day 카운터 + 5 배지 + StreakCard UI (#1028)
+완료:  W-0401-P2+P3 ✅ — inbox dot badge + daily digest email (#1032 #1046 #1049)
 완료:  W-0400 Ph1A ✅ — extend IndicatorDef + register 10 TV TA indicators (#1010)
 완료:  W-0400 Ph1B ✅ — IndicatorCatalogModal + Fuse.js search + / shortcut (#1020)
 완료:  W-0400 Ph1C ✅ — catalogFavorites localStorage + Recents/Favorites sections (#1024)
@@ -73,6 +75,8 @@
 완료:  W-0395 Ph1 PR2 ✅ — TRAIN mode QuizStage + train_answers migration (#1012)
 완료:  W-0395 Ph8 Landing PR2 ✅ — MiniLiveChart + CTA 4위치 tracking (#1011)
 완료:  W-0395 Ph7 PR1 ✅ — /agent/[id] SSR shell + KPI grid (#1006)
+완료:  W-0395 Ph6 PR3 ✅ — HoldTimeStrip Lab 패널 wiring (#1051)
+완료:  W-0402 ✅ — DB audit migrations 057-063 (verdicted_at + 14 indexes) (#1054)
 ```
 
 ---
@@ -113,7 +117,6 @@
 
 ```bash
 ./tools/start.sh
-# P0-A: gh pr merge 1023 --squash  (CSS cleanup — 충돌 없음)
-# P0-B: W-0401 구현 또는 W-PF-100 P2 (24h live AC 검증 완료 후)
-cat work/active/W-0401-verdict-accumulation-flywheel.md
+# P0: W-PF-100 P2 (24h live AC 검증 완료 후 착수)
+cat work/active/W-PF-100-P2-eval-challenge.md
 ```
