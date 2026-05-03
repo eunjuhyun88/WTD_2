@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { AlphaBuckets } from '$lib/stores/alphaBuckets';
-  import { EMPTY_THERMO_DATA, type ThermoData } from '$lib/hubs/terminal/marketPulse';
+  import { EMPTY_THERMO_DATA, type ThermoData } from '$lib/hubs/terminal';
 
   let {
     thermo = EMPTY_THERMO_DATA,

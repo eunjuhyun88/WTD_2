@@ -9,7 +9,7 @@
   import { walletStore, openWalletModal } from '$lib/stores/walletStore';
   import KimchiPremiumBadge from '$lib/components/market/KimchiPremiumBadge.svelte';
   import DashActivityGrid from '$lib/components/dashboard/DashActivityGrid.svelte';
-  import AlertStrip from '$lib/hubs/dashboard/AlertStrip.svelte';
+  import { AlertStrip } from '$lib/hubs/dashboard';
   import type { CaptureRow, OpportunityScore } from './+page.server';
 
   interface PassportSummary {

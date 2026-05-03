@@ -1,6 +1,6 @@
 <script lang="ts">
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
-  import { shellStore } from '$lib/hubs/terminal/shell.store';
+  import { shellStore } from '$lib/hubs/terminal';
   import { track } from '$lib/analytics';
 
   interface Command {
