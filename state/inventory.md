@@ -1,5 +1,5 @@
 # Inventory — 자동 생성 (tools/refresh_inventory.sh)
-# 마지막 갱신: 2026-05-03
+# 마지막 갱신: 2026-05-04
 # 이 파일을 직접 편집하지 말 것 — 다음 갱신 시 덮어씌워짐
 
 ## Slash Commands
@@ -20,8 +20,10 @@
 | /검증 | claude-haiku-4-5-20251001 | - | 종합 검증 — 변경 스코프 자동 감지 + 적절... |
 | /결정 | - | - | 아키텍처 결정 영구 기록 (immutable, 왜 그렇�... |
 | /계약 | - | - | 도메인 현재 계약/불변식 기록 (mutable, drift ... |
+| /구현 | claude-sonnet-4-6 | - | Sonnet 구현 에이전트 — 설계 완료된 Work Item... |
 | /닫기 | - | - | 세션 종료 — 인계 작성 → work item 정리 → ... |
 | /물음 | - | - | 답 못한 열린 질문 기록 (open loop 추적) |
+| /반복 | claude-haiku-4-5-20251001 | - | Haiku 반복 에이전트 — 판단 불필요한 기계�... |
 | /빠른검증 | claude-haiku-4-5-20251001 | - | 빠른 검증 — pytest + 품질 grep만 (≤3파일, �... |
 | /사고 | - | - | 사고 + 수정 영구 기록 (무엇이 깨졌고 어떻... |
 | /설계 | claude-opus-4-7 | - | CTO + AI Researcher 2-perspective 설계문서 작성 + G... |
@@ -41,25 +43,32 @@
 | backfill_work_issue_map.sh | W-0001~W-#### mapping 1회 초기화 |
 | check_drift.sh | drift 검증 (보고만, 자동 수정 안 함) |
 | circuit-breaker.sh | W-0273 Phase 3 — Circuit Breaker |
+| claim-migration.sh | atomic migration number reservation |
 | claim.sh | file-domain ownership lock + GitHub Issue assignee mutex |
 | classify_work_items.sh | work/active/W-*.md를 자동 분류 |
 | complete_work_item.sh | work item 1개를 active → completed로 이동 |
 | context-pack.sh | work item + domain file slicer for /컨텍스트 skill |
 | end.sh | 세션 종료 (memkraft 통합) |
+| file-lock-check.sh | 새 탭 에이전트 시작 전 파일 충돌 감지 |
 | integration-test.sh | W-0278 7-Pillar Integration Test — mock sub-agent scenario |
 | list_parking_notes.sh | CURRENT.md 미등재 + 머지 PR 없음 work item 표시 |
 | live.sh | Agent heartbeat file manager |
+| log-session-tokens.sh | Log context token count at session end. |
 | measure_context_tokens.sh | 매 세션 자동 주입되는 컨텍스트 파일 토큰 측정 (4... |
+| memory-rotate.sh | Weekly rotation: archive MEMORY.md entries older than 7 days to _ar... |
 | mk.sh | Repo-pinned MemKraft CLI entrypoint. |
+| pre-pr-check.sh | 에이전트가 PR 생성 전 반드시 실행하는 자기검증 |
 | quality_baseline.sh | W-A108: quality_baseline.sh |
 | refresh_docs_navigator.sh | AGENTS.md §문서 지도 경로 유효성 검증 |
 | refresh_inventory.sh | state/inventory.md 자동 생성 |
 | refresh_state.sh | Derived state 자동 생성 + worktree registry 머지 |
 | save.sh | 세션 중간 체크포인트 (memkraft 기반) |
+| spec-readiness.sh | Spec readiness gate: score 0-10 for a Work Item before Haiku implem... |
 | start.sh | Multi-agent boot (memkraft 통합) |
 | sweep_session_artifacts.sh | 세션 아티팩트 + docs/live 중복 자동 정리 |
 | sweep_work_items.sh | work/active/ 자동 정리 |
 | sweep_zombie_issues.sh | work/completed/ ↔ open GitHub Issues 비교 |
+| token-budget-check.sh | Check if auto-injected context is within the 5,000 token budget. |
 | track_repo.sh | repo 전반 entity를 memkraft에 등록 |
 | verify_design.sh | Verify design/current specs against implementation. |
 | work_issue_map.sh | work item ↔ GitHub Issue mapping CRUD |
@@ -94,13 +103,13 @@
 | POST | /captures/bulk_import | routes/captures.py:353 |
 | GET | /captures/outcomes | routes/captures.py:415 |
 | POST | /captures/{capture_id}/verdict | routes/captures.py:444 |
-| POST | /captures/{capture_id}/benchmark_pack_draft | routes/captures.py:581 |
-| POST | /captures/{capture_id}/benchmark_search | routes/captures.py:606 |
-| GET | /captures/chart-annotations | routes/captures.py:648 |
-| POST | /captures/{capture_id}/watch | routes/captures.py:720 |
-| POST | /captures/{capture_id}/verdict-link | routes/captures.py:729 |
-| GET | /captures/{capture_id} | routes/captures.py:759 |
-| GET | /captures | routes/captures.py:767 |
+| POST | /captures/{capture_id}/benchmark_pack_draft | routes/captures.py:603 |
+| POST | /captures/{capture_id}/benchmark_search | routes/captures.py:628 |
+| GET | /captures/chart-annotations | routes/captures.py:670 |
+| POST | /captures/{capture_id}/watch | routes/captures.py:742 |
+| POST | /captures/{capture_id}/verdict-link | routes/captures.py:751 |
+| GET | /captures/{capture_id} | routes/captures.py:781 |
+| GET | /captures | routes/captures.py:789 |
 | POST | /challenge/create | routes/challenge.py:35 |
 | GET | /challenge/{slug}/scan | routes/challenge.py:41 |
 | GET | /chart/klines | routes/chart.py:30 |
@@ -118,6 +127,8 @@
 | POST | /dalkkak/caption | routes/dalkkak.py:153 |
 | GET | /dalkkak/risk | routes/dalkkak.py:173 |
 | POST | /deep | routes/deep.py:22 |
+| GET | /extreme-events | routes/extreme_events.py:46 |
+| GET | /extreme-events/ | routes/extreme_events.py:47 |
 | GET | /facts/price-context | routes/facts.py:35 |
 | GET | /facts/perp-context | routes/facts.py:47 |
 | GET | /facts/reference-stack | routes/facts.py:59 |
@@ -127,6 +138,8 @@
 | GET | /facts/indicator-catalog | routes/facts.py:113 |
 | GET | /features/window | routes/features.py:30 |
 | GET | /features/pattern-events | routes/features.py:67 |
+| GET | /indicators/catalog | routes/indicators.py:185 |
+| GET | /indicators/series | routes/indicators.py:195 |
 | POST | /jobs/pattern_scan/run | routes/jobs.py:181 |
 | POST | /jobs/outcome_resolver/run | routes/jobs.py:190 |
 | POST | /jobs/auto_capture/run | routes/jobs.py:199 |
@@ -147,6 +160,7 @@
 | GET | /observability/flywheel/health | routes/observability.py:152 |
 | GET | /observability/agent-status | routes/observability.py:157 |
 | POST | /opportunity/run | routes/opportunity.py:174 |
+| GET | /passport/{username} | routes/passport.py:52 |
 | POST | /patterns/parse | routes/patterns.py:234 |
 | GET | /patterns/library | routes/patterns.py:423 |
 | GET | /patterns/registry | routes/patterns.py:429 |
@@ -222,6 +236,7 @@
 | GET | /runtime/ledger | routes/runtime.py:361 |
 | POST | /scanner/run | routes/scanner.py:35 |
 | POST | /score | routes/score.py:25 |
+| GET | /scoring/active-model | routes/scoring_status.py:30 |
 | GET | /screener/runs/latest | routes/screener.py:12 |
 | GET | /screener/listings | routes/screener.py:20 |
 | GET | /screener/assets/{symbol} | routes/screener.py:33 |
@@ -238,6 +253,11 @@
 | GET | /search/quality/stats | routes/search.py:230 |
 | POST | /train | routes/train.py:51 |
 | GET | /train/report | routes/train.py:112 |
+| POST | /tv-import/preview | routes/tv_import.py:61 |
+| POST | /tv-import/estimate | routes/tv_import.py:138 |
+| POST | /tv-import/commit | routes/tv_import.py:173 |
+| GET | /tv-import/author/{username} | routes/tv_import.py:294 |
+| GET | /tv-import/twin/{import_id} | routes/tv_import.py:301 |
 | GET | /universe | routes/universe.py:73 |
 | GET | /universe/sectors | routes/universe.py:177 |
 | GET | /universe/search/status | routes/universe.py:195 |
@@ -250,6 +270,7 @@
 
 /agents/stats
 /agents/stats/[agentId]
+/agents/stats/[agentId]/equity
 /analyze
 /auth/login
 /auth/logout
@@ -314,6 +335,8 @@
 /lab/autorun
 /lab/counterfactual
 /lab/forward-walk
+/landing/stats
+/layer_c/progress
 /live-signals
 /live-signals/verdict
 /macro/fred
@@ -366,7 +389,9 @@
 /observability/agent-status
 /observability/flywheel
 /observability/metrics
+/og/passport/[username]
 /onchain/cryptoquant
+/passport/[username]
 /patterns
 /patterns/[slug]/capture
 /patterns/[slug]/filter-drag
@@ -428,9 +453,15 @@
 /research/ledger
 /research/run-cycle
 /research/strategies
+/research/tv-import/author/[username]
+/research/tv-import/commit
+/research/tv-import/estimate
+/research/tv-import/preview
+/research/tv-import/twin/[importId]
 /runtime/[...path]
 /search/[...path]
 /senti/social
+/settings/subscription
 /signals
 /signals/[id]
 /signals/[id]/convert
@@ -443,6 +474,7 @@
 /terminal/compare
 /terminal/exports
 /terminal/exports/[id]
+/terminal/extreme-events
 /terminal/hud
 /terminal/intel-agent-shadow
 /terminal/intel-agent-shadow/execute
@@ -464,8 +496,11 @@
 /terminal/scan/jobs/[jobId]
 /terminal/session
 /terminal/status
+/terminal/train/answer
+/terminal/train/quiz
 /terminal/watchlist
 /ui-state
+/users/[userId]/f60-status
 /wallet/intel
 /watchlist
 /whale-alerts
