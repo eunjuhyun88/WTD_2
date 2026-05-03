@@ -52,6 +52,24 @@ function nanoid8(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+// ── Default params per engineKey ──────────────────────────────────────────
+
+export function defaultParams(engineKey: string): Record<string, number | string | boolean> {
+  switch (engineKey) {
+    case 'rsi':       return { period: 14 };
+    case 'macd':      return { fast: 12, slow: 26, signal: 9 };
+    case 'ema':       return { period: 21 };
+    case 'bb':        return { period: 20, mult: 2 };
+    case 'vwap':      return {};
+    case 'atr_bands': return { period: 14, mult: 2 };
+    case 'volume':    return {};
+    case 'oi':        return {};
+    case 'cvd':       return {};
+    case 'derivatives': return {};
+    default:          return {};
+  }
+}
+
 // ── Reactive store ─────────────────────────────────────────────────────────
 
 let _state = $state<IndicatorInstancesState>(load());
@@ -65,7 +83,7 @@ export const indicatorInstances = {
       instanceId,
       defId,
       engineKey,
-      params,
+      params: { ...defaultParams(engineKey), ...params },
       style: { visible: true },
       paneIndex: -1,
       createdAt: Date.now(),
