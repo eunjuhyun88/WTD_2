@@ -1,6 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  let {
+    onOpen = undefined
+  }: {
+    onOpen?: (path: string, cta: string) => void;
+  } = $props();
+
   let stats = $state<{
     active_patterns: number | null;
     verdict_accuracy_7d: number | null;
@@ -58,6 +64,16 @@
       <span class="stat-value">{stats.active_users_24h ?? '—'}</span>
       <span class="stat-label">활성 트레이더</span>
     </span>
+    {#if onOpen}
+      <span class="stat-sep" aria-hidden="true">·</span>
+      <button
+        type="button"
+        class="strip-cta"
+        onclick={() => onOpen!('/cogochi', 'strip_start')}
+      >
+        Start
+      </button>
+    {/if}
   </div>
 {/if}
 
@@ -90,6 +106,23 @@
 
   .stat-sep {
     color: var(--g4, #272320);
+  }
+
+  .strip-cta {
+    background: none;
+    border: 1px solid var(--g4, #272320);
+    border-radius: 3px;
+    color: var(--g8, #ccc9c5);
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs, 11px);
+    padding: 2px 8px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .strip-cta:hover {
+    border-color: var(--g6, #5a5650);
+    color: var(--g9, #eceae8);
   }
 
   .stat-strip--skeleton {
