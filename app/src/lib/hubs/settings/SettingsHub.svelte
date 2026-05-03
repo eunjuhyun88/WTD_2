@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import GeneralPanel from './panels/GeneralPanel.svelte';
+  import SubscriptionPanel from './panels/SubscriptionPanel.svelte';
 
   const tabs = [
     { id: 'general', label: 'General' },
@@ -33,7 +34,7 @@
     {#if activeTab === 'general'}
       <GeneralPanel />
     {:else if activeTab === 'subscription'}
-      <div class="coming-soon">Subscription management — coming soon (PR2)</div>
+      <SubscriptionPanel />
     {:else if activeTab === 'api-keys'}
       <div class="coming-soon">API Keys — coming soon (PR3)</div>
     {:else if activeTab === 'passport'}
