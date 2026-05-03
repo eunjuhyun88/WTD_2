@@ -43,3 +43,5 @@
 {"ts":"2026-05-02T10:48:21Z","w_id":"W-0389","issue":913,"pr":[],"status":"design","agent":"unknown"}
 {"ts":"2026-05-02T10:48:21Z","w_id":"W-0390","issue":914,"pr":[],"status":"design","agent":"unknown"}
 {"ts":"2026-05-03T12:41:34Z","w_id":"W-0395","issue":960,"pr":[],"status":"implementation","agent":"unknown"}
+{"ts":"2026-05-03T13:36:14Z","w_id":"W-0397","issue":967,"pr":[],"status":"design","agent":"unknown"}
+{"ts":"2026-05-03T13:39:44Z","w_id":"W-0399","issue":967,"pr":[],"status":"design","agent":"unknown"}

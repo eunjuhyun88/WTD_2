@@ -1,4 +1,4 @@
-# W-0397 — TradingView-Parity Indicator Catalog & Multi-Instance Panes
+# W-0399 — TradingView-Parity Indicator Catalog & Multi-Instance Panes
 
 > Wave: 6 | Priority: P1 | Effort: L
 > Charter: In-Scope L4 (chart UX, TV parity)
