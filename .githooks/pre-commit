@@ -61,6 +61,17 @@ if [ "$AGENT" != "unknown" ] && [ -n "$AGENT" ]; then
     fi
     # node not found → skip W-0274 check (soft degradation)
   fi
+
+  # [3] W-1004 ownership check — 타인 소유 파일 staged 시 차단
+  OWNERSHIP_CHECK="$REPO_ROOT/tools/check-ownership.mjs"
+  if [ -f "$OWNERSHIP_CHECK" ] && [ -n "$NODE_BIN" ]; then
+    OVERRIDE_FLAG=""
+    echo "$*" | grep -q -- "--override-owner" && OVERRIDE_FLAG="--override-owner" || true
+    if ! "$NODE_BIN" "$OWNERSHIP_CHECK" $OVERRIDE_FLAG 2>&1; then
+      exit 1
+    fi
+  fi
+
   exit 0
 fi
 
