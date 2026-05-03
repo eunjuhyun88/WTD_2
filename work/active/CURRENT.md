@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`9cfe7a72` — origin/main (2026-05-04) — feat(W-0400 Ph1C): catalogFavorites localStorage + Recents/Favorites sections (#1024)
+`3e9d63a2` — origin/main (2026-05-04) — feat(W-0400 Ph2A): indicators engine API — /series + /catalog + 107 registry entries (#1030)
 
 ---
 
