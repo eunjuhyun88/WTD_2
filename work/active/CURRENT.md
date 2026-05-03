@@ -45,8 +45,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
-| `W-0395B-cogochi-pages-v2-remaining` | P1 | 🟡 8개 PR 대기 — PR #1038 CI 대기 |
-| `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
+| `W-0400-2a-engine-indicators` | P1 | 🟡 설계 완료, 구현 대기 |
 
 ---
 
