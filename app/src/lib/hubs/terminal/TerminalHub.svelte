@@ -4,6 +4,7 @@
   // import CommandBar from './CommandBar.svelte';
   import NewsFlashBar from './workspace/NewsFlashBar.svelte';
   import ResearchPanel from './workspace/ResearchPanel.svelte';
+  import RangeSelectionPanel from '$lib/shared/chart/overlays/RangeSelectionPanel.svelte';
   import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
@@ -54,6 +55,21 @@
     if (last === 'disagree') return 'WAIT';
     return null;
   });
+
+  async function handleRangeSave(verdictJson: import('$lib/terminal/buildIndicatorSnapshotFromRange').JudgeVerdict | null) {
+    await chartSaveMode.save({
+      symbol: desktopSymbol,
+      tf: $activeTabState.timeframe ?? '4h',
+    });
+    if (verdictJson) {
+      shellStore.setDecisionBundle({
+        symbol: desktopSymbol,
+        timeframe: $activeTabState.timeframe ?? '4h',
+        patternSlug: null,
+      });
+      shellStore.setRightPanelTab('verdict');
+    }
+  }
 
   function openDesktopSymbolPicker(tabId?: string) {
     desktopSymbolPickerTabId = tabId ?? $shellStore.activeTabId;
@@ -350,6 +366,15 @@
             workspaceLeftSplitY={$shellStore.workspaceLeftSplitY}
             workspaceRightSplitY={$shellStore.workspaceRightSplitY}
             onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
+          />
+        {/if}
+
+        <!-- W-0392: RangeSelectionPanel docks below chart when range fully selected -->
+        {#if $chartSaveMode.active && $chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
+          <RangeSelectionPanel
+            symbol={desktopSymbol}
+            tf={$activeTabState.timeframe ?? '4h'}
+            onSave={handleRangeSave}
           />
         {/if}
 

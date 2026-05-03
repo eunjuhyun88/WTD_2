@@ -7,7 +7,7 @@
  * State shape per W-0086 / W-0117 Implementation Plan.
  */
 
-import { writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { createPatternCapture } from '$lib/api/terminalPersistence';
 import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
 import type { CaptureSelectionPhase, RangeSelectionBar } from '$lib/terminal/rangeSelectionCapture';
@@ -186,3 +186,23 @@ function createChartSaveModeStore() {
 }
 
 export const chartSaveMode = createChartSaveModeStore();
+
+/**
+ * Derived store: non-null when both anchors are set (range fully selected).
+ * Used by RangeSelectionPanel and JudgeMode prefill.
+ */
+export interface SelectedRange {
+  anchorA: number;
+  anchorB: number;
+  payload: ChartSaveModeState['payload'];
+}
+
+export const selectedRange = derived(
+  chartSaveMode,
+  ($s): SelectedRange | null => {
+    if ($s.active && $s.anchorA !== null && $s.anchorB !== null) {
+      return { anchorA: $s.anchorA, anchorB: $s.anchorB, payload: $s.payload };
+    }
+    return null;
+  },
+);

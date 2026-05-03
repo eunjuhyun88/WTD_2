@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-02
+# CURRENT — 2026-05-03
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -33,6 +33,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0392-chart-segment-judge-flywheel` | P1 | 🟡 Design Draft → Phase 1 In Progress |
 | `W-0304-multichart-per-pane-indicator-scope` | P2 | 🟡 Design Draft |
 | `W-0389-ux-visual-typography-restructure` | P1 | 🟡 Design Draft |
 
@@ -57,7 +58,9 @@
 완료:  W-0387 ✅ — /agent/judge + /agent/save AI agent LLM verdict + idempotent capture (#904)
 완료:  W-0370 ✅ — strategy live signals engine API + frontend (#915)
 완료:  fix(cogochi) ✅ — TerminalHub 마운트 + MobileBottomNav 터미널 제외 (#922)
-즉시:  W-0389 — UX visual typography restructure (PRODUCT-DESIGN-PAGES-V2.md P-02 기반)
+완료:  W-0392 Ph1 pending — Chart segment selection + RangeSelectionPanel + buildIndicatorSnapshotFromRange (PR #942+)
+즉시:  W-0392 Phase 1 — buildIndicatorSnapshotFromRange.ts + RangeSelectionPanel.svelte + chartSaveMode selectedRange export
+추후:  W-0389 — UX visual typography restructure (PRODUCT-DESIGN-PAGES-V2.md P-02 기반)
 추후:  W-0304 per-pane indicator
 ```
 
