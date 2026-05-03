@@ -1,301 +1,317 @@
-# W-0400 — TradingView-Parity Indicator Catalog & Multi-Instance Panes (Full)
+# W-0400 — TradingView-Parity Indicator Catalog (Phase 1A → Phase 2B)
 
 > Wave: 6 | Priority: P1 | Effort: L
-> Charter: In-Scope L4 (chart UX, TV parity)
+> Charter: In-Scope (TV parity, chart UX)
 > Issue: #976
-> Status: 🟡 Design Draft
+> Status: 🟡 Design Draft (Re-phased 2026-05-04)
 > Created: 2026-05-03
-> Depends on: W-0399 Phase 1 (PR #970 merged f9452455), W-0399-P2
-
-## Goal
-진이 `/`를 누르면 카탈로그 모달이 열리고, "rsi 7" 또는 "상대강도"로 검색해 RSI(7) 인스턴스를 기존 RSI(14) 옆 별도 패인에 추가할 수 있으며 — 우리가 계산하는 100+ 지표 전부가 패밀리별로 탐색 가능하고 즐겨찾기·최근 사용 탭이 TV와 동등하게 동작한다.
+> Updated: 2026-05-04
+> Depends on: W-0399-P2 (PR #997 merged 0cd3ee2a — multi-instance store + 10-kind mount + Active 탭)
 
 ## Owner
-app team — ChartBoard / IndicatorLibrary 담당
+app — hjj032549@gmail.com
+
+## Goal
+진이 차트에서 `/`를 누르면 TV-style 카탈로그 모달이 열리고, "rsi 7"·"상대강도"로 검색해 RSI(7)을 RSI(14) 옆 새 패인에 추가할 수 있으며, Phase 2 머지 후엔 100+ 엔진 계산 지표 전부가 같은 모달에서 탐색 가능하다.
 
 ## Scope
-- Phase 1: IndicatorCatalogModal + Fuse.js 검색 + Favorites/Recents + multi-instance 10종 + chartIndicators v3 마이그레이션
-- Phase 2: `GET /indicators/series` engine endpoint + indicator_extras contract + ~100종 노출
-- 파일 범위: `app/src/lib/indicators/`, `app/src/lib/chart/`, `app/src/lib/stores/`, `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte`, `engine/indicators/`
+- 신규 모달 `IndicatorCatalogModal.svelte` + `/` 단축키 진입점 (`ChartBoard.svelte` 수정).
+- 기존 `app/src/lib/indicators/registry.ts` (시장데이터 IndicatorDef)에 **TV TA archetype + `engineKey` 옵션 필드** 추가하고, 클라이언트 계산 가능한 10종 (W-0399-P2 IndicatorKind)을 등록.
+- Fuse.js 기반 `catalogSearch.ts` (기존 `search.ts`는 AIPanel intent용으로 그대로 유지).
+- Favorites/Recents localStorage (`wtd.chart.indicators.favorites.v1`, `wtd.chart.indicators.recents.v1`).
+- Phase 2: `engine/api/routes/indicators.py` `GET /indicators/series` + LRU cache + `engineSeriesAdapter.ts` (app).
 
 ## Non-Goals
-- Copy trading Phase 1+ (Frozen)
-- Chart UX polish (W-0212류) (Frozen)
-- Phase C/D ORPO/DPO GPU 학습 (Frozen)
-- 레거지 `IndicatorLibrary.svelte` 삭제 (Phase 1에서는 병행 유지)
+- v3 store 마이그레이션 — **드롭** (W-0399-P2가 이미 `wtd.chart.indicator-instances.v1`로 multi-instance 모델을 정착시킴; v2→v3 재마이그레이션은 사용자 데이터 손실 위험만 추가).
+- IndicatorLibrary 사이드패널 재설계 — **드롭** (Active 탭은 W-0399-P2에서 이미 inline param edit까지 완료; 카탈로그 모달과 공존).
+- Drawing tools, alert system — Wave 7 별도 W-itemize.
+- Custom Pine Script — TV parity 범위 밖, 별도 W로 분리.
 
-## Canonical Files
-- `app/src/lib/indicators/indicatorRegistry.ts` — 지표 정의 단일 진실
-- `app/src/lib/chart/indicatorInstances.ts` — multi-instance 모델 (W-0399-P2 완료)
-- `app/src/lib/chart/mountIndicatorPanes.ts` — LWC 시리즈 팩토리
-- `app/src/lib/stores/chartIndicators.ts` — 단일 지표 boolean 토글 (v3으로 마이그레이션)
+## Canonical Files (실측)
 
-## Facts
-- W-0399-P2 완료 (PR #994): `mountSecondaryIndicator`, `calcEMAValues/VWAP/ATRBands`, `defaultParams`, Active 탭 inline edit 모두 완료
-- LWC v5.1 기준 sub-pane 12개 페이 예산 확인
-- `indicatorInstances.ts` localStorage key `wtd.chart.indicator-instances.v1` 사용 중
+**기존 (수정 대상)**
+- `app/src/lib/indicators/registry.ts` (377 LoC, 21 IndicatorDef)
+- `app/src/lib/indicators/types.ts` (264 LoC, IndicatorDef 인터페이스)
+- `app/src/lib/indicators/search.ts` (97 LoC, AIPanel intent용 — 변경 없음)
+- `app/src/lib/chart/indicatorInstances.ts` (W-0399-P2 multi-instance store, 변경 없음)
+- `app/src/lib/chart/mountIndicatorPanes.ts` (W-0399-P2 10-kind mount, 변경 없음)
+- `app/src/lib/chart/paneIndicators.ts` (`IndicatorKind = 'cvd' | 'funding' | 'oi' | 'liq'`)
+- `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte` (Phase 1B에서 `/` 단축키 추가)
+- `app/src/lib/hubs/terminal/workspace/IndicatorLibrary.svelte` (Active 탭 — 변경 없음)
+- `engine/api/routes/chart.py` (Phase 2 ChartSeriesPayload 참조)
+
+**신규 (생성)**
+- `app/src/lib/indicators/catalogSearch.ts` (Fuse.js, lazy-import)
+- `app/src/lib/indicators/catalogFavorites.ts` (Favorites/Recents store)
+- `app/src/lib/components/chart/indicators/IndicatorCatalogModal.svelte`
+- `app/src/lib/components/chart/indicators/IndicatorCatalogTrigger.svelte` (`fx` 버튼)
+- `app/scripts/check_bundle_delta.ts` (Phase 1C CI gate)
+- `engine/api/routes/indicators.py` (Phase 2A)
+- `engine/indicators/{__init__,base,registry,compute,cache}.py` (Phase 2A)
+- `app/src/lib/chart/engineSeriesAdapter.ts` (Phase 2B)
+- `scripts/check_indicator_params_parity.ts` (Phase 2B CI gate)
+
+## Facts (실측)
+- W-0399-P2 PR #997 머지(0cd3ee2a). `indicatorInstances.ts` 이미 nanoid+localStorage v1, mount 10종 완료.
+- `registry.ts` 21개 IndicatorDef는 모두 시장데이터(OI/Funding/CVD/Liq/Options/Netflow/Vol). TV TA 10종은 미등록 — Phase 1A에서 등록 필요.
+- `search.ts`는 AIPanel `convertPromptToSetup` 진입점이라 **유지**. 카탈로그 모달은 별도 `catalogSearch.ts` (Fuse.js fuzzy)로 분리.
+- 마이그레이션 번호: `051_tv_imports.sql`이 마지막 → Phase 2A는 `052_indicator_compute_log.sql` (필요 시).
+- engine routers는 `engine/api/routes/` 디렉토리 (NOT `routers/`). Phase 2A 신규 파일은 `engine/api/routes/indicators.py`.
 
 ## Assumptions
-- W-0399-P2 (#994) main 머지 후 Phase 1 시작
-- Fuse.js lazy-import으로 번들 델타 ≤ 15KB gzip 유지 가능
-- engine `GET /indicators/series` Phase 2 전까지는 클라이언트 calc으로 커버
+- A1: Fuse.js는 dynamic `import()`로 lazy-load 하면 모달 초기 close 상태에서 번들에서 빠짐. → Phase 1C에서 측정 검증.
+- A2: 12-pane 차트는 lightweight-charts v5.1+ multi-pane API로 fps≥55 유지. → Phase 1C bench로 검증.
+- A3: 엔진 indicator compute는 stateless이며, `(symbol,tf,indicator,params,last_closed_bar_ts)` 키로 결정론적 캐시 가능. → Phase 2A 단위 테스트로 검증.
+- A4: Phase 1에선 TV TA 10종 + 시장 21종 = **31개**로 시작, Phase 2에서 100+로 확장.
 
-## Open Questions
-- [ ] [Q-001] `chartIndicators.ts` v3 마이그레이션 — 기존 v2 사용자 7-key fixture 손실 없이 이전 가능한가? (vitest snapshot으로 검증 예정)
-- [ ] [Q-002] Phase 2 engine endpoint — 기존 `GET /chart/series` 와 별도 라우터 vs 파라미터 확장?
+---
+
+## Phase 1A — Registry + IndicatorDef 확장 (PR1, ~0.5d)
+
+### 목표
+`IndicatorDef`에 TV TA용 `engineKey?`/`paramSchema?`/`category?` 옵션 필드를 **추가만** 하고, W-0399-P2의 10종 IndicatorKind (rsi/macd/ema/bb/vwap/atr_bands/volume/oi/cvd/derivatives)를 `INDICATOR_REGISTRY`에 등록한다.
+
+### 파일
+- 수정: `app/src/lib/indicators/types.ts` — `IndicatorDef`에 옵션 필드 3개 추가 + `IndicatorCategory` 타입
+- 수정: `app/src/lib/indicators/registry.ts` — TV TA 10개 IndicatorDef append + KO 동의어
+- 신규: `app/src/lib/indicators/__tests__/registry.test.ts` — 31개 정합성 unit
+
+### Exit Criteria
+- AC1A-1: `Object.keys(INDICATOR_REGISTRY).length === 31` (기존 21 + TV TA 10). unit test green.
+- AC1A-2: TV TA 10종 모두 `engineKey` 필드 있음, `category === 'TA'`. unit test green.
+- AC1A-3: 기존 21개 IndicatorDef 중 어떤 필드도 변경되지 않음 (snapshot diff 0).
+- AC1A-4: KO 동의어 — TV TA 10종 각각 최소 2개 ('rsi'→['상대강도','알에스아이'] 등). assertion test green.
+- AC1A-5: `pnpm typecheck` 0 errors, `pnpm test indicators/` green, 기존 W-0399-P2 테스트 0 regression.
+
+---
+
+## Phase 1B — IndicatorCatalogModal + `/` 단축키 (PR2, ~2d)
+
+### 목표
+TV-style 모달 컴포넌트 + Fuse.js 검색 + `/` 단축키 진입점. 모달에서 `Add` 클릭 → 기존 `indicatorInstances.add(defId, params)`로 위임 (mount 로직 재구현 금지).
+
+### 파일
+- 신규: `app/src/lib/components/chart/indicators/IndicatorCatalogModal.svelte`
+- 신규: `app/src/lib/components/chart/indicators/IndicatorCatalogTrigger.svelte` (`fx` toolbar 버튼)
+- 신규: `app/src/lib/indicators/catalogSearch.ts` (Fuse.js dynamic import)
+- 수정: `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte` — `/` 단축키 + 모달 마운트
+- 신규: `app/src/lib/indicators/__tests__/catalogSearch.test.ts`
+- 신규: `app/tests/e2e/chart_catalog.spec.ts` (Playwright)
+
+### Exit Criteria
+- AC1B-1: `/` 키 누르면 모달 open. input/textarea/contenteditable 포커스 시 미발동. Playwright `chart_catalog.spec.ts` pass (3 cases).
+- AC1B-2: "rsi" 검색 → top 1 = RSI; "상대강도" 검색 → top 1 = RSI. unit test 6 cases green.
+- AC1B-3: 모달에서 RSI(14) Add → `indicatorInstances.add` 호출 1회, paneCount +1. Playwright DOM assertion.
+- AC1B-4: 같은 RSI를 length=7로 다시 Add → 별도 instanceId, 별도 패인. Playwright DOM count assertion (RSI chip ×2).
+- AC1B-5: Escape / backdrop 클릭 / Close 버튼 모두 모달 close. `aria-modal="true"`, focus trap. axe-core a11y 0 violations.
+- AC1B-6: 검색 응답 `< 16ms` (31 IndicatorDef × 5회 평균, jsdom bench).
+
+---
+
+## Phase 1C — Favorites/Recents + 번들/FPS 게이트 (PR3, ~1d)
+
+### 목표
+Favorites/Recents localStorage 스토어, 모달의 Favorites/Recents 탭, perf/bundle CI gate.
+
+### 파일
+- 신규: `app/src/lib/indicators/catalogFavorites.ts` (LRU 25, localStorage v1)
+- 신규: `app/src/lib/indicators/__tests__/catalogFavorites.test.ts`
+- 수정: `app/src/lib/components/chart/indicators/IndicatorCatalogModal.svelte` — Favorites/Recents 탭
+- 신규: `app/scripts/check_bundle_delta.ts` (Phase 1A baseline 대비 gzip delta 측정)
+- 신규: `app/tests/e2e/chart_catalog_perf.spec.ts` (Playwright trace fps)
+
+### Exit Criteria
+- AC1C-1: Favorites 25개 상한; 26번째 추가 시 가장 오래된 항목 제거. unit 4 cases green.
+- AC1C-2: localStorage reload 보존; jsdom 시뮬레이션 + Playwright reload 모두 pass.
+- AC1C-3: Recents 최근 10개, 중복 시 맨 앞으로 이동. unit 3 cases green.
+- AC1C-4: 번들 델타 ≤ **15KB gzip** (Phase 1A baseline 대비). `check_bundle_delta.ts` exit 0.
+- AC1C-5: 12 panes × 1500 bars × Chrome desktop에서 fps ≥ **55** (5초 평균). Playwright trace.
+- AC1C-6: `IndicatorCatalogModal` 첫 open 시 Fuse.js chunk 동적 로드 1회만, 두 번째 open 0회. Network recorder 검증.
+
+---
+
+## Phase 2A — Engine indicators API (PR4, ~3d)
+
+### 목표
+`GET /indicators/series` + 결정론적 LRU 캐시 + 100+ 지표 compute 모듈. Phase 1에서 등록 안 된 70+ 지표는 engine 카탈로그에만 존재 (app은 Phase 2B에서 sync).
+
+### 파일
+- 신규: `engine/indicators/__init__.py`, `engine/indicators/base.py` (IndicatorComputer ABC)
+- 신규: `engine/indicators/registry.py` (engine catalog, 100+ 지표 메타)
+- 신규: `engine/indicators/compute.py` (TA-Lib + 자체 구현)
+- 신규: `engine/indicators/cache.py` (`cachetools.TTLCache(maxsize=2048)` + asyncio.Lock singleflight)
+- 신규: `engine/api/routes/indicators.py` (`GET /indicators/series`)
+- 수정: `engine/api/main.py` — router include
+- 수정: `engine/api/openapi_paths.py` — schema 추가
+- 신규: `engine/tests/test_indicators_endpoint.py` (15+ cases)
+
+### Exit Criteria
+- AC2A-1: `GET /indicators/series?symbol=BTCUSDT&timeframe=15m&indicator=sma&params=length:20&limit=1500` → 200, `series.points.length == 1481`. pytest pass.
+- AC2A-2: p95 latency ≤ **50ms** cache miss (1500 bars SMA, pytest-benchmark, 100 runs).
+- AC2A-3: cache hit rate ≥ **85%** (200 req/s × 60s synthetic, 16 symbols × 5 indicator × 4 param). pytest report.
+- AC2A-4: singleflight — 동일 cache miss 키 동시 100req → compute 함수 호출 1회. asyncio test green.
+- AC2A-5: engine catalog ≥ **100 IndicatorMeta** 등록. `len(REGISTRY) >= 100` assertion.
+- AC2A-6: openapi-typescript 재생성 후 빌드 clean (CI Contract gate green).
+- AC2A-7: 잘못된 indicator key → 404 + `{error: "unknown_indicator"}`. 잘못된 params → 400.
+
+---
+
+## Phase 2B — App adapter + catalog Phase-2 활성화 (PR5, ~2d)
+
+### 목표
+App `engineSeriesAdapter`로 engine indicator series를 fetch → Lightweight-Charts SeriesApi에 mount. 카탈로그 모달이 engine-only 지표도 enabled로 노출.
+
+### 파일
+- 신규: `app/src/lib/chart/engineSeriesAdapter.ts` (`fetch + setData + applyOptions` 래퍼)
+- 수정: `app/src/lib/components/chart/indicators/IndicatorCatalogModal.svelte` — engine-only 지표 enabled 처리
+- 수정: `app/src/lib/indicators/registry.ts` — engine 카탈로그와 sync (70+ 지표 IndicatorDef 추가)
+- 신규: `scripts/check_indicator_params_parity.ts` (engine `/indicators/registry` ↔ app diff exit code)
+- 신규: `app/src/lib/chart/__tests__/engineSeriesAdapter.test.ts` (8+ cases, fetch mock)
+- 신규: `app/tests/e2e/chart_catalog_engine.spec.ts`
+- 수정: `.github/workflows/contract-check.yml` — `check_indicator_params_parity` 추가
+
+### Exit Criteria
+- AC2B-1: 모달에서 SMA(20) Add → 정확히 1회 `GET /indicators/series` 호출, mount 후 chart에 라인 1개 추가. Playwright network recorder.
+- AC2B-2: archetype `histogram` 지표 → `HistogramSeries`로 mount. DOM assertion.
+- AC2B-3: app/engine catalog parity diff = **0 키**. `check_indicator_params_parity.ts` exit 0.
+- AC2B-4: app `INDICATOR_REGISTRY` 항목 ≥ **100** (Phase 1A baseline 31 → 100+).
+- AC2B-5: Prometheus engine `indicator_compute_seconds_p99 ≤ 100ms` (24h staging soak).
+- AC2B-6: 연결 실패 (engine 503) → 모달은 retry/cached 표기, 차트 미파괴. error e2e 1 case.
+
+---
+
+## CTO 관점
+
+### Risk Matrix
+
+| Risk | Prob | Impact | Mitigation |
+|---|---|---|---|
+| 모달 도입 후 IndicatorLibrary 사이드패널과 UX 중복 | M | M | 모달 = 추가, 사이드패널 = 활성 관리. 모달 footer에 "사이드패널에서 편집" 안내. |
+| Fuse.js +12KB로 Phase 1C 번들 게이트 위반 | L | L | dynamic import; lazy chunk 검증; 게이트 위반 시 Phase 1C revert. |
+| `/` 단축키 Firefox quick-find 충돌 | M | M | chart 컨테이너 포커스 + `e.preventDefault()` 분기. |
+| Phase 2A 캐시 stampede (cold start) | M | M | `asyncio.Lock` per cache key; AC2A-4 검증. |
+| engine ↔ app catalog drift → 모달 클릭 시 404 | M | H | Phase 2B `check_indicator_params_parity.ts` CI gate. |
+| 12-pane fps 미달 | L | H | AC1C-5 게이트; 위반 시 MAX 8 임시 다운그레이드. |
+| Phase 2A `cachetools` 메모리 누수 | L | M | maxsize 강제; pytest memory soak 1h. |
+
+### 의사결정 단계
+- Phase 1A → 1B → 1C 순차 머지 (병렬 PR 금지; UX 회귀 차단).
+- Phase 2A는 Phase 1C 머지 후 시작 가능.
+- Phase 2B는 Phase 2A 머지 + 24h staging soak 통과 후 ship.
+
+---
+
+## AI Researcher 관점
+
+### Data Impact
+- Phase 2A 엔진 compute는 OHLCV bars만 입력 → 결정론적, lookahead 없음. 캐시 키에 `last_closed_bar_ts` 포함해 미완료 캔들 누설 방지.
+- Phase 1B 검색은 IndicatorDef metadata만 사용 → 사용자 데이터 노출 없음.
+
+### Failure Modes
+- **F1**: Fuse.js threshold 0.4 → 한글 단음절 ('볼' 등) 노이즈 매치. 완화: minQueryLength=2.
+- **F2**: Engine compute가 NaN 반환 시 LWC line break. 완화: NaN drop on engine side, meta.bar_count 반환.
+- **F3**: Favorites LRU에서 deprecated defId 잔존 → 모달 mount 시 unknown 자동 정리.
+- **F4**: param schema drift (engine vs app default) → AC2B-3 parity gate가 차단.
+
+---
 
 ## Decisions
-- [D-001] IndicatorCatalogModal 신규 컴포넌트 — 기존 IndicatorLibrary.svelte 대체가 아닌 병행 (Phase 1 기간); W-0399-P2 Active 탭이 이미 인라인 편집 담당
-- [D-002] Fuse.js lazy-import — 초기 번들 +0KB, 모달 첫 오픈 시 비동기 로드
-- [D-003] engine Phase 2 전까지 클라이언트 calc (chartIndicatorCalc.ts 이미 완비)
-- [D-004] `chartIndicators.ts` v3 스토어 — `instances[]` 기반으로 전환; v2 key read-then-write 이전
+
+[D-0400-01] **v3 store 마이그레이션 드롭** — W-0399-P2의 `wtd.chart.indicator-instances.v1` 그대로 사용. 거절옵션: v3 재마이그레이션 (사용자 데이터 손실 위험), v2 폐기 (기존 favorites 손실).
+
+[D-0400-02] **`catalogSearch.ts` 별도 파일** — 기존 `search.ts`는 AIPanel intent용으로 유지. 거절옵션: search.ts 통합 (convertPromptToSetup 회귀 위험).
+
+[D-0400-03] **Phase 1A 카탈로그 31개 시작** — 시장 21 + TV TA 10. 거절옵션: Phase 1A에 100+ 등록 (registry.ts 700+ LoC 한 PR).
+
+[D-0400-04] **engine routers 디렉토리 = `engine/api/routes/`** (NOT `engine/api/routers/`). 실측 기반.
+
+[D-0400-05] **Phase 2 캐시는 in-process LRU만** — Redis 거부 (operational cost > benefit, compute 결정론적).
+
+[D-0400-06] **MAX panes = 12** (LWC v5.1 perf budget). 13번째 추가 시 toast.
+
+## Open Questions
+
+[Q-0400-01] Phase 2A engine catalog 중 `paid` provider (Coinalyze 등) 지표는 staging key 어떻게 주입? **잠정**: env mock + feature flag.
+
+[Q-0400-02] Phase 2B에서 `defaultVisible=false` 지표(70+)를 dim 처리할지, 별도 "추가 지표" 카테고리로 분리할지. → Phase 2B 시작 전 사용자 검토.
+
+[Q-0400-03] `/` 단축키가 IME(한글 입력 모드)에서도 trigger되어야 하는지. → Phase 1B 구현 시 확인.
+
+---
+
+## Exit Criteria (전체)
+
+**Phase 1 (PR1+PR2+PR3 모두 머지 후)**
+- [ ] AC1A-1~5 (registry 31개)
+- [ ] AC1B-1~6 (모달 + `/` + 검색)
+- [ ] AC1C-1~6 (favorites + 번들 ≤15KB + fps≥55)
+- [ ] W-0399-P2 0 regression
+
+**Phase 2 (PR4+PR5 모두 머지 후)**
+- [ ] AC2A-1~7 (engine API + cache)
+- [ ] AC2B-1~6 (app adapter + catalog 100+)
+- [ ] Phase 1 0 regression
+
+---
 
 ## Next Steps
-1. W-0399-P2 PR #994 main 머지 확인
-2. Phase 1 PR1: `types.ts` + `chartIndicators.ts` v3 + 마이그레이션
-3. Phase 1 PR2: `IndicatorCatalogModal` + `catalogSearch.ts`
-4. Phase 1 PR3: ChartBoard `/` 단축키 배선 + perf gate
 
----
-
-## Phase 1 — UX 패리티 (기존 engineKey ~10개)
-
-- **IndicatorCatalogModal**: TV-style dialog, 좌측 카테고리 트리(Price/Volume/Momentum/Derivatives/Sentiment/Liquidity), 우측 그리드+검색바+Recents+Favorites 탭
-- **CatalogTrigger**: 차트 툴바 `fx` 버튼, 단축키 `/`
-- **Search**: aiSynonyms+label+id 토큰 매칭 (한영 양방향, Fuse.js lazy-import)
-- **Favorites/Recents**: localStorage `wtd.chart.indicators.favorites.v1` (max 25 LRU)
-- **Multi-instance**: `IndicatorInstance[]` 모델, RSI(14)+RSI(7) 별도 패인 동시
-- **Importance-ordered defaults**: registry priority sort
-- **Archetype-aware placement**: overlay→pane[0], separate→sub-pane 자동 할당, histogram→단독
-- **MAX 6→12 상향** (LWC v5.1 perf budget)
-
-## Phase 2 — 전 지표 노출 (~100개)
-
-- Engine `engine/api/routers/indicators.py` + `GET /indicators/series?symbol=&timeframe=&indicator=&params=` + LRU cache (size=2048, TTL=3600s closed / tf_seconds/4 live)
-- `ChartSeriesPayload.indicator_extras` optional field (additive contract)
-- registry ↔ engine 카탈로그 100% 일치 CI gate
-- archetype/dimensions → LWC SeriesType 자동 매핑
-- Param overrides (RSI length, SMA period 등)
-
----
-
-## Data Model Changes
-
-### `IndicatorInstance` type (`app/src/lib/indicators/types.ts`)
-
-```typescript
-export interface IndicatorInstance {
-  instanceId: string;      // nanoid(8)
-  defId: string;           // FK → IndicatorDef.id in registry.ts
-  params: Record<string, number | string | boolean>;
-  style: {
-    color?: string;
-    lineWidth?: 1 | 2 | 3;
-    visible: boolean;
-  };
-  paneIndex: number;       // 0=overlay, 1..N=sub-pane, -1=auto
-  source: 'local' | 'engine';
-  createdAt: number;
-}
-```
-
-### `chartIndicators.ts` v2 → v3 마이그레이션
-
-localStorage key `wtd.chart.indicators.v3`:
-
-```typescript
-export interface IndicatorStoreV3 {
-  version: 3;
-  instances: IndicatorInstance[];        // ordered by createdAt
-  paneAssignment: Record<string, number>; // instanceId → paneIndex
-  activeCount: number;
-}
-```
-
-마이그레이션: `app/src/lib/stores/migrations/indicators_v2_to_v3.ts`
-- v2 키 보존 → 다음 세션에 삭제
-- unknown keys → drop + console.warn
-
-### `mountIndicatorPanes()` 시그니처 변경
-
-```typescript
-// after
-mountIndicatorPanes(
-  chart: IChartApi,
-  candles: Candle[],
-  specs: IndicatorMountSpec[],
-  ctx: { engineExtras?: Record<string, EngineSeriesPoints> }
-): IndicatorSeriesRefs
-
-// migration bridge (Phase 1 기간만):
-function togglesToSpecs(toggles: IndicatorToggles): IndicatorMountSpec[]
-```
-
----
-
-## Component Architecture
-
-### `IndicatorCatalogModal.svelte` (신규)
-
-```svelte
-interface Props {
-  open: boolean;                   // $bindable
-  onAdd: (defId: string, params?) => void;
-  onClose: () => void;
-  initialQuery?: string;
-  activeInstances: IndicatorInstance[];
-}
-// Layout:
-// ┌─ header: SearchBar + Close ──────────────────┐
-// │ left 180px: FamilyTree │ right: ResultGrid   │
-// └─ footer: 선택된 지표 N개 + 추가 버튼 ──────────┘
-```
-
-### Catalog Search (`catalogSearch.ts`)
-
-Fuse.js keys: `label(0.50)`, `id(0.25)`, `aiSynonyms(0.20)`, `family(0.05)`, threshold=0.4
-Sort: fuse score asc → favorites first → priority asc
-Top 30 지표 curated KO 동의어 필수 (rsi → '상대강도지수', '알에스아이' 등)
-
----
-
-## Pane 배치 규칙
-
-| 조건 | 결과 |
-|---|---|
-| `archetype = 'overlay'` | paneIndex = 0 |
-| `archetype = 'separate'`, 슬롯 있음 | 다음 빈 1..12 |
-| `archetype = 'separate'`, 12 슬롯 만석 | -1 → toast "최대 12개 보조 지표까지" |
-| `archetype = 'histogram'` | 같은 kind 기존 pane에 병합; 없으면 separate |
-| 같은 kind 두 번째 인스턴스 | 항상 새 패인 |
-| `volume` 두 번째 | 예외 — 항상 pane 1 공유 |
-
----
-
-## Phase 2 엔진 API
-
-```
-GET /indicators/series
-  ?symbol=BTCUSDT&timeframe=15m
-  &indicator=sma&params=length:20,source:close
-  &since=1714694400000&limit=1500
-```
-
-응답: `{ instance_key, indicator, params, series[]{name, points[]{time,value}}, meta{computed_at, bar_count, cache_hit} }`
-
-캐시: `cachetools.TTLCache(maxsize=2048)`, key=`f"{symbol}|{tf}|{indicator}|{sorted_params}|{last_closed_bar_ts}"`. Redis 거부 — 추가 레이턴시 + ops 비용 대비 이점 없음 (데이터 결정론적).
-
-engine → LWC SeriesType 매핑:
-
-| archetype | dimensions | LWC type |
-|---|---|---|
-| overlay | 1 | LineSeries |
-| overlay | 2–3 | LineSeries × N |
-| separate | 1–3 | LineSeries × N (own pane) |
-| histogram | 1 | HistogramSeries |
-| histogram | 2 | HistogramSeries + Line |
-
----
-
-## CTO 리스크 매트릭스
-
-| 리스크 | 확률 | 영향 | 완화 |
-|---|---|---|---|
-| v2→v3 기존 사용자 데이터 손실 | M | H | read-then-write; 구 키 보존; e2e 테스트 v2 fixture |
-| multi-instance로 byKindLegacy 소비자 깨짐 | H | M | Phase 1 기간 legacy map 유지, 동시 마이그레이션 |
-| Fuse.js 번들 +12KB gzip | L | L | lazy-import (모달 열릴 때); 번들 델타 ≤15KB CI gate |
-| `/` 단축키 Firefox quick-find 충돌 | M | M | chart 포커스 있을 때만 preventDefault |
-| 12 패인 × 1500 bars FPS 저하 | L | H | Phase 1 bench; fps ≥ 55 gate |
-| engine 캐시 cold-start stampede | M | M | `asyncio.Lock` singleflight per cache key |
-| 파라미터 스키마 클라이언트/엔진 drift | M | H | codegen `indicator_params.json` → CI gate |
-| KO 동의어 미달 → KO 검색 품질 저하 | H | M | top 30 curated 필수 |
-
----
-
-## Keyboard / a11y
-
-- **`/` 단축키**: `$effect`에서 `window.addEventListener('keydown')`; `input|textarea|[contenteditable]`이면 스킵
-- **모달 열기 후**: `tick()` 뒤 `searchInputRef.focus()`
-- **Escape**: `role="dialog" aria-modal="true"` wrapper onkeydown + backdrop 클릭
-
----
-
-## CSS / 레이아웃
-
-| 속성 | 값 |
-|---|---|
-| 모달 크기 | `clamp(560px, 70vw, 720px)` × `clamp(480px, 75vh, 640px)` |
-| 위치 | `position: fixed; inset: 0;` flex-centered, backdrop `rgba(0,0,0,0.55)` |
-| z-index | `1100` |
-| 모바일 <768px | `inset: 0; border-radius: 0` |
-| Phase 2 미지원 항목 | `opacity: 0.4; cursor: not-allowed` + tooltip |
-
----
-
-## Exit Criteria
-
-**Phase 1 (AC1–AC9)**
-- [ ] AC1: `/` 단축키 → 모달 오픈; Playwright `chart_catalog.spec.ts` pass
-- [ ] AC2: "rsi" / "상대강도" 검색 → RSI top 1; `catalogSearch.test.ts` unit test
-- [ ] AC3: RSI(14) + RSI(7) 동시 마운트 → 별도 패인, 별도 chip; Playwright DOM assertion
-- [ ] AC4: v2 7-key fixture → v3 인스턴스 7개 손실 0; vitest snapshot
-- [ ] AC5: Favorites 25개 상한 + reload 보존; vitest + jsdom
-- [ ] AC6: 13번째 separate 추가 시 toast; Playwright
-- [ ] AC7: fps ≥ 55 (12 panes × 1500 bars Chrome desktop); Playwright trace
-- [ ] AC8: 번들 델타 ≤ 15KB gzip; CI gate
-- [ ] AC9: W-0399 기존 테스트 전원 통과 (zero regression)
-
-**Phase 2 (AC10–AC15)**
-- [ ] AC10: `GET /indicators/series` p95 ≤ 50ms (cache miss, 1500 bars SMA)
-- [ ] AC11: cache hit rate ≥ 85% (200req/s 60min synthetic, 16 symbols)
-- [ ] AC12: `indicator_extras` contract test green; openapi.d.ts 재생성 clean
-- [ ] AC13: SMA(20) 추가 → network request 정확히 1회; Playwright network recorder
-- [ ] AC14: `scripts/check_indicator_params_parity.ts` exit 0
-- [ ] AC15: Prometheus p99 indicator compute ≤ 100ms (24h staging soak)
-
----
-
-## 구현 플랜
-
-**Phase 1 (5일, app-only)**
-- PR1 — `types.ts` + `chartIndicators.ts` v3 + 마이그레이션 (1d)
-- PR2 — `IndicatorCatalogModal`, `catalogSearch.ts`, `indicatorFavorites.ts` (2d)
-- PR3 — ChartBoard 배선 + `/` 단축키 + `paneCrosshairSync` CrosshairChip 업데이트 (1d)
-- PR4 — perf bench + a11y; fps gate; bundle delta (1d)
-
-**Phase 2 (7일, engine+app, Phase 1 merge 후)**
-- PR5 — engine indicators module + endpoint + LRU cache + codegen (3d)
-- PR6 — `ChartSeriesPayload.indicator_extras` + `engineSeriesAdapter.ts` (2d)
-- PR7 — catalog Phase-2 활성화 + observability + e2e (2d)
+1. Phase 1A 구현 착수 (PR1 — `feat/W-0400-1A-registry-extend`).
+2. PR1 머지 후 Phase 1B (PR2 — `feat/W-0400-1B-catalog-modal`).
+3. PR2 머지 후 Phase 1C (PR3 — `feat/W-0400-1C-favorites-perf`).
+4. Phase 1C 머지 후 Phase 2A (PR4 — `feat/W-0400-2A-engine-indicators`).
+5. PR4 staging soak 24h → Phase 2B (PR5 — `feat/W-0400-2B-app-adapter`).
 
 ---
 
 ## Handoff Checklist
 
-**신규 파일 (Phase 1)**
+### 신규 파일 (Phase 1A) — 1개
+- `app/src/lib/indicators/__tests__/registry.test.ts`
+
+### 수정 파일 (Phase 1A) — 2개
 - `app/src/lib/indicators/types.ts`
-- `app/src/lib/indicators/catalogSearch.ts`
-- `app/src/lib/stores/migrations/indicators_v2_to_v3.ts`
+- `app/src/lib/indicators/registry.ts`
+
+### 신규 파일 (Phase 1B) — 5개
 - `app/src/lib/components/chart/indicators/IndicatorCatalogModal.svelte`
 - `app/src/lib/components/chart/indicators/IndicatorCatalogTrigger.svelte`
-- `scripts/check_bundle_delta.ts`
+- `app/src/lib/indicators/catalogSearch.ts`
+- `app/src/lib/indicators/__tests__/catalogSearch.test.ts`
+- `app/tests/e2e/chart_catalog.spec.ts`
 
-**수정 파일 (Phase 1)**
-- `app/src/lib/indicators/registry.ts` — KO 동의어 top 30
-- `app/src/lib/stores/chartIndicators.ts` — v3 스토어
-- `app/src/lib/chart/paneIndicators.ts` — `IndicatorMountSpec`, IndicatorKind 확장
-- `app/src/lib/chart/mountIndicatorPanes.ts` — multi-instance 시그니처
-- `app/src/lib/chart/paneCrosshairSync.ts` — CrosshairChip 타입
-- `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte` — trigger, `/` 단축키
-- `app/src/lib/chart/paneLayoutStore.ts` — MAX 12, `resolvePanePlacement`
+### 수정 파일 (Phase 1B) — 1개
+- `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte`
 
-**신규 파일 (Phase 2)**
-- `engine/indicators/{__init__,base,registry,compute,cache}.py`
-- `engine/api/routers/indicators.py`
-- `app/src/lib/chart/engineSeriesAdapter.ts`
-- `scripts/generate_indicator_params.ts`, `scripts/check_indicator_params_parity.ts`
+### 신규 파일 (Phase 1C) — 4개
+- `app/src/lib/indicators/catalogFavorites.ts`
+- `app/src/lib/indicators/__tests__/catalogFavorites.test.ts`
+- `app/scripts/check_bundle_delta.ts`
+- `app/tests/e2e/chart_catalog_perf.spec.ts`
 
-**수정 파일 (Phase 2)**
-- `engine/api/schemas/chart_series.py`
+### 수정 파일 (Phase 1C) — 1개
+- `app/src/lib/components/chart/indicators/IndicatorCatalogModal.svelte`
+
+### 신규 파일 (Phase 2A) — 8개
+- `engine/indicators/__init__.py`
+- `engine/indicators/base.py`
+- `engine/indicators/registry.py`
+- `engine/indicators/compute.py`
+- `engine/indicators/cache.py`
+- `engine/api/routes/indicators.py`
+- `engine/tests/test_indicators_endpoint.py`
+
+### 수정 파일 (Phase 2A) — 2개
+- `engine/api/main.py`
 - `engine/api/openapi_paths.py`
-- `app/src/lib/indicators/registry.ts` — `engineKey` + `display` 필드 추가
+
+### 신규 파일 (Phase 2B) — 4개
+- `app/src/lib/chart/engineSeriesAdapter.ts`
+- `app/src/lib/chart/__tests__/engineSeriesAdapter.test.ts`
+- `scripts/check_indicator_params_parity.ts`
+- `app/tests/e2e/chart_catalog_engine.spec.ts`
+
+### 수정 파일 (Phase 2B) — 3개
+- `app/src/lib/components/chart/indicators/IndicatorCatalogModal.svelte`
+- `app/src/lib/indicators/registry.ts`
+- `.github/workflows/contract-check.yml`
