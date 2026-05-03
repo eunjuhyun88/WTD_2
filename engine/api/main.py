@@ -346,12 +346,8 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(passport_routes.router, tags=["passport"])
     target.include_router(extreme_events.router, prefix="/extreme-events", tags=["extreme-events"])
     target.include_router(counterfactual_routes.router, tags=["counterfactual"])
-<<<<<<< HEAD
     target.include_router(tv_import.router, prefix="/tv-import", tags=["tv-import"])
-||||||| parent of 61228feb (feat(W-0394 PR2): LightGBM Layer C auto-train + SearchLayerBadge)
-=======
     target.include_router(scoring_status_router, tags=["scoring"])
->>>>>>> 61228feb (feat(W-0394 PR2): LightGBM Layer C auto-train + SearchLayerBadge)
 
 
 def _include_worker_control_routes(target: FastAPI) -> None:
