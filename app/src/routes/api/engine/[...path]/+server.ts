@@ -47,7 +47,8 @@ function isAllowedPath(path: string, method: string): boolean {
     return (
       ['score', 'deep', 'backtest', 'train', 'opportunity', 'verdict'].includes(first) ||
       path.startsWith('memory/') ||
-      path.startsWith('challenge/')
+      path.startsWith('challenge/') ||
+      path.startsWith('agent/')
     );
   }
   return false;
