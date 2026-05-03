@@ -3214,6 +3214,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/passport/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Passport
+         * @description Return public passport stats for a user by username.
+         *
+         *     Looks up user by username (display_name / nickname) from user_profiles.
+         *     Returns 404 if not found or if the profile is set to private.
+         */
+        get: operations["get_public_passport_passport__username__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -11621,6 +11644,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_public_passport_passport__username__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
