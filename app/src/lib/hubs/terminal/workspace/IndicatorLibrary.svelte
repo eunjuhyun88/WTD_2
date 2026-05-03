@@ -9,7 +9,7 @@
   } from '$lib/indicators/indicatorRegistry';
   import { addIndicator, removeIndicator, chartIndicators, type IndicatorKey } from '$lib/stores/chartIndicators';
   import { indicatorFavorites, indicatorRecents } from '$lib/stores/indicatorFavorites';
-  import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import { indicatorInstances, type IndicatorInstance } from '$lib/chart/indicatorInstances';
 
   interface Props {
     open?: boolean;
@@ -52,7 +52,7 @@
     expandedEdit = next;
   }
 
-  function handleParamInput(inst: ReturnType<typeof indicatorInstances.instances>[number], key: string, rawValue: string) {
+  function handleParamInput(inst: IndicatorInstance, key: string, rawValue: string) {
     const num = parseFloat(rawValue);
     if (!Number.isFinite(num) || num <= 0) return;
     clearTimeout(debounceHandles.get(inst.instanceId));
