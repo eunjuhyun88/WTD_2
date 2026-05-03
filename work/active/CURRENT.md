@@ -33,8 +33,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0398-layer-c-autotrainer-wiring` | P0 | ✅ PR #968 merged |
-| `W-0397-verdict-throughput-booster` | P0 | ✅ PR #965 merged |
+| `W-0400-layer-c-observability-f60-dashboard` | P0 | 🟡 이슈 #980, 구현 대기 |
 | `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Wave 6 구현 대기 |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
