@@ -64,6 +64,7 @@ def promote_capture(
     decision: dict[str, Any],
     trigger_origin: str,
     reason: str | None,
+    pattern_slug: str | None = None,
 ) -> dict[str, Any]:
     """Lookup existing capture by evidence_hash; INSERT if absent.
 
@@ -92,7 +93,8 @@ def promote_capture(
 
     import uuid
     capture_id = str(uuid.uuid4())
-    row = {
+    slug = pattern_slug or decision.get("pattern_slug")
+    row: dict[str, Any] = {
         "id": capture_id,
         "user_id": user_id,
         "symbol": symbol,
@@ -105,6 +107,8 @@ def promote_capture(
         "reason": reason,
         "source_freshness": {},
     }
+    if slug:
+        row["pattern_slug"] = slug
     try:
         sb_client.table("terminal_pattern_captures").insert(row).execute()
         log.debug("promote_capture: inserted %s", capture_id)

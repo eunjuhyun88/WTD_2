@@ -154,14 +154,44 @@
     savingCandidateIds = new Set([...savingCandidateIds, candidateKey]);
     error = null;
     try {
-      const res = await fetch('/api/captures', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patternCapturePayload(candidate)),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { detail?: string; error?: string }).detail ?? (body as { error?: string }).error ?? `HTTP ${res.status}`);
+      const v = verdicts.get(candidateKey);
+      if (v) {
+        // Judged path: /agent/save carries verdict + pattern_slug → SQLite mirror → outcome_resolver
+        const res = await fetch('/api/engine/agent/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbol: candidate.symbol,
+            timeframe: candidate.timeframe || '4h',
+            snapshot: candidate.featureSnapshot ?? {},
+            pattern_slug: candidate.patternSlug,
+            decision: {
+              verdict: v.verdict,
+              entry: v.entry,
+              stop: v.stop,
+              target: v.target,
+              rr: v.rr,
+              rationale: v.rationale,
+              pattern_slug: candidate.patternSlug,
+            },
+            trigger_origin: 'pattern_judge',
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error((body as { detail?: string; error?: string }).detail ?? (body as { error?: string }).error ?? `HTTP ${res.status}`);
+        }
+      } else {
+        // No judgment yet: plain pattern capture (sets pattern_slug in CaptureStore)
+        const res = await fetch('/api/captures', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patternCapturePayload(candidate)),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error((body as { detail?: string; error?: string }).detail ?? (body as { error?: string }).error ?? `HTTP ${res.status}`);
+        }
       }
     } catch (e) {
       error = `Save setup failed: ${e}`;

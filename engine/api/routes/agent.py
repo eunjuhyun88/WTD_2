@@ -438,6 +438,7 @@ async def save(req: SaveRequest) -> SaveResponse:
         req.decision,
         req.trigger_origin,
         reason,
+        req.pattern_slug,
     )
     latency = int((time.monotonic() - t0) * 1000)
 
