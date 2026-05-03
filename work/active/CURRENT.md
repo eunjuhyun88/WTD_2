@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`c39646f7` — origin/main (2026-05-04) — feat(W-0400 Ph1C): catalogFavorites localStorage + Recents/Favorites sections (#1023)
+`b9f456af` — origin/main (2026-05-04) — feat(W-0401-P3): daily digest email (#1046)
 
 ---
 
@@ -64,6 +64,9 @@
 완료:  W-0395 Phase 7 ✅ — /settings /lab /agent thin + placeholder (#985)
 완료:  fix(chart) ✅ — TV-style pane indicator labels + dynamic priceFrac (#989)
 완료:  W-0399-p2 ✅ — multi-instance indicator × remove + count badge + clientIndicators.ts (#1009)
+완료:  W-0399-P2 ✅ — all Tier-A multi-instance + param edit + × remove + VWAP/ATR tests (#1042)
+완료:  W-0401-P1 ✅ — verdict streak distinct-day 카운터 + 5 배지 + StreakCard UI (#1028)
+완료:  W-0401-P2+P3 ✅ — inbox dot badge + daily digest email (#1032 #1046 #1049)
 완료:  W-0400 Ph1A ✅ — extend IndicatorDef + register 10 TV TA indicators (#1010)
 완료:  W-0400 Ph1B ✅ — IndicatorCatalogModal + Fuse.js search + / shortcut (#1020)
 완료:  W-0400 Ph1C ✅ — catalogFavorites localStorage + Recents/Favorites sections (#1024)
