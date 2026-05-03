@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`d1f5fc4a` — origin/main (2026-05-03) — feat(W-0394 PR2): LightGBM Layer C auto-train pipeline + SearchLayerBadge (#954)
+`054edd7c` — origin/main (2026-05-03) — docs: PRIORITIES.md Wave 5 complete + PRIORITIES 갱신 규칙 (#964)
 
 ---
 
@@ -33,7 +33,10 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0388-eslint-hub-boundaries` | P2 | 🟡 Design Draft |
+| `W-0398-layer-c-autotrainer-wiring` | P0 | 🟡 이슈 #963, 구현 대기 |
+| `W-0397-verdict-throughput-booster` | P0 | 🟢 PR #965 open, CI 대기 |
+| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, 설계 보강 필요 |
+| `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
 ---
 
@@ -73,6 +76,9 @@
 완료:  W-0394 PR1 ✅ — scoring.trainer dataset builder + similarity_ranker Layer C blend (#952)
 완료:  W-0393 ✅ — TradingView Idea Twin & Hypothesis Compiler (#951)
 완료:  W-0394 PR2 ✅ — LightGBM Layer C auto-train pipeline + SearchLayerBadge (#954)
+완료:  W-PF-100 P1 ✅ — PropFirm paper auto-execution (PatternRunPanel + router/entry/match/exit + HL feed #783 #787 #802)
+완료:  W-0388 ✅ — ESLint hub boundary enforcement (#958)
+완료:  docs ✅ — PRIORITIES.md Wave 5 complete + 갱신 규칙 (#964)
 ```
 
 ---
@@ -97,10 +103,10 @@
 
 ---
 
-## 다음 실행 — Wave 6 설계 또는 W-0388 ESLint Hub Boundaries
+## 다음 실행 — Wave 6 P0 구현
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0388-eslint-hub-boundaries.md
-# Wave 5 완전 완료 — Wave 6 P0 후보 설계 시작
+cat work/active/W-0398-layer-c-autotrainer-wiring.md
+# W-0398 (S): auto_trainer 스케줄러 배선 → Layer C 실 활성화
 ```
