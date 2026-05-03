@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-03
+# CURRENT — 2026-05-04
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`e712477d` — origin/main (2026-05-04) — fix(chart): TV-style pane indicator labels + dynamic priceFrac positioning (#989)
+`a914acd3` — origin/main (2026-05-04) — chore: PRIORITIES.md §0 Wave 6 progress + CURRENT.md SHA sync (#993)
 
 ---
 
@@ -33,13 +33,29 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0400-layer-c-observability-f60-dashboard` | P0 | ✅ 완료 PR #987 |
-| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Phase 2-7 구현 대기 (Phase 1 ✅ #988) |
-| `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
+| `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 
 ---
 
-## Wave 5 실행 계획 (2026-05-03)
+## Wave 6 완료 (2026-05-04)
+
+```
+완료:  W-0397 ✅ — VerdictInboxPanel 키보드 단축키 + 5s undo + Layer C ETA (#965)
+완료:  W-0398 ✅ — Layer C auto-train scheduler wiring + verdict hook (#968, #981)
+완료:  W-0400 ✅ — Layer C training observability + F-60 progress dashboard (#987)
+완료:  W-0395 Phase 1 ✅ — /cogochi cogochiDataStore v2 + localStorage migration + 18 analytics events (#988)
+완료:  W-0395 Phase 2 ✅ — /dashboard 3-zone redesign (OpportunityCard + StatsZone + SystemStatusZone) (#974)
+완료:  W-0395 Phase 3 ✅ — /verdict SSR + swipe + edge cache (#979)
+완료:  W-0395 Phase 4 ✅ — /patterns SSR + OG meta + ISR cache headers (#982)
+완료:  W-0395 Phase 5 ✅ — /passport/[username] SSR + 5 badges + share (#983)
+완료:  W-0395 Phase 6 ✅ — Landing live ticker strip BTC/ETH/SOL (#984)
+완료:  W-0395 Phase 7 ✅ — /settings /lab /agent thin + placeholder (#985)
+완료:  fix(chart) ✅ — TV-style pane indicator labels + dynamic priceFrac (#989)
+```
+
+---
+
+## Wave 5 완료 (2026-05-03)
 
 ```
 완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
@@ -78,28 +94,23 @@
 완료:  W-PF-100 P1 ✅ — PropFirm paper auto-execution (PatternRunPanel + router/entry/match/exit + HL feed #783 #787 #802)
 완료:  W-0388 ✅ — ESLint hub boundary enforcement (#958)
 완료:  docs ✅ — PRIORITIES.md Wave 5 complete + 갱신 규칙 (#964)
-완료:  W-0397 ✅ — VerdictInboxPanel 키보드 단축키 + 5s undo + Layer C ETA (#965)
-완료:  W-0398 ✅ — Layer C auto-train scheduler wiring + verdict hook (#968)
-완료:  W-0397 ✅ — VerdictInboxPanel keyboard shortcuts + 5s undo + Layer C ETA (#965)
-완료:  W-0400 ✅ — Layer C training observability + F-60 progress dashboard (#987)
-완료:  W-0395 Phase 1 ✅ — /cogochi cogochiDataStore v2 + localStorage migration + 18 analytics events (#988)
-완료:  fix(chart) ✅ — TV-style pane indicator labels + dynamic priceFrac positioning (#989)
 ```
 
 ---
 
-## 핵심 lesson (wizardly-lederberg 세션)
+## 핵심 lesson (A113 세션)
 
 - **spec/NAMING.md 필독**: 병렬 브랜치 naming conflict 방지 — `analyze`/`scan` 금지, `verdict`/`research` 사용
 - **Contract CI CURRENT.md sync**: active table에 나열된 work item 파일이 실제로 존재해야 함
 - **Contract CI 필수 섹션**: Owner / Facts / Canonical Files / Assumptions / Next Steps / Handoff Checklist 전부 있어야 통과
 - **W-0372 Phase A lock-in**: /cogochi = Terminal hub 핵심, /terminal → redirect. 5-Hub 확정
 - **에이전트 락 테이블**: 파일 수준 충돌 방지 — 내 락 범위 외 파일 수정 금지
-- **stash pop 후 CURRENT.md 재확인**: rebase 후 stash pop이 파일을 되돌릴 수 있음
+- **cherry-pick conflict 해소**: HEAD의 stretch-aware priceFrac (W-0395 Ph4) 우선 유지
+- **font gate CI**: hubs/ 내 font-size < 11px 직접 사용 즉시 CI 실패 → 항상 var(--ui-text-xs)
 
 ---
 
-## Frozen (Wave 5 기간 중 비접촉)
+## Frozen
 
 - Copy Trading Phase 1+
 - Chart UX polish (W-0212류)
@@ -108,10 +119,10 @@
 
 ---
 
-## 다음 실행 — Wave 6 P0 구현
+## 다음 실행 — Wave 6 P0 남은 항목
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0395-cogochi-pages-v2.md
-# W-0395 (XL): Cogochi 10페이지 전면 개편 — Phase 0 baseline 수집 → Phase 1 /cogochi
+# W-PF-100 P2: 24h live AC 검증 완료 후 Eval Challenge 결제·통과 구현
+cat work/active/W-PF-100-propfirm-master-epic.md
 ```
