@@ -51,6 +51,8 @@ class CaptureRecord:
     outcome_id: str | None = None
     status: CaptureStatus = "pending_outcome"
     is_watching: bool = False
+    # W-0392: optional verdict from agent/judge (entry/stop/target/rr/rationale)
+    verdict_json: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         resolved_ref = build_definition_ref(
@@ -93,4 +95,5 @@ class CaptureRecord:
             "outcome_id": self.outcome_id,
             "status": self.status,
             "is_watching": self.is_watching,
+            "verdict_json": self.verdict_json,
         }

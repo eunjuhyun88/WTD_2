@@ -241,6 +241,26 @@ def resolve_outcomes(
             captured_at=captured_at,
             window_hours=policy.evaluation_window_hours,
         )
+
+        # W-0392: If verdict_json supplies entry/stop/target, use them to override
+        # entry_price for outcome simulation (fallback to bar-derived entry otherwise).
+        verdict_data: dict = capture.verdict_json or {}
+        if (
+            verdict_data.get("entry") is not None
+            and verdict_data.get("stop") is not None
+            and verdict_data.get("target") is not None
+        ):
+            try:
+                entry_price = float(verdict_data["entry"])
+                log.debug(
+                    "outcome_resolver: using verdict_json entry=%.2f for %s/%s",
+                    entry_price,
+                    capture.symbol,
+                    capture.capture_id,
+                )
+            except (TypeError, ValueError):
+                pass  # fallback to bar-derived entry_price
+
         if entry_price is None or len(closes) < 2:
             log.debug(
                 "outcome_resolver: insufficient forward data for %s/%s",

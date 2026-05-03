@@ -2,10 +2,12 @@
 
 > Wave: 5 | Priority: P2 | Effort: M
 > Charter: In-Scope (패턴 임포트 게이트웨이 — AI 차트 분석 툴 아님)
-> Status: 🟡 Design Draft v2
+> Status: ⛔ Superseded by W-0392 (2026-05-03)
 > Created: 2026-05-01
 > Issue: TBD
 > Dependency: W-0366 `IndicatorFilter` contract (코드 존재 확인됨, 2026-05-01)
+
+> **Superseded**: 이 설계 전체가 W-0392로 흡수됨. W-0392는 Vision→Pine cascade, Author Reputation Index, Idea Twin Tracker를 추가하며 이 문서의 모든 Data Contracts / Compiler Design / Decisions를 포함.
 
 ## Goal
 
