@@ -46,6 +46,7 @@
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-PF-100-P2-eval-challenge` | P0 | 🟡 24h live AC 검증 완료 후 착수 |
+| `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
 
