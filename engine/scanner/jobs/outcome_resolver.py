@@ -19,6 +19,7 @@ from capture.store import CaptureStore, now_ms
 from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
+from patterns.definition_refs import build_definition_ref, definition_id_from_ref
 from patterns.outcome_policy import (
     DEFAULT_EVAL_WINDOW_HOURS,
     OutcomeDecision,
