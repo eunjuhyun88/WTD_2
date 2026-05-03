@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`d28b6ef3` — origin/main (2026-05-04) — feat(W-0400 Ph2B): engineSeriesAdapter + /api/indicators proxy + 135-entry registry (#1033)
+`b898ee65` — origin/main (2026-05-04) — feat(W-0401-P2): UnverifiedDot badge (#1049)
 
 ---
 
@@ -45,7 +45,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
-| `W-0401-verdict-accumulation-flywheel` | P0 | 🟡 설계 완료 #1004, 구현 대기 |
+| `W-0401-verdict-accumulation-flywheel` | P0 | 🟡 P1/P2/P3 완료, P4(A/B telemetry) 데이터 수집 후 |
 | `W-0400-tv-indicator-catalog-full` | P1 | ✅ Ph1A/1B/1C/2A/2B 전체 완료 (#1010/#1020/#1024/#1030/#1033) |
 
 ---
@@ -73,6 +73,16 @@
 완료:  W-0395 Ph1 PR2 ✅ — TRAIN mode QuizStage + train_answers migration (#1012)
 완료:  W-0395 Ph8 Landing PR2 ✅ — MiniLiveChart + CTA 4위치 tracking (#1011)
 완료:  W-0395 Ph7 PR1 ✅ — /agent/[id] SSR shell + KPI grid (#1006)
+완료:  W-0395 Ph7 PR3 ✅ — Decisions table cursor pagination + FeatureDrawer (#1040)
+완료:  W-0395 Ph1 PR3 ✅ — GTM telemetry 3종 workmode/train/tab (#1043)
+완료:  W-0395 Ph1 PR4 ✅ — FLYWHEEL mode FlywheelStage + countdown (#1041)
+완료:  W-0395 Ph1 PR5 ✅ — HoldTimeStrip → StatusBar wiring (#1047)
+완료:  W-0395 Ph6 PR4 ✅ — SendToTerminal + WatchlistRail candidates (#1048)
+완료:  W-0395 Ph6 PR3 ✅ — HoldTimeStrip → Lab result panel (#1051, CI 대기)
+완료:  W-0395 Ph8 S-PR3 ✅ — API Keys READ-ONLY + Ac10Badge (#1044)
+완료:  W-0401 P1 ✅ — streak distinct-day + 5 배지 + StreakCard (#1028)
+완료:  W-0401 P2 ✅ — UnverifiedDot badge ≥10건 header dot (#1049)
+완료:  W-0401 P3 ✅ — daily digest email Supabase edge function (#1046, CI 대기)
 ```
 
 ---
@@ -97,6 +107,8 @@
 - **Contract CI active 테이블**: 나열된 work item 파일이 실제 존재해야 통과. 없으면 즉시 제거.
 - **font gate CI**: hubs/ 내 font-size < 11px 직접 사용 즉시 CI 실패 → var(--ui-text-xs).
 - **rebase 충돌 전략**: HEAD의 typed API (SecondaryIndicatorPayload) 우선 유지 + 내 tracking 추가.
+- **에이전트 digest.py 재작성 주의**: engine/api/main.py가 이미 import하는 router를 날리면 Engine CI 실패 — PR 전 `grep "from notifications.digest" engine/api/main.py` 필수.
+- **PR body Closes #N 필수**: 에이전트 spawn 시 `Closes #ISSUE` 명시 지시 포함 — Issue link CI 통과 조건.
 
 ---
 
