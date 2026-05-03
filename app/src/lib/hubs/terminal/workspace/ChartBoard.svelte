@@ -256,6 +256,25 @@
     return n;
   });
 
+  /** Number of sub-panes actually mounted below the price pane. */
+  let activePanelCount = $derived.by(() => {
+    let n = 0;
+    if (panePositions.rsiOrMacd >= 0) n++;
+    if (panePositions.oi >= 0) n++;
+    if (panePositions.cvd >= 0) n++;
+    if (panePositions.funding >= 0) n++;
+    if (panePositions.liq >= 0) n++;
+    return n;
+  });
+
+  /**
+   * Price pane takes stretchFactor=4; each sub-pane takes 1.
+   * Used as a CSS custom property so pib-anchor overlays track actual pane boundaries.
+   */
+  let priceFracPct = $derived(
+    activePanelCount === 0 ? 100 : Math.round((4 / (4 + activePanelCount)) * 10000) / 100
+  );
+
   type StudyCategory = 'Favorites' | 'Overlays' | 'Pane' | 'Flow';
   type StudyId = 'ema' | 'vwap' | 'bb' | 'atr' | 'macd' | 'cvd' | 'overlay' | 'comparison';
   type StudyDefinition = {
@@ -1844,7 +1863,8 @@
       pane plus N indicator panes (CVD / OI / Funding / Liq / RSI or MACD).
       All panes share crosshair + time axis natively (v5.1 pane API).
     -->
-    <div class="pane-main multi-pane-host" bind:this={mainEl}>
+    <div class="pane-main multi-pane-host" bind:this={mainEl}
+      style="--price-frac: {priceFracPct}%; --pane-step: calc((100% - {priceFracPct}%) / {Math.max(activePanelCount, 1)})">
       <!-- W-0289: Drawing overlay canvas -->
       {#if $activeDrawingMode && drawingMgr}
         <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
@@ -2208,25 +2228,20 @@
     flex: 1 1 100%;
     min-height: 480px;
   }
-  /* PaneInfoBar: approximate pane positions via stretch factors (price=4, indicator=1). */
+  /* PaneInfoBar: pane positions via stretch factors (price=4, indicator=1).
+     --price-frac and --pane-step are set dynamically as inline styles. */
   .pib-anchor {
     position: absolute;
     left: 0;
     right: 0;
     pointer-events: none;
-    /* Default for pane 1; subsequent panes override below. */
-    --pane-step: calc((100% - var(--price-frac, 50%)) / 4);
     top: var(--price-frac, 50%);
   }
   .pib-anchor[data-pane='1'] { top: var(--price-frac, 50%); }
-  .pib-anchor[data-pane='2'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 1); }
-  .pib-anchor[data-pane='3'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 2); }
-  .pib-anchor[data-pane='4'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 3); }
-  .pib-anchor[data-pane='5'] { top: calc(var(--price-frac, 50%) + var(--pane-step) * 4); }
-  /* Tweak --price-frac per active-pane count: 4 stretch + N×1 panes. */
-  .pane-main.multi-pane-host {
-    --price-frac: 50%;
-  }
+  .pib-anchor[data-pane='2'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 1); }
+  .pib-anchor[data-pane='3'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 2); }
+  .pib-anchor[data-pane='4'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 3); }
+  .pib-anchor[data-pane='5'] { top: calc(var(--price-frac, 50%) + var(--pane-step, 12.5%) * 4); }
   .chart-board[data-deriv-overlay='1'] .pane-main {
     min-height: 300px;
   }
