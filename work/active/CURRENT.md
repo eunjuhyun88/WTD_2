@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`a914acd3` — origin/main (2026-05-04) — chore: PRIORITIES.md §0 Wave 6 progress + CURRENT.md SHA sync (#993)
+`9cfe7a72` — origin/main (2026-05-04) — feat(W-0400 Ph1C): catalogFavorites localStorage + Recents/Favorites sections (#1024)
 
 ---
 
@@ -33,7 +33,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0399-p2-tv-indicator-catalog-phase2` | P1 | 🟡 이슈 #975, 구현 대기 |
+| `W-0400` Phase 2A | P1 | 🟡 설계 대기 (engine `GET /indicators/series`) |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 
 ---
@@ -44,6 +44,9 @@
 완료:  W-0397 ✅ — VerdictInboxPanel 키보드 단축키 + 5s undo + Layer C ETA (#965)
 완료:  W-0398 ✅ — Layer C auto-train scheduler wiring + verdict hook (#968, #981)
 완료:  W-0400 ✅ — Layer C training observability + F-60 progress dashboard (#987)
+완료:  W-0400 Phase 1A ✅ — INDICATOR_REGISTRY 29 entries (10 TA + 19 MarketData) (#1010)
+완료:  W-0400 Phase 1B ✅ — IndicatorCatalogModal TV-style + Fuse.js search + `/` key (#1020)
+완료:  W-0400 Phase 1C ✅ — catalogFavorites localStorage + Recents/Favorites UI (#1024)
 완료:  W-0395 Phase 1 ✅ — /cogochi cogochiDataStore v2 + localStorage migration + 18 analytics events (#988)
 완료:  W-0395 Phase 2 ✅ — /dashboard 3-zone redesign (OpportunityCard + StatsZone + SystemStatusZone) (#974)
 완료:  W-0395 Phase 3 ✅ — /verdict SSR + swipe + edge cache (#979)
