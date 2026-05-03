@@ -83,6 +83,7 @@
   import FloatingNoteButton from '../../../shared/chart/FloatingNoteButton.svelte';
   import { shellStore, activeDrawingMode } from '$lib/hubs/terminal/shell.store';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
+  import IndicatorCatalogModal from '$lib/components/indicators/IndicatorCatalogModal.svelte';
   import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -191,6 +192,7 @@
   const onToggleDrawingTools = () => { drawingToolsVisible = !drawingToolsVisible; shellStore.setDrawingTool(drawingToolsVisible ? 'trendLine' : 'cursor'); };
 
   let indicatorLibraryOpen = $state(false);
+  let catalogModalOpen = $state(false);
 
   // ── W-0358: Chart Notes ───────────────────────────────────────────────────
   $effect(() => { chartNotesStore.loadNotes(symbol, tf); });
@@ -692,7 +694,8 @@
     const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
     if (e.key === '/' && !inInput) {
       e.preventDefault();
-      indicatorLibraryOpen = !indicatorLibraryOpen;
+      catalogModalOpen = !catalogModalOpen;
+      if (catalogModalOpen) indicatorLibraryOpen = false;
     }
     if (e.key === 'Escape' && indicatorLibraryOpen) {
       indicatorLibraryOpen = false;
@@ -2141,6 +2144,11 @@
     showSaveModal = false;
   }}
   onSaved={handleModalSaved}
+/>
+
+<IndicatorCatalogModal
+  open={catalogModalOpen}
+  onClose={() => { catalogModalOpen = false; }}
 />
 
 <!-- Layer 3: Capture annotation overlay (W-0120) -->
