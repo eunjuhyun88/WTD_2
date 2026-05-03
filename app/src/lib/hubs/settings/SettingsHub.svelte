@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import GeneralPanel from './panels/GeneralPanel.svelte';
   import SubscriptionPanel from './panels/SubscriptionPanel.svelte';
+  import ApiKeysPanel from './panels/ApiKeysPanel.svelte';
+  import Ac10Badge from './panels/Ac10Badge.svelte';
 
   const tabs = [
     { id: 'general', label: 'General' },
@@ -28,6 +30,9 @@
         onclick={() => switchTab(tab.id)}
       >{tab.label}</button>
     {/each}
+    <div class="tabs-spacer"></div>
+    <!-- AC3: Ac10Badge always in DOM — opacity-controlled only, never v-if -->
+    <Ac10Badge visible={activeTab === 'api-keys'} />
   </nav>
 
   <div class="settings-content">
@@ -36,7 +41,7 @@
     {:else if activeTab === 'subscription'}
       <SubscriptionPanel />
     {:else if activeTab === 'api-keys'}
-      <div class="coming-soon">API Keys — coming soon (PR3)</div>
+      <ApiKeysPanel />
     {:else if activeTab === 'passport'}
       <div class="coming-soon">Passport settings — coming soon (PR2)</div>
     {:else if activeTab === 'status'}
@@ -70,6 +75,7 @@
     color: var(--g9, #eceae8);
     border-bottom-color: var(--amb, #f5a623);
   }
+  .tabs-spacer { flex: 1; }
   .settings-content { flex: 1; overflow-y: auto; padding: 24px 20px; }
   .coming-soon {
     color: var(--g5, #3d3830);
