@@ -4,28 +4,39 @@
 
 ---
 
-## 신규 진입 에이전트 필독 (4-step)
+## 신규 진입 에이전트 필독 (5-step)
 
 ```
 1. spec/NAMING.md     — 탭 이름·SHELL_KEY·파일 경로 계약 (skip 금지)
-2. 아래 에이전트 락 테이블 확인 — 내 worktree가 락 걸린 파일 건드리지 않기
-3. CLAUDE.md Canonical Read Order 순서 준수
-4. 건드리는 경로 → agents/app.md 도메인 게이트 확인
+2. 아래 파일 락 테이블 확인 — 내가 건드릴 파일이 이미 락 걸려 있으면 그 Work Item 스킵
+3. 작업 시작 전 락 테이블에 내 항목 추가 후 커밋 (선점 선언)
+4. CLAUDE.md Canonical Read Order 순서 준수
+5. 건드리는 경로 → agents/app.md 도메인 게이트 확인
 ```
 
 ---
 
-## 에이전트 락 테이블
+## 파일 락 테이블
 
-| 에이전트 | Worktree | 락된 파일 | 상태 |
+> **규칙**: 아래 파일을 건드리기 전 이 테이블에 행 추가 → 커밋 → 푸시로 선점.
+> 이미 다른 에이전트가 락 건 파일이면 머지 대기 또는 소유자와 조율.
+> 완료 후 행 제거.
+
+| PR / 에이전트 | 브랜치 | 락된 파일 | 상태 |
 |---|---|---|---|
-| — | — | — | 모두 free |
+| #1023 CSS cleanup | `chore/w0395-css-cleanup` | `BottomSheet.svelte` `DrawerSlide.svelte` `WatchlistItem.svelte` + 기타 CSS | 🟡 OPEN |
+| — | — | — | 나머지 free |
+
+> **파일 충돌 예방 체크:**
+> ```bash
+> grep -i "내가건드릴파일명" work/active/CURRENT.md  # 락 여부 먼저 확인
+> ```
 
 ---
 
 ## main SHA
 
-`9cfe7a72` — origin/main (2026-05-04) — feat(W-0400 Ph1C): catalogFavorites localStorage + Recents/Favorites sections (#1024)
+`940e0955` — origin/main (2026-05-04) — feat(W-0401-P1): verdict streak distinct-day + 5 배지 + StreakCard UI (#1028)
 
 ---
 
@@ -33,8 +44,9 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0400` Phase 2A | P1 | 🟡 설계 대기 (engine `GET /indicators/series`) |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
+| `W-0400-2a-engine-indicators` | P1 | 🟡 설계 완료, 구현 대기 (engine/indicators/ 신규) |
+| `W-PF-100-P2-eval-challenge` | P0 | 🟡 24h live AC 검증 완료 후 착수 |
 
 ---
 
@@ -43,18 +55,25 @@
 ```
 완료:  W-0397 ✅ — VerdictInboxPanel 키보드 단축키 + 5s undo + Layer C ETA (#965)
 완료:  W-0398 ✅ — Layer C auto-train scheduler wiring + verdict hook (#968, #981)
-완료:  W-0400 ✅ — Layer C training observability + F-60 progress dashboard (#987)
-완료:  W-0400 Phase 1A ✅ — INDICATOR_REGISTRY 29 entries (10 TA + 19 MarketData) (#1010)
-완료:  W-0400 Phase 1B ✅ — IndicatorCatalogModal TV-style + Fuse.js search + `/` key (#1020)
-완료:  W-0400 Phase 1C ✅ — catalogFavorites localStorage + Recents/Favorites UI (#1024)
-완료:  W-0395 Phase 1 ✅ — /cogochi cogochiDataStore v2 + localStorage migration + 18 analytics events (#988)
-완료:  W-0395 Phase 2 ✅ — /dashboard 3-zone redesign (OpportunityCard + StatsZone + SystemStatusZone) (#974)
+완료:  W-0400 F60 ✅ — Layer C training observability + F-60 progress dashboard (#987)
+완료:  W-0395 Phase 1 ✅ — /cogochi cogochiDataStore v2 + analytics 18 events (#988)
+완료:  W-0395 Phase 2 ✅ — /dashboard 3-zone redesign (#974)
 완료:  W-0395 Phase 3 ✅ — /verdict SSR + swipe + edge cache (#979)
 완료:  W-0395 Phase 4 ✅ — /patterns SSR + OG meta + ISR cache headers (#982)
 완료:  W-0395 Phase 5 ✅ — /passport/[username] SSR + 5 badges + share (#983)
 완료:  W-0395 Phase 6 ✅ — Landing live ticker strip BTC/ETH/SOL (#984)
 완료:  W-0395 Phase 7 ✅ — /settings /lab /agent thin + placeholder (#985)
 완료:  fix(chart) ✅ — TV-style pane indicator labels + dynamic priceFrac (#989)
+완료:  W-0399-p2 ✅ — multi-instance indicator × remove + count badge + clientIndicators.ts (#1009)
+완료:  W-0400 Ph1A ✅ — extend IndicatorDef + register 10 TV TA indicators (#1010)
+완료:  W-0400 Ph1B ✅ — IndicatorCatalogModal + Fuse.js search + / shortcut (#1020)
+완료:  W-0400 Ph1C ✅ — catalogFavorites localStorage + Recents/Favorites sections (#1024)
+완료:  W-0401-P1 ✅ — verdict streak distinct-day 카운터 + 5 배지 + StreakCard UI (#1028)
+완료:  W-0395 Ph7 PR2 ✅ — EquityCurve SVG + shared HoldTimeStrip (#1015)
+완료:  W-0395 Ph8 Settings PR1+2 ✅ — 5탭 shell + Subscription tier card (#1007 #1014)
+완료:  W-0395 Ph1 PR2 ✅ — TRAIN mode QuizStage + train_answers migration (#1012)
+완료:  W-0395 Ph8 Landing PR2 ✅ — MiniLiveChart + CTA 4위치 tracking (#1011)
+완료:  W-0395 Ph7 PR1 ✅ — /agent/[id] SSR shell + KPI grid (#1006)
 ```
 
 ---
@@ -62,55 +81,23 @@
 ## Wave 5 완료 (2026-05-03)
 
 ```
-완료:  W-0365 P&L verdict ✅ | W-0366 indicator filters ✅ | W-0367 alpha loop ✅ | W-0368 hardening ✅
-완료:  W-0372 Phase A ✅ — AppNavRail 7→5 + MobileBottomNav 5-hub (#826)
-완료:  W-0372 Phase B ✅ — hub layouts + Home profile + 5 redirects (#829)
-완료:  W-0372 Phase C ✅ — WatchlistRail fold+add/delete + route cleanup (#830)
-완료:  W-0372 Phase D ✅ — DecisionHUD + MultiPaneChart + PatternLibraryPanel + VerdictInboxPanel (#835)
-완료:  W-0373 ✅ — wallet auth Privy email-first + silent failure fixes (#834)
-완료:  W-0358 ✅ — multi-exchange OHLCV ingestion framework (#836)
-완료:  W-0374 Phase D-0~D-3 ✅ — Bloomberg UX TopBar + AIAgentPanel 5-tab (#839)
-완료:  W-0374 Phase D-4~D-7 ✅ — IndicatorLibrary + DrawingToolbar + drag-to-save + AIAgentPanel 5탭 (#865)
-완료:  W-0374 Phase D-8 ✅ — Mobile polish: DrawingToolbar horizontal + ChartBoard min-height + touch swipe (#869)
-완료:  W-0374 Phase D-9 ✅ — AI overlay shapes + pattern skeleton + decision auto-refresh (#870)
-완료:  W-0379 Phase 0-5 ✅ — 6-layer autoresearch orchestrator + ledger + ensemble strategies (#861)
-완료:  W-0379 Phase 6 ✅ — /research/ledger + /research/battle + /research/ensemble + /research/diff + /lab/counterfactual (#862)
-완료:  W-0387 ✅ — /agent/judge + /agent/save AI agent LLM verdict + idempotent capture (#904)
-완료:  W-0370 ✅ — strategy live signals engine API + frontend (#915)
-완료:  fix(cogochi) ✅ — TerminalHub 마운트 + MobileBottomNav 터미널 제외 (#922)
-완료:  W-0380 ✅ — dead handlers 제거 + aiQueryRouter 34 tests (#927)
-완료:  W-0386 ✅ — scheduler/pipeline/imports code shrink (#928)
-완료:  W-0389 ✅ — UX visual typography restructure (#929, #931)
-완료:  W-A108 ✅ — verification framework CI gates + 13 typography tests (#926)
-완료:  W-0364 ✅ — Upstash distributed rate limiter + engine SWR cache (#933)
-완료:  W-0304 ✅ — per-pane indicator store + ChartPane paneId prop (#934)
-완료:  W-0390 ✅ — quant UX data layer (TopBar L2 + StatusBar + kbd shortcuts + WatchlistRail FR + Dashboard alerts) (#936)
-완료:  W-0391-A ✅ — client RSI/MACD/BB calc + crosshair rAF throttle (#940)
-완료:  W-0391-BF ✅ — analytics.ts + ⌘K CommandPalette 5액션 + Landing track (#941)
-완료:  W-0391-D ✅ — Dashboard Alert Strip OI/FR/Kimchi 실시간 (#939)
-완료:  W-0391-E ✅ — Verdict swipe + Passport 공개 URL (#944)
-완료:  W-0355 ✅ — Extreme Events API + IntelPanel 24h section (#945)
-완료:  W-0383 ✅ — Counterfactual Review + Filter Attribution Dashboard (#946)
-완료:  W-0392 ✅ — ModelRegistry + scoring.trainer + NDCG/MAP/CI eval modules (#952)
-완료:  W-0394 PR1 ✅ — scoring.trainer dataset builder + similarity_ranker Layer C blend (#952)
-완료:  W-0393 ✅ — TradingView Idea Twin & Hypothesis Compiler (#951)
-완료:  W-0394 PR2 ✅ — LightGBM Layer C auto-train pipeline + SearchLayerBadge (#954)
-완료:  W-PF-100 P1 ✅ — PropFirm paper auto-execution (PatternRunPanel + router/entry/match/exit + HL feed #783 #787 #802)
-완료:  W-0388 ✅ — ESLint hub boundary enforcement (#958)
-완료:  docs ✅ — PRIORITIES.md Wave 5 complete + 갱신 규칙 (#964)
+완료:  W-0365~0368 ✅ | W-0372 A~D ✅ | W-0373 ✅ | W-0358 ✅ | W-0374 D-0~D-9 ✅
+완료:  W-0379 0-6 ✅ | W-0387 ✅ | W-0370 ✅ | W-0380 ✅ | W-0386 ✅ | W-0389 ✅
+완료:  W-A108 ✅ | W-0364 ✅ | W-0304 ✅ | W-0390 ✅ | W-0391-A/BF/D/E ✅
+완료:  W-0355 ✅ | W-0383 ✅ | W-0392 ✅ | W-0394 PR1+2 ✅ | W-0393 ✅
+완료:  W-PF-100 P1 ✅ | W-0388 ✅ | docs ✅
 ```
 
 ---
 
-## 핵심 lesson (A113 세션)
+## 핵심 lesson (누적)
 
-- **spec/NAMING.md 필독**: 병렬 브랜치 naming conflict 방지 — `analyze`/`scan` 금지, `verdict`/`research` 사용
-- **Contract CI CURRENT.md sync**: active table에 나열된 work item 파일이 실제로 존재해야 함
-- **Contract CI 필수 섹션**: Owner / Facts / Canonical Files / Assumptions / Next Steps / Handoff Checklist 전부 있어야 통과
-- **W-0372 Phase A lock-in**: /cogochi = Terminal hub 핵심, /terminal → redirect. 5-Hub 확정
-- **에이전트 락 테이블**: 파일 수준 충돌 방지 — 내 락 범위 외 파일 수정 금지
-- **cherry-pick conflict 해소**: HEAD의 stretch-aware priceFrac (W-0395 Ph4) 우선 유지
-- **font gate CI**: hubs/ 내 font-size < 11px 직접 사용 즉시 CI 실패 → 항상 var(--ui-text-xs)
+- **파일 락 테이블 선점 필수**: 작업 시작 전 위 테이블에 파일 등록. 병렬 충돌 방지 핵심.
+- **같은 파일 두 PR 동시 소유 = 충돌 예약**: 직렬 머지 (먼저 머지 → rebase) 필수.
+- **Work Item slug 소문자**: `W-\d{4}-[a-z0-9][a-z0-9-]*` — P2 → p2, Contract CI 통과 조건.
+- **Contract CI active 테이블**: 나열된 work item 파일이 실제 존재해야 통과. 없으면 즉시 제거.
+- **font gate CI**: hubs/ 내 font-size < 11px 직접 사용 즉시 CI 실패 → var(--ui-text-xs).
+- **rebase 충돌 전략**: HEAD의 typed API (SecondaryIndicatorPayload) 우선 유지 + 내 tracking 추가.
 
 ---
 
@@ -123,10 +110,11 @@
 
 ---
 
-## 다음 실행 — Wave 6 P0 남은 항목
+## 다음 실행
 
 ```bash
 ./tools/start.sh
-# W-PF-100 P2: 24h live AC 검증 완료 후 Eval Challenge 결제·통과 구현
-cat work/active/W-PF-100-propfirm-master-epic.md
+# P0-A: gh pr merge 1023 --squash  (CSS cleanup — 충돌 없음)
+# P0-B: W-0401 구현 또는 W-PF-100 P2 (24h live AC 검증 완료 후)
+cat work/active/W-0401-verdict-accumulation-flywheel.md
 ```

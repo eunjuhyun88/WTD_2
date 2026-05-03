@@ -1,6 +1,6 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (9cfe7a72) | 2026-05-04
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (a914acd3) | 2026-05-04
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
@@ -10,7 +10,7 @@
 
 ```
 시스템 성숙도: ~99% Built — Wave 5+6 전 항목 완료
-최신 main:   9cfe7a72 (2026-05-04, feat(W-0400 Ph1C): catalogFavorites + Recents/Favorites #1024)
+최신 main:   a914acd3 (2026-05-04, chore: PRIORITIES.md Wave 6 sync #993)
 5-Hub 확정:  dashboard / lab / patterns / settings / terminal (W-0372 ✅ #826~#830)
 Wave 6 완료: Layer C 스케줄러 배선 ✅ (W-0398 #968+#981)
             Verdict Throughput Booster ✅ (W-0397 #965)
@@ -29,12 +29,7 @@ Wave 5 PRs: #826 #829 #830 #835 #834 #836 #839 #865 #869 #870
             #933 #934 #936 #939 #940 #941 #944 #945 #946
             #951 #952 #953 #954 #958 #964 (총 35 PRs)
 Wave 6 PRs: #965 #968 #981 #987 #988 #974 #979 #982 #983 #984 #985 #989 (총 12 PRs)
-Wave 7:    W-0400 Ph1A ✅ INDICATOR_REGISTRY 29 entries (#1010)
-            W-0400 Ph1B ✅ IndicatorCatalogModal TV-style + Fuse.js search (#1020)
-            W-0400 Ph1C ✅ catalogFavorites localStorage + Recents/Favorites UI (#1024)
-            W-0399-P2 🔵 multi-instance indicators PR #1009 open
 W-PF-100:  Phase 1 ✅ 완료 (PR #783 #787 #802) — Phase 2 대기 (24h live AC 검증 후)
-즉시 P1:   W-0400 Phase 2A (engine GET /indicators/series + LRU cache)
 즉시 P0:   W-PF-100 Phase 2 (Eval Challenge 결제·통과, 24h live AC 검증 완료 후 착수)
 ```
 
