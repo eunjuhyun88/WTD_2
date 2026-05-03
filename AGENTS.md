@@ -58,6 +58,24 @@ Execution rules for humans and coding agents.
 - **`work/active/CURRENT.md`** = "지금 뭐 해야 하나" (다음 실행 + 활성 work item + 락 테이블)
 - **`work/log/YYYY-MM-DD.md`** = "지금까지 뭐 했나" (완료 이력 누적, 덮어쓰기 금지)
 
+### 에이전트 락 테이블 — Files 컬럼 규약
+
+새 탭에서 에이전트 시작 시 **반드시** 락 테이블 Files 컬럼 확인:
+
+```bash
+grep -v "^|--\|모두 free" work/active/CURRENT.md | grep "^|" | awk -F'|' '{print $5}' | grep -v "^$\|Files"
+# 출력된 파일명과 내가 건드릴 파일이 겹치면 → 해당 Work Item 완료 대기 또는 파일 분리
+```
+
+락 등록 형식:
+```
+| W-XXXX | {에이전트ID} | {worktree-slug} | {file1.ts, file2.svelte} | 🔴 진행중 |
+```
+
+- Files 컬럼: basename만 (경로 없이). 4개 초과 시 Work Item 분해 검토.
+- PR 머지 완료 후 해당 행 삭제 (락 해제)
+- 24h 이상 경과한 행 = stale — `tools/file-lock-check.sh`가 경고
+
 ---
 
 ## Core Rules
