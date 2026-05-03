@@ -81,6 +81,13 @@
     }
   }
 
+  // Auto-recall: fire as soon as both anchors are set (no button click needed).
+  $effect(() => {
+    const range = $selectedRange;
+    if (!range) { recallResults = []; return; }
+    handleRecall();
+  });
+
   /** Bars sliced to the selected anchor range (anchorA..anchorB). */
   const slicedBars = $derived.by<RangeSelectionBar[]>(() => {
     const range = $selectedRange;
