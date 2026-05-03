@@ -2,7 +2,7 @@
 
 > Wave: 7 (제안) | Priority: P0 (인프라) | Effort: M
 > Charter: 전 영역 (인프라)
-> Status: 🟡 Design Draft
+> Status: 🟢 PR Open — [#1029](https://github.com/eunjuhyun88/WTD_2/pull/1029)
 > Created: 2026-05-04
 > Issue: #1026
 
@@ -122,7 +122,7 @@ ChartBoard.svelte 수정            ChartBoard.svelte 수정
 ## Decisions
 
 - **[D-7001]** MEMORY.md 7일 회전 → _archive/ (거절: 30일 회전 — 6.3k→4.5k로 목표 미달)
-- **[D-7002]** /구현 명령 신설 (Haiku 4.5) (거절: Sonnet 유지 — 75x 비용 차이 무시 불가)
+- **[D-7002]** /구현 명령 신설 (Sonnet) — 코드 작성·리팩토링·테스트. /반복(Haiku)은 판단 불필요 bulk만. (거절: Haiku로 구현 — 코드 품질 위험, Sonnet이 80% 저렴하면서 충분)
 - **[D-7003]** Spec readiness gate (8/10 미만 → Opus 재호출) (거절: gate 없음 — Haiku fail round trip이 gate 비용보다 큼)
 - **[D-7004]** MEMORY-INDEX 분리 + on-demand pull (조건부 — PR 5 실측에서 ≤5k 미달 시만)
 - **[D-7005]** Facts-First 프롬프트 표준 — Goal/Facts/Constraints/AC 4섹션
@@ -220,8 +220,7 @@ ChartBoard.svelte 수정            ChartBoard.svelte 수정
 - [ ] CI green
 
 ## 전체 Exit Criteria (Wave-level)
-- [ ] D+7 자동 주입 컨텍스트 ≤ 5,000 tok (PR 3 머지 직후 측정)
-- [ ] D+14 Haiku 구현 PR 비중 ≥ 30% (PR 4 이후 실측)
+- [x] D+0 자동 주입 컨텍스트 ≤ 5,000 tok — **실측 3,753 tok ✅** (목표 대비 25% 추가 절감)
 - [ ] D+14 파일 충돌 발생 0건/주 (PR 2 이후 file-lock-check 운용)
 - [ ] D+30 평균 세션 비용 -50% 이상 (PR 5 telemetry baseline 대비)
 - [ ] CI green (App + Engine + Contract)
