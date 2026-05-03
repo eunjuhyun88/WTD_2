@@ -35,6 +35,20 @@ engine+app
 - app/src/lib/hubs/ (hub 컴포넌트)
 - app/src/components/ (공유 컴포넌트)
 
+## Assumptions
+- GA4 + Sentry 이미 설치됨 (W-A108 기준)
+- 기존 10개 페이지 라우트 유지, 리다이렉트 없음
+- 디자인 시스템 CSS 변수는 W-0389 기준 유지
+
+## Decisions
+- **[D-1]** 8-Phase 순차 구현: 페이지별 독립 PR. 이유: XL 범위 → 단계별 CI 검증.
+- **[D-2]** Phase 0 baseline 먼저: 수치 없는 UX 개편은 검증 불가.
+
+## Open Questions
+- [ ] [Q-1] Phase별 세부 AC 수치 (GA4 D+1 activation 현재 baseline)
+- [ ] [Q-2] /research/*, /passport/* 하위 라우트 전체 목록 확인
+- [ ] [Q-3] 디자인 목업 존재 여부 (PRODUCT-DESIGN-PAGES-V2.md 참고)
+
 ## Next Steps
 1. Phase 0: GA4 + Sentry baseline 수집 (1주)
 2. Phase 1: /cogochi 개편
