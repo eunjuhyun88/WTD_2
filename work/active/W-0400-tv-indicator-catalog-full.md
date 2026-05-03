@@ -10,6 +10,52 @@
 ## Goal
 진이 `/`를 누르면 카탈로그 모달이 열리고, "rsi 7" 또는 "상대강도"로 검색해 RSI(7) 인스턴스를 기존 RSI(14) 옆 별도 패인에 추가할 수 있으며 — 우리가 계산하는 100+ 지표 전부가 패밀리별로 탐색 가능하고 즐겨찾기·최근 사용 탭이 TV와 동등하게 동작한다.
 
+## Owner
+app team — ChartBoard / IndicatorLibrary 담당
+
+## Scope
+- Phase 1: IndicatorCatalogModal + Fuse.js 검색 + Favorites/Recents + multi-instance 10종 + chartIndicators v3 마이그레이션
+- Phase 2: `GET /indicators/series` engine endpoint + indicator_extras contract + ~100종 노출
+- 파일 범위: `app/src/lib/indicators/`, `app/src/lib/chart/`, `app/src/lib/stores/`, `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte`, `engine/indicators/`
+
+## Non-Goals
+- Copy trading Phase 1+ (Frozen)
+- Chart UX polish (W-0212류) (Frozen)
+- Phase C/D ORPO/DPO GPU 학습 (Frozen)
+- 레거지 `IndicatorLibrary.svelte` 삭제 (Phase 1에서는 병행 유지)
+
+## Canonical Files
+- `app/src/lib/indicators/indicatorRegistry.ts` — 지표 정의 단일 진실
+- `app/src/lib/chart/indicatorInstances.ts` — multi-instance 모델 (W-0399-P2 완료)
+- `app/src/lib/chart/mountIndicatorPanes.ts` — LWC 시리즈 팩토리
+- `app/src/lib/stores/chartIndicators.ts` — 단일 지표 boolean 토글 (v3으로 마이그레이션)
+
+## Facts
+- W-0399-P2 완료 (PR #994): `mountSecondaryIndicator`, `calcEMAValues/VWAP/ATRBands`, `defaultParams`, Active 탭 inline edit 모두 완료
+- LWC v5.1 기준 sub-pane 12개 페이 예산 확인
+- `indicatorInstances.ts` localStorage key `wtd.chart.indicator-instances.v1` 사용 중
+
+## Assumptions
+- W-0399-P2 (#994) main 머지 후 Phase 1 시작
+- Fuse.js lazy-import으로 번들 델타 ≤ 15KB gzip 유지 가능
+- engine `GET /indicators/series` Phase 2 전까지는 클라이언트 calc으로 커버
+
+## Open Questions
+- [ ] [Q-001] `chartIndicators.ts` v3 마이그레이션 — 기존 v2 사용자 7-key fixture 손실 없이 이전 가능한가? (vitest snapshot으로 검증 예정)
+- [ ] [Q-002] Phase 2 engine endpoint — 기존 `GET /chart/series` 와 별도 라우터 vs 파라미터 확장?
+
+## Decisions
+- [D-001] IndicatorCatalogModal 신규 컴포넌트 — 기존 IndicatorLibrary.svelte 대체가 아닌 병행 (Phase 1 기간); W-0399-P2 Active 탭이 이미 인라인 편집 담당
+- [D-002] Fuse.js lazy-import — 초기 번들 +0KB, 모달 첫 오픈 시 비동기 로드
+- [D-003] engine Phase 2 전까지 클라이언트 calc (chartIndicatorCalc.ts 이미 완비)
+- [D-004] `chartIndicators.ts` v3 스토어 — `instances[]` 기반으로 전환; v2 key read-then-write 이전
+
+## Next Steps
+1. W-0399-P2 PR #994 main 머지 확인
+2. Phase 1 PR1: `types.ts` + `chartIndicators.ts` v3 + 마이그레이션
+3. Phase 1 PR2: `IndicatorCatalogModal` + `catalogSearch.ts`
+4. Phase 1 PR3: ChartBoard `/` 단축키 배선 + perf gate
+
 ---
 
 ## Phase 1 — UX 패리티 (기존 engineKey ~10개)
