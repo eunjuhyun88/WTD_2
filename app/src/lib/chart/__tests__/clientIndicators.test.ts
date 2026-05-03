@@ -172,18 +172,21 @@ describe('calcVWAP', () => {
   });
 
   it('resets at day boundary', () => {
+    // Start at a UTC midnight so day boundaries are predictable.
+    // 19676 * 86400 = 1700006400 (midnight UTC 2023-11-15)
+    const DAY_EPOCH = 1700006400;
     // Day 1: 12 hourly bars
     const d1 = Array.from({ length: 12 }, (_, i) => ({
-      time: 1700000000 + i * 3600,
+      time: DAY_EPOCH + i * 3600,
       open: 100, high: 105, low: 95, close: 100, volume: 1000,
     }));
     // Day 2: 12 hourly bars (next UTC day)
     const d2 = Array.from({ length: 12 }, (_, i) => ({
-      time: 1700000000 + 86400 + i * 3600,
+      time: DAY_EPOCH + 86400 + i * 3600,
       open: 200, high: 210, low: 195, close: 200, volume: 1000,
     }));
     const pts = calcVWAP([...d1, ...d2]);
-    // Day 2 first VWAP should be near 200 (fresh reset)
+    // Day 2 first VWAP should be near 201.67 (fresh reset, TP = (210+195+200)/3)
     const firstD2 = pts[12];
     expect(firstD2.value).toBeCloseTo((210 + 195 + 200) / 3, 0);
   });
