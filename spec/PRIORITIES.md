@@ -6,12 +6,17 @@
 
 ---
 
-## 0. CTO 현황 요약 (2026-05-03) ← Wave 5 완전 완료
+## 0. CTO 현황 요약 (2026-05-04) ← Wave 6 진행 중
 
 ```
-시스템 성숙도: ~97% Built — Wave 5 전 항목 완료 + W-PF-100 P1 완료
-최신 main:   054edd7c (2026-05-03, docs: PRIORITIES.md Wave 5 complete #964)
+시스템 성숙도: ~98% Built — Wave 6 P0 3개 완료
+최신 main:   e712477d (2026-05-04, fix(chart): pane labels + priceFrac #989)
 5-Hub 확정:  dashboard / lab / patterns / settings / terminal (W-0372 ✅ #826~#830)
+Wave 6 완료: Layer C 스케줄러 배선 ✅ (W-0398 #968+#981)
+            Verdict Throughput Booster ✅ (W-0397 #965)
+            Layer C Observability + F-60 게이지 ✅ (W-0400 #987)
+            Cogochi Pages V2 Phase 1 ✅ (#988)
+            chart PaneInfoBar TV-style ✅ (W-0364 #989)
 핵심 신규:   LightGBM Layer C auto-train flywheel ✅ (W-0394 #952+#954)
             PropFirm paper auto-execution P1 ✅ (W-PF-100 #783+#787+#802)
             6-layer AutoResearch orchestrator ✅ (W-0379 #861+#862)
