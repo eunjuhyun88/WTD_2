@@ -47,7 +47,7 @@ def _confidence_bar(confidence: str) -> str:
 
 
 def format_signal_message(signal: dict) -> str:
-    """Format a ScanSignal dict into a Telegram message."""
+    """Format a ScanSignal dict into a Telegram HTML message."""
     emoji = _direction_emoji(signal["direction"])
     conf = _confidence_bar(signal["confidence"])
     blocks = ", ".join(signal.get("blocks_triggered", [])[:5])
@@ -57,19 +57,19 @@ def format_signal_message(signal: dict) -> str:
     p_win_str = f"{signal['p_win']:.0%}" if signal.get("p_win") is not None else "N/A"
 
     lines = [
-        f"{emoji} *{signal['symbol']}* {signal['direction'].upper().replace('_', ' ')}",
-        f"",
-        f"Price: `${signal['price']:,.2f}`",
-        f"Ensemble: `{signal['ensemble_score']:.0%}` {conf}",
-        f"ML P(win): `{p_win_str}`",
-        f"Regime: `{signal.get('regime', 'unknown')}`",
+        f"{emoji} <b>{signal['symbol']}</b> {signal['direction'].upper().replace('_', ' ')}",
+        "",
+        f"Price: <code>${signal['price']:,.2f}</code>",
+        f"Ensemble: <code>{signal['ensemble_score']:.0%}</code> {conf}",
+        f"ML P(win): <code>{p_win_str}</code>",
+        f"Regime: <code>{signal.get('regime', 'unknown')}</code>",
     ]
 
     if blocks:
-        lines.append(f"Blocks: `{blocks}`")
+        lines.append(f"Blocks: <code>{blocks}</code>")
 
     if signal.get("reason"):
-        lines.append(f"_\\({signal['reason']}\\)_")
+        lines.append(f"<i>({signal['reason']})</i>")
 
     return "\n".join(lines)
 
@@ -152,7 +152,7 @@ async def send_telegram_alert(
     payload: dict = {
         "chat_id": _chat_id,
         "text": text,
-        "parse_mode": "MarkdownV2",
+        "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }
     if keyboard:
@@ -165,11 +165,8 @@ async def send_telegram_alert(
             log.info("Telegram alert sent: %s %s", signal["symbol"], signal["direction"])
             return True
         else:
-            # Retry with plain text if markdown fails
-            payload["parse_mode"] = "HTML"
-            payload["text"] = text.replace("*", "<b>").replace("`", "<code>").replace("_", "<i>")
-            resp2 = await client.post(url, json=payload, timeout=10.0)
-            return resp2.status_code == 200
+            log.warning("Telegram alert failed %s: %s", resp.status_code, resp.text[:200])
+            return False
     except Exception as exc:
         log.warning("Telegram send failed: %s", exc)
         return False
