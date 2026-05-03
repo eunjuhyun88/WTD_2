@@ -288,12 +288,38 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 // ── Storage ────────────────────────────────────────────────────────────────
 
 const SHELL_KEY = 'cogochi_shell_v12'; // v12: RightPanelTab → decision/pattern/verdict/research/judge (D-7)
+export const MIGRATION_VERSION_KEY = 'cogochi.migration.v';
+export const MIGRATION_VERSION = 2;
+
+// ?cogochi_legacy=1 stores preference for 7 days via sessionStorage
+const LEGACY_KEY = 'cogochi_legacy';
+const LEGACY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function readLegacyMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.sessionStorage.getItem(LEGACY_KEY);
+    if (!raw) return false;
+    const { expires } = JSON.parse(raw) as { expires: number };
+    if (Date.now() > expires) { window.sessionStorage.removeItem(LEGACY_KEY); return false; }
+    return true;
+  } catch { return false; }
+}
+
+export function activateLegacyMode(): void {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(LEGACY_KEY, JSON.stringify({ expires: Date.now() + LEGACY_TTL_MS }));
+}
 
 function createShellStore() {
   let initial: ShellState;
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(SHELL_KEY) : null;
     initial = raw ? normalizeShellState(JSON.parse(raw) as Partial<ShellState>) : makeDefault();
+    // stamp migration version so future migrations can detect this session
+    if (typeof window !== 'undefined' && raw) {
+      localStorage.setItem(MIGRATION_VERSION_KEY, String(MIGRATION_VERSION));
+    }
   } catch {
     initial = makeDefault();
   }

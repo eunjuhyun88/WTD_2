@@ -19,7 +19,11 @@ export type AnalyticsEvent =
   | 'lab_feature_gate_hit'
   | 'home_scroll_depth'
   | 'cmdpalette_open'
-  | 'cmdpalette_action';
+  | 'cmdpalette_action'
+  | 'ticker_symbol_click'
+  | 'cogochi_legacy_toggle'
+  | 'train_session_complete'
+  | 'flywheel_recommendation_click';
 
 export function track(event: AnalyticsEvent | string, props?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;

@@ -1,6 +1,6 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (8a686567) | 2026-05-04
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (054edd7c) | 2026-05-03
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
@@ -9,18 +9,28 @@
 ## 0. CTO 현황 요약 (2026-05-04) ← Wave 6 진행 중
 
 ```
-시스템 성숙도: ~98% Built — Wave 5 완전 완료 + Wave 6 TV-parity indicator 착수
-최신 main:   8a686567 (2026-05-04, chore: CURRENT.md SHA 0eca402b #986)
+시스템 성숙도: ~98% Built — Wave 6 P0 3개 완료
+최신 main:   e712477d (2026-05-04, fix(chart): pane labels + priceFrac #989)
 5-Hub 확정:  dashboard / lab / patterns / settings / terminal (W-0372 ✅ #826~#830)
-Wave 6 신규: W-0392 Ph3 ✅ — verdict_json write side + PatternOutcome fields (#972)
-            W-0397 ✅ — VerdictInboxPanel kbd 단축키 + 5s undo + Layer C ETA (#965)
-            W-0398 ✅ — Layer C auto-train scheduler + verdict hook (#968, #981)
-            W-0395 ✅ — Cogochi Pages V2 8-phase 전면 개편 (#979/#982/#983/#984/#985)
-설계 완료:  W-0399-P2 ✅ (설계 #975) — TV-parity multi-instance 전체 Tier-A
-            W-0400 ✅ (설계 #976) — TV-parity 100+ 지표 카탈로그 + 엔진 API
-Wave 6 PRs: #965 #968 #969 #972 #973 #977 #979 #981 #982 #983 #984 #985 #986 (총 13 PRs)
-열린 P0:   **W-0399-P2** TV 인디케이터 multi-instance (M, #975) → **W-0400** 카탈로그 (XL, #976)
-즉시 P0:   W-0399-P2 (clientIndicators.ts → mountSecondaryIndicator → ChartBoard loop)
+Wave 6 완료: Layer C 스케줄러 배선 ✅ (W-0398 #968+#981)
+            Verdict Throughput Booster ✅ (W-0397 #965)
+            Layer C Observability + F-60 게이지 ✅ (W-0400 #987)
+            Cogochi Pages V2 Phase 1 ✅ (#988)
+            chart PaneInfoBar TV-style ✅ (W-0364 #989)
+핵심 신규:   LightGBM Layer C auto-train flywheel ✅ (W-0394 #952+#954)
+            PropFirm paper auto-execution P1 ✅ (W-PF-100 #783+#787+#802)
+            6-layer AutoResearch orchestrator ✅ (W-0379 #861+#862)
+            TradingView Idea Twin + Hypothesis Compiler ✅ (W-0393 #951)
+            Strategy Live Signals engine+frontend ✅ (W-0370 #915)
+            Quant UX data layer (TopBar L2/OI/FR + kbd) ✅ (W-0390 #936)
+            ESLint hub boundary enforcement ✅ (W-0388 #958)
+Wave 5 PRs: #826 #829 #830 #835 #834 #836 #839 #865 #869 #870
+            #861 #862 #904 #915 #922 #927 #928 #929 #931 #926
+            #933 #934 #936 #939 #940 #941 #944 #945 #946
+            #951 #952 #953 #954 #958 #964 (총 35 PRs)
+W-PF-100:  Phase 1 ✅ 완료 (PR #783 #787 #802) — 24h live AC 검증 대기
+열린 P0:   **W-0398** Layer C scheduler wiring (S, #963) → **W-0397** verdict kbd (S, #962) → **W-0395** Pages V2 (XL, #955)
+즉시 P0:   W-0398 (auto_trainer 스케줄러 배선 + verdict hook, S effort)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: verdicts 누적 속도 — Layer C LightGBM은 코드 완성이나 verdicts 50+ 전까지 실질 가중 A:0.60/B:0.40 유지. PropFirm 자동 집행 → verdict 속도 가속이 핵심.

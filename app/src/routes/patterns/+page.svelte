@@ -468,7 +468,6 @@
     color: rgba(250, 247, 235, 0.3);
   }
 
-  .page-loading,
   .page-error,
   .empty-card {
     display: flex;
@@ -482,8 +481,6 @@
     padding: 48px 24px;
     text-align: center;
   }
-  .pulse { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); animation: pulse 1.4s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:.2} 50%{opacity:1} }
   .page-error { color: #f87171; }
   .error-detail { font-size: var(--ui-text-xs); color: rgba(248,113,113,0.6); max-width: 400px; text-align: center; }
   .patterns-lower {
