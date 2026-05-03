@@ -203,7 +203,7 @@ app
 - hub 내부 파일끼리의 import는 항상 허용
 - terminal route (`routes/terminal/*`)는 terminal hub 내부 접근 허용
 
-## Next Steps (구현 에이전트용)
+## Next Steps
 
 1. `app/src/lib/hubs/terminal/index.ts` 읽고 barrel export 추가
 2. 위반 7건 파일 각각 읽고 import 경로 수정
@@ -211,3 +211,10 @@ app
 4. `app/package.json` lint script 수정
 5. `pnpm lint` + `pnpm check` 실행 검증
 6. PR 생성 (feat/W-0388-eslint-hub-boundaries)
+
+## Handoff Checklist
+
+- [ ] eslint-plugin-svelte v2+ flat-config 동작 확인
+- [ ] barrel exports 정상 (런타임 동작 변화 없음)
+- [ ] AC1~AC6 모두 충족
+- [ ] CURRENT.md active items에 W-0388 등록
