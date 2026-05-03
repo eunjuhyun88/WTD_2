@@ -8,8 +8,8 @@
     type IndicatorCategory,
   } from '$lib/indicators/indicatorRegistry';
   import { addIndicator, removeIndicator, chartIndicators, type IndicatorKey } from '$lib/stores/chartIndicators';
-  import { indicatorFavorites, indicatorRecents } from '$lib/stores/indicatorFavorites';
-  import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import { indicatorFavorites, indicatorRecents } from '$lib/stores/indicatorFavorites.svelte';
+  import { indicatorInstances } from '$lib/chart/indicatorInstances.svelte';
 
   interface Props {
     open?: boolean;

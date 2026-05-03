@@ -1,11 +1,18 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page, navigating } from '$app/stores';
 
   const activePath = $derived($page.url.pathname);
+  const loadingHref = $derived($navigating?.to?.url.pathname ?? null);
 
   function active(href: string) {
     if (href === '/cogochi') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
     return activePath === href || activePath.startsWith(href + '/');
+  }
+
+  function loading(href: string) {
+    if (!loadingHref) return false;
+    if (href === '/cogochi') return loadingHref.startsWith('/terminal') || loadingHref.startsWith('/cogochi');
+    return loadingHref === href || loadingHref.startsWith(href + '/');
   }
 
   const primary = [
@@ -32,6 +39,7 @@
       <a
         class="rail-item"
         class:active={active(item.href)}
+        class:loading={loading(item.href)}
         href={item.href}
         title={item.label}
         aria-label={item.label}
@@ -187,6 +195,17 @@
   .rail-item.active {
     color: rgba(250, 247, 235, 0.96);
     background: rgba(255, 255, 255, 0.07);
+  }
+
+  .rail-item.loading {
+    color: rgba(250, 247, 235, 0.6);
+    background: rgba(255, 255, 255, 0.04);
+    animation: rail-pulse 0.8s ease-in-out infinite;
+  }
+
+  @keyframes rail-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 
   .rail-item.active::before {
