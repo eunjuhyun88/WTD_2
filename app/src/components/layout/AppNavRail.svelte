@@ -1,7 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { inboxCount } from '$lib/stores/inboxCountStore';
 
   const activePath = $derived($page.url.pathname);
+  const pendingCount = $derived($inboxCount);
 
   function active(href: string) {
     if (href === '/cogochi') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
@@ -52,6 +54,9 @@
               <polygon points="8,2 14,8 8,14 2,8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
               <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
             </svg>
+            {#if pendingCount >= 10}
+              <span class="inbox-dot" aria-label="{pendingCount} pending verdicts"></span>
+            {/if}
           {:else if item.icon === 'lab'}
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M6 2V7.5L2.5 13.5H13.5L10 7.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -210,6 +215,18 @@
 
   .rail-label {
     display: none;
+  }
+
+  .inbox-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(219, 154, 159, 0.9);
+    box-shadow: 0 0 5px rgba(219, 154, 159, 0.5);
+    pointer-events: none;
   }
 
   @media (max-width: 768px) {

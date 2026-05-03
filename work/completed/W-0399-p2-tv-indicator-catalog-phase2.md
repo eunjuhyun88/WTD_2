@@ -1,14 +1,24 @@
 # W-0399-P2 — TV-parity Indicator Catalog Phase 2: Add/Remove/Edit UX (전체 인디케이터)
 
-> Wave: 6 | Priority: P1 | Effort: L
+> Wave: 6 | Priority: P1 | Effort: L (총 3 PR)
 > Charter: TV feature parity — In-Scope
 > Issue: #975
-> Status: 🟡 Design Draft
+> Status: 🟡 Design Draft v2 (Phase Breakdown 강화 2026-05-04)
 > Created: 2026-05-03
 > Depends on: W-0399 Phase 1 (PR #970 merged f9452455)
 
 ## Goal
-모든 Tier-A 인디케이터(10종)를 트레이딩뷰처럼 여러 개 동시 표시하고, × 버튼으로 개별 제거하며, 파라미터(period 등)를 인라인으로 편집해 즉시 차트에 반영할 수 있다.
+사용자가 TradingView처럼 RSI 2개, MACD 2개, EMA 5개를 동시에 띄우고, × 버튼으로 개별 제거하며, period를 인라인 편집해 250ms 내 차트에 반영할 수 있다.
+
+## Phase Breakdown (3 PR — 난이도 오름차순 분할)
+
+| Phase | PR | Scope | Effort | AC 핵심 수치 |
+|---|---|---|---|---|
+| P2.1 | PR-A | `clientIndicators.ts` 신규 + RSI/MACD/EMA multi-instance (sub-pane 3종 + overlay 1종) | M | RSI(14) 클라이언트 vs 백엔드 \|err\| 평균 ≤0.05 (n=200, 3심볼) |
+| P2.2 | PR-B | BB/VWAP/ATR_bands overlay multi-instance + `mountSecondaryIndicator` 범용화 | M | overlay 5개 동시 mount, pane 0 series count 정확, × → 100ms 제거 |
+| P2.3 | PR-C | OI/CVD/derivatives/volume sub-pane multi-instance + 인라인 편집 폼 + 라이브러리 배지 | M | 10종 각 2개 동시, debounce 250±50ms, clientIndicators.ts ≤3KB gzip |
+
+**분할 근거**: P2.1(단순 클라이언트 계산) → P2.2(overlay 범용 함수 설계 필요) → P2.3(서버 raw+windowing 가장 복잡). 10종 한 PR = diff 800+줄, 회귀 bisect 어려움.
 
 ## Scope
 
@@ -39,6 +49,27 @@
 - `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte` — instance loop 확장, hidePane 확장
 - `app/src/lib/hubs/terminal/workspace/PaneInfoBar.svelte` — instanceId wiring
 - `app/src/lib/hubs/terminal/workspace/IndicatorLibrary.svelte` — 인라인 편집 폼 + 배지
+
+## Owner
+app
+
+## Facts
+- Issue: #975
+- Depends on: W-0399 Phase 1 (PR #970 merged)
+- 10 Tier-A indicators all multi-instance capable
+- clientIndicators.ts to be created new; no server-side indicator API changes
+
+## Canonical Files
+- `app/src/lib/chart/mountIndicatorPanes.ts`
+- `app/src/lib/chart/clientIndicators.ts` (신규)
+- `app/src/lib/hubs/terminal/workspace/ChartBoard.svelte`
+- `app/src/lib/hubs/terminal/workspace/PaneInfoBar.svelte`
+- `app/src/lib/hubs/terminal/workspace/IndicatorLibrary.svelte`
+
+## Assumptions
+- Phase 1 (PR #970) is merged and indicatorInstances store exists
+- No new DB migration needed
+- Client-side TA calculations are accurate enough (±0.1 vs server)
 
 ## Non-Goals
 - Tier B/C 인디케이터 multi-instance (→ W-0400)
@@ -83,6 +114,22 @@
 ### 거절 옵션
 - **서버 RSI/MACD param 요청** — 거절: 매 period 변경마다 API 라운드트립, 클라이언트 계산으로 충분
 - **오버레이도 PaneInfoBar에 × 버튼** — 거절: price pane에 × 추가 시 price pane 자체 삭제 오인
+
+## Next Steps
+1. Create `clientIndicators.ts` with RSI/MACD/EMA/BB/VWAP/ATR functions
+2. Extend `mountIndicatorPanes.ts` with generic `mountSecondaryIndicator()`
+3. Update `ChartBoard.svelte` instance loop + hidePane
+4. Wire `PaneInfoBar.svelte` instanceId + closable
+5. Update `IndicatorLibrary.svelte` Saved tab + badge
+6. Add unit tests for clientIndicators.ts
+
+## Handoff Checklist
+- [ ] clientIndicators.ts created + unit tests pass (AC4, AC7)
+- [ ] All Tier-A indicators multi-instance (AC1)
+- [ ] × remove works in <100ms (AC2)
+- [ ] Parameter edit debounced (AC3)
+- [ ] svelte-check 0 errors (AC8)
+- [ ] CI green / PR merged
 
 ## Open Questions
 - [ ] [Q-1] EMA/BB 같은 period 중복 허용? (기본: 허용, TV 동작 일치)

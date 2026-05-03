@@ -1,1 +1,1 @@
-// Lab hub entry — shell TBD in W-0382-B
+export { default as LabHub } from './LabHub.svelte';

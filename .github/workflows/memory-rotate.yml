@@ -1,0 +1,32 @@
+name: memory-rotate
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Every Monday 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run memory rotation (dry-run in CI — no access to ~/.claude)
+        run: |
+          echo "ℹ️  Memory rotation runs locally only (path: ~/.claude/projects/...)"
+          echo "   Trigger manually: ./tools/memory-rotate.sh"
+          echo ""
+          echo "   To automate: add a local cron entry:"
+          echo "   0 3 * * 1 cd /Users/ej/Projects/wtd-v2 && bash tools/memory-rotate.sh"
+
+      - name: Check context token budget (project files only)
+        run: |
+          echo "=== Context Budget Check ==="
+          for f in AGENTS.md work/active/CURRENT.md; do
+            chars=$(wc -c < "$f")
+            tok=$((chars / 4))
+            lines=$(wc -l < "$f")
+            printf "%-40s %5d chars ≈ %4d tok  (%dL)\n" "$f" "$chars" "$tok" "$lines"
+          done

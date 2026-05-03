@@ -168,6 +168,7 @@
 		"@vercel/analytics": "^2.0.1",
 		"@vercel/speed-insights": "^2.0.0",
 		"@walletconnect/ethereum-provider": "^2.23.6",
+		"fuse.js": "^7.3.0",
 		"jose": "^6.2.3",
 		"lightweight-charts": "^5.1.0",
 		"pg": "^8.18.0",

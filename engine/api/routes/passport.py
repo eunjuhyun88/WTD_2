@@ -23,10 +23,25 @@ def _sb():
     )
 
 
+_STREAK_THRESHOLDS = [1, 3, 7, 14, 30]
+_STREAK_LABELS = {1: "1일 시작", 3: "3일 연속", 7: "7일 연속", 14: "2주 연속", 30: "30일 연속"}
+
+
+def _next_streak_threshold(streak_days: int) -> int | None:
+    """Return the next streak badge threshold, or None if all earned."""
+    for t in _STREAK_THRESHOLDS:
+        if streak_days < t:
+            return t
+    return None
+
+
 def _compute_badges(accuracy: float, verdict_count: int, streak_days: int) -> list[str]:
     badges: list[str] = []
-    if streak_days >= 7:
-        badges.append("7일 연속")
+    # Streak badges (distinct-day, 5 tiers)
+    for t in _STREAK_THRESHOLDS:
+        if streak_days >= t:
+            badges.append(_STREAK_LABELS[t])
+    # Legacy badges
     if verdict_count >= 50:
         badges.append("첫 50 verdict")
     if accuracy >= 0.7:
@@ -102,12 +117,14 @@ async def get_public_passport(username: str) -> dict[str, Any]:
         best_pattern = _compute_best_pattern(rows)
 
         badges = _compute_badges(accuracy, verdict_count, streak_days)
+        next_threshold = _next_streak_threshold(streak_days)
 
         return {
             "username": username,
             "accuracy": round(accuracy, 4),
             "verdict_count": verdict_count,
             "streak_days": streak_days,
+            "streak_next_threshold": next_threshold,
             "best_pattern": best_pattern,
             "badges": badges,
         }

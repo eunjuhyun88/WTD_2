@@ -23,6 +23,12 @@ import {
   type IndicatorKind,
   type ValuePoint,
 } from './paneIndicators';
+import type {
+  TimePoint,
+  MACDPoint,
+  BBResult,
+  ATRBandsResult,
+} from '../hubs/terminal/workspace/chartIndicatorCalc';
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -384,6 +390,157 @@ export function mountSecondaryRsi(
   ob.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 70 })));
   os.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 30 })));
   return line;
+}
+
+// ── mountSecondaryIndicator payload types ─────────────────────────────────────
+
+export type SecondaryIndicatorPayload =
+  | { engineKey: 'rsi';  data: TimePoint[] }
+  | { engineKey: 'macd'; data: MACDPoint[] }
+  | { engineKey: 'ema';  data: TimePoint[]; label: string }
+  | { engineKey: 'vwap'; data: TimePoint[] }
+  | { engineKey: 'bb';   data: BBResult }
+  | { engineKey: 'atr_bands'; data: ATRBandsResult }
+  | { engineKey: 'volume'; bars: Array<{ time: number; open: number; close: number; volume: number }> }
+  | { engineKey: 'oi' | 'cvd' | 'derivatives'; data: ValuePoint[]; tf: string };
+
+/**
+ * Mount a secondary (multi-instance) indicator for any Tier-A engineKey.
+ * Overlays (ema, vwap, bb, atr) are placed on pane 0 (price pane) — caller
+ * should pass paneIndex=0 and NOT increment nextExtraPane for those.
+ * Sub-pane types (rsi, macd, volume, oi, cvd, derivatives) use the paneIndex
+ * provided by the caller (caller increments nextExtraPane).
+ * Returns the mounted series array, or null if data is empty.
+ */
+export function mountSecondaryIndicator(
+  chart: IChartApi,
+  payload: SecondaryIndicatorPayload,
+  paneIndex: number,
+  instanceId: string,
+  color = '#a78bfa',
+): ISeriesApi<'Line' | 'Histogram'>[] | null {
+  const short = instanceId.slice(0, 4);
+
+  switch (payload.engineKey) {
+    case 'rsi': {
+      if (!payload.data.length) return null;
+      const line = chart.addSeries(
+        LineSeries,
+        { color, lineWidth: 2, lastValueVisible: true, priceLineVisible: false, title: `RSI ${short}` },
+        paneIndex,
+      );
+      line.setData(toLine(payload.data));
+      const ob = chart.addSeries(LineSeries, { color: 'rgba(239,83,80,0.35)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, paneIndex);
+      const os = chart.addSeries(LineSeries, { color: 'rgba(38,166,154,0.35)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, paneIndex);
+      ob.setData(payload.data.map((p) => ({ time: p.time as UTCTimestamp, value: 70 })));
+      os.setData(payload.data.map((p) => ({ time: p.time as UTCTimestamp, value: 30 })));
+      return [line, ob, os];
+    }
+
+    case 'macd': {
+      if (!payload.data.length) return null;
+      const hist = chart.addSeries(
+        HistogramSeries,
+        { priceFormat: { type: 'price', precision: 6, minMove: 0.000001 }, lastValueVisible: false, title: `MACD ${short}` },
+        paneIndex,
+      );
+      hist.setData(payload.data.map((d) => ({
+        time: d.time as UTCTimestamp,
+        value: d.hist,
+        color: d.hist >= 0 ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)',
+      })));
+      const macdLine = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: true, priceLineVisible: false, title: 'MACD' }, paneIndex);
+      macdLine.setData(payload.data.map((d) => ({ time: d.time as UTCTimestamp, value: d.macd })));
+      const sigLine = chart.addSeries(LineSeries, { color: '#fbbf24', lineWidth: 1, lastValueVisible: true, priceLineVisible: false, title: 'sig' }, paneIndex);
+      sigLine.setData(payload.data.map((d) => ({ time: d.time as UTCTimestamp, value: d.signal })));
+      return [hist, macdLine, sigLine];
+    }
+
+    case 'ema': {
+      if (!payload.data.length) return null;
+      const line = chart.addSeries(
+        LineSeries,
+        { color, lineWidth: 2, lastValueVisible: true, priceLineVisible: false, title: payload.label },
+        paneIndex,
+      );
+      line.setData(toLine(payload.data));
+      return [line];
+    }
+
+    case 'vwap': {
+      if (!payload.data.length) return null;
+      const line = chart.addSeries(
+        LineSeries,
+        { color, lineWidth: 2, lastValueVisible: true, priceLineVisible: false, title: `VWAP ${short}` },
+        paneIndex,
+      );
+      line.setData(toLine(payload.data));
+      return [line];
+    }
+
+    case 'bb': {
+      const { upper, middle, lower } = payload.data;
+      if (!upper.length) return null;
+      const uLine = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: false, priceLineVisible: false, title: 'BB+' }, paneIndex);
+      const mLine = chart.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: 2 as const, lastValueVisible: true, priceLineVisible: false, title: 'BB mid' }, paneIndex);
+      const lLine = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: false, priceLineVisible: false, title: 'BB-' }, paneIndex);
+      uLine.setData(toLine(upper));
+      mLine.setData(toLine(middle));
+      lLine.setData(toLine(lower));
+      return [uLine, mLine, lLine];
+    }
+
+    case 'atr_bands': {
+      const { upper, middle, lower } = payload.data;
+      if (!upper.length) return null;
+      const uLine = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: false, priceLineVisible: false, title: 'ATR+' }, paneIndex);
+      const mLine = chart.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: 2 as const, lastValueVisible: true, priceLineVisible: false, title: 'ATR mid' }, paneIndex);
+      const lLine = chart.addSeries(LineSeries, { color, lineWidth: 1, lastValueVisible: false, priceLineVisible: false, title: 'ATR-' }, paneIndex);
+      uLine.setData(toLine(upper));
+      mLine.setData(toLine(middle));
+      lLine.setData(toLine(lower));
+      return [uLine, mLine, lLine];
+    }
+
+    case 'volume': {
+      if (!payload.bars.length) return null;
+      const volSeries = chart.addSeries(
+        HistogramSeries,
+        { color: 'rgba(99,179,237,0.35)', priceFormat: { type: 'volume' as const }, priceScaleId: `vol-${short}`, lastValueVisible: false, title: 'Vol' },
+        paneIndex,
+      );
+      volSeries.setData(
+        toHisto(payload.bars.map((k) => ({
+          time: k.time,
+          value: k.volume ?? 0,
+          color: k.close >= k.open ? 'rgba(38,166,154,0.45)' : 'rgba(239,83,80,0.45)',
+        }))),
+      );
+      return [volSeries];
+    }
+
+    case 'oi':
+    case 'cvd':
+    case 'derivatives': {
+      if (!payload.data.length) return null;
+      const kindMap: Record<string, IndicatorKind> = { oi: 'oi', cvd: 'cvd', derivatives: 'funding' };
+      const kind = kindMap[payload.engineKey];
+      if (!kind) return null;
+      const series = mountWindowedPane(chart, kind, payload.data, payload.tf, paneIndex);
+      return series as ISeriesApi<'Line' | 'Histogram'>[];
+    }
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Returns true for overlay indicators that share the price pane (pane 0).
+ * Sub-pane indicators get their own pane.
+ */
+export function isOverlayIndicator(engineKey: string): boolean {
+  return engineKey === 'ema' || engineKey === 'vwap' || engineKey === 'bb' || engineKey === 'atr_bands';
 }
 
 /**

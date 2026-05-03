@@ -161,6 +161,18 @@ fi
 # W-0275 soft guard: sweep expired capability tokens (non-blocking)
 node "$SCRIPT_DIR/capability-issuer.mjs" sweep 2>/dev/null || true
 
+# W-1004 inbox check — unread 메시지 표시 (non-blocking)
+if [ -f "$SCRIPT_DIR/agent-message.sh" ] && [ -f "$REPO_ROOT/state/current_agent.txt" ]; then
+  UNREAD_COUNT="$(bash "$SCRIPT_DIR/agent-message.sh" count --unread 2>/dev/null || echo 0)"
+  if [ "${UNREAD_COUNT:-0}" -gt 0 ]; then
+    echo ""
+    echo "📬 미읽은 메시지 ${UNREAD_COUNT}개:"
+    bash "$SCRIPT_DIR/agent-message.sh" list --unread 2>/dev/null || true
+    echo "   → tools/agent-message.sh read <id>  로 확인"
+    echo ""
+  fi
+fi
+
 if [ $QUIET -eq 1 ]; then
   echo "Agent: $NEXT_ID | main: ${MAIN_SHA:0:8} | branch: $CURRENT_BRANCH"
   exit 0

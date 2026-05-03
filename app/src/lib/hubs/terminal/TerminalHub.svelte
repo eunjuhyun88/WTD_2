@@ -3,8 +3,7 @@
   // CommandBar unused — W-0375 (removed from desktop chrome)
   // import CommandBar from './CommandBar.svelte';
   import NewsFlashBar from './workspace/NewsFlashBar.svelte';
-  import ResearchPanel from './workspace/ResearchPanel.svelte';
-  import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
+
   import TabBar from './TabBar.svelte';
   import StatusBar from './StatusBar.svelte';
   import WatchlistRail from './panels/WatchlistRail/WatchlistRail.svelte';
@@ -46,6 +45,36 @@
   // ── W-0392: Judge-Save flywheel state ─────────────────────────────────────
   let judgeLoading = $state(false);
   let judgeVerdict = $state<JudgeVerdict | null>(null);
+
+  // ── Pattern recall (core loop: drag → recall → verdict → Layer C) ─────────
+  interface PatternMatch { slug: string; label: string; similarity: number; outcome: string; }
+  let recallResults = $state<PatternMatch[]>([]);
+  let recallLoading = $state(false);
+
+  async function handleRecall(): Promise<void> {
+    const range = $selectedRange;
+    if (!range) return;
+    recallLoading = true;
+    try {
+      const res = await fetch('/api/patterns/recall', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          symbol: desktopSymbol,
+          timeframe: $activeTabState.timeframe ?? '4h',
+          fromTime: range.from,
+          toTime: range.to,
+        }),
+      });
+      if (!res.ok) throw new Error(`recall ${res.status}`);
+      const data = (await res.json()) as { patterns: PatternMatch[] };
+      recallResults = data.patterns ?? [];
+    } catch (e) {
+      console.error('[core-loop] recall failed', e);
+    } finally {
+      recallLoading = false;
+    }
+  }
 
   /** Bars sliced to the selected anchor range (anchorA..anchorB). */
   const slicedBars = $derived.by<RangeSelectionBar[]>(() => {
@@ -139,6 +168,7 @@
       console.error('[W-0392] save failed', e);
     }
     judgeVerdict = null;
+    recallResults = [];
     chartSaveMode.exitRangeMode();
   }
 
@@ -151,6 +181,7 @@
       ohlcvBars: slicedBars,
     });
     judgeVerdict = null;
+    recallResults = [];
   }
   let symbolPickerOpen = $state(false);
   let desktopSymbolPickerOpen = $state(false);
@@ -495,35 +526,8 @@
           />
         {/if}
 
-        <!-- ResearchPanel: slides in when chart range is fully selected (A+B anchors) -->
+        <!-- W-0392: RangeSelectionPanel — judge-save flywheel dock (ChartBoard owns ResearchPanel) -->
         {#if $chartSaveMode.active && $chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
-          <div class="research-overlay">
-            <ResearchPanel
-              symbol={desktopSymbol}
-              tf={$activeTabState.timeframe ?? '4h'}
-              open={true}
-              viewport={{
-                timeFrom: Math.min($chartSaveMode.anchorA, $chartSaveMode.anchorB),
-                timeTo: Math.max($chartSaveMode.anchorA, $chartSaveMode.anchorB),
-                tf: $activeTabState.timeframe ?? '4h',
-                barCount: 0,
-                klines: [],
-                indicators: {},
-              } satisfies ChartViewportSnapshot}
-              onClose={() => chartSaveMode.exitRangeMode()}
-              onSaved={(_captureId) => {
-                shellStore.setDecisionBundle({
-                  symbol: desktopSymbol,
-                  timeframe: $activeTabState.timeframe ?? '4h',
-                  patternSlug: null,
-                });
-                shellStore.setRightPanelTab('verdict');
-                chartSaveMode.exitRangeMode();
-              }}
-            />
-          </div>
-
-          <!-- W-0392: RangeSelectionPanel — judge-save flywheel dock -->
           <div class="range-selection-dock">
             <RangeSelectionPanel
               symbol={desktopSymbol}
@@ -533,7 +537,10 @@
               onJudge={handleJudge}
               onSaveOnly={handleSaveOnly}
               onSave={handleSaveWithVerdict}
+              onRecall={handleRecall}
               loading={judgeLoading}
+              recallLoading={recallLoading}
+              recallResults={recallResults}
               verdict={judgeVerdict}
             />
           </div>

@@ -1,1 +1,1 @@
-// Settings hub entry — shell TBD in W-0382-B
+export { default as SettingsHub } from './SettingsHub.svelte';

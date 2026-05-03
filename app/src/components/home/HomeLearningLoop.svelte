@@ -2,9 +2,11 @@
   import type { LearningStep } from '$lib/home/homeLanding';
 
   let {
-    steps = []
+    steps = [],
+    onOpen = undefined
   }: {
     steps?: LearningStep[];
+    onOpen?: (path: string, cta: string) => void;
   } = $props();
 </script>
 
@@ -14,6 +16,15 @@
       <span class="section-label">HOW IT WORKS</span>
       <h2>Keep the mechanism short. Keep the promise clear.</h2>
       <p>Store it, watch it, keep the judgment, and only ship the stronger version.</p>
+      {#if onOpen}
+        <button
+          type="button"
+          class="loop-cta"
+          onclick={() => onOpen!('/cogochi', 'loop_try')}
+        >
+          Try it
+        </button>
+      {/if}
     </div>
 
     <div class="learning-rail">
@@ -89,6 +100,27 @@
   .section-head p {
     max-width: 31rem;
     font-size: 1.02rem;
+  }
+
+  .loop-cta {
+    align-self: start;
+    background: none;
+    border: 1px solid rgba(var(--home-accent-rgb), 0.3);
+    border-radius: 4px;
+    color: rgba(var(--home-accent-rgb), 0.9);
+    cursor: pointer;
+    font-family: var(--sc-font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    width: fit-content;
+  }
+
+  .loop-cta:hover {
+    background: rgba(var(--home-accent-rgb), 0.08);
+    border-color: rgba(var(--home-accent-rgb), 0.6);
+    color: rgba(255, 247, 244, 0.96);
   }
 
   .learning-rail {

@@ -51,11 +51,21 @@
   // ── W-0395: modular indicator layout ───────────────────────────────────────
   import {
     mountIndicatorPanes as mountIndicatorPanesModule,
-    mountSecondaryRsi,
+    mountSecondaryIndicator,
+    isOverlayIndicator,
     refreshLiqPane,
     type IndicatorSeriesRefs,
+    type SecondaryIndicatorPayload,
   } from '$lib/chart/mountIndicatorPanes';
   import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import {
+    calcRSI,
+    calcMACD,
+    calcEMAValues,
+    calcBB,
+    calcVWAP,
+    calcATRBands,
+  } from './chartIndicatorCalc';
   import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
   import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore';
   import PaneInfoBar from './PaneInfoBar.svelte';
@@ -73,6 +83,7 @@
   import FloatingNoteButton from '../../../shared/chart/FloatingNoteButton.svelte';
   import { shellStore, activeDrawingMode } from '$lib/hubs/terminal/shell.store';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
+  import IndicatorCatalogModal from '$lib/components/indicators/IndicatorCatalogModal.svelte';
   import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -181,6 +192,7 @@
   const onToggleDrawingTools = () => { drawingToolsVisible = !drawingToolsVisible; shellStore.setDrawingTool(drawingToolsVisible ? 'trendLine' : 'cursor'); };
 
   let indicatorLibraryOpen = $state(false);
+  let catalogModalOpen = $state(false);
 
   // ── W-0358: Chart Notes ───────────────────────────────────────────────────
   $effect(() => { chartNotesStore.loadNotes(symbol, tf); });
@@ -428,6 +440,8 @@
   let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
   });
+  /** Secondary indicator instances mounted on extra panes (W-0399-p2). */
+  let secondaryPaneInfos = $state<Array<{ instanceId: string; engineKey: string; paneIndex: number }>>([]);
   /** Series refs returned by mountIndicatorPanes — used by crosshair sync. */
   let indicatorSeriesRefs: IndicatorSeriesRefs | null = null;
   /** Unsubscribe handle for the active crosshair sync subscription. */
@@ -680,7 +694,8 @@
     const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
     if (e.key === '/' && !inInput) {
       e.preventDefault();
-      indicatorLibraryOpen = !indicatorLibraryOpen;
+      catalogModalOpen = !catalogModalOpen;
+      if (catalogModalOpen) indicatorLibraryOpen = false;
     }
     if (e.key === 'Escape' && indicatorLibraryOpen) {
       indicatorLibraryOpen = false;
@@ -1349,14 +1364,55 @@
     panePositions = mountResult.positions;
     indicatorSeriesRefs = mountResult.seriesRefs;
 
-    // Mount secondary indicator instances (multi-instance — W-0399)
-    let nextExtraPane = Math.max(...Object.values(mountResult.positions).filter((v) => v >= 0), 0) + 1;
+    // Mount secondary indicator instances (multi-instance — W-0399-p2)
+    const posVals = Object.values(mountResult.positions).filter((v) => v >= 0);
+    let nextExtraPane = posVals.length ? Math.max(...posVals) + 1 : 1;
+    secondaryPaneInfos = [];
     for (const inst of indicatorInstances.instances) {
       if (!inst.style.visible) continue;
-      if (inst.engineKey === 'rsi') {
-        const rsiData = (ind.rsi14 ?? []) as Array<{ time: number; value: number }>;
-        mountSecondaryRsi(mainChart!, rsiData, nextExtraPane, inst.instanceId, inst.style.color);
-        nextExtraPane++;
+      const key = inst.engineKey;
+      const p = inst.params;
+      const overlay = isOverlayIndicator(key);
+      const targetPane = overlay ? 0 : nextExtraPane;
+
+      let secPayload: SecondaryIndicatorPayload | null = null;
+
+      if (key === 'rsi') {
+        secPayload = { engineKey: 'rsi', data: calcRSI(klines, (p.period as number) || 14) };
+      } else if (key === 'macd') {
+        secPayload = { engineKey: 'macd', data: calcMACD(klines, (p.fast as number) || 12, (p.slow as number) || 26, (p.signal as number) || 9) };
+      } else if (key === 'ema') {
+        const period = (p.period as number) || 21;
+        secPayload = { engineKey: 'ema', data: calcEMAValues(klines, period), label: `EMA ${period}` };
+      } else if (key === 'vwap') {
+        secPayload = { engineKey: 'vwap', data: calcVWAP(klines) };
+      } else if (key === 'bb') {
+        secPayload = { engineKey: 'bb', data: calcBB(klines, (p.period as number) || 20, (p.mult as number) || 2) };
+      } else if (key === 'atr_bands') {
+        secPayload = { engineKey: 'atr_bands', data: calcATRBands(klines, (p.period as number) || 14, (p.mult as number) || 2) };
+      } else if (key === 'volume') {
+        secPayload = { engineKey: 'volume', bars: klines };
+      } else if (key === 'oi') {
+        const oiData = data.oiBars?.map((b) => ({ time: b.time, value: b.value })) ?? [];
+        secPayload = { engineKey: 'oi', data: oiData, tf };
+      } else if (key === 'cvd') {
+        let cvd = data.cvdBars?.map((b) => ({ time: b.time, value: b.value })) ?? [];
+        if (!cvd.length) {
+          let cum = 0;
+          cvd = klines.map((k) => { cum += (k.close >= k.open ? 1 : -1) * k.volume; return { time: k.time, value: cum }; });
+        }
+        secPayload = { engineKey: 'cvd', data: cvd, tf };
+      } else if (key === 'derivatives') {
+        const fundData = (data.fundingBars ?? []) as Array<{ time: number; value: number }>;
+        secPayload = { engineKey: 'derivatives', data: fundData.map((b) => ({ time: b.time, value: b.value })), tf };
+      }
+
+      if (secPayload) {
+        mountSecondaryIndicator(mainChart!, secPayload, targetPane, inst.instanceId, inst.style.color);
+        if (!overlay) {
+          secondaryPaneInfos.push({ instanceId: inst.instanceId, engineKey: key, paneIndex: nextExtraPane });
+          nextExtraPane++;
+        }
       }
     }
 
@@ -1573,21 +1629,37 @@
     removeChartIndicator(key);
   }
 
-  /** W-0399: Add indicator from IndicatorLibrary drawer. Supports multi-instance RSI. */
+  /** W-0399: Add indicator from IndicatorLibrary drawer. All Tier-A keys support multi-instance. */
   function handleAddIndicator(indicator: IndicatorDef) {
     if (indicator.tier === 'A' && indicator.engineKey) {
       const key = indicator.engineKey as IndicatorKey;
       const alreadyActive = $chartIndicators[key];
-      if (alreadyActive && key === 'rsi') {
-        // Second RSI → spawn a new instance pane instead of toggling off
-        indicatorInstances.add(indicator.id, key);
-        if (chartData) renderCharts(chartData);
+      const MAX_INSTANCES = 5;
+      if (alreadyActive) {
+        // Already active via toggle store — add a secondary instance instead of toggling off
+        const count = indicatorInstances.countByDef(indicator.id);
+        if (count < MAX_INSTANCES) {
+          indicatorInstances.add(indicator.id, key);
+          if (chartData) renderCharts(chartData);
+        }
         indicatorLibraryOpen = false;
         return;
       }
       toggleChartIndicator(key);
     }
     indicatorLibraryOpen = false;
+  }
+
+  /** W-0399: Remove a secondary indicator instance and re-render. */
+  function removeInstance(instanceId: string) {
+    indicatorInstances.remove(instanceId);
+    if (chartData) renderCharts(chartData);
+  }
+
+  /** W-0399: Update params on a secondary indicator instance and re-render. */
+  function updateInstance(instanceId: string, params: Record<string, number | string | boolean>) {
+    indicatorInstances.updateParams(instanceId, params);
+    if (chartData) renderCharts(chartData);
   }
 
   onMount(() => {
@@ -1842,6 +1914,8 @@
     {#if indicatorLibraryOpen}
       <IndicatorLibrary
         onAddIndicator={handleAddIndicator}
+        onRemoveInstance={removeInstance}
+        onUpdateInstance={updateInstance}
       />
     {/if}
 
@@ -1957,6 +2031,17 @@
             />
           </div>
         {/if}
+        {#each secondaryPaneInfos as sec (sec.instanceId)}
+          <div class="pib-anchor pib-anchor--secondary" style="top: {((sec.paneIndex / (sec.paneIndex + 1)) * 100).toFixed(1)}%">
+            <PaneInfoBar
+              title={sec.engineKey.toUpperCase()}
+              sublabel={tf}
+              chips={[]}
+              closable
+              onClose={() => removeInstance(sec.instanceId)}
+            />
+          </div>
+        {/each}
       {/if}
     </div>
     </div>
@@ -2059,6 +2144,11 @@
     showSaveModal = false;
   }}
   onSaved={handleModalSaved}
+/>
+
+<IndicatorCatalogModal
+  open={catalogModalOpen}
+  onClose={() => { catalogModalOpen = false; }}
 />
 
 <!-- Layer 3: Capture annotation overlay (W-0120) -->

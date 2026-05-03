@@ -143,6 +143,34 @@ export interface IndicatorDef {
    * Alternative archetypes the user can switch to via IndicatorSettingsSheet.
    */
   alternateArchetypes?: IndicatorArchetype[];
+
+  // ── TV TA catalog fields (Phase 1A, W-0400) ───────────────────────────────
+
+  /**
+   * Engine-side key used by indicatorInstances / mountIndicatorPanes.
+   * Present on TV TA indicators; absent on market-data indicators.
+   */
+  engineKey?: string;
+
+  /**
+   * JSON-schema-lite parameter spec for inline edit UI.
+   * Keys map to param names; values describe type + bounds.
+   */
+  paramSchema?: Record<string, {
+    type: 'number' | 'string' | 'boolean';
+    default: number | string | boolean;
+    min?: number;
+    max?: number;
+    step?: number;
+    label?: string;
+  }>;
+
+  /**
+   * Display category in the catalog modal.
+   * 'TA' = client-side calculated TA indicators.
+   * 'MarketData' = engine-fetched market data indicators.
+   */
+  category?: 'TA' | 'MarketData';
 }
 
 // ── New archetype data shapes (G / H / I / J) ────────────────────────────────

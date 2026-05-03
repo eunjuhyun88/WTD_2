@@ -1,17 +1,22 @@
 # Cogochi — Master PRD + Priority Document
 
-> **CTO + AI Researcher Edition** | 코드 실측 기반 (054edd7c) | 2026-05-03
+> **CTO + AI Researcher Edition** | 코드 실측 기반 (a914acd3) | 2026-05-04
 > **단일 진실**: 이 파일이 Wave / 기능 / 결정 / 지표의 공식 기준. 다른 docs/live/ 파일과 충돌 시 이 파일 우선.
 > Charter: `spec/CHARTER.md` In-Scope(L3–L7). Non-Goal 진입 = 즉시 중단.
 
 ---
 
-## 0. CTO 현황 요약 (2026-05-03) ← Wave 5 완전 완료
+## 0. CTO 현황 요약 (2026-05-04) ← Wave 6 완전 완료
 
 ```
-시스템 성숙도: ~97% Built — Wave 5 전 항목 완료 + W-PF-100 P1 완료
-최신 main:   054edd7c (2026-05-03, docs: PRIORITIES.md Wave 5 complete #964)
+시스템 성숙도: ~99% Built — Wave 5+6 전 항목 완료
+최신 main:   a914acd3 (2026-05-04, chore: PRIORITIES.md Wave 6 sync #993)
 5-Hub 확정:  dashboard / lab / patterns / settings / terminal (W-0372 ✅ #826~#830)
+Wave 6 완료: Layer C 스케줄러 배선 ✅ (W-0398 #968+#981)
+            Verdict Throughput Booster ✅ (W-0397 #965)
+            Layer C Observability + F-60 게이지 ✅ (W-0400 #987)
+            Cogochi Pages V2 전 7 Phase ✅ (W-0395 #988+#974+#979+#982+#983+#984+#985)
+            chart PaneInfoBar TV-style ✅ (W-0364 #989)
 핵심 신규:   LightGBM Layer C auto-train flywheel ✅ (W-0394 #952+#954)
             PropFirm paper auto-execution P1 ✅ (W-PF-100 #783+#787+#802)
             6-layer AutoResearch orchestrator ✅ (W-0379 #861+#862)
@@ -23,9 +28,9 @@ Wave 5 PRs: #826 #829 #830 #835 #834 #836 #839 #865 #869 #870
             #861 #862 #904 #915 #922 #927 #928 #929 #931 #926
             #933 #934 #936 #939 #940 #941 #944 #945 #946
             #951 #952 #953 #954 #958 #964 (총 35 PRs)
-W-PF-100:  Phase 1 ✅ 완료 (PR #783 #787 #802) — 24h live AC 검증 대기
-열린 P0:   **W-0398** Layer C scheduler wiring (S, #963) → **W-0397** verdict kbd (S, #962) → **W-0395** Pages V2 (XL, #955)
-즉시 P0:   W-0398 (auto_trainer 스케줄러 배선 + verdict hook, S effort)
+Wave 6 PRs: #965 #968 #981 #987 #988 #974 #979 #982 #983 #984 #985 #989 (총 12 PRs)
+W-PF-100:  Phase 1 ✅ 완료 (PR #783 #787 #802) — Phase 2 대기 (24h live AC 검증 후)
+즉시 P0:   W-PF-100 Phase 2 (Eval Challenge 결제·통과, 24h live AC 검증 완료 후 착수)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: verdicts 누적 속도 — Layer C LightGBM은 코드 완성이나 verdicts 50+ 전까지 실질 가중 A:0.60/B:0.40 유지. PropFirm 자동 집행 → verdict 속도 가속이 핵심.

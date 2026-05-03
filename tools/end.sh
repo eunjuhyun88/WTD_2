@@ -155,6 +155,27 @@ if [ -x "$SCRIPT_DIR/check_drift.sh" ]; then
   "$SCRIPT_DIR/check_drift.sh" || true
 fi
 
+# W-1004 inbox — 미답 메시지 경고 (non-blocking)
+if [ -f "$SCRIPT_DIR/agent-message.sh" ]; then
+  UNREAD_END="$(bash "$SCRIPT_DIR/agent-message.sh" count --unread 2>/dev/null || echo 0)"
+  if [ "${UNREAD_END:-0}" -gt 0 ]; then
+    echo ""
+    echo "⚠️  미읽은 메시지 ${UNREAD_END}개 — 종료 전 확인 권장:"
+    bash "$SCRIPT_DIR/agent-message.sh" list --unread 2>/dev/null || true
+  fi
+fi
+
+# W-1004 ownership 자동 해제 — 파일 해제 안내 (non-blocking)
+if [ -f "$SCRIPT_DIR/own.sh" ] && [ -f state/file-ownership.jsonl ]; then
+  MY_CLAIMS="$(bash "$SCRIPT_DIR/own.sh" list --mine 2>/dev/null | grep -v '(no active claims)' | wc -l | tr -d ' ' || echo 0)"
+  if [ "${MY_CLAIMS:-0}" -gt 0 ]; then
+    echo ""
+    echo "📋 남아있는 파일 claim ${MY_CLAIMS}개 (24h TTL 자동 만료):"
+    bash "$SCRIPT_DIR/own.sh" list --mine 2>/dev/null || true
+    echo "   → 즉시 해제: tools/own.sh release <file>"
+  fi
+fi
+
 # 7. memkraft retro --dry-run (자동 회고 미리보기)
 echo ""
 echo "═══════════════════════════════════"

@@ -58,10 +58,14 @@ export interface HeatmapBand {
 
 // ─── Store state ──────────────────────────────────────────────────────────────
 
+export type EntryPlan = NonNullable<AnalyzeEnvelope['entryPlan']>;
+
 interface CogochiDataState {
   analyzeData: AnalyzeEnvelope | null;
+  entryPlan: EntryPlan | null;
   scanCandidates: ScanCandidate[];
   scanLoading: boolean;
+  scanProgress: number;
   phaseTimeline: PhaseNode[];
   domLadderRows: DomRow[];
   timeSalesRows: TimeSalesRow[];
@@ -72,8 +76,10 @@ interface CogochiDataState {
 function makeDefault(): CogochiDataState {
   return {
     analyzeData: null,
+    entryPlan: null,
     scanCandidates: [],
     scanLoading: false,
+    scanProgress: 0,
     phaseTimeline: [],
     domLadderRows: [],
     timeSalesRows: [],
@@ -88,7 +94,15 @@ export const cogochiDataStore = {
   subscribe: _store.subscribe,
 
   setAnalyzeData(data: AnalyzeEnvelope | null) {
-    _store.update(s => ({ ...s, analyzeData: data }));
+    _store.update(s => ({
+      ...s,
+      analyzeData: data,
+      entryPlan: data?.entryPlan ?? null,
+    }));
+  },
+
+  setEntryPlan(plan: EntryPlan | null) {
+    _store.update(s => ({ ...s, entryPlan: plan }));
   },
 
   setScanCandidates(items: ScanCandidate[], loading = false) {
@@ -97,6 +111,10 @@ export const cogochiDataStore = {
 
   setScanLoading(loading: boolean) {
     _store.update(s => ({ ...s, scanLoading: loading }));
+  },
+
+  setScanProgress(pct: number) {
+    _store.update(s => ({ ...s, scanProgress: Math.max(0, Math.min(100, pct)) }));
   },
 
   setPhaseTimeline(nodes: PhaseNode[]) {
@@ -121,7 +139,9 @@ export const cogochiDataStore = {
 // ─── Derived selectors ────────────────────────────────────────────────────────
 
 export const analyzeData = derived(_store, $s => $s.analyzeData);
+export const entryPlan = derived(_store, $s => $s.entryPlan);
 export const scanCandidates = derived(_store, $s => $s.scanCandidates);
 export const scanLoading = derived(_store, $s => $s.scanLoading);
+export const scanProgress = derived(_store, $s => $s.scanProgress);
 export const phaseTimeline = derived(_store, $s => $s.phaseTimeline);
 export const domLadderRows = derived(_store, $s => $s.domLadderRows);
