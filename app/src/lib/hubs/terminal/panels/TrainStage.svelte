@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { workMode } from '../workMode.store';
+  import { trackTrainSessionComplete } from '../telemetry';
   import QuizCard from './QuizCard.svelte';
 
   interface QuizQuestion {
@@ -16,9 +17,11 @@
   let sessionId = $state('');
   let loading = $state(true);
   let done = $state(false);
+  let sessionStartMs = $state(0);
 
   onMount(async () => {
     sessionId = crypto.randomUUID();
+    sessionStartMs = Date.now();
     try {
       const res = await fetch('/api/terminal/train/quiz');
       const { questions: qs } = await res.json();
@@ -47,6 +50,8 @@
 
     if (current + 1 >= questions.length) {
       done = true;
+      const durationMs = Date.now() - (sessionStartMs || Date.now());
+      trackTrainSessionComplete(sessionId, [...answers, answer], questions.length, durationMs);
     } else {
       current = current + 1;
     }

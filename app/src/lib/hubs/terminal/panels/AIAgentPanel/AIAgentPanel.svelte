@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { shellStore, activeRightPanelTab, activeTabState, verdictCount } from '../../shell.store';
   import type { RightPanelTab, TabState } from '../../shell.store';
+  import { trackRightpanelTabSwitch } from '../../telemetry';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import AIPanel from './AIPanel.svelte';
@@ -264,6 +265,15 @@
 
   $effect(() => { void symbol; void timeframe; judgeResult = null; judgeCacheKey = ''; });
 
+  // ── Tab switch with telemetry ─────────────────────────────────────────────
+  function switchRightPanelTab(tab: RightPanelTab) {
+    const prev = activeTab;
+    shellStore.setRightPanelTab(tab);
+    if (prev !== tab) {
+      trackRightpanelTabSwitch(prev, tab);
+    }
+  }
+
   // ── Expand + Drawer ───────────────────────────────────────────────────────
   function toggleExpand() {
     shellStore.updateTabState(s => ({ ...s, rightPanelExpanded: !s.rightPanelExpanded }));
@@ -284,7 +294,7 @@
       <button
         class="tab-btn"
         class:active={activeTab === tab.id}
-        onclick={() => shellStore.setRightPanelTab(tab.id)}
+        onclick={() => switchRightPanelTab(tab.id)}
       >{tab.label}{#if badge > 0}<span class="tab-badge">{badge}</span>{/if}</button>
     {/each}
     <button
