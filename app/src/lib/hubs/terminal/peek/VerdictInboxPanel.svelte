@@ -804,7 +804,7 @@
 
   .kbd-hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(247,242,234,0.25);
     padding: 1px 4px;
     border: 1px solid rgba(255,255,255,0.08);
