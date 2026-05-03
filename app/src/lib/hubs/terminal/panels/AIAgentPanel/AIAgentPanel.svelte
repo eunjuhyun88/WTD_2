@@ -7,6 +7,7 @@
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import AIPanel from './AIPanel.svelte';
   import VerdictInboxPanel from '../../peek/VerdictInboxPanel.svelte';
+  import UnverifiedDot from '$lib/components/header/UnverifiedDot.svelte';
   import JudgePanel from '../../peek/JudgePanel.svelte';
   import DecisionHUDAdapter from '../../workspace/DecisionHUDAdapter.svelte';
   import DrawerSlide from './DrawerSlide.svelte';
@@ -58,6 +59,9 @@
   const expanded   = $derived($activeTabState.rightPanelExpanded ?? false);
   const drawerOpen = $derived($activeTabState.drawerOpen);
   const drawerKind = $derived($activeTabState.drawerKind);
+
+  // ── Pending verdict count (for UnverifiedDot in header) ─────────────────
+  let pendingVerdictCount = $state(0);
 
   // ── AI Search ─────────────────────────────────────────────────────────────
   let searchQuery = $state('');
@@ -295,7 +299,7 @@
         class="tab-btn"
         class:active={activeTab === tab.id}
         onclick={() => switchRightPanelTab(tab.id)}
-      >{tab.label}{#if badge > 0}<span class="tab-badge">{badge}</span>{/if}</button>
+      >{tab.label}{#if badge > 0}<span class="tab-badge">{badge}</span>{/if}{#if tab.id === 'verdict'}<UnverifiedDot count={pendingVerdictCount} />{/if}</button>
     {/each}
     <button
       class="expand-btn"
@@ -347,6 +351,7 @@
         <div class="tab-scroll">
           <VerdictInboxPanel
             onVerdictSubmit={(captureId, _verdict) => shellStore.selectVerdict(captureId)}
+            onPendingCountChange={(n) => { pendingVerdictCount = n; }}
           />
         </div>
         <div class="more-btn">
