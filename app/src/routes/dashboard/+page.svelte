@@ -8,6 +8,7 @@
   import KimchiPremiumBadge from '$lib/components/market/KimchiPremiumBadge.svelte';
   import DashActivityGrid from '$lib/components/dashboard/DashActivityGrid.svelte';
   import { AlertStrip, OpportunityCard, StatsZone, SystemStatusZone } from '$lib/hubs/dashboard';
+  import F60ProgressCard from '$lib/components/ai/F60ProgressCard.svelte';
   import { track } from '$lib/analytics';
   import type { CaptureRow, OpportunityScore } from './+page.server';
 
@@ -215,6 +216,7 @@
   <div class="dash-meta-row">
     <StatsZone {passport} {userStats} />
     <SystemStatusZone {flywheelHealth} />
+    <F60ProgressCard />
   </div>
 
   <!-- ── Section 1: Portfolio Strip (64px) ── -->

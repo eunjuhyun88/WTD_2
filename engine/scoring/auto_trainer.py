@@ -274,22 +274,124 @@ def promote_if_eligible(version_id: str, eval_result: dict) -> bool:
         return False
 
 
+def _sentry_breadcrumb(message: str, data: Optional[dict] = None) -> None:
+    """Add a Sentry breadcrumb (no-op if sentry_sdk not installed)."""
+    try:
+        import sentry_sdk  # type: ignore
+
+        sentry_sdk.add_breadcrumb(
+            category="layer_c_train",
+            message=message,
+            data=data or {},
+            level="info",
+        )
+    except Exception:
+        pass
+
+
+def _persist_run(
+    *,
+    n_verdicts: int,
+    status: str,
+    ndcg_at_5: Optional[float],
+    map_at_10: Optional[float],
+    ci_lower: Optional[float],
+    promoted: bool,
+    version_id: Optional[str],
+) -> None:
+    """Insert one row into layer_c_train_runs. Fire-and-forget — never raises."""
+    try:
+        import psycopg2  # type: ignore
+
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            log.debug("_persist_run: DATABASE_URL not set, skipping")
+            return
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO layer_c_train_runs
+                    (n_verdicts, status, ndcg_at_5, map_at_10, ci_lower, promoted, version_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s::uuid)
+                """,
+                (
+                    n_verdicts,
+                    status,
+                    ndcg_at_5,
+                    map_at_10,
+                    ci_lower,
+                    promoted,
+                    version_id,
+                ),
+            )
+        conn.close()
+        log.info("_persist_run: inserted run status=%s n_verdicts=%d", status, n_verdicts)
+        if status == "failed":
+            try:
+                import sentry_sdk  # type: ignore
+
+                sentry_sdk.capture_message(
+                    "layer_c_train_failed",
+                    level="error",
+                    extras={"n_verdicts": n_verdicts, "version_id": version_id},
+                )
+            except Exception:
+                pass
+    except Exception:
+        log.exception("_persist_run: failed (non-fatal)")
+
+
 def run_auto_train_pipeline() -> dict:
     """Top-level entry point: train → eval → maybe promote.
 
     Returns a status dict for logging/observability.
     """
+    _sentry_breadcrumb("run_auto_train_pipeline: started")
     result = train_and_register()
     if result is None:
+        _persist_run(
+            n_verdicts=0,
+            status="skipped",
+            ndcg_at_5=None,
+            map_at_10=None,
+            ci_lower=None,
+            promoted=False,
+            version_id=None,
+        )
         return {"status": "skipped"}
 
     version_id, meta = result
+    n_verdicts = meta.get("n_total", 0)
 
     eval_result = shadow_eval(version_id, meta)
     if eval_result is None:
+        _persist_run(
+            n_verdicts=n_verdicts,
+            status="trained_no_eval",
+            ndcg_at_5=None,
+            map_at_10=None,
+            ci_lower=None,
+            promoted=False,
+            version_id=version_id,
+        )
         return {"status": "trained_no_eval", "version_id": version_id}
 
     promoted = promote_if_eligible(version_id, eval_result)
+    _sentry_breadcrumb(
+        "run_auto_train_pipeline: completed",
+        {"status": "promoted" if promoted else "shadow", "ndcg_at_5": eval_result.get("ndcg_at_5")},
+    )
+    _persist_run(
+        n_verdicts=n_verdicts,
+        status="promoted" if promoted else "shadow",
+        ndcg_at_5=eval_result.get("ndcg_at_5"),
+        map_at_10=eval_result.get("map_at_10"),
+        ci_lower=eval_result.get("ci_lower"),
+        promoted=promoted,
+        version_id=version_id,
+    )
     return {
         "status": "promoted" if promoted else "shadow",
         "version_id": version_id,
