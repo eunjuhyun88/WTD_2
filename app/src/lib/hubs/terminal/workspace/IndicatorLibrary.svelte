@@ -9,12 +9,15 @@
   } from '$lib/indicators/indicatorRegistry';
   import { addIndicator, removeIndicator, chartIndicators, type IndicatorKey } from '$lib/stores/chartIndicators';
   import { indicatorFavorites, indicatorRecents } from '$lib/stores/indicatorFavorites';
+  import { indicatorInstances } from '$lib/chart/indicatorInstances';
 
   interface Props {
     open?: boolean;
     onClose?: () => void;
     onExternalOpen?: (url: string, label: string) => void;
     onAddIndicator?: (indicator: IndicatorDef) => void;
+    onRemoveInstance?: (instanceId: string) => void;
+    onUpdateInstance?: (instanceId: string, params: Record<string, number | string | boolean>) => void;
   }
 
   let {
@@ -22,12 +25,25 @@
     onClose,
     onExternalOpen,
     onAddIndicator,
+    onRemoveInstance,
+    onUpdateInstance,
   }: Props = $props();
 
   let query = $state('');
   let filter = $state<FilterMode>('popular');
   let hoveredId = $state<string | null>(null);
-  let activeTab = $state<'browse' | 'favorites' | 'recents'>('browse');
+  let activeTab = $state<'browse' | 'favorites' | 'recents' | 'active'>('browse');
+
+  // Inline param edit state: instanceId → pending param updates (debounced)
+  let editTimers = $state<Record<string, ReturnType<typeof setTimeout>>>({});
+  function handleParamChange(instanceId: string, params: Record<string, number | string | boolean>) {
+    clearTimeout(editTimers[instanceId]);
+    editTimers[instanceId] = setTimeout(() => {
+      onUpdateInstance?.(instanceId, params);
+    }, 250);
+  }
+
+  const activeInstances = $derived(indicatorInstances.instances);
 
   const results = $derived(searchIndicators(query, filter, 100));
 
@@ -112,9 +128,12 @@
       <button class="lib-close" onclick={onClose} aria-label="Close">✕</button>
     </div>
 
-    <!-- Tabs: Browse / Favorites / Recents -->
+    <!-- Tabs: Browse / Favorites / Recents / Active -->
     <div class="lib-tabs">
       <button class="lib-tab" class:active={activeTab === 'browse'} onclick={() => activeTab = 'browse'}>Browse</button>
+      <button class="lib-tab" class:active={activeTab === 'active'} onclick={() => activeTab = 'active'}>
+        Active {activeInstances.length > 0 ? `(${activeInstances.length})` : ''}
+      </button>
       <button class="lib-tab" class:active={activeTab === 'favorites'} onclick={() => activeTab = 'favorites'}>
         ★ Saved {favItems.length > 0 ? `(${favItems.length})` : ''}
       </button>
@@ -168,7 +187,44 @@
 
     <!-- Results -->
     <div class="lib-results">
-      {#if activeTab === 'favorites'}
+      {#if activeTab === 'active'}
+        {#if activeInstances.length === 0}
+          <div class="lib-empty">
+            <span class="lib-empty-icon">◈</span>
+            <p>No active multi-instance indicators — click a live indicator twice to add a second instance</p>
+          </div>
+        {:else}
+          <div class="lib-flat-count">{activeInstances.length} active instance{activeInstances.length !== 1 ? 's' : ''}</div>
+          {#each activeInstances as inst (inst.instanceId)}
+            <div class="inst-row">
+              <div class="inst-header">
+                <span class="inst-key">{inst.engineKey.toUpperCase()}</span>
+                <span class="inst-id">#{inst.instanceId.slice(0, 4)}</span>
+                <button class="inst-remove" onclick={() => onRemoveInstance?.(inst.instanceId)} title="Remove instance">✕</button>
+              </div>
+              <div class="inst-params">
+                {#each Object.entries(inst.params) as [k, v] (k)}
+                  {#if typeof v === 'number'}
+                    <label class="inst-param-label">
+                      <span class="inst-param-key">{k}</span>
+                      <input
+                        class="inst-param-input"
+                        type="number"
+                        value={v}
+                        min="1"
+                        oninput={(e) => {
+                          const n = parseFloat((e.currentTarget as HTMLInputElement).value);
+                          if (Number.isFinite(n) && n > 0) handleParamChange(inst.instanceId, { [k]: n });
+                        }}
+                      />
+                    </label>
+                  {/if}
+                {/each}
+              </div>
+            </div>
+          {/each}
+        {/if}
+      {:else if activeTab === 'favorites'}
         {#if favItems.length === 0}
           <div class="lib-empty">
             <span class="lib-empty-icon">★</span>
@@ -744,6 +800,69 @@
     font-size: var(--ui-text-xs);
     color: rgba(255,255,255,0.30);
     font-family: var(--sc-font-mono, monospace);
+  }
+
+  /* Active instances tab */
+  .inst-row {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .inst-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .inst-key {
+    font-size: var(--ui-text-xs);
+    font-family: var(--sc-font-mono, monospace);
+    color: #a78bfa;
+    font-weight: 600;
+  }
+  .inst-id {
+    font-size: var(--ui-text-xs);
+    font-family: var(--sc-font-mono, monospace);
+    color: rgba(255,255,255,0.30);
+  }
+  .inst-remove {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.35);
+    cursor: pointer;
+    font-size: var(--ui-text-xs);
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+  .inst-remove:hover { color: #ef5350; }
+  .inst-params {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .inst-param-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .inst-param-key {
+    font-size: var(--ui-text-xs);
+    color: rgba(255,255,255,0.45);
+    font-family: var(--sc-font-mono, monospace);
+  }
+  .inst-param-input {
+    width: 52px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 3px;
+    color: rgba(255,255,255,0.85);
+    font-size: var(--ui-text-xs);
+    padding: 2px 4px;
+    font-family: var(--sc-font-mono, monospace);
+  }
+  .inst-param-input:focus {
+    outline: none;
+    border-color: #a78bfa;
   }
 
   @keyframes lib-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
