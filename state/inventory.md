@@ -51,6 +51,7 @@
 | live.sh | Agent heartbeat file manager |
 | measure_context_tokens.sh | 매 세션 자동 주입되는 컨텍스트 파일 토큰 측정 (4... |
 | mk.sh | Repo-pinned MemKraft CLI entrypoint. |
+| quality_baseline.sh | W-A108: quality_baseline.sh |
 | refresh_docs_navigator.sh | AGENTS.md §문서 지도 경로 유효성 검증 |
 | refresh_inventory.sh | state/inventory.md 자동 생성 |
 | refresh_state.sh | Derived state 자동 생성 + worktree registry 머지 |
@@ -103,6 +104,9 @@
 | POST | /challenge/create | routes/challenge.py:35 |
 | GET | /challenge/{slug}/scan | routes/challenge.py:41 |
 | GET | /chart/klines | routes/chart.py:30 |
+| GET | /lab/counterfactual | routes/counterfactual.py:87 |
+| GET | /patterns/{slug}/filter-drag | routes/counterfactual.py:225 |
+| GET | /patterns/{slug}/formula | routes/counterfactual.py:285 |
 | GET | /ctx/status | routes/ctx.py:32 |
 | POST | /ctx/refresh | routes/ctx.py:38 |
 | GET | /ctx/kimchi-premium | routes/ctx.py:50 |
