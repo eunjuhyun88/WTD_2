@@ -245,14 +245,15 @@
   async function handleSaveJudgment({ verdict, note }: { verdict: string; note: string }) {
     judgeSaving = true;
     try {
+      // W-0392 Ph3: Include displayed prices (from judgeResult or selectedRange) in save
       const decision = {
         verdict,
         note,
+        entry: displayedJudgePrices.entry,
+        stop: displayedJudgePrices.stop,
+        target: displayedJudgePrices.target,
         ...(judgeResult
           ? {
-              entry: judgeResult.entry,
-              stop: judgeResult.stop,
-              target: judgeResult.target,
               p_win: judgeResult.p_win,
               rationale: judgeResult.rationale,
             }
