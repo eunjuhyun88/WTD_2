@@ -47,6 +47,7 @@
   import TradeLogTable from '../../../components/lab/TradeLogTable.svelte';
   import { buildEquitySeries } from '$lib/lab/equityCurve';
   import type { EquitySeries } from '$lib/lab/equityCurve';
+  import LabHoldTimeAdapter from './panels/LabHoldTimeAdapter.svelte';
 
   let mode = $state<'auto' | 'manual'>('auto');
   let activeTab = $state<'strategy' | 'result' | 'order' | 'trades' | 'refinement' | 'pattern-run'>('strategy');
@@ -455,6 +456,8 @@
               onUpdateDirection={handleUpdateDirection}
             />
           {:else if activeTab === 'result'}
+            <!-- W-0395 Ph6: hold time distribution at the top of results -->
+            <LabHoldTimeAdapter trades={backtestResult?.trades ?? []} />
             <!-- W-0381: Bloomberg-style backtest dashboard -->
             <BacktestSummaryStrip result={backtestResult} {isRunning} />
             <EquityCurveChart
