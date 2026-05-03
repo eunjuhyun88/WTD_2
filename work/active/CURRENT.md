@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-03
+# CURRENT — 2026-05-04
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`0eca402b` — origin/main (2026-05-04) — feat(W-0392 Ph3): verdict_json write side + PatternOutcome verdict fields (#972)
+`8a686567` — origin/main (2026-05-04) — chore: CURRENT.md SHA 0eca402b — W-0392 Ph3 merged (#986)
 
 ---
 
@@ -33,8 +33,9 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0400-layer-c-observability-f60-dashboard` | P0 | 🟡 이슈 #980, 구현 대기 |
-| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Wave 6 구현 대기 |
+| `W-0399-P2-tv-indicator-catalog-phase2` | P0 | 🟡 이슈 #975, 설계 완료 — 구현 대기 (clientIndicators.ts) |
+| `W-0400-tv-indicator-catalog-full` | P0 | 🟡 이슈 #976, 설계 완료 — 구현 대기 (Phase 1: CatalogModal) |
+| `W-0400-layer-c-observability-f60-dashboard` | P0 | 🟡 이슈 #980, 설계 완료 — 구현 대기 |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
 ---
@@ -80,6 +81,9 @@
 완료:  docs ✅ — PRIORITIES.md Wave 5 complete + 갱신 규칙 (#964)
 완료:  W-0397 ✅ — VerdictInboxPanel 키보드 단축키 + 5s undo + Layer C ETA (#965)
 완료:  W-0398 ✅ — Layer C auto-train scheduler wiring + verdict hook (#968)
+완료:  W-0392 Ph3 ✅ — verdict_json write side + PatternOutcome verdict fields (#972)
+완료:  W-0395 ✅ — Cogochi Pages V2 전면 개편 8-phase (#979/#982/#983/#984/#985)
+완료:  docs ✅ — W-0399-P2 + W-0400 TV indicator catalog design docs (#977)
 ```
 
 ---
