@@ -47,13 +47,15 @@
   import { DrawingManager, type DrawingToolType } from '$lib/chart/DrawingManager';
   import { PriceLineManager } from '$lib/chart/usePriceLines';
   // ── Multi-pane indicator layer (W-0211 follow-up) ──────────────────────────
-  import {
-    PANE_INDICATORS as PANE_SPECS,
-    computePaneLines,
-    type IndicatorKind,
-    type ValuePoint,
-  } from '$lib/chart/paneIndicators';
   import { computePaneChips, computeLiqChips } from '$lib/chart/paneCurrentValues';
+  // ── W-0395: modular indicator layout ───────────────────────────────────────
+  import {
+    mountIndicatorPanes as mountIndicatorPanesModule,
+    refreshLiqPane,
+    type IndicatorSeriesRefs,
+  } from '$lib/chart/mountIndicatorPanes';
+  import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
+  import { createPaneLayoutStore } from '$lib/chart/paneLayoutStore';
   import PaneInfoBar from './PaneInfoBar.svelte';
   import KpiStrip from './KpiStrip.svelte';
   import type { KpiInputBundle } from '$lib/chart/kpiStrip';
@@ -391,9 +393,17 @@
   let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
   });
-  /** Liq histogram series, kept so WS refresh can update without full re-render. */
-  let liqLongSeries:  ISeriesApi<'Histogram'> | null = null;
-  let liqShortSeries: ISeriesApi<'Histogram'> | null = null;
+  /** Series refs returned by mountIndicatorPanes — used by crosshair sync. */
+  let indicatorSeriesRefs: IndicatorSeriesRefs | null = null;
+  /** Unsubscribe handle for the active crosshair sync subscription. */
+  let crosshairUnsub: CrosshairUnsubscribe | null = null;
+  /** Per-pane layout store (visibility + stretch persistence). */
+  const paneLayout = createPaneLayoutStore();
+  /**
+   * Live chips driven by crosshair. null = crosshair off chart;
+   * parent falls back to static last-bar chips from chartData.
+   */
+  let crosshairChips = $state<CrosshairChips | null>(null);
 
   // ── DataFeed (resilient WS + polling) ─────────────────────────────────────
   let _dataFeed: DataFeed | null = null;
@@ -1198,7 +1208,26 @@
     // ── Indicator panes (native lightweight-charts v5.1 multi-pane) ─────────
     // Volume sits inside pane 0 (price) on its own price scale, pinned to the
     // bottom 20% — keeps price + volume colocated, the way most traders read.
-    panePositions = mountIndicatorPanes(mainChart, data, klines, ind);
+    const mountResult = mountIndicatorPanesModule(mainChart, data, klines, ind, {
+      showVolume,
+      showRSI,
+      showMACD,
+      showOI,
+      showCVD,
+      showFundingPane,
+      showLiqPane,
+    }, tf);
+    panePositions = mountResult.positions;
+    indicatorSeriesRefs = mountResult.seriesRefs;
+
+    // Wire crosshair → live chip updates (rAF throttled)
+    crosshairUnsub?.();
+    crosshairUnsub = createCrosshairSync(
+      mainChart,
+      indicatorSeriesRefs,
+      panePositions,
+      (chips) => { crosshairChips = chips; },
+    );
 
     subscribeMainTimeScale();
 
@@ -1217,170 +1246,6 @@
         drawingMgr.attach(mainChart, priceSeries as ISeriesApi<SeriesType>);
       }
     });
-  }
-
-  /**
-   * Build all enabled indicator panes on `chart` and return their pane indices.
-   * Native panes share crosshair + time-axis with pane 0 — no manual sync.
-   */
-  function mountIndicatorPanes(
-    chart: IChartApi,
-    payload: ChartSeriesPayload,
-    klines: ChartSeriesPayload['klines'],
-    ind: Record<string, unknown>,
-  ): { rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number } {
-    const positions = { rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1 };
-    let nextPaneIndex = 1; // pane 0 reserved for price + volume overlay
-
-    // Volume — overlay on pane 0, pinned to bottom 20%
-    if (showVolume && klines.length) {
-      const volSeries = chart.addSeries(
-        HistogramSeries,
-        {
-          color: 'rgba(99,179,237,0.35)',
-          priceFormat: { type: 'volume' as const },
-          priceScaleId: 'volume',
-          lastValueVisible: false,
-        },
-        0,
-      );
-      try {
-        chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-      } catch { /* ignore */ }
-      volSeries.setData(toHisto(klines.map((k) => ({
-        time: k.time, value: k.volume,
-        color: k.close >= k.open ? 'rgba(38,166,154,0.45)' : 'rgba(239,83,80,0.45)',
-      }))));
-    }
-
-    // RSI or MACD (mutex)
-    if (showMACD) {
-      const macdData = (ind.macd ?? []) as Array<{ time: number; macd: number; signal: number; hist: number }>;
-      if (macdData.length) {
-        const idx = nextPaneIndex++;
-        positions.rsiOrMacd = idx;
-        const histSeries = chart.addSeries(
-          HistogramSeries,
-          { priceFormat: { type: 'price', precision: 6, minMove: 0.000001 }, lastValueVisible: false, title: 'hist' },
-          idx,
-        );
-        histSeries.setData(macdData.map((d) => ({
-          time:  d.time as UTCTimestamp,
-          value: d.hist,
-          color: d.hist >= 0 ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)',
-        })));
-        const macdLine_ = chart.addSeries(LineSeries, { color: '#63b3ed', lineWidth: 1, lastValueVisible: true, priceLineVisible: false, title: 'MACD' }, idx);
-        macdLine_.setData(macdData.map((d) => ({ time: d.time as UTCTimestamp, value: d.macd })));
-        const sigLine = chart.addSeries(LineSeries, { color: '#fbbf24', lineWidth: 1, lastValueVisible: true, priceLineVisible: false, title: 'signal' }, idx);
-        sigLine.setData(macdData.map((d) => ({ time: d.time as UTCTimestamp, value: d.signal })));
-      }
-    } else if (showRSI) {
-      const rsiData = (ind.rsi14 ?? []) as Array<{ time: number; value: number }>;
-      if (rsiData.length) {
-        const idx = nextPaneIndex++;
-        positions.rsiOrMacd = idx;
-        const rsiS = chart.addSeries(LineSeries, { color: '#fbbf24', lineWidth: 2, lastValueVisible: true, priceLineVisible: false, title: 'RSI 14' }, idx);
-        rsiS.setData(toLine(rsiData));
-        const ob = chart.addSeries(LineSeries, { color: 'rgba(239,83,80,0.45)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, idx);
-        const os = chart.addSeries(LineSeries, { color: 'rgba(38,166,154,0.45)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false }, idx);
-        ob.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 70 })));
-        os.setData(rsiData.map((p) => ({ time: p.time as UTCTimestamp, value: 30 })));
-      }
-    }
-
-    // Helper: mount a generic raw + multi-window MA pane
-    const mountWindowedPane = (kind: IndicatorKind, rawBars: ValuePoint[]): number => {
-      if (rawBars.length === 0) return -1;
-      const idx = nextPaneIndex++;
-      const spec = PANE_SPECS[kind];
-      const { rawLine, windowLines } = computePaneLines(spec, rawBars, tf);
-      if (spec.includeRaw && rawLine.length > 0) {
-        const raw = chart.addSeries(
-          LineSeries,
-          { color: spec.rawColor, lineWidth: 1, lastValueVisible: false, priceLineVisible: false, title: 'raw' },
-          idx,
-        );
-        raw.setData(rawLine);
-      }
-      for (const { window, data: wd } of windowLines) {
-        const line = chart.addSeries(
-          LineSeries,
-          { color: window.color, lineWidth: window.lineWidth ?? 2, lastValueVisible: true, priceLineVisible: false, title: window.label },
-          idx,
-        );
-        line.setData(wd);
-      }
-      return idx;
-    };
-
-    // OI pane
-    if (showOI && (payload.oiBars?.length ?? 0) > 0) {
-      positions.oi = mountWindowedPane('oi', payload.oiBars.map((b) => ({ time: b.time, value: b.value })));
-    }
-
-    // CVD pane (raw cumulative + 7d/14d/30d MA)
-    if (showCVD) {
-      const cvdRaw: ValuePoint[] = (payload.cvdBars && payload.cvdBars.length > 0)
-        ? payload.cvdBars.map((b) => ({ time: b.time, value: b.value }))
-        : (() => {
-            // Fallback: synthesize cumulative CVD from candles
-            let cum = 0;
-            return klines.map((k) => {
-              cum += (k.close >= k.open ? 1 : -1) * k.volume;
-              return { time: k.time, value: cum };
-            });
-          })();
-      positions.cvd = mountWindowedPane('cvd', cvdRaw);
-    }
-
-    // Funding pane
-    const fb = (payload.fundingBars ?? []) as Array<{ time: number; value: number }>;
-    if (showFundingPane && fb.length > 0) {
-      positions.funding = mountWindowedPane('funding', fb.map((b) => ({ time: b.time, value: b.value })));
-    }
-
-    // Liquidations pane — special: long histogram + short histogram + net MA
-    if (showLiqPane && (payload.liqBars?.length ?? 0) > 0) {
-      const liqBars = payload.liqBars!;
-      const idx = nextPaneIndex++;
-      positions.liq = idx;
-      const longS = chart.addSeries(
-        HistogramSeries,
-        { color: 'rgba(52,211,153,0.65)', priceFormat: { type: 'volume' }, lastValueVisible: false, title: 'long' },
-        idx,
-      );
-      const shortS = chart.addSeries(
-        HistogramSeries,
-        { color: 'rgba(248,113,113,0.65)', priceFormat: { type: 'volume' }, lastValueVisible: false, title: 'short' },
-        idx,
-      );
-      longS.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: b.longUsd })));
-      shortS.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: -b.shortUsd })));
-      liqLongSeries = longS;
-      liqShortSeries = shortS;
-      const netSpec = PANE_SPECS.liq;
-      const netBars: ValuePoint[] = liqBars.map((b) => ({ time: b.time, value: b.longUsd - b.shortUsd }));
-      const { windowLines } = computePaneLines(netSpec, netBars, tf);
-      for (const { window, data: wd } of windowLines) {
-        const line = chart.addSeries(
-          LineSeries,
-          { color: window.color, lineWidth: window.lineWidth ?? 2, lastValueVisible: true, priceLineVisible: false, title: window.label },
-          idx,
-        );
-        line.setData(wd);
-      }
-    }
-
-    // Stretch factors: price 4×, every indicator pane 1×
-    try {
-      const allPanes = chart.panes();
-      if (allPanes.length > 0) {
-        allPanes[0].setStretchFactor(4);
-        for (let i = 1; i < allPanes.length; i++) allPanes[i].setStretchFactor(1);
-      }
-    } catch { /* setStretchFactor only available v5.0.8+ */ }
-
-    return positions;
   }
 
   // ── Verdict / whale level lines — delegated to PriceLineManager ─────────
@@ -1449,15 +1314,8 @@
 
   type LiqBarRaw = { time: number; longUsd: number; shortUsd: number };
 
-  /**
-   * Live-update the liquidations pane histograms when WS / polling delivers
-   * fresh `liqBars`. The pane is part of `mainChart` so we just push data
-   * onto the kept series references — no chart instance to re-create.
-   */
   function _initLiqPane(liqBars: LiqBarRaw[]) {
-    if (!liqLongSeries || !liqShortSeries || liqBars.length === 0) return;
-    liqLongSeries.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: b.longUsd })));
-    liqShortSeries.setData(liqBars.map((b) => ({ time: b.time as UTCTimestamp, value: -b.shortUsd })));
+    if (indicatorSeriesRefs) refreshLiqPane(indicatorSeriesRefs, liqBars);
   }
 
   function _refreshLiqPane(liqBars: LiqBarRaw[]) {
@@ -1465,13 +1323,17 @@
   }
 
   function destroyCharts() {
+    // Tear down crosshair sync before removing the chart
+    crosshairUnsub?.();
+    crosshairUnsub = null;
+    indicatorSeriesRefs = null;
+    crosshairChips = null;
+
     priceLineMgr.clearAll();
     clearAIOverlay();
-    priceLineMgr = new PriceLineManager(); // reset for next chart instance
-    // W-0210: destroy alpha overlay before removing series
+    priceLineMgr = new PriceLineManager();
     _alphaOverlay?.destroy();
     _alphaOverlay = null;
-    // Detach Layer 1 primitive before removing chart (W-0086 / W-0117)
     detachDragHandlers();
     detachRangePrimitive();
     mainChart?.remove();
@@ -1479,8 +1341,6 @@
     priceSeries = null;
     candleMarkerApi = null;
     candleSeriesForAnnotations = null;
-    liqLongSeries = null;
-    liqShortSeries = null;
     panePositions = { rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1 };
   }
 
@@ -1881,7 +1741,7 @@
             <PaneInfoBar
               title="OI Δ"
               sublabel={tf}
-              chips={oiChips.chips}
+              chips={crosshairChips?.oi ?? oiChips.chips}
               closable
               onClose={() => removeChartIndicator('oi')}
             />
@@ -1892,7 +1752,7 @@
             <PaneInfoBar
               title="CVD"
               sublabel={tf}
-              chips={cvdChips.chips}
+              chips={crosshairChips?.cvd ?? cvdChips.chips}
               closable
               onClose={() => removeChartIndicator('cvd')}
             />
@@ -1903,7 +1763,7 @@
             <PaneInfoBar
               title="Funding"
               sublabel={tf}
-              chips={fundingChips.chips}
+              chips={crosshairChips?.funding ?? fundingChips.chips}
               closable
               onClose={() => removeChartIndicator('funding')}
             />
@@ -1914,7 +1774,7 @@
             <PaneInfoBar
               title="Liquidations"
               sublabel={tf}
-              chips={liqChips.chips}
+              chips={crosshairChips?.liq ?? liqChips.chips}
               closable
               onClose={() => removeChartIndicator('liq')}
             />
