@@ -6,11 +6,39 @@ Execution rules for humans and coding agents.
 
 ---
 
+## 에이전트 격리 룰 (W-1004)
+
+**파일 소유권** — 작업 시작 시 반드시 claim:
+```bash
+tools/own.sh claim <file1> <file2> ...   # 내 파일 선언
+tools/own.sh list                         # 전체 claim 확인
+tools/own.sh release <file>              # PR 머지 후 해제
+```
+- 타인 소유 파일 staged → `pre-commit`이 **자동 차단**
+- 긴급 우회: `--override-owner` → `state/ownership-overrides.jsonl` 감사 기록
+- TTL 24h 자동 만료
+
+**PR 머지** — `gh pr merge` 직접 호출 **금지**. 반드시 wrapper 사용:
+```bash
+tools/pr-merge-guard.sh <PR번호> --squash   # 본인 PR만 통과
+tools/pr-merge-guard.sh <PR번호> --admin    # 긴급 override (감사 로그)
+```
+
+**에이전트 간 소통** — `state/agent-inbox/{agent}.jsonl` 기반 비동기 메시지:
+```bash
+tools/agent-message.sh send <agent> <subject> <body>
+tools/agent-message.sh list --unread
+tools/agent-message.sh read <id>
+```
+시작 시 unread 확인 필수. 상세: `agents/coordination.md`
+
+---
+
 ## 에이전트 락 테이블 — Files 컬럼
 
-새 탭 시작 시: `./tools/file-lock-check.sh [파일명...]` → 충돌 확인 필수.
+새 탭 시작 시: `./tools/own.sh list` + `./tools/file-lock-check.sh [파일명...]` → 충돌 확인 필수.
 등록 형식: `| W-XXXX | {agent} | {worktree} | {file1.ts, file2.svelte} | 🔴 진행중 |`
-PR 머지 후 행 삭제. 상세: `docs/runbooks/parallel-agent-file-isolation.md`
+PR 머지 후 행 삭제 + `tools/own.sh release <files>`. 상세: `docs/runbooks/parallel-agent-file-isolation.md`
 
 ### 조건부 로드 (필요 시만)
 - `work/active/PRODUCT-DESIGN-PAGES-V2.md` — cogochi/ UX 변경 시
