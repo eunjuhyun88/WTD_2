@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`1c7edf4f` — origin/main (2026-05-03) — feat(W-0395 Phase 2): dashboard 3-zone redesign (#974)
+`26bf0664` — origin/main (2026-05-04) — feat(W-0395 Phase 5): passport SSR + 5 badges + share (#983)
 
 ---
 
@@ -34,7 +34,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0400-layer-c-observability-f60-dashboard` | P0 | 🟡 이슈 #980, 구현 대기 |
-| `W-0395-cogochi-pages-v2` | P0 | 🟡 이슈 #955, Wave 6 구현 대기 |
+| `W-0395-cogochi-pages-v2` | P0 | 🟢 Phase 3-7 완료 (#979/#982/#983/#984/#985) — Phase 1/2 already done |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 후) |
 
 ---
