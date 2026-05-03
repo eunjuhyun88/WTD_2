@@ -223,7 +223,7 @@
     color: var(--g7);
     border-radius: 10px;
     padding: 0 5px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs, 11px);
   }
 
   /* Progress bar */
