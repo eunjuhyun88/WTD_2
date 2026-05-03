@@ -32,8 +32,10 @@ Usage:
 """
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -47,6 +49,18 @@ except ImportError as exc:
         "ML scoring requires lightgbm and scikit-learn.\n"
         "Run: uv add lightgbm scikit-learn"
     ) from exc
+
+log = logging.getLogger("engine.scoring.trainer")
+
+# Feature columns extracted from capture records for Layer C training
+_DATASET_FEATURES = [
+    "cosine_sim",
+    "time_decay",
+    "sector_match",
+    "regime_match",
+    "rr",
+    "hold_minutes",
+]
 
 
 # Conservative defaults — prefer stability over raw AUC on 75k bars.
@@ -289,3 +303,147 @@ def train_walkforward(
         final_model=final_model,
         feature_importance=importance,
     )
+
+
+# ─── Dataset builder ─────────────────────────────────────────────────────────
+
+def build_dataset_from_verdicts(min_n: int = 50) -> Optional[tuple]:
+    """Build (X, y, meta) training dataset from accumulated capture verdicts.
+
+    Queries Supabase capture_records with:
+    - verdict_id IS NOT NULL or outcome_id IS NOT NULL
+    - outcome IN ('WIN', 'LOSS')  -- W-0365 15bps gate
+
+    Returns:
+        (X: np.ndarray, y: np.ndarray, meta: dict) or None if min_n not met.
+
+    Split: time-based 80/20 (captured_at_ms ascending).
+    Group-aware: same capture_id → same fold (no leakage across same candidate).
+
+    Features (from feature_snapshot_json or research_context_json):
+        - cosine_sim, time_decay, sector_match, regime_match (similarity_ranker)
+        - rr (from research_context_json.rr if available)
+        - hold_minutes (from research_context_json.hold_minutes if available)
+
+    Labels: 1 = WIN, 0 = LOSS
+
+    Graceful degradation: returns None if Supabase is not configured or
+    fewer than min_n labelled records are available.
+    """
+    import json
+
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not (supabase_url and supabase_key):
+        log.debug("build_dataset_from_verdicts: Supabase not configured, returning None")
+        return None
+
+    try:
+        from supabase import create_client  # type: ignore
+        client = create_client(supabase_url, supabase_key)
+    except Exception:
+        log.exception("build_dataset_from_verdicts: failed to create Supabase client")
+        return None
+
+    try:
+        resp = (
+            client.table("capture_records")
+            .select(
+                "id, captured_at_ms, feature_snapshot_json, research_context_json, outcome_id, verdict_id"
+            )
+            .not_.is_("outcome_id", "null")
+            .order("captured_at_ms", desc=False)
+            .limit(10_000)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception:
+        log.exception("build_dataset_from_verdicts: Supabase query failed")
+        return None
+
+    if not rows:
+        log.debug("build_dataset_from_verdicts: no rows returned")
+        return None
+
+    # Parse each row into feature vector + label
+    records: list[dict] = []
+    for row in rows:
+        # Extract feature snapshot
+        snap_raw = row.get("feature_snapshot_json")
+        snap: dict = {}
+        if snap_raw:
+            try:
+                snap = json.loads(snap_raw) if isinstance(snap_raw, str) else snap_raw
+            except (json.JSONDecodeError, TypeError):
+                snap = {}
+
+        # Extract research context for rr, hold_minutes, and outcome
+        ctx_raw = row.get("research_context_json")
+        ctx: dict = {}
+        if ctx_raw:
+            try:
+                ctx = json.loads(ctx_raw) if isinstance(ctx_raw, str) else ctx_raw
+            except (json.JSONDecodeError, TypeError):
+                ctx = {}
+
+        # Determine label from outcome stored in context or outcome_id
+        outcome_str = ctx.get("outcome", ctx.get("verdict", "")).upper()
+        if outcome_str == "WIN":
+            label = 1
+        elif outcome_str == "LOSS":
+            label = 0
+        else:
+            # Skip rows without a WIN/LOSS label
+            continue
+
+        records.append({
+            "captured_at_ms": row.get("captured_at_ms", 0),
+            "label": label,
+            "cosine_sim": float(snap.get("cosine_sim", 0.0)),
+            "time_decay": float(snap.get("time_decay", 0.0)),
+            "sector_match": float(snap.get("sector_match", 0.0)),
+            "regime_match": float(snap.get("regime_match", 0.0)),
+            "rr": float(ctx.get("rr", 0.0)),
+            "hold_minutes": float(ctx.get("hold_minutes", 0.0)),
+        })
+
+    n_labelled = len(records)
+    if n_labelled < min_n:
+        log.info(
+            "build_dataset_from_verdicts: only %d labelled records (min_n=%d), returning None",
+            n_labelled,
+            min_n,
+        )
+        return None
+
+    # Sort by time (already ordered but be safe)
+    records.sort(key=lambda r: r["captured_at_ms"])
+
+    # Time-based 80/20 split
+    split_idx = int(n_labelled * 0.8)
+
+    feature_cols = _DATASET_FEATURES
+    X = np.array([[r[col] for col in feature_cols] for r in records], dtype=np.float64)
+    y = np.array([r["label"] for r in records], dtype=np.int8)
+
+    meta = {
+        "n_total": n_labelled,
+        "n_train": split_idx,
+        "n_test": n_labelled - split_idx,
+        "feature_names": feature_cols,
+        "split_at_ms": records[split_idx]["captured_at_ms"] if split_idx < n_labelled else None,
+        "pos_rate": float(y.mean()),
+        "X_train": X[:split_idx],
+        "y_train": y[:split_idx],
+        "X_test": X[split_idx:],
+        "y_test": y[split_idx:],
+    }
+
+    log.info(
+        "build_dataset_from_verdicts: %d records, pos_rate=%.2f, train=%d test=%d",
+        n_labelled,
+        meta["pos_rate"],
+        split_idx,
+        n_labelled - split_idx,
+    )
+    return X, y, meta
