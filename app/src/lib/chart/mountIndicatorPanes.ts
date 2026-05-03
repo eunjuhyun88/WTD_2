@@ -523,7 +523,6 @@ export function mountSecondaryIndicator(
     case 'cvd':
     case 'derivatives': {
       if (!payload.data.length) return null;
-      // derivatives engineKey → funding IndicatorKind (funding-rate windowed pane)
       const kindMap: Record<string, IndicatorKind> = { oi: 'oi', cvd: 'cvd', derivatives: 'funding' };
       const kind = kindMap[payload.engineKey];
       if (!kind) return null;

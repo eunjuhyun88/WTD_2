@@ -438,6 +438,8 @@
   let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
   });
+  /** Secondary indicator instances mounted on extra panes (W-0399-p2). */
+  let secondaryPaneInfos = $state<Array<{ instanceId: string; engineKey: string; paneIndex: number }>>([]);
   /** Series refs returned by mountIndicatorPanes — used by crosshair sync. */
   let indicatorSeriesRefs: IndicatorSeriesRefs | null = null;
   /** Unsubscribe handle for the active crosshair sync subscription. */
@@ -1359,9 +1361,10 @@
     panePositions = mountResult.positions;
     indicatorSeriesRefs = mountResult.seriesRefs;
 
-    // Mount secondary indicator instances (multi-instance — W-0399)
+    // Mount secondary indicator instances (multi-instance — W-0399-p2)
     const posVals = Object.values(mountResult.positions).filter((v) => v >= 0);
     let nextExtraPane = posVals.length ? Math.max(...posVals) + 1 : 1;
+    secondaryPaneInfos = [];
     for (const inst of indicatorInstances.instances) {
       if (!inst.style.visible) continue;
       const key = inst.engineKey;
@@ -1403,7 +1406,10 @@
 
       if (secPayload) {
         mountSecondaryIndicator(mainChart!, secPayload, targetPane, inst.instanceId, inst.style.color);
-        if (!overlay) nextExtraPane++;
+        if (!overlay) {
+          secondaryPaneInfos.push({ instanceId: inst.instanceId, engineKey: key, paneIndex: nextExtraPane });
+          nextExtraPane++;
+        }
       }
     }
 
@@ -1625,10 +1631,14 @@
     if (indicator.tier === 'A' && indicator.engineKey) {
       const key = indicator.engineKey as IndicatorKey;
       const alreadyActive = $chartIndicators[key];
+      const MAX_INSTANCES = 5;
       if (alreadyActive) {
-        // Already on → spawn a new instance pane instead of toggling off
-        indicatorInstances.add(indicator.id, key);
-        if (chartData) renderCharts(chartData);
+        // Already active via toggle store — add a secondary instance instead of toggling off
+        const count = indicatorInstances.countByDef(indicator.id);
+        if (count < MAX_INSTANCES) {
+          indicatorInstances.add(indicator.id, key);
+          if (chartData) renderCharts(chartData);
+        }
         indicatorLibraryOpen = false;
         return;
       }
@@ -2018,6 +2028,17 @@
             />
           </div>
         {/if}
+        {#each secondaryPaneInfos as sec (sec.instanceId)}
+          <div class="pib-anchor pib-anchor--secondary" style="top: {((sec.paneIndex / (sec.paneIndex + 1)) * 100).toFixed(1)}%">
+            <PaneInfoBar
+              title={sec.engineKey.toUpperCase()}
+              sublabel={tf}
+              chips={[]}
+              closable
+              onClose={() => removeInstance(sec.instanceId)}
+            />
+          </div>
+        {/each}
       {/if}
     </div>
     </div>

@@ -100,6 +100,11 @@
     return false;
   }
 
+  function instanceCount(ind: IndicatorDef): number {
+    if (!isActive(ind)) return 0;
+    return 1 + indicatorInstances.countByDef(ind.id);
+  }
+
   function tierBadge(tier: 'A' | 'B' | 'C') {
     if (tier === 'A') return { label: 'LIVE', cls: 'tier-a' };
     if (tier === 'B') return { label: 'SOON', cls: 'tier-b' };
@@ -254,7 +259,7 @@
               </div>
               <div class="ind-meta">
                 <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title="Remove from saved">★</span>
-                {#if active}<span class="ind-active-dot">●</span>{/if}
+                {#if active}{@const n = instanceCount(ind)}<span class="ind-active-dot">{n > 1 ? n : '●'}</span>{/if}
               </div>
             </button>
           {/each}
@@ -289,7 +294,7 @@
               </div>
               <div class="ind-meta">
                 <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title={faved ? 'Remove from saved' : 'Save'}>★</span>
-                {#if active}<span class="ind-active-dot">●</span>{/if}
+                {#if active}{@const n = instanceCount(ind)}<span class="ind-active-dot">{n > 1 ? n : '●'}</span>{/if}
               </div>
             </button>
           {/each}
@@ -332,9 +337,7 @@
               <div class="ind-meta">
                 <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title={faved ? 'Remove from saved' : 'Save'}>★</span>
                 <span class="ind-pop" title="Popularity">{popularDots(ind.popularity)}</span>
-                {#if active}
-                  <span class="ind-active-dot">●</span>
-                {/if}
+                {#if active}{@const n = instanceCount(ind)}<span class="ind-active-dot">{n > 1 ? n : '●'}</span>{/if}
               </div>
             </button>
           {/each}
@@ -387,9 +390,7 @@
                   <div class="ind-meta">
                     <span role="button" tabindex="0" class="fav-btn" class:faved onclick={(e) => { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); indicatorFavorites.toggle(ind.id); }}} title={faved ? 'Remove from saved' : 'Save'}>★</span>
                     <span class="ind-pop">{popularDots(ind.popularity)}</span>
-                    {#if active}
-                      <span class="ind-active-dot">●</span>
-                    {/if}
+                    {#if active}{@const n = instanceCount(ind)}<span class="ind-active-dot">{n > 1 ? n : '●'}</span>{/if}
                   </div>
                 </button>
               {/each}
