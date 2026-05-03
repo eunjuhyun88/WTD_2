@@ -3,8 +3,8 @@
    * ModePill.svelte
    *
    * 3-segment mode switcher: TRADE / TRAIN / FLYWHEEL
-   * - TRADE: active, clickable
-   * - TRAIN / FLYWHEEL: aria-disabled, cursor-not-allowed, tooltip "준비 중"
+   * - TRADE / FLYWHEEL: active, clickable
+   * - TRAIN: aria-disabled, cursor-not-allowed, tooltip "준비 중"
    * - Active segment: amb (#f5a623) underline, g9 text
    * - Inactive: g5 text
    */
@@ -14,7 +14,7 @@
   const SEGMENTS: { mode: WorkMode; label: string; disabled: boolean }[] = [
     { mode: 'TRADE',    label: 'TRADE',    disabled: false },
     { mode: 'TRAIN',    label: 'TRAIN',    disabled: true  },
-    { mode: 'FLYWHEEL', label: 'FLYWHEEL', disabled: true  },
+    { mode: 'FLYWHEEL', label: 'FLYWHEEL', disabled: false },
   ];
 
   function select(mode: WorkMode, disabled: boolean) {

@@ -5,6 +5,7 @@
   import { track } from '$lib/analytics';
   import { workMode } from '$lib/hubs/terminal/workMode.store';
   import TrainStage from '$lib/hubs/terminal/panels/TrainStage.svelte';
+  import FlywheelStage from '$lib/hubs/terminal/panels/FlywheelStage.svelte';
 
   const { data } = $props<{ data: { legacy: boolean } }>();
 
@@ -22,4 +23,7 @@
 <TerminalHub />
 {#if $workMode === 'TRAIN'}
   <TrainStage />
+{/if}
+{#if $workMode === 'FLYWHEEL'}
+  <FlywheelStage />
 {/if}
