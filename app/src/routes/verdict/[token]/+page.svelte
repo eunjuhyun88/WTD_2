@@ -1,19 +1,15 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import type { CaptureInfo } from '$lib/server/verdictToken';
+  import type { PageData } from './$types';
 
-  interface CaptureInfo {
-    capture_id: string;
-    symbol: string;
-    pattern_slug: string;
-    expires_at: number;
-  }
+  const { data }: { data: PageData } = $props();
 
-  type VerdictStatus = 'loading' | 'ready' | 'expired' | 'invalid' | 'submitted';
+  type VerdictStatus = 'ready' | 'expired' | 'invalid' | 'submitted';
   type VerdictChoice = 'valid' | 'invalid' | 'near_miss' | 'too_early' | 'too_late';
 
-  let status = $state<VerdictStatus>('loading');
-  let captureInfo = $state<CaptureInfo | null>(null);
+  let status = $state<VerdictStatus>(data.tokenStatus as VerdictStatus);
+  let captureInfo = $state<CaptureInfo | null>(data.captureInfo);
   let submitting = $state(false);
   let error = $state<string | null>(null);
 
@@ -23,8 +19,6 @@
   let swipeDeltaX = $state(0);
   let isSwiping = $state(false);
   let flashOverlay = $state<'agree' | 'disagree' | null>(null);
-  let cardEl = $state<HTMLDivElement | null>(null);
-
   const SWIPE_THRESHOLD = 80;
   const VELOCITY_THRESHOLD = 0.3;
 
@@ -35,27 +29,6 @@
       : 0
   );
 
-  function parseToken(token: string): CaptureInfo | null {
-    try {
-      const [payloadB64] = token.split('.');
-      const json = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(json) as CaptureInfo;
-    } catch {
-      return null;
-    }
-  }
-
-  $effect(() => {
-    const token = $page.params.token;
-    if (!token) { status = 'invalid'; return; }
-
-    const info = parseToken(token);
-    if (!info) { status = 'invalid'; return; }
-    if (Date.now() / 1000 > info.expires_at) { status = 'expired'; return; }
-
-    captureInfo = info;
-    status = 'ready';
-  });
 
   async function submitVerdict(verdict: VerdictChoice) {
     if (!captureInfo || submitting) return;
@@ -135,15 +108,12 @@
 </script>
 
 <svelte:head>
-  <title>Verdict — Cogochi</title>
+  <title>{captureInfo ? `${captureInfo.symbol} Verdict — Cogochi` : 'Verdict — Cogochi'}</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 
 <div class="verdict-page">
-  {#if status === 'loading'}
-    <div class="verdict-card"><p class="verdict-meta">Verifying link…</p></div>
-
-  {:else if status === 'invalid'}
+  {#if status === 'invalid'}
     <div class="verdict-card verdict-card--error">
       <h2>Invalid link</h2>
       <p class="verdict-meta">The link is corrupted or malformed.</p>
@@ -169,7 +139,6 @@
   {:else if status === 'ready' && captureInfo}
     <div
       class="verdict-card verdict-card--swipeable"
-      bind:this={cardEl}
       role="group"
       aria-label="Swipeable verdict card"
       style:transform="rotate({cardRotation}deg)"
