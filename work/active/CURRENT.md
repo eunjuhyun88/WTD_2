@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`b7679065` — origin/main (2026-05-03) — feat(W-0391-D): Dashboard Alert Strip — OI/FR/Kimchi real-time alerts (#939)
+`df0fd2d4` — origin/main (2026-05-03) — feat(W-0383): Counterfactual Review + Filter Attribution Dashboard (#946)
 
 ---
 
@@ -34,7 +34,6 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-0388-eslint-hub-boundaries` | P2 | 🟡 Design Draft |
-| `W-0390-quant-ux-data-layer` | P2 | ✅ Merged (#936) |
 | `W-0371-tv-chart-import-gateway` | P2 | 🟡 Design Draft |
 
 ---
@@ -65,6 +64,12 @@
 완료:  W-0364 ✅ — Upstash distributed rate limiter + engine SWR cache (#933)
 완료:  W-0304 ✅ — per-pane indicator store + ChartPane paneId prop (#934)
 완료:  W-0390 ✅ — quant UX data layer (TopBar L2 + StatusBar + kbd shortcuts + WatchlistRail FR + Dashboard alerts) (#936)
+완료:  W-0391-A ✅ — client RSI/MACD/BB calc + crosshair rAF throttle (#940)
+완료:  W-0391-BF ✅ — analytics.ts + ⌘K CommandPalette 5액션 + Landing track (#941)
+완료:  W-0391-D ✅ — Dashboard Alert Strip OI/FR/Kimchi 실시간 (#939)
+완료:  W-0391-E ✅ — Verdict swipe + Passport 공개 URL (#944)
+완료:  W-0355 ✅ — Extreme Events API + IntelPanel 24h section (#945)
+완료:  W-0383 ✅ — Counterfactual Review + Filter Attribution Dashboard (#946)
 ```
 
 ---
@@ -89,10 +94,10 @@
 
 ---
 
-## 다음 실행 — W-0390 Quant UX Data Layer
+## 다음 실행 — Wave 6 설계 또는 W-0388 ESLint Hub Boundaries
 
 ```bash
 ./tools/start.sh
-cat work/active/W-0390-quant-ux-data-layer.md
-# SignalFeed.svelte Phase 2 배지 UI + pane indicator wiring
+cat work/active/W-0388-eslint-hub-boundaries.md
+# Wave 5 완전 완료 — Wave 6 P0 후보 설계 시작
 ```
