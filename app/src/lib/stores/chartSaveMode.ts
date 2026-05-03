@@ -7,7 +7,7 @@
  * State shape per W-0086 / W-0117 Implementation Plan.
  */
 
-import { writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { createPatternCapture } from '$lib/api/terminalPersistence';
 import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
 import type { CaptureSelectionPhase, RangeSelectionBar } from '$lib/terminal/rangeSelectionCapture';
@@ -186,3 +186,13 @@ function createChartSaveModeStore() {
 }
 
 export const chartSaveMode = createChartSaveModeStore();
+
+/**
+ * selectedRange — non-null when both anchors are set.
+ * `from` ≤ `to` always (sorted).
+ */
+export const selectedRange = derived(chartSaveMode, ($s) =>
+  $s.anchorA !== null && $s.anchorB !== null
+    ? { from: Math.min($s.anchorA, $s.anchorB), to: Math.max($s.anchorA, $s.anchorB) }
+    : null
+);
