@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`9cfe7a72` — origin/main (2026-05-04) — feat(W-0400 Ph1C): catalogFavorites localStorage + Recents/Favorites sections (#1024)
+`2a2fe318` — origin/main (2026-05-04) — fix(core-loop): duplicate ResearchPanel + real recall API (#1037)
 
 ---
 
