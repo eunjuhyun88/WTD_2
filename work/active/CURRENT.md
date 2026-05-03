@@ -33,6 +33,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
+| `W-0399-p2-tv-indicator-catalog-phase2` | P1 | 🟡 이슈 #975, 구현 대기 |
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 
 ---
