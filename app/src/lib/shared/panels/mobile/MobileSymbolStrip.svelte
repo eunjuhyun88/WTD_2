@@ -3,7 +3,7 @@
    * MobileSymbolStrip — 48px top strip: symbol + price + change% + TF chips.
    * Tapping the symbol opens SymbolPicker overlay.
    */
-  import SymbolPicker from '../../../hubs/terminal/workspace/SymbolPicker.svelte';
+  import { SymbolPicker } from '$lib/hubs/terminal';
   import { activePair, activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
   import { priceChanges } from '$lib/stores/priceStore';
 

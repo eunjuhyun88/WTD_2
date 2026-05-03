@@ -25,7 +25,7 @@
 
 ## main SHA
 
-`df0fd2d4` — origin/main (2026-05-03) — feat(W-0383): Counterfactual Review + Filter Attribution Dashboard (#946)
+`d1f5fc4a` — origin/main (2026-05-03) — feat(W-0394 PR2): LightGBM Layer C auto-train pipeline + SearchLayerBadge (#954)
 
 ---
 
@@ -33,9 +33,7 @@
 
 | Work Item | Priority | 상태 |
 |---|---|---|
-| `W-0393-tv-idea-twin` | P1 | 🔵 Implementation |
 | `W-0388-eslint-hub-boundaries` | P2 | 🟡 Design Draft |
-| `W-0371-tv-chart-import-gateway` | P2 | ⛔ Superseded by W-0393 |
 
 ---
 
@@ -71,6 +69,10 @@
 완료:  W-0391-E ✅ — Verdict swipe + Passport 공개 URL (#944)
 완료:  W-0355 ✅ — Extreme Events API + IntelPanel 24h section (#945)
 완료:  W-0383 ✅ — Counterfactual Review + Filter Attribution Dashboard (#946)
+완료:  W-0392 ✅ — ModelRegistry + scoring.trainer + NDCG/MAP/CI eval modules (#952)
+완료:  W-0394 PR1 ✅ — scoring.trainer dataset builder + similarity_ranker Layer C blend (#952)
+완료:  W-0393 ✅ — TradingView Idea Twin & Hypothesis Compiler (#951)
+완료:  W-0394 PR2 ✅ — LightGBM Layer C auto-train pipeline + SearchLayerBadge (#954)
 ```
 
 ---
