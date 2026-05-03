@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`d28b6ef3` — origin/main (2026-05-04) — feat(W-0400 Ph2B): engineSeriesAdapter + /api/indicators proxy + 135-entry registry (#1033)
+`b67a498d` — origin/main (2026-05-04) — feat(W-0400 Ph2B): engineSeriesAdapter + /api/indicators proxy + 135-entry registry (#1033)
 
 ---
 
