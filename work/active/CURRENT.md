@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`b9f456af` — origin/main (2026-05-04) — feat(W-0401-P3): daily digest email (#1046)
+`5042e679` — origin/main (2026-05-04) — feat(W-0402): DB audit — migrations 057-063 (#1054)
 
 ---
 
@@ -45,6 +45,7 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
+| `W-PF-100-P2-eval-challenge` | P0 | 🟡 24h live AC 검증 완료 후 착수 |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
@@ -75,6 +76,8 @@
 완료:  W-0395 Ph1 PR2 ✅ — TRAIN mode QuizStage + train_answers migration (#1012)
 완료:  W-0395 Ph8 Landing PR2 ✅ — MiniLiveChart + CTA 4위치 tracking (#1011)
 완료:  W-0395 Ph7 PR1 ✅ — /agent/[id] SSR shell + KPI grid (#1006)
+완료:  W-0395 Ph6 PR3 ✅ — HoldTimeStrip Lab 패널 wiring (#1051)
+완료:  W-0402 ✅ — DB audit migrations 057-063 (verdicted_at + 14 indexes) (#1054)
 ```
 
 ---
@@ -115,8 +118,6 @@
 
 ```bash
 ./tools/start.sh
-# P0-A: W-0395B PR-A (GTM 이벤트 3종, Effort S — 가장 빠름)
-#        또는 PR-G (Decisions table, 독립)
-# P0-B: W-PF-100 P2 (24h live AC 검증 완료 후)
-cat work/active/W-0395B-cogochi-pages-v2-remaining.md
+# P0: W-PF-100 P2 (24h live AC 검증 완료 후 착수)
+cat work/active/W-PF-100-P2-eval-challenge.md
 ```
