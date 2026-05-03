@@ -2,6 +2,8 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import KpiCard from './panels/KpiCard.svelte';
+  import EquityCurve from './panels/EquityCurve.svelte';
+  import HoldTimeStrip from '$lib/components/shared/HoldTimeStrip.svelte';
 
   interface AgentStats {
     agent_id: string;
@@ -172,6 +174,9 @@
               <li>주문을 실행하거나 자산을 관리하지 않습니다.</li>
             </ul>
           </div>
+
+          <EquityCurve agentId={agentStats?.agent_id ?? ''} />
+          <HoldTimeStrip p50={null} p90={null} label="결정 주기 (p50/p90)" />
 
           {#if agentStats?.stats}
             <div class="extra-stats-card">
