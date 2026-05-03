@@ -346,19 +346,31 @@ def compute_context_score(spec: SearchQuerySpec, candidate: CandidateWindow) -> 
     """Layer C context score.
 
     When LightGBM model is trained and LGBM_CONTEXT_SCORE_ENABLED is not 'false',
-    returns P(win) from the model (preferred — personalised win probability).
-    Falls back to rule-based score (timeframe + symbol match) when model is absent.
+    blends P(win) from the model with the rule-based score using LGBM_CONTEXT_SCORE_WEIGHT
+    (default 0.0 — pure rule-based until a trained model is promoted).
+
+    LGBM_CONTEXT_SCORE_WEIGHT env var controls the LightGBM blend weight:
+      0.0 → pure rule-based (default, safe for cold-start)
+      1.0 → pure LightGBM P(win)
+      0.5 → equal blend
     """
+    _lgbm_weight = float(os.environ.get("LGBM_CONTEXT_SCORE_WEIGHT", "0.0"))
+    rule_score = _rule_context_score(spec, candidate)
+
+    if _lgbm_weight <= 0.0:
+        return rule_score
+
     if os.environ.get("LGBM_CONTEXT_SCORE_ENABLED", "true").lower() != "false":
         try:
             from scoring.lightgbm_engine import get_engine  # local import to avoid circular
             engine = get_engine()
             prob = engine.predict_feature_row(candidate.signals)
             if prob is not None:
-                return float(prob)
+                lgbm_score = float(prob)
+                return _lgbm_weight * lgbm_score + (1.0 - _lgbm_weight) * rule_score
         except Exception:  # noqa: BLE001 — model load errors must not break ranking
             pass
-    return _rule_context_score(spec, candidate)
+    return rule_score
 
 
 # ─────────────────────────────────────────────────────────────────────────────
