@@ -4,6 +4,26 @@
 
 ---
 
+## ⛔ 주 worktree에서 git checkout 절대 금지
+
+```bash
+# ❌ 절대 금지 — uncommitted 파일을 날리고 다른 에이전트와 충돌
+cd /Users/ej/Projects/wtd-v2
+git checkout main          # 주 worktree의 미커밋 변경사항 전부 덮어씀
+git pull origin main
+
+# ✅ 올바른 패턴 — origin에서 직접 브랜치 생성
+cd /Users/ej/Projects/wtd-v2
+git fetch origin
+git checkout -b feat/W-####-slug origin/main
+# 이 방법은 현재 체크아웃 상태를 건드리지 않음
+```
+
+**이유**: 주 worktree는 별도 feature branch에 있을 수 있음. `git checkout main`은 미커밋 파일(.claude/commands/ 등)을 git이 추적하는 버전으로 덮어씀.
+**대안**: 서브에이전트엔 항상 `isolation: "worktree"` 사용 — 자동으로 격리된 워크트리 생성.
+
+---
+
 ## 1 에이전트 = 1 worktree = 1 branch = 1 issue
 
 충돌 방지 매트릭스:
