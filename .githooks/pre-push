@@ -86,7 +86,36 @@ if [[ -n "$BRANCH" ]] && echo "$BRANCH" | grep -qE "$REQUIRE_CLOSE_PATTERN"; the
   fi
 fi
 
-# ── 3. Design invariant check ─────────────────────────────────────────────────
+# ── 3. W-1004 branch ownership check ────────────────────────────────────────
+# state/branch-ownership.jsonl 에 다른 에이전트가 이 branch를 소유 중이면 경고
+BRANCH_OWNERSHIP_FILE="$REPO_ROOT/state/branch-ownership.jsonl"
+AGENT_FILE="$REPO_ROOT/state/current_agent.txt"
+CURRENT_AGENT="$(cat "$AGENT_FILE" 2>/dev/null | tr -d '[:space:]' || echo '')"
+
+if [ -n "$CURRENT_AGENT" ] && [ "$CURRENT_AGENT" != "unknown" ] && [ -n "$BRANCH" ]; then
+  # 첫 push: claim this branch
+  if [ -f "$BRANCH_OWNERSHIP_FILE" ]; then
+    BRANCH_OWNER="$(grep "\"branch\":\"$BRANCH\"" "$BRANCH_OWNERSHIP_FILE" 2>/dev/null | \
+      python3 -c "import sys,json; lines=[json.loads(l) for l in sys.stdin if l.strip()]; \
+      owners=[l['agent'] for l in lines if l.get('action')=='claim']; \
+      print(owners[-1] if owners else '')" 2>/dev/null || echo '')"
+    if [ -n "$BRANCH_OWNER" ] && [ "$BRANCH_OWNER" != "$CURRENT_AGENT" ]; then
+      echo ""
+      echo "⚠️  branch '$BRANCH' is owned by agent '$BRANCH_OWNER'"
+      echo "   현재 에이전트: $CURRENT_AGENT"
+      echo "   이 branch에 push하는 것이 맞는지 확인하세요."
+      echo ""
+      # warn only — not blocking (rebase/hotfix 케이스 허용)
+    fi
+  fi
+  # Register branch ownership on first push
+  TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if ! grep -q "\"branch\":\"$BRANCH\"" "$BRANCH_OWNERSHIP_FILE" 2>/dev/null; then
+    echo "{\"ts\":\"$TS\",\"agent\":\"$CURRENT_AGENT\",\"branch\":\"$BRANCH\",\"action\":\"claim\"}" >> "$BRANCH_OWNERSHIP_FILE" 2>/dev/null || true
+  fi
+fi
+
+# ── 4. Design invariant check ─────────────────────────────────────────────────
 if [ -f "$REPO_ROOT/tools/verify_design.sh" ]; then
   echo "-> Verifying design invariants..."
   if ! bash "$REPO_ROOT/tools/verify_design.sh" --summary 2>/dev/null; then
