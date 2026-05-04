@@ -498,7 +498,7 @@
   let mainChart = $state<IChartApi | null>(null);
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | ISeriesApi<'Area'> | ISeriesApi<'Bar'> | null = null;
   /** Pane indices for indicator panes — assigned during renderCharts(). */
-  let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
+  let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number; [key: string]: number }>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
   });
   /** Secondary indicator instances mounted on extra panes (W-0399-p2). */
@@ -709,11 +709,12 @@
       const newStretch = Math.max(0.5, Math.min(8, activeResize.startStretch + deltaStretch));
       paneLayout.setStretch(activeResize.upperKind, newStretch);
       // W-0407: write stretch back to per-tab PaneConfig
+      const resizeKind = activeResize!.upperKind;
       shellStore.updateTabPanes(ps => ps.map(p =>
-        p.kind === activeResize.upperKind ? { ...p, stretch: newStretch } : p,
+        p.kind === resizeKind ? { ...p, stretch: newStretch } : p,
       ));
       try {
-        const idx = panePositions[activeResize.upperKind];
+        const idx = panePositions[resizeKind];
         if (idx >= 0) mainChart.panes()[idx]?.setStretchFactor(newStretch);
       } catch { /* ignore */ }
     }
