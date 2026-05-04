@@ -207,6 +207,11 @@
 </div>
 
 <style>
+  /* ── Design tokens ──────────────────────────────────────────────────────────
+   * Transparent bg + clear borders + Space Grotesk labels + Mono for data.
+   * This is the terminal panel pattern for W-0407.
+   */
+
   .chart-toolbar {
     height: 36px;
     flex-shrink: 0;
@@ -214,17 +219,17 @@
     align-items: center;
     gap: 2px;
     padding: 0 6px;
-    background: var(--g1);
-    border-bottom: 1px solid var(--g3);
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--g8);
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: var(--fb, 'Space Grotesk', sans-serif);
+    color: rgba(255, 255, 255, 0.75);
     overflow: hidden;
   }
 
   .tb-divider {
     width: 1px;
     height: 16px;
-    background: var(--g3);
+    background: rgba(255, 255, 255, 0.1);
     margin: 0 3px;
     flex-shrink: 0;
   }
@@ -238,55 +243,60 @@
     height: 24px;
     padding: 0 7px;
     background: transparent;
-    border: 0.5px solid transparent;
+    border: 1px solid transparent;
     border-radius: 3px;
-    color: var(--g7);
+    color: rgba(255, 255, 255, 0.6);
     font-family: inherit;
-    font-size: var(--ui-text-xs);
-    letter-spacing: 0.04em;
+    font-size: var(--ui-text-xs, 11px);
     cursor: pointer;
     transition: background 0.1s, color 0.1s, border-color 0.1s;
     flex-shrink: 0;
   }
   .tb-btn:hover {
-    background: var(--g2);
-    color: var(--g9);
-    border-color: var(--g4);
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.18);
   }
   .tb-btn.active {
-    background: color-mix(in srgb, var(--brand) 15%, transparent);
-    color: var(--brand);
-    border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+    background: color-mix(in srgb, var(--brand, #4a9eff) 14%, transparent);
+    color: var(--brand, #4a9eff);
+    border-color: color-mix(in srgb, var(--brand, #4a9eff) 38%, transparent);
   }
 
-  /* Symbol button */
+  /* Symbol button — slightly more prominent */
   .sym-btn {
     gap: 5px;
     padding: 0 8px;
-    border-color: var(--g3) !important;
-    background: var(--g2) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
   }
-  .sym-btn:hover { background: var(--g3) !important; border-color: var(--g5) !important; }
-  .sym-icon { font-size: 12px; color: var(--g6); }
+  .sym-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+  }
+  .sym-icon { font-size: 12px; color: rgba(255, 255, 255, 0.38); }
   .sym-name {
+    font-family: var(--fm, 'JetBrains Mono', monospace);
     font-weight: 700;
-    letter-spacing: 0.04em;
-    color: var(--g9);
-    font-size: var(--ui-text-xs);
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: var(--ui-text-xs, 11px);
   }
   .sym-price {
-    font-size: var(--ui-text-xs);
-    color: var(--g8);
-    margin-left: 2px;
+    font-family: var(--fm, 'JetBrains Mono', monospace);
+    font-size: var(--ui-text-xs, 11px);
+    color: rgba(255, 255, 255, 0.78);
+    margin-left: 3px;
   }
   .sym-change {
-    font-size: var(--ui-text-xs);
+    font-family: var(--fm, 'JetBrains Mono', monospace);
+    font-size: var(--ui-text-xs, 11px);
   }
   .sym-change.pos { color: var(--bull, #26a69a); }
   .sym-change.neg { color: var(--bear, #ef5350); }
-  .sym-change.flat { color: var(--g6); }
+  .sym-change.flat { color: rgba(255, 255, 255, 0.42); }
 
-  /* TF strip */
+  /* TF strip — mono for timeframe labels */
   .tf-strip {
     display: flex;
     align-items: center;
@@ -296,89 +306,91 @@
     height: 22px;
     padding: 0 5px;
     background: transparent;
-    border: 0.5px solid transparent;
+    border: 1px solid transparent;
     border-radius: 3px;
-    color: var(--g6);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: var(--ui-text-xs);
-    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.52);
+    font-family: var(--fm, 'JetBrains Mono', monospace);
+    font-size: var(--ui-text-xs, 11px);
     cursor: pointer;
-    transition: background 0.1s, color 0.1s;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
     flex-shrink: 0;
   }
   .tf-chip:hover {
-    background: var(--g2);
-    color: var(--g9);
-    border-color: var(--g4);
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.18);
   }
   .tf-chip.active {
-    background: color-mix(in srgb, var(--brand) 15%, transparent);
-    color: var(--brand);
-    border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+    background: color-mix(in srgb, var(--brand, #4a9eff) 14%, transparent);
+    color: var(--brand, #4a9eff);
+    border-color: color-mix(in srgb, var(--brand, #4a9eff) 38%, transparent);
     font-weight: 700;
   }
 
+  /* Toolbar text labels — Space Grotesk */
   .tb-glyph {
     font-size: 11px;
     line-height: 1;
     font-style: italic;
+    font-family: var(--fm, 'JetBrains Mono', monospace);
   }
-
   .tb-text {
-    font-size: var(--ui-text-xs);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: var(--ui-text-xs, 11px);
+    font-family: var(--fb, 'Space Grotesk', sans-serif);
+    letter-spacing: 0;
+    text-transform: none;
   }
 
+  /* Chart type dropdown */
   .tb-trigger.open,
   .tb-trigger:focus-visible {
-    background: var(--g2);
-    color: var(--g9);
-    border-color: var(--g5);
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.22);
     outline: none;
   }
   .tb-label {
-    font-size: var(--ui-text-xs);
+    font-size: var(--ui-text-xs, 11px);
+    font-family: var(--fb, 'Space Grotesk', sans-serif);
     font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--g9);
+    color: rgba(255, 255, 255, 0.88);
   }
   .tb-arrow {
-    font-size: var(--ui-text-xs);
-    color: var(--g6);
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.42);
   }
 
   .tb-primary {
-    color: var(--brand);
-    border-color: color-mix(in srgb, var(--brand) 35%, transparent);
+    color: var(--brand, #4a9eff);
+    border-color: color-mix(in srgb, var(--brand, #4a9eff) 32%, transparent);
   }
   .tb-primary:hover {
-    background: color-mix(in srgb, var(--brand) 12%, transparent);
-    color: var(--brand);
-    border-color: color-mix(in srgb, var(--brand) 60%, transparent);
+    background: color-mix(in srgb, var(--brand, #4a9eff) 12%, transparent);
+    color: var(--brand, #4a9eff);
+    border-color: color-mix(in srgb, var(--brand, #4a9eff) 55%, transparent);
   }
 
+  /* Chart type menu dropdown */
   .ct-wrap {
     position: relative;
     display: inline-flex;
     align-items: center;
   }
-
   .ct-menu {
     position: absolute;
-    top: calc(100% + 2px);
+    top: calc(100% + 3px);
     left: 0;
     z-index: 100;
     min-width: 140px;
-    background: var(--g1);
-    border: 1px solid var(--g4);
+    background: rgba(12, 14, 20, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 4px;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
-    padding: 2px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 3px;
     display: flex;
     flex-direction: column;
+    backdrop-filter: blur(12px);
   }
-
   .ct-item {
     display: grid;
     grid-template-columns: 36px 1fr 12px;
@@ -388,20 +400,26 @@
     background: transparent;
     border: none;
     border-radius: 3px;
-    color: var(--g7);
-    font-family: inherit;
-    font-size: var(--ui-text-xs);
+    color: rgba(255, 255, 255, 0.62);
+    font-family: var(--fb, 'Space Grotesk', sans-serif);
+    font-size: var(--ui-text-xs, 11px);
     text-align: left;
     cursor: pointer;
     transition: background 0.08s, color 0.08s;
   }
-  .ct-item:hover { background: var(--g2); color: var(--g9); }
-  .ct-item.active { color: var(--brand); }
-  .ct-item-label { font-weight: 700; letter-spacing: 0.06em; font-size: var(--ui-text-xs); }
-  .ct-item-full { font-size: var(--ui-text-xs); }
-  .ct-item-check { color: var(--brand); font-size: var(--ui-text-xs); }
+  .ct-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.95);
+  }
+  .ct-item.active { color: var(--brand, #4a9eff); }
+  .ct-item-label {
+    font-family: var(--fm, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    font-size: var(--ui-text-xs, 11px);
+  }
+  .ct-item-full { font-size: var(--ui-text-xs, 11px); }
+  .ct-item-check { color: var(--brand, #4a9eff); font-size: var(--ui-text-xs, 11px); }
 
-  /* Compact: hide text labels, keep glyphs */
   @media (max-width: 1099px) {
     .tb-text { display: none; }
     .sym-price, .sym-change { display: none; }
