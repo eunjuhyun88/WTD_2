@@ -424,9 +424,36 @@ D1=A (Dashboard mount) 시 위 이동 불필요.
 
 ---
 
-## H. 다음 단계
+## H. 결정 락 (D1~D16) — 2026-05-05
 
-1. **D1~D9 결정 락** — 사용자 확인
-2. **W-0407 spike(W-T0) 결과 대기** 후 drill-through tab seed 계약 확정
-3. PR1 시작
+사용자 위임: "최고의 기능이 되게 알아서 선택, 나중에 수정하면 됨".
+
+| # | 락 | 한 줄 이유 |
+|---|---|------|
+| D1 | **B** WVPL → Settings 이동 | 대시보드는 한눈에, 상세 P&L 분석은 Passport/Settings 영역 |
+| D2 | **A** `valid/invalid/near_miss` | engine schema 추정 + DashActivityGrid 가 더 최신 |
+| D3 | **B** Macro card static | `/research/macro` 신규는 W-0410 후 결정, 지금은 정보 표시만 |
+| D4 | **B** Header CTA 2개 split | Lab 사용 빈도 높음 |
+| D5 | **A** VerdictQueue 빈상태 skeleton 유지 | zone 자리 사라지면 IA 흔들림 |
+| D6 | **A** Watching top 6 | 모바일에서 8 길어짐 |
+| D7 | **A** F-60 ProgressCard 는 System 행 | Hero 는 wallet/passport 정체성 |
+| D8 | **B** 개인화 chip 은 zone 헤더 1회 | 카드별 반복은 노이즈 |
+| D9 | **A** Trader Split Scanner pane 삭제 | Today opp + 전체보기 링크로 충분 |
+| D10 | **B** LiveSignalPanel → OpportunityCard 데이터 흡수 | UI 단순화. 단 engine 데이터 모델 확인 필요 (PR6 시점) |
+| D11 | **B** ScanMode desktop 포팅 안 함 | OpportunityCard 와 의도 겹침, 데스크톱은 Terminal/Patterns 로 |
+| D12 | **B** Footer chips zone 신규 X | Hero Tier 카드 sub-line 으로 충분 |
+| D13 | **B** M9 agent KPI 보류 | 비활성 사용자에게 noise, personalization flag 후 mount |
+| D14 | **B** OpportunityCard `&panel=anl` deep-link | Terminal panel 시스템(W-0407) 확정 후 한 단계 줄임 |
+| D15 | **A** Tier upgrade CTA Hero 노출 | free tier 활성화, paid tier 면 hide |
+| D16 | **A** Setups pill → `/strategies` drill-through | dead pill 보다 의미 있는 링크 |
+
+→ 모든 PR 의 분기점이 이제 결정됨. 구현 시 PR1 부터 순차 진행 가능.
+→ 잘못된 선택은 구현 후 재조정 (사용자 위임).
+
+## I. 다음 단계
+
+1. ~~D1~D16 결정 락~~ ✅ 완료
+2. W-0407 spike(W-T0) 결과 후 drill-through tab seed 최종 확정
+3. W-0409 (Patterns) / W-0410 (Lab) / W-0411 (Settings) 설계 완료 후
+4. 5개 페이지 통합 검토 → PR1 부터 순차 구현 시작
 
