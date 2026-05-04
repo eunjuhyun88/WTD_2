@@ -77,7 +77,7 @@
     border: none;
     color: var(--g5);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 11px;
     padding: 0 2px;
     line-height: 1;
     flex-shrink: 0;
@@ -89,7 +89,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px 4px;
+    padding: 4px 8px 3px;
     font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.16em;
@@ -132,7 +132,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 8px;
+    padding: 3px 6px;
     background: var(--g1);
     border-bottom: 1px solid var(--g4);
     flex-shrink: 0;

@@ -372,7 +372,7 @@
 
   .rail--folded :global(.symbol-row) {
     justify-content: center;
-    padding: 6px 4px;
+    padding: 4px 2px;
   }
 
   .rail--folded :global(.sym-name) { font-size: var(--ui-text-xs); }
@@ -382,7 +382,7 @@
     border: none;
     color: var(--g5);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 11px;
     padding: 0 2px;
     line-height: 1;
     flex-shrink: 0;
@@ -394,7 +394,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px 4px;
+    padding: 4px 8px 3px;
     font-size: var(--ui-text-xs);
     color: var(--g5);
     letter-spacing: 0.16em;

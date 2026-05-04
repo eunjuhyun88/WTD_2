@@ -309,9 +309,9 @@
   .chart-header--tv {
     display: flex;
     align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 8px;
+    gap: 4px;
+    height: 24px;
+    padding: 0 4px;
     background: rgba(13, 17, 23, 0.97);
     border-bottom: 1px solid rgba(42, 46, 57, 0.8);
     flex-shrink: 0;

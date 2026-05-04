@@ -223,7 +223,7 @@
    */
 
   .chart-toolbar {
-    height: 32px;
+    height: 28px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -250,8 +250,8 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    height: 24px;
-    padding: 0 7px;
+    height: 20px;
+    padding: 0 5px;
     background: transparent;
     border: 1px solid transparent;
     border-radius: 3px;
@@ -276,7 +276,7 @@
   /* Symbol button — slightly more prominent */
   .sym-btn {
     gap: 5px;
-    padding: 0 8px;
+    padding: 0 6px;
     border-color: rgba(255, 255, 255, 0.15) !important;
     background: rgba(255, 255, 255, 0.05) !important;
   }
@@ -313,7 +313,7 @@
     gap: 1px;
   }
   .tf-chip {
-    height: 22px;
+    height: 18px;
     padding: 0 5px;
     background: transparent;
     border: 1px solid transparent;
