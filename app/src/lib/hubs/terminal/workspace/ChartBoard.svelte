@@ -67,7 +67,7 @@
     calcATRBands,
   } from './chartIndicatorCalc';
   import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
-  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore.svelte';
+  import { createPaneLayoutStore, PANE_KINDS, type PaneKind } from '$lib/chart/paneLayoutStore.svelte';
   import PaneInfoBar from './PaneInfoBar.svelte';
   import KpiStrip from './KpiStrip.svelte';
   import type { KpiInputBundle } from '$lib/chart/kpiStrip';
@@ -81,7 +81,7 @@
   // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
   import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
   import FloatingNoteButton from '../../../shared/chart/FloatingNoteButton.svelte';
-  import { shellStore, activeDrawingMode } from '$lib/hubs/terminal/shell.store';
+  import { shellStore, activeDrawingMode, activeTabState } from '$lib/hubs/terminal/shell.store';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
   import IndicatorCatalogModal from '$lib/components/indicators/IndicatorCatalogModal.svelte';
   import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
@@ -499,6 +499,24 @@
   let crosshairUnsub: CrosshairUnsubscribe | null = null;
   /** Per-pane layout store (visibility + stretch persistence). */
   const paneLayout = createPaneLayoutStore();
+
+  // W-0407: sync per-tab PaneConfig[] → paneLayout when active tab changes
+  const _LAYOUT_KINDS = new Set<string>(PANE_KINDS);
+  $effect(() => {
+    const panes = $activeTabState.panes;
+    if (!panes?.length) return;
+    const vis: Partial<Record<PaneKind, boolean>> = {};
+    for (const p of panes) {
+      if (_LAYOUT_KINDS.has(p.kind)) vis[p.kind as PaneKind] = p.visible;
+    }
+    paneLayout.syncVisibility(vis);
+    for (const p of panes) {
+      if (_LAYOUT_KINDS.has(p.kind) && p.visible) {
+        paneLayout.setStretch(p.kind as PaneKind, p.stretch);
+      }
+    }
+  });
+
   /**
    * Live chips driven by crosshair. null = crosshair off chart;
    * parent falls back to static last-bar chips from chartData.
@@ -672,6 +690,10 @@
     } else {
       const newStretch = Math.max(0.5, Math.min(8, activeResize.startStretch + deltaStretch));
       paneLayout.setStretch(activeResize.upperKind, newStretch);
+      // W-0407: write stretch back to per-tab PaneConfig
+      shellStore.updateTabPanes(ps => ps.map(p =>
+        p.kind === activeResize.upperKind ? { ...p, stretch: newStretch } : p,
+      ));
       try {
         const idx = panePositions[activeResize.upperKind];
         if (idx >= 0) mainChart.panes()[idx]?.setStretchFactor(newStretch);
