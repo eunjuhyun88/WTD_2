@@ -57,7 +57,7 @@
     type IndicatorSeriesRefs,
     type SecondaryIndicatorPayload,
   } from '$lib/chart/mountIndicatorPanes';
-  import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import { indicatorInstances } from '$lib/chart/indicatorInstances.svelte';
   import {
     calcRSI,
     calcMACD,
@@ -67,7 +67,7 @@
     calcATRBands,
   } from './chartIndicatorCalc';
   import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
-  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore';
+  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore.svelte';
   import PaneInfoBar from './PaneInfoBar.svelte';
   import KpiStrip from './KpiStrip.svelte';
   import type { KpiInputBundle } from '$lib/chart/kpiStrip';
