@@ -332,7 +332,7 @@
   }
 
   .sym-quote {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: rgba(177, 181, 189, 0.45);
     letter-spacing: 0.06em;
@@ -340,7 +340,7 @@
   }
 
   .sym-regime-pill {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     padding: 1px 5px;
     border-radius: 3px;
@@ -377,7 +377,7 @@
     color: rgba(177, 181, 189, 0.5);
     cursor: pointer;
     font-family: inherit;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
     transition: color 0.1s, background 0.1s;
@@ -385,7 +385,7 @@
   .mode-btn:hover { color: rgba(177, 181, 189, 0.85); background: rgba(255,255,255,0.04); }
   .mode-btn.active { color: rgba(220, 225, 235, 0.92); background: rgba(255,255,255,0.08); }
 
-  .scale-btn { padding: 0 5px; font-size: 10px; }
+  .scale-btn { padding: 0 5px; font-size: 11px; }
 
   /* tv-studies (fx Indicators) */
   .tv-studies-wrap {
@@ -405,7 +405,7 @@
     color: rgba(177, 181, 189, 0.65);
     cursor: pointer;
     font-family: inherit;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
     transition: color 0.1s, background 0.1s;
@@ -413,7 +413,7 @@
   .tv-indicators-trigger:hover,
   .tv-indicators-trigger.is-open { color: rgba(220,225,235,0.9); background: rgba(255,255,255,0.07); }
 
-  .tv-indicators-glyph { font-style: italic; font-size: 10px; opacity: 0.7; }
+  .tv-indicators-glyph { font-style: italic; font-size: 11px; opacity: 0.7; }
 
   .tv-ind-count {
     display: inline-flex;
@@ -422,7 +422,7 @@
     min-width: 14px;
     height: 14px;
     padding: 0 3px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     background: rgba(100, 200, 255, 0.2);
     color: rgba(100, 200, 255, 0.9);
@@ -445,7 +445,7 @@
   }
 
   .tv-panel-baseline {
-    font-size: 10px;
+    font-size: 11px;
     color: rgba(177,181,189,0.5);
     padding: 0 12px 6px;
     margin: 0;
@@ -470,7 +470,7 @@
   .tv-panel-section { padding: 4px 0; border-bottom: 1px solid rgba(42,46,57,0.4); }
   .tv-panel-section:last-child { border-bottom: none; }
   .tv-panel-section-title {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -496,20 +496,20 @@
 
   .tv-study-main { display: flex; flex-direction: column; gap: 1px; }
   .tv-study-main strong { font-size: 11px; font-weight: 600; color: rgba(220,225,235,0.85); }
-  .tv-study-main small { font-size: 10px; color: rgba(177,181,189,0.5); }
+  .tv-study-main small { font-size: 11px; color: rgba(177,181,189,0.5); }
   .tv-study-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .tv-study-meta em { font-size: 9px; font-style: normal; color: rgba(177,181,189,0.4); }
-  .tv-study-state { font-size: 9px; color: rgba(177,181,189,0.4); }
+  .tv-study-meta em { font-size: 11px; font-style: normal; color: rgba(177,181,189,0.4); }
+  .tv-study-state { font-size: 11px; color: rgba(177,181,189,0.4); }
   .tv-study-button.is-active .tv-study-state { color: rgba(100,200,255,0.8); }
 
   .tv-study-nested { padding: 0 12px 8px 24px; }
-  .tv-study-help { font-size: 9px; color: rgba(177,181,189,0.4); margin: 4px 0 0; }
+  .tv-study-help { font-size: 11px; color: rgba(177,181,189,0.4); margin: 4px 0 0; }
   .tv-panel-select {
-    height: 22px; font-size: 10px; background: rgba(255,255,255,0.05);
+    height: 22px; font-size: 11px; background: rgba(255,255,255,0.05);
     border: 1px solid rgba(42,46,57,0.8); border-radius: 3px;
     color: rgba(220,225,235,0.8); padding: 0 4px; cursor: pointer;
   }
-  .tv-study-empty { padding: 8px 12px; font-size: 10px; color: rgba(177,181,189,0.4); }
+  .tv-study-empty { padding: 8px 12px; font-size: 11px; color: rgba(177,181,189,0.4); }
 
   /* Capture inline info */
   .capture-inline {
@@ -522,7 +522,7 @@
   }
 
   .capture-kicker {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.06em;
     color: rgba(177,181,189,0.3);
@@ -530,7 +530,7 @@
   }
 
   .capture-label {
-    font-size: 10px;
+    font-size: 11px;
     color: rgba(177,181,189,0.55);
     white-space: nowrap;
     overflow: hidden;
@@ -538,7 +538,7 @@
   }
 
   .capture-meta {
-    font-size: 10px;
+    font-size: 11px;
     color: rgba(177,181,189,0.35);
     flex-shrink: 0;
   }
@@ -563,7 +563,7 @@
     color: rgba(177,181,189,0.6);
     cursor: pointer;
     font-family: inherit;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
     transition: color 0.1s, background 0.1s;
@@ -576,7 +576,7 @@
     padding: 0 8px;
     display: flex;
     align-items: center;
-    font-size: 10px;
+    font-size: 11px;
     color: rgba(100,200,255,0.7);
     text-decoration: none;
     white-space: nowrap;
