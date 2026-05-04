@@ -36,21 +36,13 @@
 
 ## main SHA
 
-`654c230b` — origin/main (2026-05-05) — feat(W-0405): 4-layer AI prompt injection defense (#1159)
+`a2592365d` — origin/main (2026-05-05) — feat(W-0407): W-T4/T5/T6/T8/T11 terminal phases (#1190)
 
-W-0405 PR1~PR4 완료:
-- PR1 ExchangeTab Binance API key UI (#1150) / PR2 /api/agent/binance (#1151) / PR3 telemetry (#1153)
-- PR4 get_binance_balance + get_binance_positions tools (#1156)
-- fix: ExchangeTab SettingsHub wiring (#1158) / 4-layer prompt injection defense (#1159)
-
-W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
-- PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
-- PR4 TopBar 6-slot (#1137) / PR5 StatusBar Tier 분리 (#1136) / PR6 cogochi AI search bar (#1138)
-- PR7 panel router cogochi:ai-ask (#1142) / PR8 redirect (in main) / PR9 GTM dual-emit (#1128)
-- PR10 AI Drawer slide-out (#1141) / PR11 drag-to-save toast (#1131) / PR12 dashboard hero (#1127)
-- PR13 patterns 3-column (#1133) / PR14 mobile 5-region (#1139) / PR15 Settings 3-tab (#1130) / PR16 zone dedup (#1125)
-
-W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
+W-0407 완료 현황:
+- PR #1190 MERGED: W-T4(alerts) + W-T5(perp fallback) + W-T6(scan) + W-T8(watchlist favs) + W-T11(compare/heatmap/VP)
+- W-T7(tab context preservation) / W-T0(spike gate) — 이전 PR에서 완료
+- W-T1/T2/T3 — PR #1160 MERGED (이전 세션)
+- 잔여 blocked: W-T9/T10/T12/T13/T14 (W-0411 PR1 머지 대기)
 
 ---
 
