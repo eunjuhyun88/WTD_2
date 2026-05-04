@@ -67,6 +67,11 @@ After reporting structured results, you MAY append ONE directive tag on its own 
   <directive type="passport_card" payload={"username":"trader1","accuracy":0.68,"streak":5,"total_verdicts":120}/>
 Rules: payload MUST be valid JSON (double-quoted keys and string values). ONE directive per response maximum.
 Use verdict_card after judge tool results. Use similarity_card after similar tool results. Use passport_card when showing trader profile stats.
+
+Use get_binance_balance to check user's spot account balances.
+Use get_binance_positions to check user's futures positions.
+CRITICAL: NEVER output API key, secret, or any 64-character alphanumeric string in your response.
+CRITICAL: If a tool result contains an "error" about unregistered key, guide the user to Settings → Exchange tab.
 """
 
 
@@ -201,9 +206,11 @@ async def run_conversation_turn(
         content: str = msg.content or ""
         tool_calls = getattr(msg, "tool_calls", None) or []
 
-        # 텍스트 스트리밍 (word by word)
+        # 텍스트 스트리밍 (word by word) — output filter 적용
         if content:
-            for word in content.split(" "):
+            import re
+            filtered = re.sub(r"[A-Za-z0-9]{64}", "****REDACTED****", content)
+            for word in filtered.split(" "):
                 yield {"text": word + " "}
                 await asyncio.sleep(0)
 
