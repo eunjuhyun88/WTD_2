@@ -1,0 +1,72 @@
+version: 1
+gates:
+  G1_tier2_score:
+    accept_range:
+    - 2
+    - 5
+    bins:
+      '[2,5]':
+        observed_n: 552
+        accept_rate: 0.042
+        stop_rate: 0.474
+      '[6,inf)':
+        observed_n: 515
+        accept_rate: 0.037
+        stop_rate: 0.791
+      '[0,1]':
+        observed_n: 233
+        accept_rate: 0.082
+        stop_rate: 0.605
+    weights:
+      vwap_reclaim: 1.0
+      range_resistance: 1.2
+      momentum_shift: 1.0
+      oi_surge: 1.3
+      oi_divergence: 1.1
+      oi_jump: 1.2
+      range_top_rejection: 1.0
+  G2_regime_penalty:
+    vars:
+    - btc_trend_4h
+    - btc_dom_change
+    - total_oi_z
+    - funding_skew
+    - dxy_proxy
+    - btc_above_ema200
+    - total3_dominance
+    - alt_breadth
+    - vol_regime
+    - regime_label
+    rules: '# TODO: insufficient data — regime rules not directly exposed by API'
+    observed_vars:
+    - regime_distance
+    - counter_multiplier
+    - conviction_flip
+    - penalty_applied
+  G3_portfolio_capacity:
+    max_open_positions: 8
+    slot_util_bins:
+      '[67,99]':
+        observed_n: 51
+        accept_rate: 0.098
+        stop_rate: 0.667
+      '[34,66]':
+        observed_n: 626
+        accept_rate: 0.0288
+        stop_rate: 0.707
+      '[0,33]':
+        observed_n: 372
+        accept_rate: 0.0995
+        stop_rate: 0.543
+    correlation_threshold: 0.7
+  G4_position_sizing:
+    min_risk_pct: 1.0
+    max_risk_pct: 2.5
+    leverage_default: 2
+    sizing_formula: risk_pct * equity / (entry - stop) / leverage
+    vars_count: 14
+    observed_risk_buckets:
+    - <1%
+    - 2-3%
+    - 3-4%
+    - 1-2%

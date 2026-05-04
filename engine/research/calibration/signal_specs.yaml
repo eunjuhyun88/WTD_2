@@ -1,0 +1,68 @@
+version: 1
+captured_at: '2026-05-04T21:23:42Z'
+signals:
+- name: vwap_reclaim
+  side:
+  - long
+  timeframe: 1h
+  condition:
+    type: cross_above
+    base: vwap_session
+    lookback: 1
+    confirm_bars: 1
+- name: range_resistance
+  side:
+  - long
+  timeframe: 1d
+  condition:
+    type: proximity_to_high
+    lookback_days: 56
+    threshold_pct: 1.5
+- name: momentum_shift
+  side:
+  - long
+  - short
+  timeframe: 2h
+  condition:
+    type: ema_cross
+    fast: 8
+    slow: 21
+    confirm: macd_hist_sign_flip
+- name: oi_surge
+  side:
+  - long
+  - short
+  timeframe: 4h
+  condition:
+    type: zscore
+    var: open_interest
+    window: 4h
+    threshold: 2.0
+- name: oi_divergence
+  side:
+  - long
+  - short
+  timeframe: 4h
+  condition:
+    type: sign_diff
+    a: price_pct_change_4h
+    b: oi_pct_change_4h
+    min_oi_pct: 2.0
+- name: oi_jump
+  side:
+  - long
+  - short
+  timeframe: 15m
+  condition:
+    type: pct_change
+    var: open_interest
+    window: 15m
+    threshold_pct: 3.2
+- name: range_top_rejection
+  side:
+  - short
+  timeframe: 4h
+  condition:
+    type: rejection
+    reference: range_high_20
+    pattern: bearish_engulfing|upper_wick
