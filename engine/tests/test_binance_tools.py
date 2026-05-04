@@ -24,14 +24,14 @@ def test_get_binance_balance_no_user_id():
     """Unauthenticated call returns error dict."""
     from agents.tools.binance_tools import get_binance_balance
 
-    result = asyncio.get_event_loop().run_until_complete(get_binance_balance(None))
+    result = asyncio.run(get_binance_balance(None))
     assert "error" in result
 
 
 def test_get_binance_positions_no_user_id():
     from agents.tools.binance_tools import get_binance_positions
 
-    result = asyncio.get_event_loop().run_until_complete(get_binance_positions(None))
+    result = asyncio.run(get_binance_positions(None))
     assert "error" in result
 
 

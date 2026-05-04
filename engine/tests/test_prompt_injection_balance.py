@@ -25,7 +25,7 @@ def test_balance_no_user_returns_safe_error():
     """get_binance_balance(None) never leaks credentials."""
     from agents.tools.binance_tools import get_binance_balance
 
-    result = asyncio.get_event_loop().run_until_complete(get_binance_balance(None))
+    result = asyncio.run(get_binance_balance(None))
     result_str = str(result)
     assert not API_KEY_PATTERN.search(result_str)
     assert "error" in result
