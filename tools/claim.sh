@@ -75,7 +75,10 @@ fi
 
 # ── Non-Goal / Frozen gate (CHARTER.md §Frozen) ─────────────────
 # 매칭되면 확인 프롬프트. --force로 통과 가능 (사유 기록).
-NONGOAL_REGEX='copy[._ ]?trad|copy_trading|leaderboard.*sub|memkraft|multi[._ -]?agent|chart[._ ]?polish|w-0212|session[._ ]?handoff[._ ]?upgrade|new[._ ]?slash'
+# 2026-05-04 sync: chart.polish/w-0212 해제(2026-05-01), session.handoff.upgrade 유령패턴 제거.
+# dispatcher/handoff.framework 패턴은 W-0404로 In-Scope 전환 — 원래도 regex에 없었음.
+# coordination.stack 추가(CHARTER §Frozen 명시 패턴).
+NONGOAL_REGEX='copy[._ ]?trad|copy_trading|leaderboard.*sub|memkraft|multi[._ -]?agent|new[._ ]?slash|new[._ ]?coordination[._ ]?stack'
 COMBINED="$DOMAIN $BRANCH"
 if echo "$COMBINED" | grep -iE "$NONGOAL_REGEX" >/dev/null 2>&1; then
   MATCH=$(echo "$COMBINED" | grep -iEo "$NONGOAL_REGEX" | head -1)

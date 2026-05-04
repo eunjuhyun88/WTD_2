@@ -47,11 +47,12 @@
 ### 유일한 유지 제약 (야크쉐이빙 방지)
 
 - ❌ **신규** MemKraft 대체/확장 시스템 (별도 메모리 stack 빌드)
-- ❌ **신규** agent dispatcher / orchestration OS / handoff framework 빌드
 - ❌ **신규** slash command 시스템 (현재 set 충분)
 - ❌ **신규** worktree 정리 자동화 대규모 시스템 (수동 cleanup으로 충분)
 
-→ 핵심: **새 에이전트 도구를 빌드하는 것**만 frozen. 기존 도구 사용·안정화는 별개.
+> **2026-05-04 해제**: `agent dispatcher / orchestration OS / handoff framework` 항목은 W-0404 (AI Agent NL Interface) 상업화를 위해 In-Scope로 전환. customer-facing 프로덕트 핵심이므로 빌드 허용. 단 멀티-에이전트 coordination 도구(claim.sh 류)는 여전히 §Coordination Frozen 유지.
+
+→ 핵심: **메모리 stack / slash 시스템**만 frozen. 에이전트 프로덕트 빌드는 In-Scope.
 
 ### Paper Trading
 
@@ -73,7 +74,7 @@
 
 ### ❌ Frozen (도구 빌드)
 
-- 자체 dispatcher / orchestration OS / handoff framework 신규 빌드.
+- **멀티 에이전트 coordination용** 자체 dispatcher / handoff framework 신규 빌드. (※ customer-facing AI agent product의 orchestration layer는 In-Scope — W-0404 참조)
 - MemKraft 대체 메모리 시스템 신규 빌드.
 - 250줄 넘는 신규 coordination 도구 stack.
 
@@ -96,11 +97,14 @@ PR:    body에 "Closes #N"                                            # 머지 =
 
 ```
 copy.trad | copy_trading | leaderboard.*sub
-new.memkraft | new.multi.agent | new.dispatcher | new.handoff.framework
+new.memkraft | new.multi.agent
 new.slash.command | new.coordination.stack
 ```
 
-(`chart.polish | chart.ux.polish | w-0212` 키워드 게이트 2026-05-01 해제됨.)
+> 해제 이력:
+> - `chart.polish | chart.ux.polish | w-0212` → 2026-05-01 해제
+> - `new.dispatcher | new.handoff.framework` → 2026-05-04 해제 (W-0404 customer-facing agent In-Scope)
+> - `session.handoff.upgrade` → 유령 패턴 (CHARTER 미명시, claim.sh에만 존재하던 오류) 제거
 
 → Issue/assignee/Project 사용 자체는 게이트 대상 아님 (§Coordination Allowed).
 
