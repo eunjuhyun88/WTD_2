@@ -9,12 +9,20 @@
 // localStorage key: "pane_layout::v1"
 // Keyed per-chart when `chartId` is provided (multi-chart support).
 
-export type PaneKind = 'rsiOrMacd' | 'oi' | 'cvd' | 'funding' | 'liq';
+export type PaneKind =
+  | 'rsiOrMacd' | 'oi' | 'cvd' | 'funding' | 'liq'
+  // W-0407 aggregated (Velo-style, cross-exchange)
+  | 'agg_funding' | 'agg_liq' | 'agg_oi' | 'agg_spot_vol' | 'agg_vol'
+  | 'coinbase_premium' | 'returns' | 'atr' | 'adx';
 
 /** Maximum number of extra indicator panes mountable via multi-instance (W-0399). */
 export const MAX_EXTRA_PANES = 12;
 
-export const PANE_KINDS: PaneKind[] = ['rsiOrMacd', 'oi', 'cvd', 'funding', 'liq'];
+export const PANE_KINDS: PaneKind[] = [
+  'rsiOrMacd', 'oi', 'cvd', 'funding', 'liq',
+  'agg_funding', 'agg_liq', 'agg_oi', 'agg_spot_vol', 'agg_vol',
+  'coinbase_premium', 'returns', 'atr', 'adx',
+];
 
 export interface PaneLayoutState {
   /** Whether the pane is allowed to render (mirrors chartIndicators store). */
@@ -27,8 +35,16 @@ export interface PaneLayoutState {
 }
 
 const DEFAULT_STATE: PaneLayoutState = {
-  visibility: { rsiOrMacd: true, oi: true, cvd: true, funding: true, liq: true },
-  stretch:    { rsiOrMacd: 1,    oi: 1,    cvd: 1,    funding: 1,    liq: 1    },
+  visibility: {
+    rsiOrMacd: true, oi: true, cvd: true, funding: true, liq: true,
+    agg_funding: false, agg_liq: false, agg_oi: false, agg_spot_vol: false, agg_vol: false,
+    coinbase_premium: false, returns: false, atr: false, adx: false,
+  },
+  stretch: {
+    rsiOrMacd: 1, oi: 1, cvd: 1, funding: 1, liq: 1,
+    agg_funding: 1, agg_liq: 1, agg_oi: 1, agg_spot_vol: 1, agg_vol: 1,
+    coinbase_premium: 1, returns: 1, atr: 1, adx: 1,
+  },
 };
 
 function storageKey(chartId?: string): string {

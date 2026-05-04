@@ -24,6 +24,27 @@ export type DrawingTool =
   | 'fibRetracement'
   | 'textLabel';
 
+// W-0407: Velo-style per-tab indicator pane config
+export type PaneKind =
+  | 'rsiOrMacd' | 'oi' | 'cvd' | 'funding' | 'liq'
+  | 'agg_funding' | 'agg_liq' | 'agg_oi' | 'agg_spot_vol' | 'agg_vol'
+  | 'coinbase_premium' | 'returns' | 'atr' | 'adx'
+  | 'rsi' | 'macd' | 'stoch' | 'cci' | 'obv' | 'vwap' | 'mfi';
+
+export interface PaneConfig {
+  id: string;
+  kind: PaneKind;
+  visible: boolean;
+  stretch: number;
+  params?: Record<string, unknown>;
+}
+
+export const DEFAULT_PANES: PaneConfig[] = [
+  { id: 'p_rsi',     kind: 'rsiOrMacd',   visible: true, stretch: 1 },
+  { id: 'p_funding', kind: 'funding',      visible: true, stretch: 1 },
+  { id: 'p_liq',     kind: 'liq',          visible: true, stretch: 1 },
+];
+
 export interface WorkspacePanelRect {
   x: number; y: number; w: number; h: number;
 }
@@ -56,6 +77,12 @@ export interface TabState {
   drawerOpen: boolean;
   drawerKind: 'evidence-grid' | 'why-panel' | 'pattern-library' | 'verdict-card' | 'research-full' | 'judge-full' | 'decide-full' | null;
   drawingMode: boolean;
+  // W-0407: per-tab Velo-style indicator pane stack
+  panes: PaneConfig[];
+  // W-0407: symbol compare overlays
+  compares: string[];
+  // W-0407: heatmap overlay toggle
+  heatmapOn: boolean;
 }
 
 export interface Tab {
@@ -64,6 +91,7 @@ export interface Tab {
   mode: 'trade' | 'train' | 'flywheel';
   title: string;
   locked: boolean;
+  pinned: boolean;
   tabState: TabState;
   extra?: any;
 }
@@ -195,11 +223,14 @@ const FRESH_TAB_STATE = (): TabState => ({
   drawerOpen: false,
   drawerKind: null,
   drawingMode: false,
+  panes: [...DEFAULT_PANES],
+  compares: [],
+  heatmapOn: false,
 });
 
 const makeDefault = (): ShellState => ({
   tabs: [
-    { id: 't1', kind: 'trade', mode: 'trade', title: 'BTC · new session', locked: false, tabState: FRESH_TAB_STATE() },
+    { id: 't1', kind: 'trade', mode: 'trade', title: 'BTC · new session', locked: false, pinned: false, tabState: FRESH_TAB_STATE() },
   ],
   activeTabId: 't1',
   workMode: 'observe',
@@ -238,6 +269,11 @@ function migrateRightPanelTab(raw: unknown): RightPanelTab {
   return 'decision';
 }
 
+function normalizePanes(raw: unknown): PaneConfig[] {
+  if (Array.isArray(raw) && raw.length > 0) return raw as PaneConfig[];
+  return [...DEFAULT_PANES];
+}
+
 function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
   return {
     ...FRESH_TAB_STATE(),
@@ -246,12 +282,15 @@ function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
     workspaceLayout: { ...FRESH_WORKSPACE_LAYOUT(), ...(tabState?.workspaceLayout ?? {}) },
     layoutMode: 'C',
     analyzeLayout: normalizeAnalyzePanelLayout(tabState?.analyzeLayout),
+    panes: normalizePanes((tabState as any)?.panes),
+    compares: Array.isArray((tabState as any)?.compares) ? (tabState as any).compares : [],
+    heatmapOn: (tabState as any)?.heatmapOn ?? false,
   };
 }
 
 function normalizeShellState(raw: Partial<ShellState>): ShellState {
   const base = makeDefault();
-  const tabs = (raw.tabs ?? base.tabs).map(t => ({ ...t, tabState: normalizeTabState(t.tabState) }));
+  const tabs = (raw.tabs ?? base.tabs).map(t => ({ ...t, pinned: t.pinned ?? false, tabState: normalizeTabState(t.tabState) }));
   const activeTabId = tabs.some(t => t.id === raw.activeTabId) ? raw.activeTabId! : tabs[0]?.id ?? 't1';
   const workspacePaneIds = normalizeWorkspacePaneIds(tabs, raw.workspacePaneIds, activeTabId);
   const workspaceImmersivePaneId =
@@ -289,7 +328,7 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
 
 // ── Storage ────────────────────────────────────────────────────────────────
 
-const SHELL_KEY = 'cogochi_shell_v13'; // v13: add 'chat' tab (W-0404 PR1)
+const SHELL_KEY = 'cogochi_shell_v14'; // v14: per-tab panes[] + pinned + compares + heatmapOn (W-0407)
 export const MIGRATION_VERSION_KEY = 'cogochi.migration.v';
 export const MIGRATION_VERSION = 2;
 
@@ -348,6 +387,7 @@ function createShellStore() {
         const newTab: Tab = {
           id,
           locked: false,
+          pinned: false,
           mode: tab.mode || (tab.kind === 'train' || tab.kind === 'flywheel' ? tab.kind : 'trade'),
           kind: tab.kind || 'trade',
           title: tab.title || 'new session',
@@ -369,7 +409,7 @@ function createShellStore() {
         let activeTabId = st.activeTabId;
         if (activeTabId === id) activeTabId = tabs[tabs.length - 1]?.id ?? 't_default';
         if (tabs.length === 0) {
-          const fresh: Tab = { id: 't_default', kind: 'trade', mode: 'trade', title: 'new session', locked: false, tabState: FRESH_TAB_STATE() };
+          const fresh: Tab = { id: 't_default', kind: 'trade', mode: 'trade', title: 'new session', locked: false, pinned: false, tabState: FRESH_TAB_STATE() };
           tabs.push(fresh);
           activeTabId = fresh.id;
         }
@@ -377,6 +417,26 @@ function createShellStore() {
           ...st, tabs, activeTabId,
           workspaceImmersivePaneId: st.workspaceImmersivePaneId === id ? null : st.workspaceImmersivePaneId,
         });
+      });
+    },
+
+    pinTab: (id: string, pinned?: boolean) => {
+      update(st => ({
+        ...st,
+        tabs: st.tabs.map(t => t.id === id ? { ...t, pinned: pinned ?? !t.pinned } : t),
+      }));
+    },
+
+    updateTabPanes: (updater: (panes: PaneConfig[]) => PaneConfig[], tabId?: string) => {
+      update(st => {
+        const id = tabId ?? st.activeTabId;
+        return {
+          ...st,
+          tabs: st.tabs.map(t => t.id === id
+            ? { ...t, tabState: { ...t.tabState, panes: updater(t.tabState.panes) } }
+            : t
+          ),
+        };
       });
     },
 
@@ -585,7 +645,7 @@ function createShellStore() {
         }
         const id = `t_${m}_${Date.now()}`;
         const title = m === 'trade' ? 'TRADE session' : m === 'train' ? 'TRAIN · inbox' : 'FLYWHEEL';
-        const newTab: Tab = { id, kind: m, mode: m, title, locked: false, tabState: FRESH_TAB_STATE() };
+        const newTab: Tab = { id, kind: m, mode: m, title, locked: false, pinned: false, tabState: FRESH_TAB_STATE() };
         const tabs = [...st.tabs, newTab];
         return normalizeShellState({
           ...st, tabs, activeTabId: id,
@@ -724,6 +784,8 @@ function createShellStore() {
       set(makeDefault());
       if (typeof window !== 'undefined') {
         localStorage.removeItem(SHELL_KEY);
+        localStorage.removeItem('cogochi_shell_v13');
+        localStorage.removeItem('cogochi_shell_v12');
         localStorage.removeItem('cogochi_shell_v11');
         localStorage.removeItem('cogochi_shell_v10');
         localStorage.removeItem('cogochi_shell_v9');

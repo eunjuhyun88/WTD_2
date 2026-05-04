@@ -574,6 +574,7 @@
       <ChartToolbar
         onIndicators={() => (indicatorLibraryOpen = true)}
         onSettings={() => (indicatorSettingsOpen = true)}
+        onSymbolTap={() => openDesktopSymbolPicker()}
       />
 
       <WorkspaceStage
