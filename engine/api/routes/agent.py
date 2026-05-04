@@ -28,6 +28,7 @@ from agents.save_runtime import (
     promote_capture,
     _SAVE_REASON_SYSTEM,
 )
+from agents.live_snapshot import fetch_indicator_snapshot
 
 log = logging.getLogger("engine.api.routes.agent")
 router = APIRouter()
@@ -337,10 +338,17 @@ async def judge(req: JudgeRequest) -> JudgeResponse:
     t0 = time.monotonic()
     cfg = resolve_llm_settings()
 
+    # Auto-enrich: if caller didn't supply indicator data, fetch it live
+    snapshot = req.indicator_snapshot
+    if not snapshot:
+        snapshot = await fetch_indicator_snapshot(req.symbol, req.timeframe)
+        if snapshot:
+            log.debug("[judge] auto-enriched snapshot with %d indicators for %s", len(snapshot), req.symbol)
+
     user_text = build_judge_prompt(
         req.symbol,
         req.timeframe,
-        req.indicator_snapshot,
+        snapshot,
         req.alpha_score,
         req.last_price,
     )
