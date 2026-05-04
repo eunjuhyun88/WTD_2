@@ -177,7 +177,7 @@
   border-bottom: 1px solid #2a2a3a;
   background: #0e0e1a;
 }
-.model-label { font-size: 10px; color: #5a6a8a; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
+.model-label { font-size: var(--ui-text-xs, 11px); color: #5a6a8a; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
 .model-select {
   flex: 1;
   background: #141428; color: #8899bb;
