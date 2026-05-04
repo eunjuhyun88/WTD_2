@@ -236,8 +236,8 @@ async def scan_universe_job(
         await push_alert_fn(result)
         if scan_telegram_enabled:
             symbol = result.get("symbol", "")
-            last_sent = cooldown_map.get(symbol, 0.0)
-            if now - last_sent < block_alert_cooldown_seconds:
+            last_sent = cooldown_map.get(symbol)
+            if last_sent is not None and now - last_sent < block_alert_cooldown_seconds:
                 log.debug(
                     "Block alert cooldown: skipping %s (%.0fh remaining)",
                     symbol,

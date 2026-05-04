@@ -72,19 +72,15 @@ async def _load_universe_with_watches(universe_name: str) -> list[str]:
 
 _scheduler: AsyncIOScheduler | None = None
 _last_pattern_entry_keys: set[str] = set()
-_last_block_alert_times: dict[str, float] = {}  # symbol → monotonic timestamp of last Telegram send
-
-# Pattern entry key persistence — survives server restarts
+_last_block_alert_times: dict[str, float] = {}
 _PATTERN_KEYS_FILE = Path(__file__).parent.parent / "data" / "pattern_entry_keys.json"
 
 
 def _load_pattern_keys() -> set[str]:
+    import json
     try:
-        _PATTERN_KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
         if _PATTERN_KEYS_FILE.exists():
-            import json as _json
-            data = _json.loads(_PATTERN_KEYS_FILE.read_text())
-            keys = set(data.get("keys", []))
+            keys = set(json.loads(_PATTERN_KEYS_FILE.read_text()).get("keys", []))
             log.info("Loaded %d persisted pattern entry keys", len(keys))
             return keys
     except Exception as exc:
@@ -93,13 +89,10 @@ def _load_pattern_keys() -> set[str]:
 
 
 def _save_pattern_keys(keys: set[str]) -> None:
+    import json
     try:
-        import json as _json, tempfile as _tmp
         _PATTERN_KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with _tmp.NamedTemporaryFile("w", dir=_PATTERN_KEYS_FILE.parent, delete=False, suffix=".json") as f:
-            _json.dump({"keys": sorted(keys)}, f)
-            tmp_path = Path(f.name)
-        tmp_path.replace(_PATTERN_KEYS_FILE)
+        _PATTERN_KEYS_FILE.write_text(json.dumps({"keys": sorted(keys)}))
     except Exception as exc:
         log.warning("Could not save pattern entry keys: %s", exc)
 
