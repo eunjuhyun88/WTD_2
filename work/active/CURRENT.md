@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`a2592365d` — origin/main (2026-05-05) — feat(W-0407): W-T4/T5/T6/T8/T11 terminal phases (#1190)
+`7c81412a5` — origin/main (2026-05-05) — feat(W-0414 PR-1): kieran spec extraction pipeline (#1194)
 
 W-0407 완료 현황:
 - PR #1190 MERGED: W-T4(alerts) + W-T5(perp fallback) + W-T6(scan) + W-T8(watchlist favs) + W-T11(compare/heatmap/VP)
