@@ -7,12 +7,6 @@
   import type { DrawingTool } from '../shell.store';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
-  interface Props {
-    onClearAll?: () => void;
-    onDeleteSelected?: () => void;
-  }
-  const { onClearAll, onDeleteSelected }: Props = $props();
-
   const TOOLS: Array<{
     key: DrawingTool;
     icon: string;
@@ -29,7 +23,6 @@
     { key: 'textLabel',      icon: 'T',  label: 'Text',            shortcut: 'L' },
   ];
 
-  const activeTool = $derived($shellStore.drawingTool);
   const inSaveRange = $derived($chartSaveMode.active);
 
   function pick(tool: DrawingTool) {
@@ -39,7 +32,12 @@
 
   function onConfirmClear() {
     if (typeof window === 'undefined') return;
-    if (window.confirm('Clear all drawings on this chart?')) onClearAll?.();
+    if (window.confirm('Clear all drawings on this chart?'))
+      window.dispatchEvent(new CustomEvent('wtd:drawing:clear-all'));
+  }
+
+  function onDeleteSelected() {
+    window.dispatchEvent(new CustomEvent('wtd:drawing:delete-selected'));
   }
 </script>
 
@@ -47,10 +45,10 @@
   {#each TOOLS as tool (tool.key)}
     <button
       class="dr-btn"
-      class:active={activeTool === tool.key && !inSaveRange}
+      class:active={$shellStore.drawingTool === tool.key && !inSaveRange}
       onclick={() => pick(tool.key)}
       title="{tool.label} ({tool.shortcut})"
-      aria-pressed={activeTool === tool.key}
+      aria-pressed={$shellStore.drawingTool === tool.key}
       aria-label={tool.label}
     >
       <span class="dr-icon">{tool.icon}</span>
@@ -59,51 +57,47 @@
 
   <div class="dr-divider"></div>
 
-  {#if onDeleteSelected}
-    <button
-      class="dr-btn dr-action"
-      onclick={onDeleteSelected}
-      title="Delete selected"
-      aria-label="Delete selected drawing"
-    >✕</button>
-  {/if}
+  <button
+    class="dr-btn dr-action"
+    onclick={onDeleteSelected}
+    title="Delete selected"
+    aria-label="Delete selected drawing"
+  >✕</button>
 
-  {#if onClearAll}
-    <button
-      class="dr-btn dr-action dr-danger"
-      onclick={onConfirmClear}
-      title="Clear all drawings"
-      aria-label="Clear all drawings"
-    >⌫</button>
-  {/if}
+  <button
+    class="dr-btn dr-action dr-danger"
+    onclick={onConfirmClear}
+    title="Clear all drawings"
+    aria-label="Clear all drawings"
+  >⌫</button>
 </div>
 
 <style>
   .drawing-rail {
-    width: 36px;
+    width: 24px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1px;
-    padding: 6px 3px;
+    padding: 4px 2px;
     background: var(--g1);
     border-right: 1px solid var(--g3);
     z-index: 5;
   }
 
   .dr-btn {
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 3px;
     color: var(--g6);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
+    font-size: 11px;
     line-height: 1;
     padding: 0;
     cursor: pointer;

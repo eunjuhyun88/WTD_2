@@ -441,7 +441,15 @@
   });
 </script>
 
-<div class="app-shell" data-watch={watchDataAttr} data-ai={aiDataAttr}>
+<div
+  class="app-shell"
+  data-watch={watchDataAttr}
+  data-ai={aiDataAttr}
+  style="
+    --watch-w: {$shellStore.sidebarVisible ? $shellStore.sidebarWidth + 'px' : '20px'};
+    --ai-w: {!$shellStore.aiVisible ? '20px' : $shellStore.aiWide ? '480px' : Math.max(240, $shellStore.aiWidth) + 'px'};
+  "
+>
   {#if $viewportTier.tier === 'MOBILE'}
     <!-- ── MOBILE ── -->
     <MobileTopBar
@@ -508,6 +516,7 @@
     <!-- grid-area: topbar -->
     <div class="grid-topbar">
       <TopBar
+        hideChartControls={true}
         onSymbolTap={() => (desktopSymbolPickerOpen = true)}
         onIndicators={() => (indicatorLibraryOpen = true)}
       />
@@ -537,6 +546,18 @@
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         {/if}
       </button>
+    </div>
+
+    <!-- grid-area: splch — resize handle between watchlist and draw -->
+    <div class="splitter-col" style="grid-area: splch;">
+      {#if $shellStore.sidebarVisible}
+        <Splitter
+          orientation="vertical"
+          onDrag={(dx) => shellStore.resizeSidebar(dx)}
+          onReset={() => shellStore.resetSidebarWidth()}
+          ariaLabel="Resize watchlist panel"
+        />
+      {/if}
     </div>
 
     <!-- grid-area: draw — DrawingRail (D-4, desktop only) -->
@@ -574,6 +595,7 @@
       <ChartToolbar
         onIndicators={() => (indicatorLibraryOpen = true)}
         onSettings={() => (indicatorSettingsOpen = true)}
+        onSymbolTap={() => openDesktopSymbolPicker()}
       />
 
       <WorkspaceStage
@@ -607,6 +629,18 @@
             verdict={judgeVerdict}
           />
         </div>
+      {/if}
+    </div>
+
+    <!-- grid-area: splai — resize handle between chart and ai -->
+    <div class="splitter-col" style="grid-area: splai;">
+      {#if $shellStore.aiVisible && !$shellStore.aiWide}
+        <Splitter
+          orientation="vertical"
+          onDrag={(dx) => shellStore.resizeAI(dx)}
+          onReset={() => shellStore.resetAIWidth()}
+          ariaLabel="Resize AI panel"
+        />
       {/if}
     </div>
 
@@ -719,17 +753,19 @@
   .app-shell {
     height: 100dvh;
     display: grid;
-    grid-template-rows: 40px auto 1fr 28px;
+    grid-template-rows: 32px auto 1fr 20px;
     grid-template-columns:
-      var(--watch-w, 200px)
-      40px
+      var(--watch-w, 140px)
+      5px
+      24px
       1fr
-      var(--ai-w, 320px);
+      5px
+      var(--ai-w, 220px);
     grid-template-areas:
-      "topbar    topbar topbar topbar"
-      "news      news   news   news"
-      "watchlist draw   chart  ai"
-      "statusbar statusbar statusbar statusbar";
+      "topbar    topbar  topbar topbar topbar  topbar"
+      "news      news    news   news   news    news"
+      "watchlist splch   draw   chart  splai   ai"
+      "statusbar statusbar statusbar statusbar statusbar statusbar";
     background: var(--g0);
     overflow: hidden;
     font-family: 'Geist', 'Inter', system-ui, sans-serif;
@@ -761,6 +797,18 @@
   }
   .grid-statusbar > :global(*) { flex: 1; min-width: 0; }
 
+  /* Resize handle columns (splch / splai) */
+  .splitter-col {
+    display: flex;
+    align-items: stretch;
+    z-index: 20;
+    background: transparent;
+  }
+  .splitter-col :global(.splitter) {
+    height: 100%;
+    flex: 1;
+  }
+
   /* WatchlistRail column */
   .watchlist-col {
     grid-area: watchlist;
@@ -768,8 +816,6 @@
     overflow: hidden;
     position: relative;
     min-width: 0;
-    border-right: 1px solid var(--g3);
-    transition: width 0.18s ease;
   }
 
   /* DrawingRail column */
@@ -799,8 +845,6 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    border-left: 1px solid var(--g3);
-    transition: width 0.18s ease;
   }
   .ai-col.wide { box-shadow: -4px 0 12px rgba(0, 0, 0, 0.18); }
 

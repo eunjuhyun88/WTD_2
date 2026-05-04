@@ -24,8 +24,8 @@
   import SaveSetupModal from './SaveSetupModal.svelte';
   import SaveStrip from './SaveStrip.svelte';
   import ResearchPanel from './ResearchPanel.svelte';
-  import ChartToolbar from './ChartToolbar.svelte';
   import ChartBoardHeader from './ChartBoardHeader.svelte';
+  import VerdictBanner from './VerdictBanner.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
@@ -42,7 +42,7 @@
   import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
   import { createLiveTickState } from '$lib/chart/liveTickState.svelte';
   // ── W-0289: Drawing Tools ────────────────────────────────────────────────────
-  import DrawingCanvas from './DrawingCanvas.svelte';
+  import DrawingOverlay from './DrawingOverlay.svelte';
   import DrawingToolbar from './DrawingToolbar.svelte';
   import { DrawingManager, type DrawingToolType } from '$lib/chart/DrawingManager';
   import { PriceLineManager } from '$lib/chart/usePriceLines';
@@ -56,6 +56,7 @@
     refreshLiqPane,
     type IndicatorSeriesRefs,
     type SecondaryIndicatorPayload,
+    type PanePositions,
   } from '$lib/chart/mountIndicatorPanes';
   import { indicatorInstances } from '$lib/chart/indicatorInstances.svelte';
   import {
@@ -67,7 +68,7 @@
     calcATRBands,
   } from './chartIndicatorCalc';
   import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
-  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore.svelte';
+  import { createPaneLayoutStore, PANE_KINDS, type PaneKind } from '$lib/chart/paneLayoutStore.svelte';
   import PaneInfoBar from './PaneInfoBar.svelte';
   import KpiStrip from './KpiStrip.svelte';
   import type { KpiInputBundle } from '$lib/chart/kpiStrip';
@@ -81,7 +82,7 @@
   // ── W-0358: Chart Notes Overlay ───────────────────────────────────────────
   import { chartNotesStore } from '$lib/stores/chartNotesStore.svelte';
   import FloatingNoteButton from '../../../shared/chart/FloatingNoteButton.svelte';
-  import { shellStore, activeDrawingMode } from '$lib/hubs/terminal/shell.store';
+  import { shellStore, activeDrawingMode, activeTabState } from '$lib/hubs/terminal/shell.store';
   import IndicatorLibrary from './IndicatorLibrary.svelte';
   import IndicatorCatalogModal from '$lib/components/indicators/IndicatorCatalogModal.svelte';
   import type { IndicatorDef } from '$lib/indicators/indicatorRegistry';
@@ -185,11 +186,23 @@
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
 
   // ── W-0289: Drawing tools ──────────────────────────────────────────────────
-  let drawingActiveTool     = $state<DrawingToolType>('cursor');
+  // drawingActiveTool derived from shellStore — DrawingRail is the single source of truth
+  const drawingActiveTool = $derived($shellStore.drawingTool as DrawingToolType);
   let drawingToolsVisible   = $state(false);
   let drawingMgr = $state<DrawingManager | null>(null);
 
   const onToggleDrawingTools = () => { drawingToolsVisible = !drawingToolsVisible; shellStore.setDrawingTool(drawingToolsVisible ? 'trendLine' : 'cursor'); };
+
+  // Sync shellStore.drawingTool → drawingMgr via syncTool (no toggle, no onToolChange re-emission)
+  $effect(() => {
+    const tool = $shellStore.drawingTool as DrawingToolType;
+    const mgr = drawingMgr;
+    if (mgr) setTimeout(() => mgr.syncTool(tool), 0);
+  });
+
+  // Handle clear/delete dispatched from DrawingRail via DOM events
+  function onDrawingClearAll() { drawingMgr?.clearAll(); }
+  function onDrawingDeleteSelected() { drawingMgr?.deleteSelected(); }
 
   let indicatorLibraryOpen = $state(false);
   let catalogModalOpen = $state(false);
@@ -486,7 +499,7 @@
   let mainChart = $state<IChartApi | null>(null);
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | ISeriesApi<'Area'> | ISeriesApi<'Bar'> | null = null;
   /** Pane indices for indicator panes — assigned during renderCharts(). */
-  let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number }>({
+  let panePositions = $state<PanePositions>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
   });
   /** Secondary indicator instances mounted on extra panes (W-0399-p2). */
@@ -499,6 +512,30 @@
   let crosshairUnsub: CrosshairUnsubscribe | null = null;
   /** Per-pane layout store (visibility + stretch persistence). */
   const paneLayout = createPaneLayoutStore();
+
+  // W-0407: sync per-tab PaneConfig[] → paneLayout when active tab changes.
+  // Subscribe in onMount (post-hydration) to avoid Svelte 5 state_unsafe_mutation
+  // warnings that fire when $state is written during the hydration phase.
+  const _LAYOUT_KINDS = new Set<string>(PANE_KINDS);
+  function _syncPanesFromTab(tabState: { panes?: { kind: string; visible: boolean; stretch: number }[] }) {
+    const panes = tabState?.panes;
+    if (!panes?.length) return;
+    // setTimeout escapes Svelte 5 reactive flush (prevents state_unsafe_mutation)
+    setTimeout(() => {
+      const vis: Partial<Record<PaneKind, boolean>> = {};
+      for (const p of panes) {
+        if (_LAYOUT_KINDS.has(p.kind)) vis[p.kind as PaneKind] = p.visible;
+      }
+      paneLayout.syncVisibility(vis);
+      for (const p of panes) {
+        if (_LAYOUT_KINDS.has(p.kind) && p.visible) {
+          paneLayout.setStretch(p.kind as PaneKind, p.stretch);
+        }
+      }
+    }, 0);
+  }
+  let _unsubPanes: (() => void) | undefined;
+
   /**
    * Live chips driven by crosshair. null = crosshair off chart;
    * parent falls back to static last-bar chips from chartData.
@@ -672,8 +709,13 @@
     } else {
       const newStretch = Math.max(0.5, Math.min(8, activeResize.startStretch + deltaStretch));
       paneLayout.setStretch(activeResize.upperKind, newStretch);
+      // W-0407: write stretch back to per-tab PaneConfig
+      const resizeKind = activeResize!.upperKind;
+      shellStore.updateTabPanes(ps => ps.map(p =>
+        p.kind === resizeKind ? { ...p, stretch: newStretch } : p,
+      ));
       try {
-        const idx = panePositions[activeResize.upperKind];
+        const idx = panePositions[resizeKind];
         if (idx >= 0) mainChart.panes()[idx]?.setStretchFactor(newStretch);
       } catch { /* ignore */ }
     }
@@ -1488,7 +1530,7 @@
           drawingMgr?.detach();
           drawingMgr = new DrawingManager({ storageKey: key });
         }
-        drawingMgr.onToolChange = (t) => { drawingActiveTool = t; };
+        drawingMgr.onToolChange = (t) => { shellStore.setDrawingTool(t); };
         drawingMgr.attach(mainChart, priceSeries as ISeriesApi<SeriesType>);
       }
     });
@@ -1714,6 +1756,9 @@
   }
 
   onMount(() => {
+    // W-0407: subscribe post-hydration so $state writes don't trigger Svelte 5 warning
+    _unsubPanes = activeTabState.subscribe(_syncPanesFromTab);
+
     const onWin = () => {
       viewportWidth = containerEl?.offsetWidth ?? window.innerWidth;
       handleResize();
@@ -1727,6 +1772,9 @@
     window.addEventListener('keydown', handleDrawingModeKeydown);
     // / key opens indicator library (W-0399)
     window.addEventListener('keydown', handleIndicatorLibraryKeydown);
+    // DrawingRail clear/delete events (siblings in grid, can't share props)
+    window.addEventListener('wtd:drawing:clear-all', onDrawingClearAll);
+    window.addEventListener('wtd:drawing:delete-selected', onDrawingDeleteSelected);
     // Initial viewport width
     onWin();
     return () => {
@@ -1734,11 +1782,14 @@
     };
   });
   onDestroy(() => {
+    _unsubPanes?.();
     saveModeUnsubscribe?.();
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleRangeModeKeydown);
       window.removeEventListener('keydown', handleDrawingModeKeydown);
       window.removeEventListener('keydown', handleIndicatorLibraryKeydown);
+      window.removeEventListener('wtd:drawing:clear-all', onDrawingClearAll);
+      window.removeEventListener('wtd:drawing:delete-selected', onDrawingDeleteSelected);
     }
     disconnectWS();
     destroyCharts();
@@ -1897,14 +1948,6 @@
   data-surface={surfaceStyle}
 >
 
-  <!-- ── ChartToolbar (TF selector + export + drawing mode) ────── -->
-  <ChartToolbar
-    {tf}
-    onTfChange={selectTf}
-    drawingMode={$activeDrawingMode}
-    onToggleDrawing={() => shellStore.setDrawingTool('trendLine')}
-  />
-
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
   <ChartBoardHeader
     {chartMode}
@@ -1931,6 +1974,9 @@
     onToggleIndicatorLibrary={() => { indicatorLibraryOpen = !indicatorLibraryOpen; }}
   />
 
+  <!-- ── Verdict banner (W-T4) ─────────────────────────────────────────────── -->
+  <VerdictBanner {verdictLevels} livePrice={liveTick.price ?? 0} />
+
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
   {#if loading}
     <div class="chart-state">
@@ -1948,19 +1994,6 @@
       <button onclick={() => void feed.loadData()}>Retry</button>
     </div>
   {:else}
-    <!-- W-0289: Drawing toolbar (left of chart) -->
-    {#if $activeDrawingMode}
-      <DrawingToolbar
-        activeTool={drawingActiveTool}
-        onSelectTool={(t) => {
-          drawingActiveTool = t;
-          drawingMgr?.setTool(t);
-        }}
-        onClearAll={() => drawingMgr?.clearAll()}
-        onDeleteSelected={() => drawingMgr?.deleteSelected()}
-      />
-    {/if}
-
     <!-- W-0374 Phase D-4: IndicatorLibrary drawer -->
     {#if indicatorLibraryOpen}
       <IndicatorLibrary
@@ -1973,19 +2006,7 @@
     <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
-      <!-- D-9: AI range box overlay -->
-      {#if aiBoxCoords.length > 0}
-        <svg class="ai-range-overlay" aria-hidden="true">
-          {#each aiBoxCoords as box}
-            <rect x={box.x} y={box.y} width={box.w} height={box.h}
-              fill={box.color} fill-opacity="0.10"
-              stroke={box.color} stroke-width="1" stroke-opacity="0.45" />
-            {#if box.label}
-              <text x={box.x + 4} y={box.y + 11} fill={box.color} font-size="8" opacity="0.75">{box.label}</text>
-            {/if}
-          {/each}
-        </svg>
-      {/if}
+      <!-- W-T3: moved to DrawingOverlay -->
       <div class="layer2-topright">
         <PhaseBadge phase={null} />
       </div>
@@ -2005,8 +2026,14 @@
     <div class="pane-main multi-pane-host" bind:this={mainEl}
       style="--price-frac: {priceFracPct}%">
       <!-- W-0289: Drawing overlay canvas -->
-      {#if $activeDrawingMode && drawingMgr}
-        <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
+      {#if drawingMgr}
+        <DrawingOverlay
+          mgr={drawingMgr}
+          chart={mainChart}
+          series={priceSeries as ISeriesApi<SeriesType> | null}
+          containerEl={mainEl}
+          {symbol}
+        />
       {/if}
 
       <!-- W-0395 Phase 4: pane resize handles — 6px grab zone at each pane boundary -->

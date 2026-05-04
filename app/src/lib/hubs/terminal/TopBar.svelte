@@ -29,8 +29,10 @@
   interface Props {
     onSymbolTap?: () => void;
     onIndicators?: () => void;
+    /** W-0407: when true, L1/ChartToolbar owns symbol/TF/type/price — hide them here */
+    hideChartControls?: boolean;
   }
-  let { onSymbolTap, onIndicators }: Props = $props();
+  let { onSymbolTap, onIndicators, hideChartControls = false }: Props = $props();
 
   const symbol    = $derived($activeTabState.symbol ?? 'BTCUSDT');
   const tf        = $derived($activeTabState.timeframe ?? '4h');
@@ -172,111 +174,113 @@
   <!-- L1 row: 6 logical slots -->
   <div class="l1-row">
 
-    <!-- Slot 1: Symbol -->
-    <button class="sym-btn" onclick={onSymbolTap}>
-      <span class="sym-text">{dispSym}</span>
-      <span class="sym-arrow">▾</span>
-    </button>
-
-    <div class="vdivider"></div>
-
-    <!-- Slot 2: TF chip + popover -->
-    <div class="chip-wrap">
-      <button
-        bind:this={tfBtnEl}
-        class="chip-btn"
-        class:active={tfPopoverOpen}
-        onclick={toggleTFPopover}
-        aria-haspopup="true"
-        aria-expanded={tfPopoverOpen}
-      >
-        <span class="chip-label">{tf}</span>
-        <span class="chip-arrow">▾</span>
+    {#if !hideChartControls}
+      <!-- Slot 1: Symbol -->
+      <button class="sym-btn" onclick={onSymbolTap}>
+        <span class="sym-text">{dispSym}</span>
+        <span class="sym-arrow">▾</span>
       </button>
-      {#if tfPopoverOpen}
-        <div class="popover-anchor" role="none" onclick={(e) => e.stopPropagation()}>
-          <TopBarTFPopover currentTF={tf} onClose={closePopovers} />
-        </div>
-      {/if}
-    </div>
 
-    <div class="vdivider"></div>
+      <div class="vdivider"></div>
 
-    <!-- Slot 3: Chart Type chip + popover -->
-    <div class="chip-wrap">
-      <button
-        bind:this={typeBtnEl}
-        class="chip-btn"
-        class:active={typePopoverOpen}
-        onclick={toggleTypePopover}
-        aria-haspopup="true"
-        aria-expanded={typePopoverOpen}
-      >
-        <span class="chip-label">{TYPE_LABEL[chartType]}</span>
-        <span class="chip-arrow">▾</span>
-      </button>
-      {#if typePopoverOpen}
-        <div class="popover-anchor" role="none" onclick={(e) => e.stopPropagation()}>
-          <TopBarTypePopover currentType={chartType} onClose={closePopovers} />
-        </div>
-      {/if}
-    </div>
-
-    <div class="vdivider"></div>
-
-    <!-- Slot 4: Price block — price + OHLC + L2 quant (single visual unit) -->
-    <div class="price-unit">
-      <!-- Price + change -->
-      <div class="price-block {priceClass}">
-        <span class="price-val">{fmtPrice(liveP)}</span>
-        <span class="price-chg">{fmtChange(change24h)}</span>
+      <!-- Slot 2: TF chip + popover -->
+      <div class="chip-wrap">
+        <button
+          bind:this={tfBtnEl}
+          class="chip-btn"
+          class:active={tfPopoverOpen}
+          onclick={toggleTFPopover}
+          aria-haspopup="true"
+          aria-expanded={tfPopoverOpen}
+        >
+          <span class="chip-label">{tf}</span>
+          <span class="chip-arrow">▾</span>
+        </button>
+        {#if tfPopoverOpen}
+          <div class="popover-anchor" role="none" onclick={(e) => e.stopPropagation()}>
+            <TopBarTFPopover currentTF={tf} onClose={closePopovers} />
+          </div>
+        {/if}
       </div>
 
-      <!-- OHLC — hidden ≤1024px -->
-      <div class="ohlc-strip">
-        <span class="ohlc-item"><span class="ohlc-lbl">H</span>{fmtPrice(high24h)}</span>
-        <span class="ohlc-item"><span class="ohlc-lbl">L</span>{fmtPrice(low24h)}</span>
-        <span class="ohlc-item ohlc-vol"><span class="ohlc-lbl">Vol</span>{fmtVol(vol24h)}</span>
+      <div class="vdivider"></div>
+
+      <!-- Slot 3: Chart Type chip + popover -->
+      <div class="chip-wrap">
+        <button
+          bind:this={typeBtnEl}
+          class="chip-btn"
+          class:active={typePopoverOpen}
+          onclick={toggleTypePopover}
+          aria-haspopup="true"
+          aria-expanded={typePopoverOpen}
+        >
+          <span class="chip-label">{TYPE_LABEL[chartType]}</span>
+          <span class="chip-arrow">▾</span>
+        </button>
+        {#if typePopoverOpen}
+          <div class="popover-anchor" role="none" onclick={(e) => e.stopPropagation()}>
+            <TopBarTypePopover currentType={chartType} onClose={closePopovers} />
+          </div>
+        {/if}
       </div>
 
-      <!-- L2 quant inline — hidden ≤1024px -->
-      {#if hasL2}
-        <div class="l2-inline">
-          {#if oiVal !== null}
-            <span class="q-item">
-              <span class="q-lbl">OI</span>
-              <span class="q-val {oiClass}">{fmtOI(oiVal)}</span>
-              {#if oiDeltaPct !== null}
-                <span class="q-arrow {oiClass}">{oiDeltaPct > 0 ? '↑' : '↓'}{Math.abs(oiDeltaPct).toFixed(1)}%</span>
+      <div class="vdivider"></div>
+
+      <!-- Slot 4: Price block — price + OHLC + L2 quant (single visual unit) -->
+      <div class="price-unit">
+        <!-- Price + change -->
+        <div class="price-block {priceClass}">
+          <span class="price-val">{fmtPrice(liveP)}</span>
+          <span class="price-chg">{fmtChange(change24h)}</span>
+        </div>
+
+        <!-- OHLC — hidden ≤1024px -->
+        <div class="ohlc-strip">
+          <span class="ohlc-item"><span class="ohlc-lbl">H</span>{fmtPrice(high24h)}</span>
+          <span class="ohlc-item"><span class="ohlc-lbl">L</span>{fmtPrice(low24h)}</span>
+          <span class="ohlc-item ohlc-vol"><span class="ohlc-lbl">Vol</span>{fmtVol(vol24h)}</span>
+        </div>
+
+        <!-- L2 quant inline — hidden ≤1024px -->
+        {#if hasL2}
+          <div class="l2-inline">
+            {#if oiVal !== null}
+              <span class="q-item">
+                <span class="q-lbl">OI</span>
+                <span class="q-val {oiClass}">{fmtOI(oiVal)}</span>
+                {#if oiDeltaPct !== null}
+                  <span class="q-arrow {oiClass}">{oiDeltaPct > 0 ? '↑' : '↓'}{Math.abs(oiDeltaPct).toFixed(1)}%</span>
+                {/if}
+              </span>
+              {#if frVal !== null || (showKimchi && kimchiPct !== null)}
+                <span class="q-sep">│</span>
               {/if}
-            </span>
-            {#if frVal !== null || (showKimchi && kimchiPct !== null)}
-              <span class="q-sep">│</span>
             {/if}
-          {/if}
 
-          {#if frVal !== null}
-            <span class="q-item">
-              <span class="q-lbl">FR</span>
-              <span class="q-val {frClass}">{fmtFR(frVal)}</span>
-              {#if Math.abs(frVal) >= 0.005}
-                <span class="q-hint {frClass}">{frVal > 0 ? '롱쏠림' : '숏쏠림'}</span>
+            {#if frVal !== null}
+              <span class="q-item">
+                <span class="q-lbl">FR</span>
+                <span class="q-val {frClass}">{fmtFR(frVal)}</span>
+                {#if Math.abs(frVal) >= 0.005}
+                  <span class="q-hint {frClass}">{frVal > 0 ? '롱쏠림' : '숏쏠림'}</span>
+                {/if}
+              </span>
+              {#if showKimchi && kimchiPct !== null}
+                <span class="q-sep">│</span>
               {/if}
-            </span>
+            {/if}
+
             {#if showKimchi && kimchiPct !== null}
-              <span class="q-sep">│</span>
+              <span class="q-item kim-item">
+                <span class="q-lbl">Kim</span>
+                <span class="q-val {kimchiClass}">{kimchiPct > 0 ? '+' : ''}{kimchiPct.toFixed(2)}%</span>
+              </span>
             {/if}
-          {/if}
-
-          {#if showKimchi && kimchiPct !== null}
-            <span class="q-item kim-item">
-              <span class="q-lbl">Kim</span>
-              <span class="q-val {kimchiClass}">{kimchiPct > 0 ? '+' : ''}{kimchiPct.toFixed(2)}%</span>
-            </span>
-          {/if}
-        </div>
-      {/if}
-    </div>
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Spacer -->
     <div class="flex-gap"></div>

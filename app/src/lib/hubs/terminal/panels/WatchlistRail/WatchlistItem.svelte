@@ -113,7 +113,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 10px;
+    padding: 4px 8px;
     background: transparent;
     border: none;
     border-bottom: 0.5px solid var(--g3);

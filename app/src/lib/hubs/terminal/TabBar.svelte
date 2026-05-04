@@ -373,7 +373,7 @@
     background: transparent;
     border: none;
     color: var(--g5);
-    font-size: 14px;
+    font-size: 11px;
     cursor: pointer;
     transition: color 0.12s;
     align-self: center;

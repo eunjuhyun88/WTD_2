@@ -77,6 +77,45 @@ button {
 
 /* Legacy .halftone and .sunburst removed — Phase 1-1 dead code cleanup */
 
+/* ── Terminal legacy token bridge ───────────────────────────────────────────
+ * Maps --g* / --brand / --bull / --bear etc. (used throughout terminal
+ * components) to the canonical --sc-* / --lis-* system.
+ * Without these, var(--g0) etc. resolve to empty → transparent backgrounds.
+ * ────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Neutral scale: darkest (0) → lightest text (9) */
+  --g0: #000000;
+  --g1: #0a0a0a;
+  --g2: #111111;
+  --g3: #1a1a1a;
+  --g4: rgba(255, 255, 255, 0.08);
+  --g5: rgba(247, 242, 234, 0.36);
+  --g6: rgba(247, 242, 234, 0.52);
+  --g7: rgba(247, 242, 234, 0.68);
+  --g8: rgba(247, 242, 234, 0.82);
+  --g9: #f7f2ea;
+
+  /* Brand & market colors */
+  --brand: #db9a9f;
+  --bull:  #4ade80;
+  --bear:  #f87171;
+  --pos:   #4ade80;
+  --neg:   #f87171;
+  --pos-dd: rgba(74, 222, 128, 0.1);
+  --neg-dd: rgba(248, 113, 113, 0.1);
+  --amb:   #f2d193;
+
+  /* Spacing & radius */
+  --r-1: 2px;
+  --r-2: 3px;
+  --r-3: 4px;
+  --r-4: 6px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE: Touch Target Enforcement
    WCAG 2.5.8 — minimum target size on touch devices

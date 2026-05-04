@@ -29,7 +29,7 @@ grep -rn '"analyze"\|"scan"' app/src/lib/hubs/ --include="*.ts" --include="*.sve
 
 ## §2 SHELL_KEY
 
-현재 값: **`cogochi_shell_v12`**
+현재 값: **`cogochi_shell_v14`**
 
 변경 시: 이 파일 §2 먼저 업데이트 → `shell.store.ts` `SHELL_KEY` 상수 → 이전 키 cleanup 배열 추가.
 
@@ -93,3 +93,4 @@ grep -n "SHELL_KEY\|cogochi_shell_v" app/src/lib/hubs/terminal/shell.store.ts | 
 | 2026-05-02 | 최초 작성 | W-0374 병렬 브랜치 naming conflict 방지 |
 | 2026-05-02 | SHELL_KEY v12 | shell.store merge — v9/v10/v11 cleanup 추가 |
 | 2026-05-02 | §3 경로 전면 업데이트 | W-0382-D — lib/cogochi + components/terminal 삭제 (#906) |
+| 2026-05-05 | SHELL_KEY v14 | W-0407 — per-tab panes[] + pinned + compares + heatmapOn |

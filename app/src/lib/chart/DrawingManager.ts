@@ -96,6 +96,7 @@ export class DrawingManager {
   // ── Callbacks ────────────────────────────────────────────────────────────
   /** Called when drawings change (for reactive UI update) */
   public onDrawingsChange: (() => void) | null = null;
+  public onRenderNeeded: (() => void) | null = null;
   /** Called when active tool changes */
   public onToolChange: ((tool: DrawingToolType) => void) | null = null;
 
@@ -180,8 +181,28 @@ export class DrawingManager {
     this.render();
   }
 
+  /** Sync active tool from store without toggling and without emitting onToolChange. */
+  syncTool(tool: DrawingToolType) {
+    if (this.activeTool === tool) return;
+    this.activeTool = tool;
+    this.fsmState = 'idle';
+    this.pendingPoints = [];
+    this.previewPoint = null;
+    this.render();
+  }
+
   getActiveTool(): DrawingToolType { return this.activeTool; }
   getDrawings(): Drawing[] { return [...this.drawings]; }
+
+  getPreviewDrawing(): Drawing | null {
+    if (this.fsmState !== 'drawing' || !this.pendingPoints.length || !this.previewPoint) return null;
+    return {
+      id: '__preview__',
+      type: this.activeTool,
+      points: [...this.pendingPoints, this.previewPoint],
+      style: { color: '#2196F3', lineWidth: 1, dash: [4, 3], opacity: 0.7 },
+    };
+  }
 
   deleteSelected() {
     if (!this.selectedId) return;
@@ -268,6 +289,7 @@ export class DrawingManager {
   // ── Render ───────────────────────────────────────────────────────────────
 
   render() {
+    this.onRenderNeeded?.();
     if (!this.canvas) return;
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;

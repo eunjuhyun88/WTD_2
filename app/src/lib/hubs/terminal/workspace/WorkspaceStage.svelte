@@ -91,7 +91,7 @@
             </div>
             <button class="workspace-pane-btn workspace-pane-btn--immersive" type="button" title="Exit focus mode" onclick={() => shellStore.exitWorkspaceImmersive()}>×</button>
           </div>
-        {:else}
+        {:else if compareCount() > 1}
           <header class="workspace-pane-head">
             <button class="workspace-pane-title" type="button" onclick={() => shellStore.focusWorkspaceTab(tab.id)}>
               <span class="workspace-pane-kicker">{slotLabel(slotIndex)}</span>
