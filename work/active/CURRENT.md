@@ -60,6 +60,7 @@ W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 | `W-0409-patterns-redesign` | P1 | 🟢 설계 완료(+Lab 흡수), D1~D22 락, 8 PR |
 | `W-0411-settings-redesign` | P1 | 🟢 설계 완료, D1~D22 락, 7 PR |
 | `W-0413-5page-integration` | P1 | 🟢 통합 검토 + §J 4-agent audit 완료, Wave A0~E, 37+ PR, 23 IAC, ~5주 |
+| `W-0414-meta-rule-trading-framework` | P1 | 🟢 설계 완료 (학술 매핑 + 8 PR, D1~D20 락) — kieran 분석 기반 4-게이트 + Bayesian attribution + paper runner |
 | `W-0412-i18n-rollout` | P2 | 🟢 stub 작성 (W-0411 K9 분리), Wave D 머지 후 PR1 발급 |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
