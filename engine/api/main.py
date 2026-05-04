@@ -24,7 +24,7 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
-from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user, research, propfirm as propfirm_routes, agent, passport as passport_routes, extreme_events, counterfactual as counterfactual_routes, tv_import, indicators
+from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user, research, propfirm as propfirm_routes, agent, passport as passport_routes, extreme_events, counterfactual as counterfactual_routes, tv_import, indicators, agent_chat
 from notifications.digest import router as digest_router
 from api.routes.scoring_status import router as scoring_status_router
 from personalization.api import router as personalization_router
@@ -344,6 +344,7 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(research.router, prefix="/research", tags=["research"])
     target.include_router(propfirm_routes.router)
     target.include_router(agent.router, tags=["agent"])
+    target.include_router(agent_chat.router, tags=["agent-chat"])
     target.include_router(passport_routes.router, tags=["passport"])
     target.include_router(extreme_events.router, prefix="/extreme-events", tags=["extreme-events"])
     target.include_router(counterfactual_routes.router, tags=["counterfactual"])
