@@ -1,13 +1,9 @@
-# W-0409 — alpha_scan 제거 + similar tool 실데이터 배선
+# W-0409 — alpha_scan / 유사 AI tool 실제 데이터 배선 또는 제거
 
 > Wave: 6 | Priority: P2 | Effort: M
-> Charter: AI Agent 품질 + 보안 (환각 tool 제거)
-> Status: ✅ 구현 완료 (PR #1168)
+> Charter: AI Agent 품질 + 보안 (환각 tool 제거 또는 실제 데이터 배선)
+> Status: 🔵 분석 완료 / 구현 대기
 > Created: 2026-05-05
-
-## Goal
-
-`alpha_scan`, `similar` 두 tool이 실제 데이터 없이 LLM만 호출하여 환각 출력을 반환한다. `alpha_scan`은 제거하고, `similar`는 실제 `search_similar_patterns` DB 검색으로 교체한다.
 
 ## Owner
 
@@ -15,58 +11,168 @@
 
 ## Scope
 
-- `engine/agents/tools/registry.py`: `alpha_scan` TOOL_SCHEMAS + dispatcher + `_call_alpha_scan` 제거
-- `engine/agents/tools/registry.py`: `similar` → `fetch_indicator_snapshot` + `_build_query_spec` + `search_similar_patterns` (3-layer DB 검색)
-- `engine/agents/tier.py`: free tier `allowed_tools`에서 `alpha_scan` 제거
+### In-Scope
+- `engine/agents/registry.py` — `alpha_scan` 제거 (PR1) + 실제 tool 재등록 (PR2)
+- `engine/agents/tools/market_tools.py` — `get_open_interest`, `get_funding_rate` 신규 (PR2)
+- 기존 `alpha_scan` 핸들러 → `engine/agents/tools/_disabled/` 이동 (삭제 아님)
 
 ## Non-Goals
 
-- `/agent/alpha-scan` HTTP 경로 제거 (별도 pre-computed scores 입력 경로 — 유지)
-- Binance Futures OI/funding 공개 API 배선 (별도 work item으로 분리 가능)
+- Binance 외 거래소 OI/펀딩 데이터
+- 히스토리 DB 저장 (실시간 fetch만)
+- LLM 분석 레이어 추가
 
 ## Canonical Files
 
-- `engine/agents/tools/registry.py` — TOOL_SCHEMAS + dispatch_tool + helpers
-- `engine/agents/tier.py` — free tier allowed_tools
+- `engine/agents/registry.py`
+- `engine/agents/tools/market_tools.py` (PR2 신규)
+- `engine/agents/tools/_disabled/` (alpha_scan 이동 대상)
 
 ## Facts
 
-- `alpha_scan` 기존 구현: `generate_llm_text(prompt="심볼: {symbol} 알파 스캔")` — 실데이터 없음
-- `similar` 기존 구현: 동일 패턴 — LLM에 symbol만 전달
-- `search_similar_patterns` 실제 구현 존재: `engine/research/discovery/candidate_search.py:116`
-- `_build_query_spec` 존재: `engine/alpha/scroll_similar_compose.py:52`
-- `/agent/alpha-scan` HTTP 경로는 별도 pre-computed scores 수신 경로 (제거 대상 아님)
-- 14 tests 통과 (PR #1168)
+- `alpha_scan`: `engine/agents/registry.py` 등록 위치 실측 전 확인 필요 (`grep -r "alpha_scan" engine/`)
+- Binance Futures 공개 API (인증 불필요): OI (`/fapi/v1/openInterest`), 펀딩 (`/fapi/v1/fundingRate`)
+- Binance API weight: OI + 펀딩 동시 조회 = 2 weight (1200 weight/min 한도 내)
+
+## Goal
+
+`alpha_scan`(및 유사 tool)은 실제 OI/펀딩 데이터 없이 LLM을 중첩 호출하여 환각된 "분석"을 반환한다. 이를 (a) 실제 Binance Futures 데이터로 교체하거나 (b) 실제 데이터 연결 전까지 TOOL_SCHEMAS에서 제거한다.
+
+## 현재 상태 분석
+
+### 취약점 위치
+- `engine/agents/registry.py:228-255` (추정 — 확인 필요)
+
+### 현재 동작 패턴
+```python
+# 현재 (문제)
+async def alpha_scan(symbol: str, ...) -> str:
+    prompt = f"Analyze open interest and funding for {symbol}"
+    result = await generate_llm_text(prompt)   # 실제 데이터 없이 LLM에 질문
+    return result  # 환각 출력
+```
+
+### 위험도
+| Risk | Severity | 설명 |
+|---|---|---|
+| 환각 분석 → 사용자 트레이딩 판단 오류 | HIGH | 실제 OI/펀딩 데이터 없이 LLM이 만든 "분석" = 허위 정보 |
+| 중첩 LLM 호출 지연 | MED | 200-2000ms 추가 레이턴시, 비용 2배 |
+| Prompt injection via tool | MED | tool 내부 LLM은 별도 방어 레이어 없음 |
+
+## 옵션 분석
+
+### Option A — 실제 데이터 배선 (권장, 중기)
+**대상 데이터**:
+1. **Open Interest**: `GET https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}` (공개 API, 인증 불필요)
+2. **Funding Rate**: `GET https://fapi.binance.com/fapi/v1/fundingRate?symbol={symbol}&limit=10` (공개 API)
+3. **OI History**: `GET https://fapi.binance.com/futures/data/openInterestHist?symbol={symbol}&period=5m&limit=48` (공개 API)
+
+**구현 방향**:
+```python
+async def alpha_scan(symbol: str) -> dict:
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        oi, funding = await asyncio.gather(
+            client.get(f"https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}"),
+            client.get(f"https://fapi.binance.com/fapi/v1/fundingRate?symbol={symbol}&limit=3"),
+        )
+    oi_data = oi.json()
+    funding_data = funding.json()
+    # LLM 없이 구조화된 데이터 반환
+    return {
+        "symbol": symbol,
+        "open_interest_usdt": float(oi_data.get("openInterest", 0)),
+        "current_funding_rate": float(funding_data[-1].get("fundingRate", 0)) if funding_data else 0,
+        "funding_history": [{"time": f["fundingTime"], "rate": f["fundingRate"]} for f in funding_data],
+    }
+```
+
+**장점**: 실제 데이터 = 신뢰 가능, 중첩 LLM 제거 → 레이턴시 개선, 비용 절감
+
+**단점**: Binance Futures API가 모든 심볼 지원 안 할 수 있음 (spot-only 심볼 예외 처리 필요)
+
+### Option B — Tool 임시 제거 (즉시 적용 가능)
+**방식**: `TOOL_SCHEMAS`에서 `alpha_scan` 제거, TOOL_DISPATCHER에서 핸들러 제거
+
+**장점**: 즉시 환각 차단, 구현 5분
+
+**단점**: 기능 손실 — 실제 배선 완료 전까지 tool 없음
+
+**권장**: Option B를 즉시 적용 → Option A로 재등록하는 2-PR 방식
+
+## 구현 계획
+
+### PR1 — 환각 tool 즉시 제거 (Option B 즉시 적용)
+- `engine/agents/registry.py`: `alpha_scan` 및 유사 LLM 중첩 tool을 `TOOL_SCHEMAS`에서 제거
+- `engine/agents/tools/`: 해당 핸들러 함수를 `_disabled/` 폴더로 이동 (삭제 아님 — 재활용 가능)
+- 테스트: tool list에 `alpha_scan` 미포함 확인
+
+### PR2 — 실제 Binance Futures 데이터 배선 (Option A)
+- `engine/agents/tools/market_tools.py` 신규 (또는 기존 파일에 추가)
+- `get_open_interest(symbol)`: Binance Futures OI 실시간 + 히스토리
+- `get_funding_rate(symbol)`: 현재 + 최근 3회 펀딩레이트
+- 두 tool을 `TOOL_SCHEMAS`에 재등록 (새 이름 또는 `alpha_scan` 복원)
+- 심볼 검증: `USDT` perp contract 아닌 경우 `{"error": "Futures contract not found"}` 반환
+- Rate limit: Binance 공개 API는 1200 weight/min — OI+funding 동시 조회는 2 weight
+
+## 재확인 필요 사항
+
+다음 파일을 구현 전 반드시 확인:
+1. `engine/agents/registry.py` — `alpha_scan` 등록 위치 및 실제 코드
+2. `engine/agents/tools/` — 해당 tool 파일 위치
+3. `engine/agents/dispatch.py` (또는 유사) — tool dispatcher 구조
+
+> **주의**: 이 work item 작성 시점에 실제 코드를 grep하지 않았음.
+> 구현 전 `grep -r "alpha_scan" engine/` 실행 후 실제 위치 확인 필수.
 
 ## Assumptions
 
-- `search_similar_patterns`는 동기 함수 → `asyncio.to_thread()` 래핑 필요
-- DB에 충분한 패턴 데이터 존재 시 `similar` candidates 반환
+- `alpha_scan`이 실제로 LLM 중첩 호출 방식임 — 구현 전 `grep -r "alpha_scan" engine/` 확인 필수
+- Binance Futures 공개 API 접근 제한 없음 (IP ban 없는 환경)
+- beta 규모: 레이턴시 < 1000ms 허용 (p95)
 
 ## Open Questions
 
-- `similar` candidates가 없을 때 UX: 빈 배열 반환 vs 메시지?
+- `alpha_scan` 외 LLM 중첩 tool이 더 있는지 (`grep "generate_llm_text" engine/agents/tools/`)
+- 실제 spot-only 심볼 요청 시 에러 처리 방법
 
 ## Decisions
 
-- `alpha_scan` 완전 제거 (실데이터 없는 환각 tool은 신뢰 위해 제거)
-- `similar` 실데이터 교체 (기존 3-layer search engine 활용)
-- LLM 중첩 호출 제거 → 레이턴시 개선 + 할루시네이션 제거
+- **Option B 먼저 (즉시)**: `alpha_scan` TOOL_SCHEMAS에서 제거 → 환각 즉시 차단
+- **Option A 후속 (PR2)**: 실제 Binance Futures 데이터로 `get_open_interest` + `get_funding_rate` 신규 등록
+- 기존 핸들러 삭제 아님 → `_disabled/` 이동 (재활용 가능)
 
 ## Next Steps
 
-- PR #1168 머지 후 완료
-- Binance OI/funding 실데이터 추가가 필요하면 별도 work item 생성
+1. PR1: `grep -r "alpha_scan" engine/` 실측 → registry에서 제거 + `_disabled/` 이동
+2. PR2: `engine/agents/tools/market_tools.py` 신규, Binance Futures fetch + registry 재등록
 
 ## Exit Criteria
 
-- [x] `alpha_scan` TOOL_SCHEMAS 미포함
-- [x] `similar` → `search_similar_patterns` DB 검색 (LLM 호출 없음)
-- [x] `tier.py` free tier `allowed_tools`에서 `alpha_scan` 제거
-- [x] 14 tests 통과
+### PR1
+- [ ] `grep -r "alpha_scan" engine/agents/registry.py` → 0 hits
+- [ ] tool list API 응답에 `alpha_scan` 미포함
+- [ ] 기존 테스트 통과
+
+### PR2
+- [ ] `get_open_interest("BTCUSDT")` → `{"symbol": "BTCUSDT", "open_interest_usdt": ...}` (실제 숫자)
+- [ ] `get_funding_rate("BTCUSDT")` → `{"current_rate": ..., "history": [...]}` (실제 데이터)
+- [ ] `get_open_interest("AAPL")` → `{"error": "..."}` (Futures 미지원 심볼 예외 처리)
+- [ ] LLM 중첩 호출 없음 (`generate_llm_text` import 미사용)
+- [ ] 레이턴시 < 1000ms (Binance API 단순 fetch)
+
+## 의존성
+
+- PR1: 없음 (즉시 가능)
+- PR2: PR1 이후 (또는 병렬 가능), Binance Futures API 접근 가능 환경
+
+## 파일 (예상)
+
+- `engine/agents/registry.py`
+- `engine/agents/tools/market_tools.py` (PR2 신규)
+- 기존 alpha_scan 핸들러 파일 → `engine/agents/tools/_disabled/`
 
 ## Handoff Checklist
 
-- [x] 구현 완료 (PR #1168)
-- [x] 테스트 14개 통과
-- [ ] PR #1168 머지
+- [x] 설계 완료 (분석 문서)
+- [ ] PR1 구현 (alpha_scan 제거 + _disabled 이동)
+- [ ] PR2 구현 (실제 데이터 배선 + registry 재등록)

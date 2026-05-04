@@ -20,10 +20,11 @@ _API_KEY_PATTERN_LEN = 64
 
 
 def _decrypt_api_key(ciphertext: str) -> str:
-    """Decrypt AES-256-GCM ciphertext from binanceConnector.ts format.
+    """Decrypt AES-256-GCM ciphertext from binanceConnector.ts.
 
-    Format: "{iv_hex}:{authTag_hex}:{encrypted_hex}"
-    Key derivation: scrypt(EXCHANGE_ENCRYPTION_KEY, 'cogochi-salt', 32)
+    Supports two formats:
+      4-part (new):    "{salt_hex}:{iv_hex}:{authTag_hex}:{encrypted_hex}"
+      3-part (legacy): "{iv_hex}:{authTag_hex}:{encrypted_hex}"  (salt='cogochi-salt')
     """
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -33,17 +34,22 @@ def _decrypt_api_key(ciphertext: str) -> str:
     if not raw_key:
         raise ValueError("EXCHANGE_ENCRYPTION_KEY is not set")
 
-    # Derive 32-byte key using scrypt (matches JS: crypto.scryptSync(key, 'cogochi-salt', 32))
-    kdf = Scrypt(salt=b"cogochi-salt", length=32, n=16384, r=8, p=1, backend=default_backend())
+    parts = ciphertext.split(":")
+    if len(parts) == 4:
+        salt = bytes.fromhex(parts[0])
+        iv_hex, auth_tag_hex, enc_hex = parts[1], parts[2], parts[3]
+    elif len(parts) == 3:
+        salt = b"cogochi-salt"
+        iv_hex, auth_tag_hex, enc_hex = parts[0], parts[1], parts[2]
+    else:
+        raise ValueError(f"Invalid ciphertext format: expected 3 or 4 parts, got {len(parts)}")
+
+    kdf = Scrypt(salt=salt, length=32, n=16384, r=8, p=1, backend=default_backend())
     derived_key = kdf.derive(raw_key.encode())
 
-    parts = ciphertext.split(":")
-    if len(parts) != 3:
-        raise ValueError("Invalid ciphertext format")
-
-    iv = bytes.fromhex(parts[0])
-    auth_tag = bytes.fromhex(parts[1])
-    encrypted = bytes.fromhex(parts[2])
+    iv = bytes.fromhex(iv_hex)
+    auth_tag = bytes.fromhex(auth_tag_hex)
+    encrypted = bytes.fromhex(enc_hex)
 
     aesgcm = AESGCM(derived_key)
     # AESGCM expects ciphertext + tag concatenated

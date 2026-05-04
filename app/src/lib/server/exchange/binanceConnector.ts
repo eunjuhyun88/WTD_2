@@ -49,9 +49,10 @@ interface BinanceFuturesTrade {
   maker: boolean;
 }
 
-// ─── API Key encryption (simple AES-256-GCM) ──────────────────
+// ─── API Key encryption (AES-256-GCM + per-user scrypt salt) ──
 
-const ENCRYPTION_SALT = 'cogochi-salt';
+// Legacy salt kept only for decoding 3-part legacy ciphertexts.
+const LEGACY_SALT = 'cogochi-salt';
 
 export function isExchangeEncryptionConfigured(): boolean {
   return typeof process.env.EXCHANGE_ENCRYPTION_KEY === 'string'
@@ -64,23 +65,40 @@ function getEncryptionKey(): string {
   return key;
 }
 
-function deriveEncryptionKey(): Buffer {
-  return crypto.scryptSync(getEncryptionKey(), ENCRYPTION_SALT, 32);
+function deriveEncryptionKey(salt: string | Buffer): Buffer {
+  return crypto.scryptSync(getEncryptionKey(), salt, 32);
 }
 
+// Produces 4-part ciphertext: {salt_hex}:{iv_hex}:{authTag_hex}:{encrypted_hex}
+// salt is random per-call → same plaintext yields different ciphertext every time.
 export function encryptApiKey(plaintext: string): string {
-  const key = deriveEncryptionKey();
+  const salt = crypto.randomBytes(16);
+  const key = deriveEncryptionKey(salt);
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   const authTag = cipher.getAuthTag().toString('hex');
-  return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+  return `${salt.toString('hex')}:${iv.toString('hex')}:${authTag}:${encrypted}`;
 }
 
 export function decryptApiKey(ciphertext: string): string {
-  const [ivHex, authTagHex, encrypted] = ciphertext.split(':');
-  const key = deriveEncryptionKey();
+  const parts = ciphertext.split(':');
+  let ivHex: string, authTagHex: string, encrypted: string, key: Buffer;
+
+  if (parts.length === 4) {
+    // New 4-part format: per-user random salt
+    const [saltHex, iv, authTag, enc] = parts;
+    key = deriveEncryptionKey(Buffer.from(saltHex, 'hex'));
+    ivHex = iv; authTagHex = authTag; encrypted = enc;
+  } else if (parts.length === 3) {
+    // Legacy 3-part format: hardcoded salt fallback
+    key = deriveEncryptionKey(LEGACY_SALT);
+    [ivHex, authTagHex, encrypted] = parts;
+  } else {
+    throw new Error(`Invalid ciphertext format: expected 3 or 4 parts, got ${parts.length}`);
+  }
+
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
   decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');

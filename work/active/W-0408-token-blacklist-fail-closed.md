@@ -2,74 +2,186 @@
 
 > Wave: 6 | Priority: P1 | Effort: S
 > Charter: 보안 강화 (Auth 레이어 보완)
-> Status: ✅ 구현 완료 (PR #1166)
+> Status: 🔵 분석 완료 / 구현 대기
+> Issue: #1172 (보안 분석 묶음)
 > Created: 2026-05-05
-
-## Goal
-
-Redis 다운 시 `is_revoked()` fail-open → 로그아웃 토큰 재사용 가능 취약점 수정. in-memory LRU fallback으로 Redis 장애 중에도 이 인스턴스에서 revoke된 토큰을 차단한다.
 
 ## Owner
 
 미지정
 
+## Goal
+
+현재 Redis가 다운되면 `is_revoked()`가 `False`를 반환(fail-open)하여 로그아웃된 토큰이 유효해진다. 이를 in-memory fallback blacklist + short TTL 방식으로 교체하여 Redis 장애 시에도 최소한의 보안을 유지한다.
+
 ## Scope
 
-- `engine/api/auth/token_blacklist.py` 단일 파일 수정
-- `_mem_blacklist`: `OrderedDict` 500개 LRU, `threading.Lock` 보호
-- `revoke_token`: Redis 전 항상 메모리 선기록
-- `is_revoked`: 메모리 fast-path → Redis fallback
-- `engine/tests/test_token_blacklist.py` 신규 (14 tests)
+### In-Scope
+- `engine/api/auth/token_blacklist.py` — in-memory LRU fallback 추가
+- `engine/tests/test_token_blacklist.py` — unit test
 
 ## Non-Goals
 
-- Redis HA (Sentinel/Cluster) — P2 roadmap
-- 다중 인스턴스 cross-coverage (Redis HA 없이는 불가)
-- JWT 만료 시간 단축
-- Refresh token 도입
+- Redis HA(Sentinel/Cluster) 구축
+- Short-lived JWT + Refresh Token 교체
+- 다중 인스턴스 cross-instance blacklist 동기화
 
 ## Canonical Files
 
-- `engine/api/auth/token_blacklist.py` — 구현 (PR #1166에서 완료)
-- `engine/tests/test_token_blacklist.py` — 신규 테스트 파일
+- `engine/api/auth/token_blacklist.py`
+- `engine/tests/test_token_blacklist.py`
 
 ## Facts
 
-- 기존 코드: Redis 없으면 `return False` (fail-open) — `lines 82-100`
-- 기존 주석: `"availability beats security for this tier — see P2 roadmap for Redis HA"`
-- 14 unit/integration tests 통과 (PR #1166)
-- 한계: 다중 인스턴스에서 Redis 장애 시 cross-instance revoke 불가
+- `is_revoked()`: Redis 없을 때 `return False` (fail-open) — `engine/api/auth/token_blacklist.py`
+- 현재 주석: `"availability beats security for this tier — see P2 roadmap for Redis HA"`
+- 다중 인스턴스 환경: 인스턴스별 메모리 분리 (cross-instance 동기화 없음)
+
+## 현재 상태 분석
+
+### 취약점 위치
+- `engine/api/auth/token_blacklist.py:82-100`
+
+### 현재 코드 (핵심)
+```python
+async def is_revoked(jti: str) -> bool:
+    pool = _get_pool()
+    if pool is None:          # Redis 없으면
+        return False          # ← fail-open: 로그아웃 토큰이 유효해짐
+    try:
+        return bool(await pool.exists(f"bl:{jti}"))
+    except Exception:
+        logger.warning("token_blacklist check failed: %s", exc)
+        return False          # ← Redis 에러 시에도 fail-open
+```
+
+파일 내 주석: `"availability beats security for this tier — see P2 roadmap for Redis HA"`
+
+### 위험도
+| Risk | Severity | 설명 |
+|---|---|---|
+| Redis 다운 시 로그아웃 토큰 재사용 | HIGH | 세션 탈취 후 Redis 다운 타이밍에 replay 가능 |
+| 장기 Redis 중단 시 전체 blacklist 무력화 | HIGH | 공격자가 Redis를 타겟팅하면 all sessions replayable |
+
+## 옵션 분석
+
+### Option A — In-memory fallback blacklist (권장)
+**방식**: Redis 장애 시 프로세스 메모리에 최근 N개 JTI를 LRU cache로 유지. revoke 시 Redis + 메모리 양쪽에 기록.
+
+**장점**:
+- Redis 장애 중에도 해당 프로세스에서 revoke된 토큰은 차단됨
+- 가용성 유지 (서비스 중단 없음)
+- 구현 단순 (50줄 미만)
+
+**단점**:
+- 다중 인스턴스 환경에서 메모리는 인스턴스별 — 다른 인스턴스에서 revoke된 토큰은 메모리에 없음
+- Redis 장애 + 다중 인스턴스 = 동일 인스턴스로 재요청 오지 않으면 차단 불가
+
+### Option B — 완전 Fail-Closed (Redis 다운 시 401)
+**방식**: Redis 장애 시 모든 토큰 검증 실패 → 401 반환
+
+**장점**: 보안 완전 보장
+
+**단점**: Redis SLA = 서비스 SLA. Redis 다운 = 전체 인증 불가. 현재 아키텍처에서 수용 불가.
+
+### Option C — Short-lived JWT (만료 5분) + Refresh Token
+**방식**: access token TTL을 5분으로 줄임 → blacklist 의존도 낮춤
+
+**장점**: blacklist 자체가 불필요해질 수 있음
+
+**단점**: 기존 클라이언트 수정 범위 큼. 장기 작업.
+
+## 권장 구현: Option A (in-memory LRU fallback)
+
+### 구현 계획 (1-PR)
+
+```python
+# token_blacklist.py 수정안
+
+from collections import OrderedDict
+import threading
+
+_MEM_MAX = 500  # 최대 500개 JTI 인메모리 보관
+_mem_blacklist: OrderedDict[str, float] = OrderedDict()  # jti → revoked_at timestamp
+_mem_lock = threading.Lock()
+
+def _mem_revoke(jti: str) -> None:
+    with _mem_lock:
+        _mem_blacklist[jti] = time.time()
+        if len(_mem_blacklist) > _MEM_MAX:
+            _mem_blacklist.popitem(last=False)  # LRU evict
+
+def _mem_is_revoked(jti: str) -> bool:
+    with _mem_lock:
+        return jti in _mem_blacklist
+
+async def revoke(jti: str, ttl: int = TOKEN_TTL) -> None:
+    _mem_revoke(jti)           # 항상 메모리에 먼저 기록
+    pool = _get_pool()
+    if pool is None:
+        return
+    try:
+        await pool.setex(f"bl:{jti}", ttl, "1")
+    except Exception:
+        logger.warning("token_blacklist revoke to Redis failed, memory-only")
+
+async def is_revoked(jti: str) -> bool:
+    if _mem_is_revoked(jti):   # 메모리 먼저 확인 (빠름)
+        return True
+    pool = _get_pool()
+    if pool is None:
+        return False           # Redis 없으면 메모리만으로 판단 (fail-soft)
+    try:
+        return bool(await pool.exists(f"bl:{jti}"))
+    except Exception:
+        logger.warning("token_blacklist Redis check failed, falling back to memory")
+        return False           # Redis 에러 시 메모리만 사용
+```
+
+### 한계 명시 (주석 + 문서)
+- 다중 인스턴스 환경에서 Redis 장애 시: 인스턴스 A에서 로그아웃 → 인스턴스 B로 재요청 시 차단 불가
+- 이 위험을 완전히 제거하려면 Redis HA(Sentinel/Cluster) 필요 — 별도 인프라 작업
 
 ## Assumptions
 
-- 단일 인스턴스 또는 sticky session 환경에서는 메모리 fallback으로 충분
-- `_MEM_MAX = 500` JTI 보관량은 동시 활성 로그아웃 세션 대비 충분
+- beta 규모: 동시 로그인 세션 수백 개 수준 → LRU 500개로 충분
+- Redis 단일 인스턴스 (Sentinel/Cluster 없음) — 장애 시 프로세스 메모리가 유일한 fallback
+- Fail-open이 완전히 제거되지 않음을 UX/SLA 관점에서 허용
 
 ## Open Questions
 
-- 다중 인스턴스 완전 보장이 필요한 시점에 Redis HA 도입 방식 (Sentinel vs Cluster)?
+- in-memory LRU 500 개 상한이 충분한지 (beta 세션 수 실측 필요)
+- 다중 인스턴스로 확장 시 cross-instance sync 방법 (Redis HA vs. shared cache)
 
 ## Decisions
 
-- in-memory LRU fallback 선택 (Option A) — 가용성 유지 + 단일 인스턴스 보안 강화
-- fail-closed (Option B) 미채택 — Redis SLA = 서비스 SLA이므로 수용 불가
-- `OrderedDict.popitem(last=False)` LRU eviction — stdlib만 사용, 의존성 없음
+- **Option A 채택**: in-memory LRU fallback — 가용성과 보안 균형. Option B(완전 fail-closed)는 Redis SLA = 서비스 SLA로 수용 불가
+- **Option C 기각**: JWT short-lived + refresh 교체는 클라이언트 수정 범위 크고 별도 work item
 
 ## Next Steps
 
-- PR #1166 머지 후 완료
-- Redis HA 필요 시 W-0408-P2 생성
+1. `engine/api/auth/token_blacklist.py` — in-memory LRU fallback 구현 (1-PR)
+2. `engine/tests/test_token_blacklist.py` — 신규 테스트 추가
+3. 주석에 다중 인스턴스 한계 명시
 
 ## Exit Criteria
 
-- [x] `revoke_token` Redis 실패 시 메모리에 기록됨
-- [x] Redis 다운 상태에서 `is_revoked(recently_revoked_jti)` = `True`
-- [x] Redis 다운 상태에서 `is_revoked(unknown_jti)` = `False`
-- [x] LRU 500개 초과 시 eviction 동작 (테스트)
-- [x] 14 tests 통과
+- [ ] `revoke()` 호출 시 Redis 성공 여부와 무관하게 메모리에 기록됨
+- [ ] Redis 다운 상태에서 `is_revoked(recently_revoked_jti)` = `True` (메모리 hit)
+- [ ] Redis 다운 상태에서 `is_revoked(unknown_jti)` = `False` (서비스 정상 운영)
+- [ ] 메모리 크기 500개 초과 시 LRU eviction 동작 확인 (테스트)
+- [ ] 기존 unit test 통과
+
+## 의존성
+
+- 없음 (독립 수정)
+
+## 파일
+
+- `engine/api/auth/token_blacklist.py` (단일 파일 수정)
+- `engine/tests/test_token_blacklist.py` (신규 테스트 추가)
 
 ## Handoff Checklist
 
-- [x] 구현 완료 (PR #1166)
-- [x] 테스트 14개 통과
-- [ ] PR #1166 머지
+- [x] 설계 완료 (분석 문서)
+- [ ] PR1 구현 (in-memory LRU fallback + 테스트)
