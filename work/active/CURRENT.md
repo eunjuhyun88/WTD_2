@@ -36,11 +36,10 @@
 
 ## main SHA
 
-`654c230b` — origin/main (2026-05-05) — feat(W-0405): 4-layer AI prompt injection defense (#1159)
+`2982f315` — origin/main (2026-05-05) — security(W-0410): per-user scrypt salt for Binance API key encryption (#1173)
 
-W-0405 PR1~PR4 완료:
-- PR1 ExchangeTab Binance API key UI (#1150) / PR2 /api/agent/binance (#1151) / PR3 telemetry (#1153)
-- PR4 get_binance_balance + get_binance_positions tools (#1156)
+W-0410 완료:
+- PR #1173 MERGED — binanceConnector.ts 4-part ciphertext + binance_tools.py dual-format + migrate_scrypt_salt.py
 - fix: ExchangeTab SettingsHub wiring (#1158) / 4-layer prompt injection defense (#1159)
 
 W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
@@ -60,7 +59,7 @@ W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-PF-100-P2-eval-challenge` | P0 | 🟡 착수 가능 |
-| `W-0410-scrypt-per-user-salt` | P1 | ✅ PR #1173 OPEN — binanceConnector.ts + binance_tools.py + migrate 스크립트 |
+| `W-0410-scrypt-per-user-salt` | P1 | ✅ MERGED #1173 — binanceConnector.ts + binance_tools.py + migrate 스크립트. prod 실행 대기 |
 | `W-0408-token-blacklist-fail-closed` | P1 | 🔵 분석 완료, 구현 대기 — Redis 장애 시 토큰 재사용 방지 |
 | `W-0409-alpha-scan-real-data` | P2 | 🔵 분석 완료, 구현 대기 — 환각 LLM tool 제거 → Binance OI 배선 |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
