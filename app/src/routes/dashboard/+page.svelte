@@ -11,6 +11,7 @@
   import F60ProgressCard from '$lib/components/ai/F60ProgressCard.svelte';
   import StreakBadgeCard from '$lib/components/passport/StreakBadgeCard.svelte';
   import { streakSnapshot, startStreakPolling } from '$lib/stores/streak.store';
+  import VerdictInboxSection from '$lib/components/patterns/VerdictInboxSection.svelte';
   import { track } from '$lib/analytics';
   import type { CaptureRow, OpportunityScore } from './+page.server';
 
@@ -360,6 +361,11 @@
     />
   </section>
 
+  <!-- Verdict inbox (W-0403 PR12) -->
+  <section class="dash-verdict-inbox" data-testid="dashboard-verdict-inbox">
+    <VerdictInboxSection />
+  </section>
+
   <DashActivityGrid
     {topOpportunities}
     {opportunityPersonalized}
@@ -537,6 +543,10 @@
     font-size: var(--ui-text-xs);
     margin: 0;
     padding: 8px 0;
+  }
+
+  .dash-verdict-inbox {
+    padding: 8px 16px 0;
   }
 
   /* Home Profile Strip */
