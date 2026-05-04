@@ -102,3 +102,34 @@ export function trackRightpanelTabSwitch(fromTab: string, toTab: string): void {
   }
   fireGtag('rightpanel_tab_switch', parsed.data as unknown as Record<string, unknown>);
 }
+
+// ── wave6.* telemetry ──────────────────────────────────────────────────────
+
+export const AiAskSchema = z.object({
+  intent: z.enum(['scan', 'why', 'judge', 'recall', 'inbox', 'unknown']),
+  source: z.enum(['slash', 'nl']),
+  input_len: z.number().int().nonnegative(),
+});
+export type AiAskPayload = z.infer<typeof AiAskSchema>;
+
+export function trackAiAsk(payload: AiAskPayload): void {
+  const parsed = AiAskSchema.safeParse(payload);
+  if (!parsed.success) { console.warn('[telemetry] ai_ask invalid', parsed.error.issues); return; }
+  // dual-emit: legacy + wave6 namespace
+  fireGtag('ai_query', parsed.data as unknown as Record<string, unknown>);
+  fireGtag('wave6.ai_ask', parsed.data as unknown as Record<string, unknown>);
+}
+
+export const TabSwitchSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  trigger: z.enum(['manual', 'ai_ask']),
+});
+export type TabSwitchPayload = z.infer<typeof TabSwitchSchema>;
+
+export function trackTabSwitch(payload: TabSwitchPayload): void {
+  const parsed = TabSwitchSchema.safeParse(payload);
+  if (!parsed.success) { console.warn('[telemetry] tab_switch invalid', parsed.error.issues); return; }
+  fireGtag('rightpanel_tab_switch', parsed.data as unknown as Record<string, unknown>); // legacy
+  fireGtag('wave6.tab_switch', parsed.data as unknown as Record<string, unknown>);
+}
