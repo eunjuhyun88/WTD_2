@@ -126,7 +126,7 @@
     padding: 0 12px;
     border-bottom: 1px solid var(--g3);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: var(--g6);
     letter-spacing: 0.04em;
   }
@@ -151,13 +151,13 @@
 
   .strip-time {
     color: var(--g7);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
   }
 
   .verdict-mini {
     display: inline-block;
     padding: 0 5px;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 700;
     letter-spacing: 0.08em;
     border-radius: 2px;
@@ -182,7 +182,7 @@
   .nav-btn {
     flex: 1;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     letter-spacing: 0.08em;
     color: var(--g6);
