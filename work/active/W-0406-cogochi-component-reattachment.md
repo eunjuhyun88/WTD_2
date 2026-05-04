@@ -1,4 +1,6 @@
-# W-0405 — Cogochi/Terminal 컴포넌트 재배치 (Orphan Reattachment + 중복 정리)
+# W-0406 — Cogochi/Terminal 컴포넌트 재배치 (Orphan Reattachment + 중복 정리)
+
+> ⚠️ **번호 충돌 회피**: W-0405는 Binance API Key Connection (PR #1150/#1151/#1152, 2026-05-04 머지)에 선점됨. 본 work item은 W-0406으로 재번호.
 
 > **Status**: design (handoff for new session)
 > **Created**: 2026-05-04
