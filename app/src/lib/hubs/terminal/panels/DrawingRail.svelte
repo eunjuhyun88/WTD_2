@@ -80,30 +80,30 @@
 
 <style>
   .drawing-rail {
-    width: 36px;
+    width: 24px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1px;
-    padding: 6px 3px;
+    padding: 4px 2px;
     background: var(--g1);
     border-right: 1px solid var(--g3);
     z-index: 5;
   }
 
   .dr-btn {
-    width: 28px;
-    height: 28px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 3px;
     color: var(--g6);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
+    font-size: 11px;
     line-height: 1;
     padding: 0;
     cursor: pointer;

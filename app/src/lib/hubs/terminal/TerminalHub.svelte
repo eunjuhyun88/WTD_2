@@ -757,7 +757,7 @@
     grid-template-columns:
       var(--watch-w, 140px)
       5px
-      32px
+      24px
       1fr
       5px
       var(--ai-w, 220px);

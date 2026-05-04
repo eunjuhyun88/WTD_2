@@ -7,7 +7,6 @@
   import { workMode } from '$lib/hubs/terminal/workMode.store';
   import TrainStage from '$lib/hubs/terminal/panels/TrainStage.svelte';
   import FlywheelStage from '$lib/hubs/terminal/panels/FlywheelStage.svelte';
-  import AiSearchBar from '$lib/hubs/cogochi/AiSearchBar.svelte';
   import { routeAiAsk } from '$lib/hubs/cogochi/panelRouter';
   import type { AiAskDetail } from '$lib/hubs/cogochi/panelRouter';
 
@@ -43,7 +42,6 @@
   });
 </script>
 
-<AiSearchBar {currentTab} />
 <TerminalHub />
 {#if $workMode === 'TRAIN'}
   <TrainStage />
