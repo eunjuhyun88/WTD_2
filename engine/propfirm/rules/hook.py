@@ -12,9 +12,14 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone, date
 
-from propfirm.rules.types import MllInput, MinDaysInput, RuleResult, RuleEnum
+from propfirm.rules.types import (
+    MllInput, MinDaysInput, ConsistencyInput, ProfitGoalInput,
+    RuleResult, RuleEnum,
+)
 from propfirm.rules.mll import evaluate_mll
 from propfirm.rules.min_days import evaluate_min_days
+from propfirm.rules.consistency import evaluate_consistency
+from propfirm.rules.profit_goal import evaluate_profit_goal
 
 log = logging.getLogger("engine.propfirm.hook")
 
@@ -155,33 +160,14 @@ async def on_fill(
 
         # 6. MLL 위반 처리
         if not mll_result.passed:
-            # CAS UPDATE: status='ACTIVE' → 'FAILED'
-            cas_resp = (
-                client.table("evaluations")
-                .update({"status": "FAILED"})
-                .eq("id", eval_id)
-                .eq("status", "ACTIVE")
-                .execute()
+            from propfirm.evaluation import EvaluationStateMachine
+            sm = EvaluationStateMachine()
+            await sm.fail(eval_id, RuleEnum.MLL, mll_result.detail)
+            log.warning(
+                "hook: MLL FAILED eval_id=%s detail=%s",
+                eval_id,
+                mll_result.detail,
             )
-            cas_count = len(cas_resp.data) if cas_resp.data else 0
-            if cas_count == 1:
-                # CAS 성공 → rule_violations insert
-                client.table("rule_violations").insert({
-                    "evaluation_id": eval_id,
-                    "rule": RuleEnum.MLL.value,
-                    "detail": mll_result.detail,
-                    "violated_at": filled_at.isoformat(),
-                }).execute()
-                log.warning(
-                    "hook: MLL FAILED eval_id=%s detail=%s",
-                    eval_id,
-                    mll_result.detail,
-                )
-            else:
-                log.info(
-                    "hook: MLL CAS miss (already FAILED?) eval_id=%s",
-                    eval_id,
-                )
 
         # 7. trading_days 갱신 (신규 거래일인 경우)
         fill_date: date = filled_at.astimezone(timezone.utc).date()
@@ -220,7 +206,75 @@ async def on_fill(
             )
         )
 
-        # 9. 결과 반환
+        # 9. MLL 통과한 경우 consistency + profit_goal 평가 및 PASSED 체크
+        if mll_result.passed:
+            # 챌린지 시작 이후 전체 fills SUM → total_pnl, max_single_day_pnl
+            started_at: str = evaluation.get("started_at") or "1970-01-01T00:00:00+00:00"
+            all_fills_resp = (
+                client.table("pf_fills")
+                .select("side, qty, fill_px, fee, filled_at")
+                .eq("account_id", account_id)
+                .gte("filled_at", started_at)
+                .execute()
+            )
+            all_fills = all_fills_resp.data or []
+
+            total_pnl: float = 0.0
+            daily_pnl: dict[str, float] = {}
+            for f in all_fills:
+                f_qty = float(f.get("qty") or 0)
+                f_px = float(f.get("fill_px") or 0)
+                f_fee = float(f.get("fee") or 0)
+                f_side = f.get("side", "BUY")
+                if f_side == "SELL":
+                    pnl_contrib = f_qty * f_px - f_fee
+                else:
+                    pnl_contrib = -(f_qty * f_px) - f_fee
+                total_pnl += pnl_contrib
+                # 일별 그룹핑 (UTC 날짜)
+                f_date = str(f.get("filled_at", ""))[:10]
+                daily_pnl[f_date] = daily_pnl.get(f_date, 0.0) + pnl_contrib
+
+            max_single_day_pnl = max(daily_pnl.values()) if daily_pnl else 0.0
+
+            from propfirm.evaluation import EvaluationStateMachine
+            sm = EvaluationStateMachine()
+
+            # consistency 평가
+            consistency_result = evaluate_consistency(
+                ConsistencyInput(
+                    total_pnl=total_pnl,
+                    max_single_day_pnl=max_single_day_pnl,
+                )
+            )
+            if not consistency_result.passed:
+                await sm.fail(eval_id, RuleEnum.CONSISTENCY, consistency_result.detail)
+                log.warning(
+                    "hook: CONSISTENCY FAILED eval_id=%s detail=%s",
+                    eval_id,
+                    consistency_result.detail,
+                )
+            else:
+                # profit_goal 평가
+                profit_goal_result = evaluate_profit_goal(
+                    ProfitGoalInput(
+                        equity_start=equity_start,
+                        total_pnl=total_pnl,
+                    )
+                )
+                # profit_goal + min_days 둘 다 passed → PASSED 전이
+                if profit_goal_result.passed and min_days_result.passed:
+                    snapshot = {
+                        "total_pnl": total_pnl,
+                        "equity_start": equity_start,
+                        "profit_goal_pct": 0.08,
+                        "trading_days": new_trading_days,
+                        "min_trading_days": min_trading_days,
+                        "evaluated_at": filled_at.isoformat(),
+                    }
+                    await sm.try_pass(eval_id, snapshot)
+
+        # 10. 결과 반환
         return [mll_result, min_days_result]
 
     except Exception as exc:
