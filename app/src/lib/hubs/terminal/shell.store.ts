@@ -210,7 +210,7 @@ const makeDefault = (): ShellState => ({
   workspaceRightSplitY: DEFAULT_WORKSPACE_RIGHT_SPLIT_Y,
   sidebarVisible: false,
   aiVisible: false,
-  activeSection: 'library',
+  activeSection: 'verdicts',
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
   aiWidth: DEFAULT_AI_WIDTH,
   canvasSplitY: 50,
