@@ -57,10 +57,6 @@
     saveFavs(next);
   }
 
-  const visibleSymbols = $derived(
-    watchFilter === 'favs' ? symbols.filter((s) => favs.has(s)) : symbols,
-  );
-
   function loadSymbols(): string[] {
     if (typeof localStorage === 'undefined') return [...DEFAULT_SYMBOLS];
     try {
@@ -78,6 +74,9 @@
   }
 
   let symbols   = $state<string[]>(loadSymbols());
+  const visibleSymbols = $derived(
+    watchFilter === 'favs' ? symbols.filter((s) => favs.has(s)) : symbols,
+  );
   let ticks     = $state<Record<string, MiniTickerUpdate>>({});
   let sparkData = $state<Record<string, number[]>>({});
   let frMap     = $state<Record<string, number>>({});
