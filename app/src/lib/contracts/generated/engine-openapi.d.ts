@@ -3236,6 +3236,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/chat/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Available Models
+         * @description Return available models for UI model selector.
+         */
+        get: operations["get_available_models_agent_chat_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/chat": {
         parameters: {
             query?: never;
@@ -4245,6 +4265,8 @@ export interface components {
              * @default free
              */
             tier: string;
+            /** Model */
+            model?: string | null;
         };
         /** CommitRequest */
         CommitRequest: {
@@ -12177,6 +12199,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_available_models_agent_chat_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
