@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { exchangeKeys } from '$lib/stores/exchangeKeys';
 
   export let onSaved: () => void = () => {};
+
+  onMount(() => { void exchangeKeys.fetchStatus(); });
 
   let apiKey = '';
   let secret = '';
@@ -30,20 +33,34 @@
     if (!validateApiKey(apiKey) || !validateSecret(secret)) return;
     saving = true;
     try {
-      exchangeKeys.saveMock(apiKey, secret);
-      showToast(`✓ 저장됨 (****${apiKey.slice(-4)})`);
-      apiKey = '';
-      secret = '';
-      reenter = false;
-      onSaved();
+      const result = await exchangeKeys.save(apiKey, secret);
+      if (result.ok) {
+        showToast(`✓ 저장됨 (****${apiKey.slice(-4)})`);
+        apiKey = '';
+        secret = '';
+        reenter = false;
+        onSaved();
+      } else {
+        if (result.code === 'trading_enabled') {
+          showToast('❌ Trading 권한이 있는 키는 허용되지 않습니다');
+        } else if (result.code === 'invalid_key') {
+          showToast('❌ 유효하지 않은 API Key입니다');
+        } else {
+          showToast(`❌ ${result.error ?? '저장 실패'}`);
+        }
+      }
     } finally {
       saving = false;
     }
   }
 
-  function handleDelete() {
-    exchangeKeys.remove();
-    showToast('키가 삭제됐습니다');
+  async function handleDelete() {
+    const result = await exchangeKeys.remove();
+    if (result.ok) {
+      showToast('키가 삭제됐습니다');
+    } else {
+      showToast(`❌ ${result.error ?? '삭제 실패'}`);
+    }
   }
 </script>
 
