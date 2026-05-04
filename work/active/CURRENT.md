@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`ab66fdbc` — origin/main (2026-05-04) — feat(terminal): foldable panels + ChartBoardHeader CSS fix (#1072)
+`5227eee6` — origin/main (2026-05-04) — feat(W-0403 PR8): foldable + observe-mode regression test + panel_fold_toggle telemetry (#1084)
 
 ---
 
