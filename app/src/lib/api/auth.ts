@@ -128,6 +128,7 @@ export interface WalletAuthPayload {
   walletAddress: string;
   walletMessage: string;
   walletSignature: string;
+  turnstileToken?: string;
 }
 
 export interface WalletAuthResponse {
