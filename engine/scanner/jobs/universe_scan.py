@@ -170,6 +170,8 @@ async def scan_universe_job(
     send_pattern_engine_alert: Callable[[dict[str, Any]], Awaitable[bool | None]],
     send_scan_summary: Callable[[dict[str, Any]], Awaitable[bool | None]],
     watch_targets: list[WatchScanTarget] | None = None,
+    last_block_alert_times: dict[str, float] | None = None,
+    block_alert_cooldown_seconds: int = 14400,
 ) -> None:
     """Scan all universe symbols in parallel and push alerts for any block hits.
 
@@ -179,6 +181,10 @@ async def scan_universe_job(
 
     watch_targets: Optional list of WatchScanTarget from watched captures (W-0335 PR-2).
     When provided, block hits on watched symbols also create pending_outcome captures.
+
+    last_block_alert_times: mutable dict {symbol: unix_timestamp} shared across ticks.
+    Symbols sent within block_alert_cooldown_seconds are skipped for Telegram (but still
+    pushed to Supabase for record-keeping).
     """
     t_start = time.monotonic()
     universe = await load_universe_async(universe_name)
@@ -217,6 +223,9 @@ async def scan_universe_job(
 
     results = await asyncio.gather(*[_eval_one(s) for s in universe], return_exceptions=True)
 
+    now = time.monotonic()
+    cooldown_map: dict[str, float] = last_block_alert_times if last_block_alert_times is not None else {}
+
     hits = 0
     for result in results:
         if isinstance(result, BaseException):
@@ -226,7 +235,17 @@ async def scan_universe_job(
             continue
         await push_alert_fn(result)
         if scan_telegram_enabled:
-            await send_pattern_engine_alert(result)
+            symbol = result.get("symbol", "")
+            last_sent = cooldown_map.get(symbol)
+            if last_sent is not None and now - last_sent < block_alert_cooldown_seconds:
+                log.debug(
+                    "Block alert cooldown: skipping %s (%.0fh remaining)",
+                    symbol,
+                    (block_alert_cooldown_seconds - (now - last_sent)) / 3600,
+                )
+            else:
+                await send_pattern_engine_alert(result)
+                cooldown_map[symbol] = now
         hits += 1
 
     elapsed = time.monotonic() - t_start
