@@ -46,7 +46,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
         nickname: user.nickname,
         tier: user.tier,
         phase: user.phase,
-        wallet: user.wallet_address
+        walletAddress: user.wallet_address
       }
     });
   } catch (error) {

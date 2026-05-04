@@ -57,8 +57,11 @@
     stopGlobalPriceFeed = startGlobalPriceFeed();
     stopInboxPolling = startInboxCountPolling();
 
-    const { initWalletListeners, trySilentReconnect } = await import('$lib/stores/walletStore');
+    const { initWalletListeners, trySilentReconnect, hydrateAuthSession } = await import('$lib/stores/walletStore');
     const stopWalletListeners = initWalletListeners();
+    // hydrateAuthSession first so email-only (Privy) sessions populate the store
+    // before trySilentReconnect tries to layer wallet state on top.
+    await hydrateAuthSession();
     trySilentReconnect();
 
     const originalStopTracking = stopResizeTracking;

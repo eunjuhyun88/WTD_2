@@ -94,9 +94,14 @@ export async function privyLoginWithCode(
 ): Promise<{ address: string; accessToken: string }> {
   const privy = await getPrivy();
   const result = await privy.auth.email.loginWithCode(email, code, 'login-or-sign-up');
-  const wallets: any[] = result.user?.linked_accounts?.filter(
+  const r = result as any;
+  const wallets: any[] = r.user?.linked_accounts?.filter(
     (a: any) => a.type === 'wallet' && /^0x[0-9a-fA-F]{40}$/.test(a.address)
   ) ?? [];
   const address = wallets[0]?.address ?? '';
-  return { address, accessToken: result.accessToken };
+  // identity_token is the server-verifiable JWT (contains linked_accounts claims).
+  // token is the client-side access token. Fall back in order.
+  const accessToken: string = r.identity_token ?? r.token ?? '';
+  if (!accessToken) throw new Error('Privy did not return a verifiable token');
+  return { address, accessToken };
 }

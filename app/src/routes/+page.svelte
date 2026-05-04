@@ -24,6 +24,7 @@
   } from '$lib/home/homeLanding';
   let mounted = $state(false);
   let promptText = $state('');
+  let betaPendingNotice = $state(false);
   let showAnimatedBackground = $state(true);
   let backgroundQuality = $state<'full' | 'lite'>('full');
   let mouseX = $state(50);
@@ -125,9 +126,15 @@
 
   onMount(() => {
     // Open login modal when redirected from a protected route
-    if ($page.url.searchParams.get('auth') === 'required') {
+    const authParam = $page.url.searchParams.get('auth');
+    if (authParam === 'required') {
       openWalletModal();
       // Clean up the param from the URL without a full navigation
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('auth');
+      window.history.replaceState({}, '', clean.toString());
+    } else if (authParam === 'beta-pending') {
+      betaPendingNotice = true;
       const clean = new URL(window.location.href);
       clean.searchParams.delete('auth');
       window.history.replaceState({}, '', clean.toString());
@@ -230,6 +237,12 @@
 {/if}
 
 <div class="page">
+  {#if betaPendingNotice}
+    <div class="beta-notice" role="status">
+      You're on the waitlist — we'll notify you when beta access opens.
+      <button class="beta-notice-close" onclick={() => { betaPendingNotice = false; }} aria-label="Dismiss">✕</button>
+    </div>
+  {/if}
   <HomeHero
     {mounted}
     promptText={promptText}
@@ -256,6 +269,35 @@
 </div>
 
 <style>
+  .beta-notice {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(18, 18, 20, 0.94);
+    border: 1px solid rgba(249, 216, 194, 0.18);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: rgba(250, 247, 235, 0.88);
+    backdrop-filter: blur(12px);
+    white-space: nowrap;
+  }
+  .beta-notice-close {
+    background: none;
+    border: none;
+    color: rgba(250, 247, 235, 0.4);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+    line-height: 1;
+  }
+  .beta-notice-close:hover { color: rgba(250, 247, 235, 0.8); }
+
   :global(html) {
     -webkit-text-size-adjust: 100%;
     height: 100%;

@@ -28,7 +28,12 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
       return json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
     const { positionId, txHash } = body;
 
     if (!positionId || typeof positionId !== 'string') {

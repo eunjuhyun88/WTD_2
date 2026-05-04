@@ -27,6 +27,7 @@
   let { data } = $props();
 
   const wallet = $derived($walletStore);
+  const isAuthenticated = $derived(wallet.connected || !!(wallet.email || wallet.nickname));
   let passport = $state<PassportSummary | null>(null);
 
   onMount(() => {
@@ -353,6 +354,12 @@
           {:else}
             <span class="dash-sub-meta">{wallet.chain ?? 'ARB'}</span>
           {/if}
+        {:else if wallet.email || wallet.nickname}
+          <div class="dash-sub-content">
+            <span class="home-wallet-dot home-wallet-dot--on"></span>
+            <span class="dash-sub-value">{wallet.nickname ?? wallet.email}</span>
+          </div>
+          <span class="dash-sub-meta">Email · <button class="home-wallet-connect" onclick={() => openWalletModal()}>Link wallet</button></span>
         {:else}
           <div class="dash-sub-content">
             <span class="home-wallet-dot home-wallet-dot--off"></span>
@@ -372,12 +379,12 @@
           <span class="dash-sub-meta">
             {passport.winRate.toFixed(1)}% win · {passport.totalLp.toLocaleString()} LP
           </span>
-        {:else if wallet.connected}
+        {:else if isAuthenticated}
           <div class="dash-sub-content dash-sub-loading">Loading…</div>
           <span class="dash-sub-meta">—</span>
         {:else}
           <div class="dash-sub-content dash-sub-empty">—</div>
-          <span class="dash-sub-meta">Connect wallet</span>
+          <span class="dash-sub-meta">Sign in</span>
         {/if}
       </div>
 

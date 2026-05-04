@@ -37,7 +37,12 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
     }
 
     // Parse body
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
     const { market, direction, collateralUsd, leverage, walletAddress, slPrice, tpPrice } = body;
 
     // Validate
@@ -62,6 +67,11 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
 
     if (!walletAddress || !ETH_ADDRESS_RE.test(walletAddress)) {
       return json({ error: 'Invalid wallet address' }, { status: 400 });
+    }
+
+    // Verify wallet belongs to the authenticated user (prevent wallet spoofing)
+    if (user.wallet_address && user.wallet_address.toLowerCase() !== (walletAddress as string).toLowerCase()) {
+      return json({ error: 'Wallet address does not match session' }, { status: 403 });
     }
 
     const marketInfo = findMarket(market);

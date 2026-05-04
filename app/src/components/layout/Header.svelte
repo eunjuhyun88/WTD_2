@@ -12,6 +12,11 @@
 
   const wallet = $derived($walletStore);
   const connected = $derived($isWalletConnected);
+  const isAuthenticated = $derived(connected || !!(wallet.email || wallet.nickname));
+  const displayLabel = $derived(
+    connected ? (wallet.shortAddr || wallet.nickname || wallet.email || 'Account')
+    : (wallet.nickname || wallet.email || 'Account')
+  );
   const activePath = $derived($page.url.pathname);
   const isHomeRoute = $derived(activePath === '/');
 
@@ -49,8 +54,8 @@
   });
 
   $effect(() => {
-    connected;
-    if (!connected && profileDropdownOpen) {
+    isAuthenticated;
+    if (!isAuthenticated && profileDropdownOpen) {
       closeProfileDropdown();
     }
   });
@@ -83,7 +88,7 @@
 <nav id="nav" class:home-mode={isHomeRoute}>
   <div class="nav-main">
     <!-- Logo -->
-    <a class="nav-logo" href={buildDeepLink(connected ? '/dashboard' : '/')} aria-label="Home">
+    <a class="nav-logo" href={buildDeepLink(isAuthenticated ? '/dashboard' : '/')} aria-label="Home">
       <span class="nav-logo-main">COGOTCHI</span>
     </a>
 
@@ -123,11 +128,11 @@
     </a>
 
     <!-- Wallet / Profile -->
-    {#if connected}
+    {#if isAuthenticated}
       <div class="profile-dropdown-wrap">
         <button class="wallet-btn connected" onclick={toggleProfileDropdown}>
           <span class="wallet-dot"></span>
-          {wallet.shortAddr}
+          {displayLabel}
         </button>
         {#if profileDropdownOpen}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -145,7 +150,7 @@
       </div>
     {:else}
       <button class="wallet-btn" onclick={openWalletModal}>
-        CONNECT
+        SIGN IN
       </button>
     {/if}
   </div>

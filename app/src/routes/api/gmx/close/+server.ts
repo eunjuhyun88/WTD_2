@@ -26,7 +26,12 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
       return json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
     const { positionId, sizePercent = 100 } = body;
 
     if (!positionId) {
@@ -56,6 +61,10 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
 
     if (pos.order_status !== 'executed') {
       return json({ error: 'Position order not yet executed' }, { status: 400 });
+    }
+
+    if (!pos.wallet_address) {
+      return json({ error: 'Position is missing wallet address' }, { status: 422 });
     }
 
     const isLong = pos.direction === 'LONG';
