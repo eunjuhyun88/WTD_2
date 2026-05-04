@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`a17f1302` — origin/main (2026-05-04) — feat(terminal): foldable side panels + ⌘0/⌘\\ shortcuts; remove auto-opening Pattern Library (#1066)
+`d49bbc82` — origin/main (2026-05-04) — feat(research): wire autoresearch loop UI into lab nav + replace mock BFF routes (#1069)
 
 ---
 
