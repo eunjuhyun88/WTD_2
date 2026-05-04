@@ -393,6 +393,13 @@ CREATE TABLE meta_runner_state (
 | **D21** | **모든 파라미터 user-tunable** (사용자 명시) | **§J 신규 — 모든 D5~D20 항목을 Settings UI 슬라이더/토글로 노출, DB 영속화, profile 저장 가능** | 사용자 명시 — "모든걸 선택하거나 조절할수있게" |
 | **D22** | **Paper account 시작 잔고** | **default $10,000, Settings 직접 입력. balance × 2% 가 daily loss cap 자동 계산** | D9 의 비례 계산 baseline |
 | **D23** | **Profile / Preset 시스템** | **3 preset 기본 제공: 보수(Conservative) / 표준(Balanced) / 공격(Aggressive). 사용자 custom profile 저장/공유** | 토글 편의 |
+| **D24** | **Min RR (손익비) gate** | **default 1.5, Settings 슬라이더 1.0~3.0. entry 직전 (TP_dist - cost) / (SL_dist + cost) < threshold → skip** | Kelly `f* = (p·b−q)/b` 에서 RR=1.5면 BE 승률 40%. cost = fees + slippage + funding |
+| **D25** | **거래소 + Leverage** | **Hyperliquid 고정. asset별 max leverage 자동 조회 (`info.meta`). 사용자 cap default 5x, Settings 1x~20x** | 멀티 거래소는 별도 W item |
+| **D26** | **Margin mode + 한도** | **default = cross + balance × 20% margin cap. Settings 토글 (cross/isolated) + 5%~50%** | cross = 자본 효율, isolated = 종목별 격리 |
+| **D27** | **Liquidation buffer** | **SL 가격이 청산가보다 **2·ATR 안쪽**에 있어야 entry 허용. Settings 1·ATR ~ 5·ATR** | flash wick 보호 |
+| **D28** | **Funding rate 처리 (Hyperliquid 1h interval)** | **(a) 진입 시 expected funding cost 차감 (b) 보유 중 1h마다 누적 PnL 반영. paper runner 도 `info.fundingHistory` 실측 사용 (사용자 yes 확정)** | live ↔ paper 결과 일치성 |
+| **D29** | **Long/Short 매핑 (one-way mode)** | vwap_reclaim/oi_surge/breakout/volume_spike → **Long**, vwap_rejection/oi_div_bearish → **Short**, range_resistance_touch/oi_div_bullish → 양방향. signal별 Settings 토글 | Hyperliquid one-way only — hedge mode 옵션 없음 |
+| **D30** | **거래소 lock-in** | **Hyperliquid 단일. 멀티 거래소 (Binance/Bybit/dYdX 등) = 별도 W item** | 인터페이스는 추상화하되 구현은 Hyperliquid 만 |
 
 ---
 
@@ -526,11 +533,11 @@ CREATE TABLE meta_runner_state (
 
 ### J2. Preset (3 기본)
 
-| Preset | Kelly cap | Vol target | TP/SL | Daily loss | DD 30d | Note |
-|--------|-----------|------------|-------|-----------|--------|------|
-| **Conservative** | 10% | 10% | 1.5·ATR / 1·ATR | 1% | 10% | 잔고 보호 우선 |
-| **Balanced** (default) | 25% | 15% | 2·ATR / 1·ATR | **2%** | 20% | Thorp + Moreira-Muir 표준 |
-| **Aggressive** | 50% | 25% | 3·ATR / 1·ATR | 3% | 30% | 공격적 사용자 |
+| Preset | Kelly | Vol | TP/SL | Daily | DD30 | Leverage | Min RR | Margin | Liq buf | Margin mode |
+|--------|-------|-----|-------|-------|------|----------|--------|--------|---------|-------------|
+| **Conservative** | 10% | 10% | 1.5/1·ATR | 1% | 10% | 2x | 2.0 | 10% | 3·ATR | isolated |
+| **Balanced** (default) | 25% | 15% | 2/1·ATR | **2%** | 20% | 5x | 1.5 | 20% | 2·ATR | cross |
+| **Aggressive** | 50% | 25% | 3/1·ATR | 3% | 30% | 10x | 1.2 | 35% | 1·ATR | cross |
 
 → Preset 클릭 → 모든 J1 파라미터 일괄 적용. 사용자가 손대면 자동으로 `custom_*` profile 로 분기.
 
@@ -609,6 +616,107 @@ GET    /api/settings/meta-rule/presets   → 3 preset 정의 반환
 | AC20 | LIVE 토글 → 2단계 confirm + Turnstile 통과 후에만 활성, 새로고침해도 유지 |
 | AC21 | custom profile 저장/불러오기 정상, preset 은 read-only |
 | AC22 | engine 측 hot-reload — config DB 변경 후 5초 내 next signal evaluation 에 반영 |
+| AC23 | min RR gate — RR < 1.5 (default) 인 entry 100% skip, log 에 reason="rr_below_threshold" |
+| AC24 | Hyperliquid leverage cap — asset별 max leverage 초과 요청 시 거부, 사용자 cap 도 동시 적용 (둘 중 작은 값) |
+| AC25 | Liquidation buffer — entry 직전 |entry - liq_price| < 2·ATR 이면 size 축소 또는 skip |
+| AC26 | Funding cost — paper runner 의 hold 중 PnL 이 `info.fundingHistory` 실측치와 1h 단위로 정확 차감 |
+| AC27 | Long/Short 매핑 — D29 매핑표 외 방향으로 entry 시 거부, signal별 토글 끄면 해당 signal 무시 |
+| AC28 | Hyperliquid wallet 서명 — 기존 wallet-auth 세션 재사용, 별도 API key 발급 없음 |
+
+---
+
+## K. Hyperliquid Futures + RR (D24~D30 상세)
+
+### K1. Hyperliquid 통합
+
+| 항목 | 값 / 결정 |
+|------|----------|
+| API base | `https://api.hyperliquid.xyz` |
+| Auth | EVM wallet 서명 (기존 `wallet_sessions` 재사용, PR #1154 인프라) |
+| SDK | `hyperliquid-python-sdk` (공식) — engine venv 추가 |
+| Settlement | USDC |
+| Funding interval | **1h** (Binance 8h 와 다름) |
+| Position mode | **one-way only** (hedge 옵션 없음) |
+| Margin mode | cross / isolated 둘 다 지원 (D26 토글) |
+| 수수료 | 0.045% taker / 0.015% maker (volume tier 별 인하 가능) |
+| Asset 별 max leverage | `info.meta` endpoint 자동 조회 (BTC 50x, alt 보통 10x~20x) |
+
+### K2. Position sizing 재계산 (선물용)
+
+```python
+def size_position(balance_usdc: float, signal: Signal, cfg: MetaConfig) -> Position:
+    risk_usdc = balance_usdc * cfg.risk_pct          # default 2%
+    sl_distance = signal.atr * cfg.sl_atr_mult       # ATR 기반 SL
+    sl_pct = sl_distance / signal.entry_price
+
+    notional = risk_usdc / sl_pct                     # SL 도달 시 risk_usdc 손실
+    leverage = min(cfg.user_leverage_cap, hl_meta.max_lev[signal.asset])
+    margin = notional / leverage
+
+    # D26 margin cap
+    if margin > balance_usdc * cfg.max_margin_pct:
+        notional = balance_usdc * cfg.max_margin_pct * leverage
+        # → 사이즈 축소
+
+    # D27 liquidation buffer
+    liq_price = compute_liq_price(entry, leverage, side, hl_maintenance_margin)
+    if abs(signal.entry_price - liq_price) < 2 * signal.atr * cfg.liq_buffer_atr:
+        return Position.skip(reason="liquidation_too_close")
+
+    # D24 RR gate
+    expected_funding = estimate_funding(signal.asset, cfg.expected_hold_hours)
+    cost = notional * (cfg.fee_taker + cfg.slippage_pct) + expected_funding
+    eff_rr = (signal.tp_distance * notional - cost) / (sl_distance * notional + cost)
+    if eff_rr < cfg.min_rr:
+        return Position.skip(reason="rr_below_threshold", rr=eff_rr)
+
+    return Position(notional=notional, leverage=leverage, margin=margin, eff_rr=eff_rr)
+```
+
+### K3. Funding cost (1h 누적, paper ↔ live 일치)
+
+- paper runner: 매 1h tick 마다 `info.fundingHistory(asset, start, end)` 조회 → 보유 포지션 PnL 에서 `notional × funding_rate` 차감/가산 (long 음수 funding = 수령, 양수 = 지불)
+- live runner: Hyperliquid 가 자동 정산 → `userState.funding` 으로 검증
+- AC26 검증: paper 와 live 의 누적 funding 차이 < 0.5% (rounding 외)
+
+### K4. Long/Short signal 매핑 (D29)
+
+| Signal | 방향 default | Settings 토글 | 비고 |
+|--------|-------------|--------------|------|
+| vwap_reclaim | Long | on/off | 추세 회복 |
+| vwap_rejection | Short | on/off | 추세 거부 |
+| oi_surge | Long | on/off | 신규 매수 OI |
+| oi_divergence_bullish | 양방향 | direction toggle | 가격 vs OI 디버전스 |
+| oi_divergence_bearish | Short | on/off | |
+| breakout | Long | on/off | range 상단 돌파 |
+| range_resistance_touch | 양방향 | direction toggle | mean-reversion 후보 |
+| volume_spike | Long | on/off | 거래량 급등 |
+
+### K5. Wallet 서명 / 주문 흐름
+
+```
+1. user → /agent runner 활성 토글
+2. server 가 wallet_sessions 에서 signing key 조회 (PR #1154)
+3. engine 가 Hyperliquid SDK 로 EIP-712 typed-data 서명
+4. POST /exchange (action=order) 전송
+5. 응답 oid 를 meta_outcomes.exchange_order_id 에 저장
+6. fill 완료 시 WS subscription 으로 fill 이벤트 수신 → triple_barrier 추적 시작
+```
+
+### K6. 신규 PR 영향
+
+- **PR7 (paper runner)**: Hyperliquid `info.fundingHistory` + `info.meta` 통합 (read-only)
+- **PR10 신규**: Hyperliquid live runner — wallet 서명 + 주문 + fill 추적 (PR7 머지 후, D10 LIVE 토글 활성 조건)
+- **PR9 (Settings UI)**: leverage cap / margin mode / liq buffer / signal 방향 토글 추가
+
+### K7. 위험
+
+| Risk | 완화 |
+|------|------|
+| Hyperliquid downtime | order timeout 30s + retry 1회 + 그 이후 alert |
+| Funding spike (1h ±0.1%) | expected funding 계산 시 최근 24h max 기준 conservative |
+| Liquidation cascade | D27 buffer + 매 1m 마다 liq distance 재계산 |
+| Wallet 서명 키 노출 | engine 측은 signing key 직접 보관 X — wallet_sessions 의 signed permit 만 사용 (PR #1154 모델) |
 
 ---
 
