@@ -8,19 +8,17 @@
   const path = $derived($page.url.pathname);
 
   const tabs = [
-    { href: '/lab',              label: 'Backtest' },
-    { href: '/lab/analyze',      label: 'AI Analysis' },
-    { href: '/research/ledger',  label: 'Research' },
+    { href: '/research/ledger',   label: 'Ledger' },
+    { href: '/research/battle',   label: 'Battle' },
+    { href: '/research/ensemble', label: 'Ensemble' },
   ];
 
   function active(href: string): boolean {
-    if (href === '/lab') return path === '/lab';
-    if (href === '/research/ledger') return path.startsWith('/research');
     return path === href || path.startsWith(href + '/');
   }
 </script>
 
-<nav class="hub-tabs" aria-label="Lab navigation">
+<nav class="hub-tabs" aria-label="Research navigation">
   {#each tabs as tab}
     <a
       href={tab.href}
@@ -64,11 +62,7 @@
   }
 
   @media (max-width: 768px) {
-    .hub-tabs {
-      padding: 0 12px;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
+    .hub-tabs { padding: 0 12px; overflow-x: auto; scrollbar-width: none; }
     .hub-tabs::-webkit-scrollbar { display: none; }
     .hub-tab { padding: 10px 10px; font-size: 11px; }
   }

@@ -69,7 +69,7 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     description: 'evaluate + inspect + iterate — run and compare setups',
     homeDetail: 'evaluate setups',
     href: buildLabLink(),
-    activePatterns: ['/lab'],
+    activePatterns: ['/lab', '/research'],
     highlight: true,
   },
   passport: {

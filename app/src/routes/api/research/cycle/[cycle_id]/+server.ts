@@ -1,92 +1,93 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { query } from '$lib/server/db';
 
-interface CycleDetail {
-  cycleId: number;
+interface LedgerRow {
+  cycle_id: number;
   status: string;
   strategy: string;
-  dsrDelta: number;
-  costUsd: number;
-  latencySec: number;
-  commitSha: string;
-  createdAt: string;
-  rulesSnapshot?: any;
+  dsr_delta: number | null;
+  cost_usd: number | null;
+  latency_sec: number | null;
+  commit_sha: string | null;
+  created_at: string;
+  rules_snapshot_json: unknown;
 }
 
-interface EnsembleRound {
-  cycleId: number;
-  strategyName: string;
-  passRate: number;
-  dsrDelta: number;
-  costUsd: number;
-  latencySec: number;
+interface EnsembleRow {
+  cycle_id: number;
+  strategy_name: string;
+  ensemble_group: string;
+  outcome: string;
+  proposal_score: number | null;
+  dsr_delta_predicted: number | null;
+  dsr_delta_actual: number | null;
+  cost_usd: number | null;
+  latency_sec: number | null;
 }
 
 export const GET: RequestHandler = async ({ params }) => {
   const cycleId = parseInt(params.cycle_id);
 
-  // Validate cycle_id
   if (!Number.isFinite(cycleId) || cycleId < 1 || cycleId > 999999) {
-    return json(
-      {
-        ok: false,
-        error: 'Invalid cycle_id'
-      },
-      { status: 400 }
-    );
+    return json({ ok: false, error: 'Invalid cycle_id' }, { status: 400 });
   }
 
   try {
-    // TODO: Fetch from Supabase autoresearch_ledger + ensemble_rounds tables
-    // For now, generate mock data
+    const [ledgerRes, roundsRes] = await Promise.all([
+      query<LedgerRow>(
+        `SELECT cycle_id, status, strategy,
+                dsr_delta, cost_usd, latency_sec,
+                commit_sha, created_at, rules_snapshot_json
+         FROM autoresearch_ledger
+         WHERE cycle_id = $1
+         LIMIT 1`,
+        [cycleId]
+      ),
+      query<EnsembleRow>(
+        `SELECT cycle_id, strategy_name, ensemble_group, outcome,
+                proposal_score, dsr_delta_predicted, dsr_delta_actual,
+                cost_usd, latency_sec
+         FROM ensemble_rounds
+         WHERE cycle_id = $1
+         ORDER BY strategy_name`,
+        [cycleId]
+      ),
+    ]);
 
-    const cycle: CycleDetail = {
-      cycleId,
-      status: Math.random() > 0.7 ? 'committed' : 'rejected',
-      strategy: 'moe-regime',
-      dsrDelta: (Math.random() - 0.5) * 2.5,
-      costUsd: Math.random() * 150 + 40,
-      latencySec: Math.random() * 50 + 15,
-      commitSha: Math.random().toString(16).substring(2, 42),
-      createdAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
-      rulesSnapshot: {
-        version: 'v2.1',
-        filters: ['market_regime', 'signal_strength'],
-        risk_limits: { max_position: 5000, max_drawdown: 0.15 }
-      }
+    if (!ledgerRes.rows.length) {
+      return json({ ok: false, error: 'Cycle not found' }, { status: 404 });
+    }
+
+    const r = ledgerRes.rows[0];
+    const cycle = {
+      cycleId:       r.cycle_id,
+      status:        r.status,
+      strategy:      r.strategy,
+      dsrDelta:      r.dsr_delta ?? 0,
+      costUsd:       r.cost_usd ?? 0,
+      latencySec:    r.latency_sec ?? 0,
+      commitSha:     r.commit_sha ?? '',
+      createdAt:     r.created_at,
+      rulesSnapshot: r.rules_snapshot_json ?? null,
     };
 
-    const ensembleRounds: EnsembleRound[] = [
-      'single',
-      'parallel-vote',
-      'rank-fusion',
-      'moe-regime',
-      'judge-arbitrate',
-      'role-pipeline',
-      'tournament',
-      'self-refine',
-      'debate',
-      'moa'
-    ].map((strategy) => ({
-      cycleId,
-      strategyName: strategy,
-      passRate: Math.random() * 0.3 + 0.65,
-      dsrDelta: (Math.random() - 0.5) * 2,
-      costUsd: Math.random() * 100 + 20,
-      latencySec: Math.random() * 40 + 10
+    const ensembleRounds = roundsRes.rows.map((er) => ({
+      cycleId:          er.cycle_id,
+      strategyName:     er.strategy_name,
+      ensembleGroup:    er.ensemble_group,
+      outcome:          er.outcome,
+      proposalScore:    er.proposal_score ?? null,
+      dsrDeltaPredicted: er.dsr_delta_predicted ?? null,
+      dsrDeltaActual:   er.dsr_delta_actual ?? null,
+      costUsd:          er.cost_usd ?? 0,
+      latencySec:       er.latency_sec ?? 0,
     }));
 
-    return json({
-      ok: true,
-      cycle,
-      ensembleRounds
-    });
+    return json({ ok: true, cycle, ensembleRounds });
   } catch (error) {
     return json(
-      {
-        ok: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { ok: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

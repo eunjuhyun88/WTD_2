@@ -1,36 +1,37 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { engineFetch } from '$lib/server/engineTransport';
 
-interface RunCycleResponse {
-  ok: boolean;
-  cycleId?: number;
-  status?: string;
-  error?: string;
-}
-
-export const POST: RequestHandler = async (): Promise<Response> => {
+export const POST: RequestHandler = async () => {
   try {
-    // TODO: Implement autoresearch cycle trigger
-    // This would typically:
-    // 1. Validate inputs/auth
-    // 2. Insert new row into autoresearch_ledger with status='pending'
-    // 3. Trigger background job (Cloud Run, Cloud Tasks, etc.)
-    // 4. Return cycle ID for tracking
+    const res = await engineFetch('/research/autoresearch/trigger', {
+      method: 'POST',
+      signal: AbortSignal.timeout(30_000),
+    });
 
-    // For now, mock response
-    const cycleId = Math.floor(Math.random() * 1000) + 1;
+    if (res.status === 503) {
+      return json({ ok: false, error: 'AutoResearch disabled on engine (AUTORESEARCH_ENABLED=false)' }, { status: 503 });
+    }
+    if (res.status === 403) {
+      return json({ ok: false, error: 'Engine API key not configured' }, { status: 403 });
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return json({ ok: false, error: text || `Engine error ${res.status}` }, { status: res.status });
+    }
 
+    const body = await res.json() as Record<string, unknown>;
     return json({
       ok: true,
-      cycleId,
-      status: 'pending'
-    } as RunCycleResponse);
+      status:    body.status,
+      runId:     body.run_id ?? null,
+      nSymbols:  body.n_symbols ?? null,
+      nPromoted: body.n_promoted ?? null,
+      elapsedS:  body.elapsed_s ?? null,
+    });
   } catch (error) {
     return json(
-      {
-        ok: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      } as RunCycleResponse,
+      { ok: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
