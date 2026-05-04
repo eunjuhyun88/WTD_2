@@ -63,17 +63,18 @@ describe('W-0389 AC3: TopBar L1 has symbol, TF strip, price, H/L/Vol, mode', () 
 });
 
 describe('W-0389 AC4+AC5: AIAgentPanel tab order and badges', () => {
-  it('AIAgentPanel has Research→Pattern→Verdict→Decision→Judge tab order', () => {
+  // W-0402 PR3: tab order changed to DEC→PAT→VER→RES→JDG (quant workflow)
+  it('AIAgentPanel has Decision→Pattern→Verdict→Research→Judge tab order', () => {
     const src = readHub('terminal/panels/AIAgentPanel/AIAgentPanel.svelte');
-    const researchIdx = src.indexOf("id: 'research'");
+    const decisionIdx = src.indexOf("id: 'decision'");
     const patternIdx = src.indexOf("id: 'pattern'");
     const verdictIdx = src.indexOf("id: 'verdict'");
-    const decisionIdx = src.indexOf("id: 'decision'");
+    const researchIdx = src.indexOf("id: 'research'");
     const judgeIdx = src.indexOf("id: 'judge'");
-    expect(researchIdx).toBeLessThan(patternIdx);
+    expect(decisionIdx).toBeLessThan(patternIdx);
     expect(patternIdx).toBeLessThan(verdictIdx);
-    expect(verdictIdx).toBeLessThan(decisionIdx);
-    expect(decisionIdx).toBeLessThan(judgeIdx);
+    expect(verdictIdx).toBeLessThan(researchIdx);
+    expect(researchIdx).toBeLessThan(judgeIdx);
   });
 
   it('AIAgentPanel tab labels are full-word (no abbreviations)', () => {
