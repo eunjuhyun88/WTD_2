@@ -17,7 +17,8 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
-from agents.llm_runtime import resolve_llm_settings, LLMRuntimeError
+from agents.llm_runtime import resolve_llm_settings, LLMRuntimeError, LLMRuntimeSettings
+from agents.tier import get_tier_config
 from agents.tools.registry import TOOL_SCHEMAS, dispatch_tool
 
 log = logging.getLogger("engine.agents.conversation")
@@ -54,6 +55,7 @@ async def run_conversation_turn(
     timeframe: str = "4h",
     history: list[dict[str, Any]] | None = None,
     user_id: str | None = None,
+    tier: str = "free",
 ) -> AsyncIterator[dict[str, Any]]:
     """Run one conversation turn, yielding SSE-ready dicts.
 
@@ -65,6 +67,24 @@ async def run_conversation_turn(
     """
     cfg = resolve_llm_settings()
     start = time.monotonic()
+
+    tier_cfg = get_tier_config(tier)
+    max_tool_calls = tier_cfg.max_tool_calls
+    # Override model if tier requires it
+    if tier_cfg.model_override:
+        cfg = LLMRuntimeSettings(
+            provider=cfg.provider,
+            model=tier_cfg.model_override,
+            base_url=cfg.base_url,
+            api_key=cfg.api_key,
+            timeout_seconds=cfg.timeout_seconds,
+        )
+    # Filter tools by tier
+    active_tools = (
+        [t for t in TOOL_SCHEMAS if t["name"] in tier_cfg.allowed_tools]
+        if tier_cfg.allowed_tools
+        else TOOL_SCHEMAS
+    )
 
     if cfg.provider != "anthropic":
         async for chunk in _run_simple_turn(message, symbol, timeframe, cfg):
@@ -91,13 +111,13 @@ async def run_conversation_turn(
     tool_call_count = 0
     total_tokens = 0
 
-    while tool_call_count <= MAX_TOOL_CALLS:
+    while tool_call_count <= max_tool_calls:
         try:
             response = await client.messages.create(
                 model=cfg.model,
                 max_tokens=2048,
                 system=_SYSTEM_PROMPT,
-                tools=TOOL_SCHEMAS,
+                tools=active_tools,
                 messages=messages,
             )
         except anthropic.APIError as exc:
@@ -124,7 +144,7 @@ async def run_conversation_turn(
         if not tool_calls_this_turn or response.stop_reason == "end_turn":
             break
 
-        if tool_call_count >= MAX_TOOL_CALLS:
+        if tool_call_count >= max_tool_calls:
             yield {"text": "\n[도구 호출 한도 초과 — 분석을 마칩니다]"}
             break
 

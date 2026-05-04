@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     symbol: str = "BTCUSDT"
     timeframe: str = "4h"
     user_id: str | None = None
+    tier: str = "free"
 
 
 async def _chat_stream(req: ChatRequest):
@@ -40,6 +41,7 @@ async def _chat_stream(req: ChatRequest):
             symbol=req.symbol,
             timeframe=req.timeframe,
             user_id=req.user_id,
+            tier=req.tier,
         ):
             if "text" in chunk:
                 yield f"event: chunk\ndata: {json.dumps({'text': chunk['text']})}\n\n"
