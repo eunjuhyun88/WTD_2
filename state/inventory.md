@@ -88,11 +88,12 @@
 
 | Method | Path | File |
 |---|---|---|
-| POST | /agent/explain | routes/agent.py:185 |
-| POST | /agent/alpha-scan | routes/agent.py:239 |
-| POST | /agent/similar | routes/agent.py:268 |
-| POST | /agent/judge | routes/agent.py:335 |
-| POST | /agent/save | routes/agent.py:401 |
+| POST | /agent/explain | routes/agent.py:186 |
+| POST | /agent/alpha-scan | routes/agent.py:240 |
+| POST | /agent/similar | routes/agent.py:269 |
+| POST | /agent/judge | routes/agent.py:336 |
+| POST | /agent/save | routes/agent.py:409 |
+| POST | /agent/chat | routes/agent_chat.py:62 |
 | GET | /alpha/world-model | routes/alpha.py:78 |
 | GET | /alpha/token/{symbol} | routes/alpha.py:120 |
 | GET | /alpha/token/{symbol}/history | routes/alpha.py:176 |
@@ -202,8 +203,9 @@
 | POST | /patterns/{slug}/verify-paper | routes/patterns.py:1214 |
 | GET | /patterns/{slug}/backtest | routes/patterns.py:1236 |
 | GET | /patterns/{slug}/signals | routes/patterns.py:1312 |
-| GET | /propfirm/summary | routes/propfirm.py:33 |
-| POST | /propfirm/accounts | routes/propfirm.py:116 |
+| GET | /propfirm/summary | routes/propfirm.py:38 |
+| POST | /propfirm/accounts | routes/propfirm.py:121 |
+| POST | /propfirm/payment/confirm | routes/propfirm.py:162 |
 | POST | /rag/terminal-scan | routes/rag.py:24 |
 | POST | /rag/quick-trade | routes/rag.py:35 |
 | POST | /rag/signal-action | routes/rag.py:40 |
@@ -272,6 +274,7 @@
 
 ## App API Routes
 
+/admin/agent-stats
 /agents/decisions/[agentId]
 /agents/stats
 /agents/stats/[agentId]
@@ -447,8 +450,10 @@
 /profile/passport/learning/status
 /profile/passport/learning/train-jobs
 /profile/passport/learning/workers/run
+/profile/streak
 /progression
 /propfirm
+/propfirm/checkout
 /quick-trades
 /quick-trades/[id]/close
 /quick-trades/open
@@ -477,6 +482,7 @@
 /signals/[id]/convert
 /signals/track
 /telegram/webhook
+/terminal/agent/chat
 /terminal/agent/dispatch
 /terminal/alerts
 /terminal/alerts/[id]

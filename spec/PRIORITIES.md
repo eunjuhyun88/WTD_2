@@ -6,12 +6,14 @@
 
 ---
 
-## 0. CTO 현황 요약 (2026-05-04) ← Wave 6 완전 완료
+## 0. CTO 현황 요약 (2026-05-04) ← Wave 7 완전 완료
 
 ```
-시스템 성숙도: ~99% Built — Wave 5+6 전 항목 완료
-최신 main:   a914acd3 (2026-05-04, chore: PRIORITIES.md Wave 6 sync #993)
+시스템 성숙도: ~99% Built — Wave 5+6+7 전 항목 완료
+최신 main:   33079c99 (2026-05-04, feat(propfirm): W-PF-207 — SSR routes + beta whitelist #1135)
 5-Hub 확정:  dashboard / lab / patterns / settings / terminal (W-0372 ✅ #826~#830)
+Wave 7 완료: AI Agent NL Interface PR1~PR5 ✅ (W-0404 #1106 #1110 #1114 #1120 #1126)
+            Charter Frozen 해제 ✅ — dispatcher/agent product In-Scope
 Wave 6 완료: Layer C 스케줄러 배선 ✅ (W-0398 #968+#981)
             Verdict Throughput Booster ✅ (W-0397 #965)
             Layer C Observability + F-60 게이지 ✅ (W-0400 #987)
@@ -29,8 +31,9 @@ Wave 5 PRs: #826 #829 #830 #835 #834 #836 #839 #865 #869 #870
             #933 #934 #936 #939 #940 #941 #944 #945 #946
             #951 #952 #953 #954 #958 #964 (총 35 PRs)
 Wave 6 PRs: #965 #968 #981 #987 #988 #974 #979 #982 #983 #984 #985 #989 (총 12 PRs)
-W-PF-100:  Phase 1 ✅ 완료 (PR #783 #787 #802) — Phase 2 대기 (24h live AC 검증 후)
-즉시 P0:   W-PF-100 Phase 2 (Eval Challenge 결제·통과, 24h live AC 검증 완료 후 착수)
+Wave 7 PRs: #1106 #1110 #1114 #1120 #1126 (총 5 PRs)
+W-PF-100:  Phase 1 ✅ 완료 — Phase 2 착수 가능 (24h live AC 검증 완료)
+즉시 P0:   W-PF-100-P2-eval-challenge (Eval Challenge 결제·통과 플로우)
 ```
 
 **가장 위험한 갭 (AI Researcher 진단)**: verdicts 누적 속도 — Layer C LightGBM은 코드 완성이나 verdicts 50+ 전까지 실질 가중 A:0.60/B:0.40 유지. PropFirm 자동 집행 → verdict 속도 가속이 핵심.
