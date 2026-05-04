@@ -441,7 +441,15 @@
   });
 </script>
 
-<div class="app-shell" data-watch={watchDataAttr} data-ai={aiDataAttr}>
+<div
+  class="app-shell"
+  data-watch={watchDataAttr}
+  data-ai={aiDataAttr}
+  style="
+    --watch-w: {$shellStore.sidebarVisible ? $shellStore.sidebarWidth + 'px' : '20px'};
+    --ai-w: {!$shellStore.aiVisible ? '20px' : $shellStore.aiWide ? '480px' : Math.max(240, $shellStore.aiWidth) + 'px'};
+  "
+>
   {#if $viewportTier.tier === 'MOBILE'}
     <!-- ── MOBILE ── -->
     <MobileTopBar
@@ -540,6 +548,18 @@
       </button>
     </div>
 
+    <!-- grid-area: splch — resize handle between watchlist and draw -->
+    <div class="splitter-col" style="grid-area: splch;">
+      {#if $shellStore.sidebarVisible}
+        <Splitter
+          orientation="vertical"
+          onDrag={(dx) => shellStore.resizeSidebar(dx)}
+          onReset={() => shellStore.resetSidebarWidth()}
+          ariaLabel="Resize watchlist panel"
+        />
+      {/if}
+    </div>
+
     <!-- grid-area: draw — DrawingRail (D-4, desktop only) -->
     <div class="draw-col">
       <DrawingRail />
@@ -609,6 +629,18 @@
             verdict={judgeVerdict}
           />
         </div>
+      {/if}
+    </div>
+
+    <!-- grid-area: splai — resize handle between chart and ai -->
+    <div class="splitter-col" style="grid-area: splai;">
+      {#if $shellStore.aiVisible && !$shellStore.aiWide}
+        <Splitter
+          orientation="vertical"
+          onDrag={(dx) => shellStore.resizeAI(dx)}
+          onReset={() => shellStore.resetAIWidth()}
+          ariaLabel="Resize AI panel"
+        />
       {/if}
     </div>
 
@@ -723,15 +755,17 @@
     display: grid;
     grid-template-rows: 40px auto 1fr 28px;
     grid-template-columns:
-      var(--watch-w, 200px)
+      var(--watch-w, 178px)
+      5px
       40px
       1fr
+      5px
       var(--ai-w, 320px);
     grid-template-areas:
-      "topbar    topbar topbar topbar"
-      "news      news   news   news"
-      "watchlist draw   chart  ai"
-      "statusbar statusbar statusbar statusbar";
+      "topbar    topbar  topbar topbar topbar  topbar"
+      "news      news    news   news   news    news"
+      "watchlist splch   draw   chart  splai   ai"
+      "statusbar statusbar statusbar statusbar statusbar statusbar";
     background: var(--g0);
     overflow: hidden;
     font-family: 'Geist', 'Inter', system-ui, sans-serif;
@@ -763,6 +797,18 @@
   }
   .grid-statusbar > :global(*) { flex: 1; min-width: 0; }
 
+  /* Resize handle columns (splch / splai) */
+  .splitter-col {
+    display: flex;
+    align-items: stretch;
+    z-index: 20;
+    background: transparent;
+  }
+  .splitter-col :global(.splitter) {
+    height: 100%;
+    flex: 1;
+  }
+
   /* WatchlistRail column */
   .watchlist-col {
     grid-area: watchlist;
@@ -770,8 +816,6 @@
     overflow: hidden;
     position: relative;
     min-width: 0;
-    border-right: 1px solid var(--g3);
-    transition: width 0.18s ease;
   }
 
   /* DrawingRail column */
@@ -801,8 +845,6 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    border-left: 1px solid var(--g3);
-    transition: width 0.18s ease;
   }
   .ai-col.wide { box-shadow: -4px 0 12px rgba(0, 0, 0, 0.18); }
 
