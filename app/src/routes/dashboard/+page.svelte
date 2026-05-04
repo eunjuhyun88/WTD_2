@@ -309,56 +309,87 @@
     </div>
   </div>
 
-  <!-- Wallet + Passport strip -->
-  <section class="home-profile-strip">
-    <div class="home-wallet">
-      {#if wallet.connected && wallet.address}
-        <span class="home-wallet-dot home-wallet-dot--on"></span>
-        <span class="home-wallet-addr">{wallet.shortAddr ?? wallet.address.slice(0, 6) + '…' + wallet.address.slice(-4)}</span>
-        {#if wallet.balance > 0}
-          <span class="home-wallet-bal">{wallet.balance.toFixed(4)} ETH</span>
-        {/if}
-        <span class="home-wallet-chain">{wallet.chain ?? 'ARB'}</span>
+  <!-- ── Hero Zone (W-0402 PR12): Streak 60% top / Wallet·Tier·Verdicts 40% sub-row ── -->
+  <section class="dash-hero-zone" data-testid="dashboard-hero-zone">
+    <!-- Top hero row: StreakBadgeCard at 60% prominence -->
+    <div class="dash-hero-streak" data-testid="dashboard-streak-hero">
+      <div class="dash-hero-streak-header">
+        <span class="dash-hero-label">Streak</span>
+        <a href="/passport" class="dash-hero-link">Passport →</a>
+      </div>
+      <div class="dash-hero-streak-body">
+        <span class="dash-hero-streak-num" style="color: var(--accent-amb, #f5a623);">
+          {$streakSnapshot.streak_days}
+        </span>
+        <span class="dash-hero-streak-unit">days 🔥</span>
+      </div>
+      {#if $streakSnapshot.streak_next_threshold !== null}
+        <p class="dash-hero-streak-sub">
+          → next: {$streakSnapshot.streak_next_threshold} ({$streakSnapshot.streak_next_threshold - $streakSnapshot.streak_days} more)
+        </p>
       {:else}
-        <span class="home-wallet-dot home-wallet-dot--off"></span>
-        <button class="home-wallet-connect" onclick={() => openWalletModal()}>Connect Wallet</button>
+        <p class="dash-hero-streak-sub dash-hero-streak-sub--complete">All badges earned</p>
       {/if}
+      <div class="dash-hero-streak-badge">
+        <StreakBadgeCard
+          streak_days={$streakSnapshot.streak_days}
+          streak_next_threshold={$streakSnapshot.streak_next_threshold}
+        />
+      </div>
     </div>
 
-    {#if passport}
-      <div class="home-passport">
-        <span class="home-pp-tier" data-tier={passport.tier.toLowerCase()}>{passport.tier}</span>
-        <div class="home-pp-stat">
-          <span class="home-pp-label">Win</span>
-          <strong class:pos={passport.winRate >= 55} class:neg={passport.winRate < 45}>{passport.winRate.toFixed(1)}%</strong>
-        </div>
-        <div class="home-pp-stat">
-          <span class="home-pp-label">LP</span>
-          <strong>{passport.totalLp.toLocaleString()}</strong>
-        </div>
-        <div class="home-pp-stat">
-          <span class="home-pp-label">Streak</span>
-          <strong class:pos={passport.streak > 0} class:neg={passport.streak < 0}>{passport.streak > 0 ? '+' : ''}{passport.streak}</strong>
-        </div>
-        <div class="home-pp-stat">
-          <span class="home-pp-label">W/L</span>
-          <strong>{passport.wins}/{passport.losses}</strong>
-        </div>
-        <a href="/passport" class="home-pp-link">Details →</a>
+    <!-- Bottom sub-row: Wallet | Tier | Verdicts (3-column) -->
+    <div class="dash-hero-sub-row">
+      <!-- Wallet sub-card -->
+      <div class="dash-sub-card dash-sub-card--wallet">
+        <span class="dash-sub-label">Wallet</span>
+        {#if wallet.connected && wallet.address}
+          <div class="dash-sub-content">
+            <span class="home-wallet-dot home-wallet-dot--on"></span>
+            <span class="dash-sub-value">{wallet.shortAddr ?? wallet.address.slice(0, 6) + '…' + wallet.address.slice(-4)}</span>
+          </div>
+          {#if wallet.balance > 0}
+            <span class="dash-sub-meta">{wallet.balance.toFixed(4)} ETH · {wallet.chain ?? 'ARB'}</span>
+          {:else}
+            <span class="dash-sub-meta">{wallet.chain ?? 'ARB'}</span>
+          {/if}
+        {:else}
+          <div class="dash-sub-content">
+            <span class="home-wallet-dot home-wallet-dot--off"></span>
+            <button class="home-wallet-connect" onclick={() => openWalletModal()}>Connect</button>
+          </div>
+          <span class="dash-sub-meta">Not connected</span>
+        {/if}
       </div>
-    {:else if wallet.connected}
-      <div class="home-passport home-passport--loading">Loading Passport…</div>
-    {:else}
-      <div class="home-passport home-passport--empty">Connect wallet to view Passport</div>
-    {/if}
-  </section>
 
-  <!-- Streak hero (W-0403 PR11) -->
-  <section class="dash-streak-hero" data-testid="dashboard-streak-hero">
-    <StreakBadgeCard
-      streak_days={$streakSnapshot.streak_days}
-      streak_next_threshold={$streakSnapshot.streak_next_threshold}
-    />
+      <!-- Tier sub-card -->
+      <div class="dash-sub-card dash-sub-card--tier">
+        <span class="dash-sub-label">Tier</span>
+        {#if passport}
+          <div class="dash-sub-content">
+            <span class="home-pp-tier" data-tier={passport.tier.toLowerCase()}>{passport.tier}</span>
+          </div>
+          <span class="dash-sub-meta">
+            {passport.winRate.toFixed(1)}% win · {passport.totalLp.toLocaleString()} LP
+          </span>
+        {:else if wallet.connected}
+          <div class="dash-sub-content dash-sub-loading">Loading…</div>
+          <span class="dash-sub-meta">—</span>
+        {:else}
+          <div class="dash-sub-content dash-sub-empty">—</div>
+          <span class="dash-sub-meta">Connect wallet</span>
+        {/if}
+      </div>
+
+      <!-- Verdicts sub-card -->
+      <div class="dash-sub-card dash-sub-card--verdicts">
+        <span class="dash-sub-label">Verdicts</span>
+        <div class="dash-sub-content">
+          <span class="dash-sub-value" class:pos={pendingVerdicts.length === 0}>{pendingVerdicts.length}</span>
+        </div>
+        <span class="dash-sub-meta">pending · {passport ? passport.wins + passport.losses : '—'} total</span>
+      </div>
+    </div>
   </section>
 
   <!-- Verdict inbox (W-0403 PR12) -->
@@ -382,9 +413,146 @@
 </div>
 
 <style>
-  /* ── Streak hero (W-0403 PR11) ── */
-  .dash-streak-hero {
-    padding: 8px 16px 0;
+  /* ── Hero Zone (W-0402 PR12): Streak 60% top / Wallet·Tier·Verdicts sub-row ── */
+  .dash-hero-zone {
+    padding: var(--sp-3, 12px) var(--sp-4, 16px) 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3, 12px);
+  }
+
+  /* Top hero row — StreakBadgeCard + big number */
+  .dash-hero-streak {
+    background: var(--surface-2, rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(245, 166, 35, 0.18);
+    border-radius: 10px;
+    padding: var(--sp-4, 16px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3, 10px);
+  }
+
+  .dash-hero-streak-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .dash-hero-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-primary, rgba(250, 247, 235, 0.55));
+  }
+
+  .dash-hero-link {
+    font-size: 10px;
+    color: rgba(249, 216, 194, 0.4);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .dash-hero-link:hover { color: rgba(249, 216, 194, 0.8); }
+
+  .dash-hero-streak-body {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .dash-hero-streak-num {
+    font-size: var(--type-xl, 2.5rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--accent-amb, #f5a623);
+  }
+
+  .dash-hero-streak-unit {
+    font-size: 1rem;
+    color: var(--text-primary, rgba(250, 247, 235, 0.7));
+  }
+
+  .dash-hero-streak-sub {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-primary, rgba(250, 247, 235, 0.5));
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .dash-hero-streak-sub--complete {
+    color: var(--accent-amb, #f5a623);
+  }
+
+  .dash-hero-streak-badge {
+    margin-top: 4px;
+  }
+
+  /* Bottom sub-row: 3-column cards */
+  .dash-hero-sub-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-3, 10px);
+  }
+
+  .dash-sub-card {
+    background: var(--surface-1, rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(249, 216, 194, 0.07);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .dash-sub-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-primary, rgba(250, 247, 235, 0.35));
+  }
+
+  .dash-sub-content {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .dash-sub-value {
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: rgba(250, 247, 235, 0.85);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dash-sub-value.pos { color: var(--pos, #22AB94); }
+
+  .dash-sub-meta {
+    font-size: 10px;
+    color: rgba(250, 247, 235, 0.3);
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dash-sub-loading, .dash-sub-empty {
+    font-size: 11px;
+    color: rgba(250, 247, 235, 0.25);
+    font-style: italic;
+  }
+
+  /* Mobile: hero stacks above sub-row; sub-row becomes 1-col */
+  @media (max-width: 768px) {
+    .dash-hero-sub-row {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── Zone A: 오늘의 기회 ── */
@@ -549,25 +717,7 @@
     padding: 8px 16px 0;
   }
 
-  /* Home Profile Strip */
-  .home-profile-strip {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 10px 20px;
-    background: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid rgba(249, 216, 194, 0.06);
-    flex-wrap: wrap;
-  }
-
-  .home-wallet {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
+  /* Wallet dot + connect button (reused in hero sub-card) */
   .home-wallet-dot {
     width: 6px;
     height: 6px;
@@ -576,17 +726,6 @@
   }
   .home-wallet-dot--on  { background: #22AB94; }
   .home-wallet-dot--off { background: rgba(250, 247, 235, 0.2); }
-
-  .home-wallet-addr { color: rgba(250, 247, 235, 0.7); letter-spacing: 0.02em; }
-  .home-wallet-bal  { color: rgba(250, 247, 235, 0.45); }
-  .home-wallet-chain {
-    font-size: var(--ui-text-xs);
-    padding: 1px 4px;
-    border-radius: 3px;
-    background: rgba(249, 216, 194, 0.08);
-    color: rgba(249, 216, 194, 0.5);
-    letter-spacing: 0.06em;
-  }
 
   .home-wallet-connect {
     background: none;
@@ -603,21 +742,6 @@
     color: rgba(249, 216, 194, 0.9);
   }
 
-  .home-passport {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: auto;
-    font-size: 11px;
-  }
-
-  .home-passport--loading,
-  .home-passport--empty {
-    color: rgba(250, 247, 235, 0.25);
-    font-size: var(--ui-text-xs);
-    font-style: italic;
-  }
-
   .home-pp-tier {
     font-size: var(--ui-text-xs);
     font-weight: 700;
@@ -631,36 +755,6 @@
   .home-pp-tier[data-tier="gold"]     { background: rgba(255, 193, 7, 0.12);  color: #FFC107; }
   .home-pp-tier[data-tier="silver"]   { background: rgba(176, 196, 222, 0.12); color: #B0C4DE; }
   .home-pp-tier[data-tier="platinum"] { background: rgba(147, 112, 219, 0.12); color: #9370DB; }
-
-  .home-pp-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-  }
-
-  .home-pp-label {
-    font-size: var(--ui-text-xs);
-    color: rgba(250, 247, 235, 0.3);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .home-pp-stat strong { font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(250, 247, 235, 0.85); }
-  .home-pp-stat strong.pos { color: #22AB94; }
-  .home-pp-stat strong.neg { color: #F23645; }
-
-  .home-pp-link {
-    font-size: var(--ui-text-xs);
-    color: rgba(249, 216, 194, 0.4);
-    text-decoration: none;
-    transition: color 0.15s;
-  }
-  .home-pp-link:hover { color: rgba(249, 216, 194, 0.8); }
-
-  @media (max-width: 768px) {
-    .home-passport { margin-left: 0; }
-  }
 
   .dashboard-workbar {
     padding: 16px 20px;
