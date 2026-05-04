@@ -1,0 +1,47 @@
+version: 1
+brackets:
+  long:
+    stop:
+      type: atr_multiple
+      k: 1.595
+    tp1:
+      type: atr_multiple
+      k: 1.396
+      size_pct: 33
+    tp2:
+      type: atr_multiple
+      k: 1.785
+      size_pct: 33
+    tp3:
+      type: atr_multiple
+      k: 2.961
+      size_pct: 34
+  short:
+    stop:
+      type: atr_multiple
+      k: 1.595
+    tp1:
+      type: atr_multiple
+      k: 1.396
+      size_pct: 33
+    tp2:
+      type: atr_multiple
+      k: 1.785
+      size_pct: 33
+    tp3:
+      type: atr_multiple
+      k: 2.961
+      size_pct: 34
+time_exit_hours: 24
+trailing:
+  enabled: false
+_regression_meta:
+  n_trades: 57
+  has_real_atr: true
+  r2_stop: 0.1317
+  r2_tp1: 0.1343
+  r2_tp2: 0.2255
+  r2_tp3: 0.2572
+  note: ATR regression on 57 trades with real atr_at_entry (excluded 43 trades without
+    ATR); k_stop=1.595 R²=0.132; k_tp1=1.396 R²=0.134; k_tp2=1.785 R²=0.225; k_tp3=2.961
+    R²=0.257
