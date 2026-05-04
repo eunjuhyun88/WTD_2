@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-05
+# CURRENT — 2026-05-04
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -36,12 +36,7 @@
 
 ## main SHA
 
-`654c230b` — origin/main (2026-05-05) — feat(W-0405): 4-layer AI prompt injection defense (#1159)
-
-W-0405 PR1~PR4 완료:
-- PR1 ExchangeTab Binance API key UI (#1150) / PR2 /api/agent/binance (#1151) / PR3 telemetry (#1153)
-- PR4 get_binance_balance + get_binance_positions tools (#1156)
-- fix: ExchangeTab SettingsHub wiring (#1158) / 4-layer prompt injection defense (#1159)
+`cdfbdb7e` — origin/main (2026-05-04) — feat(W-0402 PR7): cogochi panel listeners for cogochi:ai-ask event (#1142)
 
 W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
 - PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
@@ -60,9 +55,12 @@ W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-PF-100-P2-eval-challenge` | P0 | 🟡 착수 가능 |
-| `W-0410-scrypt-per-user-salt` | P1 | 🔵 분석 완료, 구현 대기 — Binance 키 암호화 salt 강화 |
-| `W-0408-token-blacklist-fail-closed` | P1 | 🔵 분석 완료, 구현 대기 — Redis 장애 시 토큰 재사용 방지 |
-| `W-0409-alpha-scan-real-data` | P2 | 🔵 분석 완료, 구현 대기 — 환각 LLM tool 제거 → Binance OI 배선 |
+| `W-0407-terminal-tab-velo-tv-integration` | P1 | 🟡 설계 완료, W-T0 spike 대기 |
+| `W-0408-dashboard-redesign` | P1 | 🟢 설계 완료, D1~D16 락 |
+| `W-0409-patterns-redesign` | P1 | 🟢 설계 완료(+Lab 흡수), D1~D22 락, 8 PR |
+| `W-0411-settings-redesign` | P1 | 🟢 설계 완료, D1~D22 락, 7 PR |
+| `W-0413-5page-integration` | P1 | 🟢 통합 검토 + §J 4-agent audit 완료, Wave A0~E, 37+ PR, 23 IAC, ~5주 |
+| `W-0412-i18n-rollout` | P2 | 🟢 stub 작성 (W-0411 K9 분리), Wave D 머지 후 PR1 발급 |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
