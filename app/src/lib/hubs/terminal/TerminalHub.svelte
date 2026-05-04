@@ -30,7 +30,7 @@
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
   import ModeSheet from './ModeSheet.svelte';
   import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
-  import IndicatorLibrary from './sheets/IndicatorLibrary.svelte';
+  import IndicatorCatalogModal from '$lib/components/indicators/IndicatorCatalogModal.svelte';
   import DrawingRail from './panels/DrawingRail.svelte';
   import type { DrawingTool } from './shell.store';
   import CommandPalette from '$lib/shared/panels/CommandPalette.svelte';
@@ -381,7 +381,7 @@
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('cogochi:cmd', { detail: { id: 'focus_ai_search' } }));
       }
-      // D-7: ⌘I → toggle IndicatorLibrary (was ⌘L)
+      // ⌘I → toggle IndicatorCatalogModal (canonical indicator picker)
       if (mod && e.key.toLowerCase() === 'i') {
         e.preventDefault();
         indicatorLibraryOpen = !indicatorLibraryOpen;
@@ -480,7 +480,7 @@
 
     <TopBar
       onSymbolTap={() => (desktopSymbolPickerOpen = true)}
-      onIndicators={() => (indicatorSettingsOpen = true)}
+      onIndicators={() => (indicatorLibraryOpen = true)}
     />
 
     <!-- NewsFlashBar: auto-hides when no events, throttled headlines -->
@@ -542,7 +542,7 @@
           onSetWorkMode={(mode) => shellStore.setWorkMode(mode)}
           onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
           onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
-          onIndicators={() => (indicatorSettingsOpen = true)}
+          onIndicators={() => (indicatorLibraryOpen = true)}
         />
 
         <ChartToolbar
@@ -666,7 +666,7 @@
     <IndicatorSettingsSheet onClose={() => (indicatorSettingsOpen = false)} />
   {/if}
 
-  <IndicatorLibrary
+  <IndicatorCatalogModal
     open={indicatorLibraryOpen}
     onClose={() => (indicatorLibraryOpen = false)}
   />
