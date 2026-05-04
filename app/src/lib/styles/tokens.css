@@ -449,3 +449,64 @@
 /* Global minimum font-size floor for readability (WCAG) */
 /* Components should use --sc-fs-2xs (9px) as the minimum.
    This rule catches any element that falls below 9px. */
+
+/* ═══════════════════════════════════════════════════════════════
+   W-0402 — Terminal/Cogochi redesign alias layer + density
+   Spec: work/active/W-0402-terminal-cogochi-redesign.md §1
+   These names are stable across PR1-16. They alias existing --sc-*
+   primitives so brand identity (LIS pink/ivory) is preserved.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Type scale (5-step) */
+  --type-xs: var(--sc-fs-xs);    /* 11px — L3 micro labels */
+  --type-sm: var(--sc-fs-sm);    /* 12px — L2 metrics, body */
+  --type-md: var(--sc-fs-md);    /* 14px — L1 default, buttons */
+  --type-lg: var(--sc-fs-lg);    /* 16px — hero numbers */
+  --type-xl: var(--sc-fs-2xl);   /* 22px — dashboard hero */
+
+  /* Spacing scale (6-step, density-aware via --sp-base) */
+  --sp-base: 8px;     /* default = comfortable */
+  --sp-1: calc(var(--sp-base) * 0.5);   /* 4 */
+  --sp-2: var(--sp-base);                /* 8 */
+  --sp-3: calc(var(--sp-base) * 1.5);   /* 12 */
+  --sp-4: calc(var(--sp-base) * 2);     /* 16 */
+  --sp-5: calc(var(--sp-base) * 3);     /* 24 */
+  --sp-6: calc(var(--sp-base) * 4);     /* 32 */
+
+  /* Color tier — semantic aliases (brand: LIS pink/ivory preserved) */
+  --text-primary:   var(--sc-text-0);
+  --text-secondary: var(--sc-text-1);
+  --text-tertiary:  var(--sc-text-2);
+
+  --accent-pos: var(--lis-positive);   /* #4ade80 — gain / LONG */
+  --accent-neg: var(--lis-negative);   /* #f87171 — loss / SHORT */
+  --accent-amb: var(--lis-highlight);  /* #f2d193 — neutral / AVOID / active */
+
+  --surface-0: var(--sc-bg-0);
+  --surface-1: var(--sc-bg-1);
+  --surface-2: var(--sc-bg-2);
+  --border-subtle: var(--sc-line-soft);
+
+  /* Layout tokens — Terminal app-shell grid widths (PR2 consumes) */
+  --watch-w: 200px;   /* WatchlistRail (folded → 20px) */
+  --ai-w:    320px;   /* AIAgentPanel (wide → 480px, folded → 20px) */
+}
+
+/* Density mode toggle — W-0402 §1.4 */
+[data-density='compact']:root,
+:root[data-density='compact'],
+[data-density='compact'] {
+  --sp-base: 4px;
+}
+
+[data-density='comfortable']:root,
+:root[data-density='comfortable'],
+[data-density='comfortable'] {
+  --sp-base: 8px;
+}
+
+/* App-shell layout state hooks (PR2/PR3 consume) */
+[data-watch='folded'] { --watch-w: 20px; }
+[data-ai='folded']    { --ai-w:    20px; }
+[data-ai='wide']      { --ai-w:    480px; }
