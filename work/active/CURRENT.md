@@ -36,9 +36,9 @@
 
 ## main SHA
 
-`885062fc` — origin/main (2026-05-04) — chore(workspace): delete 15 dead orphan components + prune index.ts (#1113)
+`f61f658e` — origin/main (2026-05-04) — feat(W-0404 PR4): generative UI directives + VerdictCard/SimilarityCard/PassportMiniCard (#1120)
 
-W-0403 Wave 6 Cogochi Surface Decomposition: PR9a/9b/9c/10a/10b/11/12/13/14 all merged. StreakBadgeCard + VerdictInboxSection now live on /dashboard; 12 dead workspace orphans purged.
+W-0404 PR4 merged: directive parser + 3 card components + system prompt update. PR5 next (Quota/Tier/Stripe).
 
 ---
 
