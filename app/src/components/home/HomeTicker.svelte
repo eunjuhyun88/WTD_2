@@ -45,11 +45,15 @@
       if (!priceRes.ok || !tickerRes.ok) return;
 
       const prices: { symbol: string; price: string }[] = await priceRes.json();
-      const tickers: { symbol: string; priceChangePercent: string }[] = await tickerRes.json();
+      const tickers: { symbol: string; openPrice: string; lastPrice: string }[] = await tickerRes.json();
 
       const changeMap = new Map<string, number>();
       for (const t of tickers) {
-        changeMap.set(t.symbol, parseFloat(t.priceChangePercent));
+        const open = parseFloat(t.openPrice);
+        const last = parseFloat(t.lastPrice);
+        if (open > 0 && !isNaN(last)) {
+          changeMap.set(t.symbol, ((last - open) / open) * 100);
+        }
       }
 
       items = SYMBOLS.map((sym, i) => ({
