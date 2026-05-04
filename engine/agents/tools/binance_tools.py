@@ -2,21 +2,53 @@
 
 DB에서 암호화된 API 키를 조회해서 복호화한 뒤 Binance REST API를 호출합니다.
 API key/secret은 절대 로그에 기록하지 않습니다.
+
+Performance notes:
+- Scrypt derived key is cached per-process (lru_cache) — runs once, not per request.
+- Supabase client is a module-level singleton — one connection pool for the process.
+- httpx.AsyncClient instances are module-level singletons with keep-alive enabled.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
-import json
 import logging
 import os
+import re
 import time
 from typing import Any
 
+import httpx
+
 log = logging.getLogger("engine.agents.tools.binance")
 
-# Pattern for redacting API keys in output (should never appear, but defense-in-depth)
-_API_KEY_PATTERN_LEN = 64
+# Module-level httpx clients — reuse TLS connections across requests.
+# Created lazily on first use (event loop must be running).
+_http_spot: httpx.AsyncClient | None = None
+_http_futures: httpx.AsyncClient | None = None
+
+_REDACT_RE = re.compile(r"[A-Za-z0-9]{64}")
+
+
+def _get_http_spot() -> httpx.AsyncClient:
+    global _http_spot
+    if _http_spot is None or _http_spot.is_closed:
+        _http_spot = httpx.AsyncClient(
+            timeout=8.0,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+        )
+    return _http_spot
+
+
+def _get_http_futures() -> httpx.AsyncClient:
+    global _http_futures
+    if _http_futures is None or _http_futures.is_closed:
+        _http_futures = httpx.AsyncClient(
+            timeout=8.0,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+        )
+    return _http_futures
 
 
 def _decrypt_api_key(ciphertext: str) -> str:
@@ -52,22 +84,27 @@ def _decrypt_api_key(ciphertext: str) -> str:
     encrypted = bytes.fromhex(enc_hex)
 
     aesgcm = AESGCM(derived_key)
-    # AESGCM expects ciphertext + tag concatenated
     plaintext = aesgcm.decrypt(iv, encrypted + auth_tag, None)
     return plaintext.decode()
 
 
-async def _get_user_credentials(user_id: str) -> tuple[str, str] | None:
-    """Fetch + decrypt user's Binance API key and secret from DB."""
-    import asyncio
+def _get_supabase():
+    """Return a module-level Supabase client singleton."""
+    from supabase import create_client
 
-    def _fetch() -> list[dict[str, Any]]:
-        from supabase import create_client
-
-        sb = create_client(
+    if not hasattr(_get_supabase, "_client"):
+        _get_supabase._client = create_client(
             os.environ["SUPABASE_URL"],
             os.environ["SUPABASE_SERVICE_ROLE_KEY"],
         )
+    return _get_supabase._client
+
+
+async def _get_user_credentials(user_id: str) -> tuple[str, str] | None:
+    """Fetch + decrypt user's Binance API key and secret from DB."""
+
+    def _fetch() -> list[dict[str, Any]]:
+        sb = _get_supabase()
         result = (
             sb.table("exchange_connections")
             .select("api_key_encrypted, api_secret_encrypted")
@@ -100,9 +137,7 @@ def _binance_sign(params: dict[str, str], secret: str) -> str:
 
 def _redact(text: str) -> str:
     """Redact any 64-char alphanumeric sequences (potential API keys) from output."""
-    import re
-
-    return re.sub(r"[A-Za-z0-9]{64}", "****REDACTED****", text)
+    return _REDACT_RE.sub("****REDACTED****", text)
 
 
 async def get_binance_balance(user_id: str | None) -> dict[str, Any]:
@@ -124,14 +159,11 @@ async def get_binance_balance(user_id: str | None) -> dict[str, Any]:
         sig = _binance_sign(params, api_secret)
         params["signature"] = sig
 
-        import httpx
-
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.get(
-                "https://api.binance.com/api/v3/account",
-                params=params,
-                headers={"X-MBX-APIKEY": api_key},
-            )
+        res = await _get_http_spot().get(
+            "https://api.binance.com/api/v3/account",
+            params=params,
+            headers={"X-MBX-APIKEY": api_key},
+        )
 
         if not res.is_success:
             body = _redact(res.text)
@@ -160,9 +192,8 @@ async def get_binance_balance(user_id: str | None) -> dict[str, Any]:
 
     except Exception as exc:
         log.warning("[binance_tools] balance error: %s", exc)
-        return {"error": f"잔고 조회 실패: {exc}"}
+        return {"error": "잔고 조회 실패. Binance API에 연결할 수 없습니다."}
     finally:
-        # Ensure credentials are not referenced after use
         del api_key, api_secret, creds
 
 
@@ -185,14 +216,11 @@ async def get_binance_positions(user_id: str | None) -> dict[str, Any]:
         sig = _binance_sign(params, api_secret)
         params["signature"] = sig
 
-        import httpx
-
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.get(
-                "https://fapi.binance.com/fapi/v2/positionRisk",
-                params=params,
-                headers={"X-MBX-APIKEY": api_key},
-            )
+        res = await _get_http_futures().get(
+            "https://fapi.binance.com/fapi/v2/positionRisk",
+            params=params,
+            headers={"X-MBX-APIKEY": api_key},
+        )
 
         if not res.is_success:
             body = _redact(res.text)
@@ -218,6 +246,6 @@ async def get_binance_positions(user_id: str | None) -> dict[str, Any]:
 
     except Exception as exc:
         log.warning("[binance_tools] positions error: %s", exc)
-        return {"error": f"포지션 조회 실패: {exc}"}
+        return {"error": "포지션 조회 실패. Binance Futures API에 연결할 수 없습니다."}
     finally:
         del api_key, api_secret, creds

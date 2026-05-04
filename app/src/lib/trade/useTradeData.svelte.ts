@@ -128,16 +128,17 @@ export function useTradeData(
     void refreshPastCaptures();
 
     const fastIv = setInterval(() => {
+      if (document.hidden) return;
       void refreshVenueDivergence();
       void refreshLiqClusters();
       void refreshConfluence();
       void refreshConfluenceHistory();
     }, 60_000);
-    const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
-    const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
-    const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
-    const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
-    const optIv = setInterval(() => void refreshOptionsSnapshot(), 5 * 60_000);
+    const slowIv = setInterval(() => { if (!document.hidden) void refreshIndicatorContext(); }, 5 * 60_000);
+    const flipIv = setInterval(() => { if (!document.hidden) void refreshFundingFlip(); }, 5 * 60_000);
+    const ssrIv  = setInterval(() => { if (!document.hidden) void refreshSsr(); }, 10 * 60_000);
+    const rvIv   = setInterval(() => { if (!document.hidden) void refreshRvCone(); }, 30 * 60_000);
+    const optIv  = setInterval(() => { if (!document.hidden) void refreshOptionsSnapshot(); }, 5 * 60_000);
 
     return () => {
       clearInterval(fastIv);

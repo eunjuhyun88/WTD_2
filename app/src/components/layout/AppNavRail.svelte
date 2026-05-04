@@ -1,9 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { inboxCount } from '$lib/stores/inboxCountStore';
+  import { inboxBadgeCount } from '$lib/stores/inboxBadge.store';
 
   const activePath = $derived($page.url.pathname);
-  const pendingCount = $derived($inboxCount);
+  const pendingCount = $derived($inboxBadgeCount);
 
   function active(href: string) {
     if (href === '/cogochi') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
@@ -106,8 +106,8 @@
       radial-gradient(circle at 50% 0%, rgba(219, 154, 159, 0.04), transparent 50%),
       linear-gradient(180deg, rgba(10, 10, 11, 0.98), rgba(6, 6, 7, 0.98));
     border-right: 1px solid rgba(249, 216, 194, 0.07);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     padding: 8px 0;
     gap: 0;
   }
