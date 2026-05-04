@@ -1,14 +1,15 @@
 /**
  * POST /api/terminal/agent/dispatch
  *
- * BFF proxy for AI agent LLM commands: explain | scan | similar.
- * Validates cmd/args, forwards to engine /agent/{cmd}, returns {text, cmd, latency_ms}.
+ * BFF proxy for AI agent LLM commands: explain | scan | similar | judge | save.
+ * Injects user_id from session — required by /agent/save, optional for others.
  */
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import { engineFetch } from '$lib/server/engineTransport';
+import { getAuthUserFromCookies } from '$lib/server/authGuard';
 
 const DispatchSchema = z.object({
   cmd: z.enum(['explain', 'scan', 'similar', 'judge', 'save']),
@@ -16,7 +17,7 @@ const DispatchSchema = z.object({
   context: z.record(z.unknown()).optional(),
 });
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, cookies }) => {
   let body: unknown;
   try {
     body = await request.json();
@@ -30,8 +31,16 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   const { cmd, context } = parsed.data;
+
+  // /agent/save requires user_id; /agent/judge logs it optionally.
+  const user = await getAuthUserFromCookies(cookies);
+  if (cmd === 'save' && !user) {
+    return json({ error: 'authentication required' }, { status: 401 });
+  }
+
   const enginePath = `/agent/${cmd}`;
-  const engineBody = context ?? {};
+  const engineBody: Record<string, unknown> = { ...(context ?? {}) };
+  if (user) engineBody.user_id = user.id;
 
   try {
     const res = await engineFetch(enginePath, {
