@@ -137,24 +137,6 @@
     </div>
 
     <div class="tv-actions">
-      <!-- Chart type selector -->
-      <div class="mode-switch" role="group" aria-label="Chart type">
-        {#each [
-          { mode: 'candle', label: 'Candles' },
-          { mode: 'heikin', label: 'HA' },
-          { mode: 'bar', label: 'Bar' },
-          { mode: 'line', label: 'Line' },
-          { mode: 'area', label: 'Area' },
-        ] as t (t.mode)}
-          <button
-            class="mode-btn"
-            class:active={chartMode === t.mode}
-            onclick={() => onChartModeChange(t.mode as ChartMode)}
-            title={t.label}
-          >{t.label}</button>
-        {/each}
-      </div>
-
       <!-- Price scale mode selector -->
       <div class="scale-btns" role="group" aria-label="Price scale mode">
         {#each [
@@ -324,6 +306,283 @@
 </div>
 
 <style>
+  .chart-header--tv {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 8px;
+    background: rgba(13, 17, 23, 0.97);
+    border-bottom: 1px solid rgba(42, 46, 57, 0.8);
+    flex-shrink: 0;
+    overflow: hidden;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+  }
+
+  .tv-row--top {
+    display: contents;
+  }
+
+  .chart-symbol {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .sym-quote {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(177, 181, 189, 0.45);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .sym-regime-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.06);
+    color: rgba(177,181,189,0.7);
+  }
+  .sym-regime-pill[data-tone='bull'] { color: #8fdd9d; background: rgba(143,221,157,0.1); }
+  .sym-regime-pill[data-tone='bear'] { color: #f19999; background: rgba(241,153,153,0.1); }
+  .sym-regime-pill[data-tone='warn'] { color: #e9c167; background: rgba(233,193,103,0.1); }
+
+  .tv-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .mode-switch,
+  .scale-btns {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-right: 4px;
+  }
+
+  .mode-btn {
+    height: 20px;
+    padding: 0 6px;
+    background: transparent;
+    border: none;
+    color: rgba(177, 181, 189, 0.5);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.1s, background 0.1s;
+  }
+  .mode-btn:hover { color: rgba(177, 181, 189, 0.85); background: rgba(255,255,255,0.04); }
+  .mode-btn.active { color: rgba(220, 225, 235, 0.92); background: rgba(255,255,255,0.08); }
+
+  .scale-btn { padding: 0 5px; font-size: 10px; }
+
+  /* tv-studies (fx Indicators) */
+  .tv-studies-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .tv-indicators-trigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 7px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 3px;
+    color: rgba(177, 181, 189, 0.65);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.1s, background 0.1s;
+  }
+  .tv-indicators-trigger:hover,
+  .tv-indicators-trigger.is-open { color: rgba(220,225,235,0.9); background: rgba(255,255,255,0.07); }
+
+  .tv-indicators-glyph { font-style: italic; font-size: 10px; opacity: 0.7; }
+
+  .tv-ind-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    background: rgba(100, 200, 255, 0.2);
+    color: rgba(100, 200, 255, 0.9);
+    border-radius: 7px;
+  }
+
+  .tv-studies-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 300;
+    width: 280px;
+    background: rgba(19, 23, 34, 0.98);
+    border: 1px solid rgba(42, 46, 57, 0.9);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    padding: 8px 0;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  .tv-panel-baseline {
+    font-size: 10px;
+    color: rgba(177,181,189,0.5);
+    padding: 0 12px 6px;
+    margin: 0;
+    border-bottom: 1px solid rgba(42,46,57,0.6);
+  }
+
+  .tv-search-wrap { display: block; padding: 6px 8px 4px; }
+  .tv-study-sublabel { display: none; }
+  .tv-study-search {
+    width: 100%;
+    height: 24px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(42,46,57,0.8);
+    border-radius: 3px;
+    color: rgba(220,225,235,0.9);
+    font-size: 11px;
+    padding: 0 8px;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .tv-panel-section { padding: 4px 0; border-bottom: 1px solid rgba(42,46,57,0.4); }
+  .tv-panel-section:last-child { border-bottom: none; }
+  .tv-panel-section-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(177,181,189,0.4);
+    padding: 4px 12px 2px;
+    margin: 0;
+  }
+
+  .tv-study-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 5px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    gap: 8px;
+  }
+  .tv-study-button:hover { background: rgba(255,255,255,0.04); }
+  .tv-study-button.is-active { background: rgba(100,200,255,0.06); }
+
+  .tv-study-main { display: flex; flex-direction: column; gap: 1px; }
+  .tv-study-main strong { font-size: 11px; font-weight: 600; color: rgba(220,225,235,0.85); }
+  .tv-study-main small { font-size: 10px; color: rgba(177,181,189,0.5); }
+  .tv-study-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .tv-study-meta em { font-size: 9px; font-style: normal; color: rgba(177,181,189,0.4); }
+  .tv-study-state { font-size: 9px; color: rgba(177,181,189,0.4); }
+  .tv-study-button.is-active .tv-study-state { color: rgba(100,200,255,0.8); }
+
+  .tv-study-nested { padding: 0 12px 8px 24px; }
+  .tv-study-help { font-size: 9px; color: rgba(177,181,189,0.4); margin: 4px 0 0; }
+  .tv-panel-select {
+    height: 22px; font-size: 10px; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(42,46,57,0.8); border-radius: 3px;
+    color: rgba(220,225,235,0.8); padding: 0 4px; cursor: pointer;
+  }
+  .tv-study-empty { padding: 8px 12px; font-size: 10px; color: rgba(177,181,189,0.4); }
+
+  /* Capture inline info */
+  .capture-inline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .capture-kicker {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(177,181,189,0.3);
+    flex-shrink: 0;
+  }
+
+  .capture-label {
+    font-size: 10px;
+    color: rgba(177,181,189,0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .capture-meta {
+    font-size: 10px;
+    color: rgba(177,181,189,0.35);
+    flex-shrink: 0;
+  }
+
+  /* Actions */
+  .capture-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .capture-save-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 3px;
+    color: rgba(177,181,189,0.6);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.1s, background 0.1s;
+  }
+  .capture-save-btn:hover { color: rgba(220,225,235,0.9); background: rgba(255,255,255,0.07); }
+  .capture-save-btn.active { color: #93c5fd; background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); }
+
+  .capture-open-btn {
+    height: 20px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    font-size: 10px;
+    color: rgba(100,200,255,0.7);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .capture-open-btn:hover { color: rgba(100,200,255,0.95); }
+
   :global(.drawing-toggle.active) {
     color: #93c5fd !important;
     border-color: rgba(59, 130, 246, 0.4) !important;
