@@ -301,7 +301,8 @@
           shellStore.updateTabState((s) => {
             const exists = s.panes.some((p) => p.kind === paneKey);
             if (exists) return s;
-            return { ...s, panes: [...s.panes, { kind: paneKey as PaneConfig['kind'], visible: true }] };
+            const newPane: PaneConfig = { id: paneKey, kind: paneKey as PaneConfig['kind'], visible: true, stretch: 1 };
+            return { ...s, panes: [...s.panes, newPane] };
           });
           return;
         }
