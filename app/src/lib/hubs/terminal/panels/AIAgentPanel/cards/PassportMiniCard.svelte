@@ -22,5 +22,5 @@
 .pc-stats { display: flex; gap: 16px; }
 .pc-stat { display: flex; flex-direction: column; align-items: center; }
 .pc-val { font-size: 14px; font-weight: 700; color: #c8ccd4; }
-.pc-label { font-size: 10px; color: #7a8a9a; }
+.pc-label { font-size: var(--ui-text-xs); color: #7a8a9a; }
 </style>

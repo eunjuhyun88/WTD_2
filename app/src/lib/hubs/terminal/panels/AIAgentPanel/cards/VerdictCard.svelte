@@ -35,6 +35,6 @@
 .vc-direction { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; }
 .vc-pwin { position: relative; height: 14px; background: #1a1a2e; border-radius: 3px; overflow: hidden; }
 .vc-pwin-bar { position: absolute; top: 0; left: 0; height: 100%; border-radius: 3px; opacity: 0.35; transition: width 0.3s; }
-.vc-pwin-label { position: relative; font-size: 10px; color: #8a9ab0; padding: 0 4px; line-height: 14px; }
-.vc-hint { font-size: 10px; color: #4a6fa5; }
+.vc-pwin-label { position: relative; font-size: var(--ui-text-xs); color: #8a9ab0; padding: 0 4px; line-height: 14px; }
+.vc-hint { font-size: var(--ui-text-xs); color: #4a6fa5; }
 </style>
