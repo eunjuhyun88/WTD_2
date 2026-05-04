@@ -223,17 +223,16 @@
    */
 
   .chart-toolbar {
-    height: 36px;
+    height: 32px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 2px;
     padding: 0 6px;
-    background: rgba(11, 13, 18, 0.94);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--g1, #0a0a0a);
+    border-bottom: 1px solid var(--g4, rgba(255,255,255,0.08));
     font-family: var(--fb, 'Space Grotesk', sans-serif);
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--g8, rgba(247,242,234,0.82));
     overflow: hidden;
   }
 
@@ -393,14 +392,13 @@
     left: 0;
     z-index: 100;
     min-width: 140px;
-    background: rgba(12, 14, 20, 0.96);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 4px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    background: var(--g2, #111111);
+    border: 1px solid var(--g4, rgba(255,255,255,0.08));
+    border-radius: var(--r-3, 4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     padding: 3px;
     display: flex;
     flex-direction: column;
-    backdrop-filter: blur(12px);
   }
   .ct-item {
     display: grid;
