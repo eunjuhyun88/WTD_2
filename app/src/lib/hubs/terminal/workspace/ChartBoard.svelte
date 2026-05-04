@@ -26,6 +26,7 @@
   import ResearchPanel from './ResearchPanel.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
   import ChartBoardHeader from './ChartBoardHeader.svelte';
+  import VerdictBanner from './VerdictBanner.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
@@ -1952,6 +1953,9 @@
     {indicatorLibraryOpen}
     onToggleIndicatorLibrary={() => { indicatorLibraryOpen = !indicatorLibraryOpen; }}
   />
+
+  <!-- ── Verdict banner (W-T4) ─────────────────────────────────────────────── -->
+  <VerdictBanner {verdictLevels} livePrice={liveTick.price ?? 0} />
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
   {#if loading}
