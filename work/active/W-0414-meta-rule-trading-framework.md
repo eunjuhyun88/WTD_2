@@ -328,6 +328,152 @@ meta_bucket_stats UPSERT
 
 ---
 
+## O. Kieran 매매룰 실측 분석 (Live API extraction)
+
+> 2026-05-05 `kieran.ai/api/signals` + `/api/positions` + `/api/formula-attribution` 라이브 응답에서 직접 추출. §M 보다 더 구체화된 룰북.
+
+### O1. Signal 구체 룰 (관측 7종, 라이브 100건 sample)
+
+| Signal | Tier | Conf | Severity | Bias | 구체 트리거 (detail 원문) |
+|--------|------|------|----------|------|---------------------------|
+| `momentum_shift` | 1 | 0.65 | alert | short | `8 EMA crossed below 21 EMA on 2h` (즉, 2h 봉 8/21 EMA 데드크로스) |
+| `oi_divergence_bearish` | 2 | 0.6 | alert | short | 가격 ↑ + OI ↓ ≥3.2% (`longs closing, weak rally`) |
+| `oi_divergence_bullish` | 2 | 0.6 | alert | long | 가격 ↓ + OI ↓ ≥3.3% (`shorts closing, exhaustion`) |
+| `oi_surge` | 2 | 0.6 | alert | neutral | 4h OI z-score ≥ 2.0 (sample: `OI surged 0.2% in 4h $2.97M z=2.0`) |
+| `range_resistance_touch` | 1 | 0.7 | alert | short | 56d 고점 0.9% 이내 (예: `80015.50 within 0.9% of 56d high 80762.00`) |
+| `vwap_reclaim` | 1 | 0.5 | info | long | 일봉 VWAP 위로 재돌파 (`Price reclaimed daily VWAP at 414.11`) |
+| `vwap_rejection` | 1 | 0.5 | info | short | 일봉 VWAP 거부 |
+
+**시간프레임**: momentum = 2h, OI = 4h, VWAP/range = 1d.
+**Severity**: `alert` 5개 = 진입 후보, `info` 2개 (vwap_*) = 약신호 (메타게이트 통과율 낮음 확인됨).
+**관측 분포 (100건)**: vwap_reclaim 30 / vwap_rejection 20 / oi_surge 19 / oi_divergence_bullish 14 / oi_divergence_bearish 8 / range_resistance_touch 8 / momentum_shift 1 → vwap 류가 50% (low-conf 0.5 다수).
+
+> **이전 §M2 에서 본 `breakout` / `volume_spike` 는 이 snapshot 에 없음** — 시장상태 의존 룰. signal 카탈로그는 실제 8~10종, 현재 활성은 7종 관측.
+
+### O2. Position 구조 (라이브 BTC short sample)
+
+```json
+ticker: BTC, direction: short, entry: 79409.5, current: 79984.5
+size_usd: 924.54, leverage: 2x, age_hours: 5.37
+unrealized_pct: -0.72%, unrealized_usd: -$6.69
+signals: [{name: "vwap_reclaim", tier: 1, bias: long, conf: 0.5, feature_group: momentum}]
+execution_costs: {
+  funding_rate: 4.41e-06,
+  funding_rate_pct_8h: 0.000441%,
+  estimated_funding_8h_usd: -0.0041,
+  cost_scope: "fee_spread_slippage_depth_funding"
+}
+```
+
+**관찰**:
+- Leverage 2x 표준 (D24 Conservative preset 과 동일)
+- Size 균일 ($900~$3000 범위, slot 5개)
+- **Funding cost 실시간 추적** — 우리 D28 (Hyperliquid 1h funding) 과 동일 컨셉
+- **포지션의 진입 signal 이 bias 와 다를 수 있음** — vwap_reclaim(long) 시그널로 short 진입 = 메타게이트가 signal 을 *역으로* 사용한 케이스 (regime_penalty 가 long 신호를 short 우호로 뒤집음). 이는 §A1 meta-labeling 실증.
+
+### O3. 4-게이트 실측 변수 + bucket attribution (라이브 1500-row diagnostic)
+
+**상태**: `diagnostic_only=true, sample_rows=1500` — 즉 메타룰이 *돌긴 돌지만 production gate 활성화 X* (관측). production 활성 시 `accepted_n` 가 `n` 의 5~10% 가 됨.
+
+#### Setting 1: `portfolio_capacity` (n=1278, 5 vars, status=watch)
+
+| Variable | Bucket | n | tp | sl | accepted | tp_rate | accepted_rate | status |
+|---|---|---|---|---|---|---|---|---|
+| slot_utilization | **67-99%** | 51 | 17 | 34 | 5 | **33%** | **9.8%** | **watch** |
+| slot_utilization | 34-66% | 626 | 119 | 287 | 18 | 20% | 2.9% | learning |
+| slot_utilization | 0-33% | 367 | 117 | 139 | 37 | 32% | 10.1% | learning |
+
+→ **슬롯이 차면 (67-99%) 진입승률 33% / 거부율 90.2%** — capacity 게이트가 자동 차단. 슬롯 비었을 때 (0-33%) 도 32% TP-rate 인 게 흥미 (signal noise 자체가 50/50 base).
+
+#### Setting 2: `position_sizing` (n=1302, 14 vars, status=learning)
+
+| Variable | Bucket | n | tp | sl | accepted | tp_rate | status |
+|---|---|---|---|---|---|---|---|
+| leverage_cap | 5-8x | 1278 | 286 | 503 | 61 | 22.4% | learning |
+| selected_equity_usd | 2.5-5k | 735 | 200 | 194 | 39 | 27.2% | learning |
+| candidate_risk_pct | **<1%** | 588 | 165 | 209 | 4 | 28.1% | learning |
+
+→ Leverage 5~8x 대구간 (kieran 은 우리 default 5x 보다 약간 공격적), 자본구간 $2.5~5k (실험계정 추정), risk_pct < 1% 가 강하게 enforced (n=588 / acc=4 → **0.7% 만 통과**).
+
+#### Setting 3: `regime_penalty` (n=1500, 10 vars, status=learning)
+
+| Variable | Bucket | n | tp | sl | accepted | tp_rate | status |
+|---|---|---|---|---|---|---|---|
+| penalty_applied | **not_applied** | 1483 | 292 | 512 | 61 | 19.7% | learning |
+| counter_multiplier | <0.25 | 1272 | 280 | 503 | 61 | 22% | learning |
+| regime_distance | <0.5x | 1135 | 258 | 479 | 51 | 22.7% | learning |
+
+→ **penalty_applied=not_applied 가 1483/1500 (98.9%)** — 즉 regime gate 가 *대부분 시그널을 통과시키지만* tp_rate 19.7% 로 base. counter_multiplier < 0.25 도 비슷 → regime gate 가 현재 약한 페널티만 부과.
+
+#### Setting 4: `tier2_score` (n=1302, 5 vars, status=learning)
+
+| Variable | Bucket | n | tp | sl | accepted | tp_rate | status |
+|---|---|---|---|---|---|---|---|
+| entry_flip | **flipped** | 771 | 133 | 335 | 43 | **17.3%** | learning |
+| entry_flip | no_flip | 531 | 161 | 177 | 18 | **30.3%** | learning |
+| tier2_score | 2-5 | 554 | 164 | 148 | 23 | **52.6%** | learning |
+
+→ **결정적 발견**: `entry_flip=flipped` (직전 반대 방향 시그널 후 전환) **tp_rate 17.3%** vs `no_flip` 30.3% → **flip 패널티 13%p**. tier2_score 2~5 구간은 **tp_rate 52.6%** (양호) — composite score 의 sweet spot.
+
+### O4. 룰 추론 (실측 → 메타룰 decision tree)
+
+```
+signal in [momentum_shift, range_resistance_touch, oi_divergence_*, oi_surge]?  // alert tier만 production
+  ↓ no → skip
+  ↓ yes
+tier2_score ∈ [2, 5]?              // sweet spot: tp_rate 52.6%
+  ↓ no → severe penalty
+  ↓ yes
+entry_flip == "no_flip"?            // flip 차단: 17% → 30% 회복
+  ↓ flipped → confidence × 0.5
+regime: counter_multiplier ≥ 0.25?  // 역행 차단 (D7 Counter-trend penalty 와 일치)
+portfolio_capacity: slot_util < 67%? // 67-99% 면 거부율 90.2%
+  ↓
+position_sizing:
+  candidate_risk_pct < 1%           // 99.3% 거부 (강제 보수화)
+  leverage ∈ [5, 8]
+  selected_equity ≈ $2.5-5k
+  ↓
+ENTER (paper, 2x lev, ~$900-3000 size)
+  ↓
+exit_label ∈ {tp, sl, timeout}
+  ↓
+update bucket_stats → 다음 cycle 가중치
+```
+
+### O5. 우리 W-0414 와 정밀 매핑
+
+| Kieran 룰 (실측) | W-0414 매핑 | gap |
+|---|---|---|
+| 7 signal (vwap_*, oi_*, range_*, momentum_shift) | §N2 OUR 8 signal (bb_squeeze, range_top, cvd_div, ema_*, obv, atr) | **카테고리 다름** (kieran=VWAP/OI 위주, 우리=BB/CVD/OBV 위주) — 둘 다 합치면 16개 풀세트 |
+| `severity=alert` 만 production | OUR: tier_1_min_conf 0.5 / tier_2 0.6 임계로 동일 컨셉 | ✅ |
+| `entry_flip` (flipped/no_flip) tier2_score 변수 | §N3 Gate1 `entry_flip_count_24h` (flip>3 reject) | ✅ — 우리는 더 엄격 (24h 3회) |
+| `regime_penalty.counter_multiplier <0.25` | §N3 Gate2 `counter_multiplier 0.2 (counter)` | ✅ — 동일 binning |
+| `slot_utilization 67-99% → 9.8% accept` | §N3 Gate3 `slot_util_bucket 67-99 → 자동 차단 검토` | ✅ |
+| `candidate_risk_pct <1%` 강제 (99.3% 거부) | §N3 Gate4 `risk_pct default 1% (D24)` | ✅ — 우리도 1% lock |
+| `leverage_cap 5-8x` 실측 | §J2 Balanced 5x / Aggressive 10x | ✅ — Aggressive 가 kieran 상한과 일치 |
+| `tier2_score ∈ [2,5]` sweet spot tp 52.6% | §N3 Gate1 `composite_score gate_min 0.5` | ⚠️ — **임계값 캘리브레이션 필요** (우리 0.5 = kieran 의 sweet spot 어디?) |
+| `diagnostic_only=true` (gate 비활성) | OUR: D10 LIVE 토글 (paper 우선) | ✅ — 같은 안전장치 패턴 |
+
+### O6. Kieran 룰의 *수치적* tp_rate 베이스라인 (우리 기대치 보정)
+
+| 조건 | tp_rate | sample n | 해석 |
+|------|---------|----------|------|
+| no_flip + tier2 [2,5] + slot < 67% | **~50% 추정** | 결합 sample 약 100~200 | 양호 setup |
+| flipped + slot 67-99% | **~17%** | 51 | **자동 차단 대상** |
+| 전체 (game-baseline) | 22% (286/1278) | 1278 | base rate |
+
+→ **W-0414 AC3 (24h 급등 backtest precision ≥60%)** 는 kieran 의 best-case 50% 보다 10%p 공격적. 합리성 검토 필요 — `composite ≥70` 이라는 *추가* 필터를 거니까 가능. 단, prior 학습 90일 후 측정.
+
+### O7. 추가 발견 (W-0414 보강 항목)
+
+1. **`feature_group` 필드** (kieran position 의 signal 안) — 우리 시그널에도 추가하면 attribution bucket 차원이 한 축 늘어남 (signal_name × feature_group). §B3 `meta_outcomes` 에 컬럼 추가 검토.
+2. **`execution_costs.cost_scope` 명시** — `fee_spread_slippage_depth_funding` 5요소 분해. 우리 §K3 funding 만 본 것 → 5요소 분해로 확장 (PR10 live runner 에 반영).
+3. **`telemetry_quality` 필드** — `partial_missing_next_funding_time` 등 데이터 결측 추적. 우리 `meta_decisions` 에 `data_quality` 컬럼 추가.
+4. **`feature_group` 별 attribution** — `momentum / liquidity / volatility / structure` 같은 상위 카테고리. §B3 schema 보강.
+
+---
+
 ## A. 학술 근거 (이론 매핑)
 
 ### A1. Meta-labeling (López de Prado 2018, Ch 3.6)
