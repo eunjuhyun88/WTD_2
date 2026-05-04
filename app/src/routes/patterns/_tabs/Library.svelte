@@ -5,8 +5,8 @@
   import type { PatternCandidateView, PatternStateView } from '$lib/contracts';
   import { buildCanonicalHref } from '$lib/seo/site';
   import type { PatternStats } from '$lib/types/patternStats';
-  import VerdictInboxSection from '$lib/components/patterns/VerdictInboxSection.svelte';
   import PatternCard from '$lib/components/patterns/PatternCard.svelte';
+  import PatternsRightRail from './PatternsRightRail.svelte';
   import TransitionRow from '$lib/components/patterns/TransitionRow.svelte';
   import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 
@@ -134,7 +134,7 @@
     symbolFilter ? transitions.filter((t) => t.symbol === symbolFilter) : transitions,
   );
 
-  let verdictInboxOpen = $state(false);
+
 </script>
 
 <svelte:head>
@@ -187,238 +187,242 @@
     </div>
   </header>
 
-  <div class="surface-scroll-body patterns-content">
-    {#if error}
-      <section class="surface-card page-error">
-        <p>⚠ Scan failed</p>
-        <p class="error-detail">{error}</p>
-        <button class="surface-button-secondary" onclick={() => { error = null; }}>Dismiss</button>
-      </section>
-    {/if}
-
-    <section class="surface-grid">
-        <div class="surface-section-head">
-          <div>
-            <span class="surface-kicker">Entry Candidates</span>
-            <h2>Accumulation alerts</h2>
-          </div>
-          <span class="surface-chip">{accumulationCount} active</span>
-        </div>
-
-        {#if accumulationCount === 0}
-          <div class="surface-card empty-card">
-            <p>No ACCUMULATION entry candidates — scan runs every 15 min</p>
-          </div>
-        {:else}
-          <div class="candidate-grid">
-            {#each candidates.filter((c) => c.phaseId === 'ACCUMULATION') as cand}
-              {@const candidateKey = `${cand.patternSlug}:${cand.symbol}`}
-              <div class="surface-card candidate-card">
-                <div class="cand-top">
-                  <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
-                  <span class="surface-chip accum-chip">Accumulation</span>
-                </div>
-                <div class="cand-meta">
-                  <span>{cand.patternId.replace(/_/g,' ')}</span>
-                  <span>{cand.enteredAt ? sinceHours(cand.enteredAt) : 'Entry time unknown'}</span>
-                </div>
-                <div class="cand-actions">
-                  <a class="surface-button-ghost compact-action" href="/cogochi?symbol={cand.symbol}">Open Chart</a>
-                  <button
-                    class="surface-button-secondary compact-action valid"
-                    onclick={() => saveCandidate(cand)}
-                    disabled={!cand.candidateTransitionId || savingCandidateIds.has(candidateKey)}
-                  >
-                    {savingCandidateIds.has(candidateKey) ? 'Saving…' : 'Save Setup'}
-                  </button>
-                </div>
-              </div>
+  <div class="surface-scroll-body patterns-body">
+    <!-- 3-col layout: Filter 200 | Grid flex:1 | RightRail 320 -->
+    <div class="patterns-3col">
+      <!-- Left: Filter column -->
+      <aside class="patterns-filter-col">
+        <div class="filter-section">
+          <span class="surface-kicker filter-kicker">Filter</span>
+          <select
+            class="sym-filter sym-filter--stack"
+            value={symbolFilter}
+            onchange={(e) => setSymbolFilter((e.target as HTMLSelectElement).value)}
+            aria-label="Filter by symbol"
+          >
+            <option value="">All symbols</option>
+            {#each symbolOptions as sym}
+              <option value={sym}>{sym.replace('USDT', '')}</option>
             {/each}
-          </div>
-        {/if}
-      </section>
+          </select>
+        </div>
+      </aside>
 
-      <section class="surface-grid cols-2 patterns-lower">
-        <div class="surface-grid">
+      <!-- Center: main grid content -->
+      <div class="patterns-content">
+        {#if error}
+          <section class="surface-card page-error">
+            <p>Scan failed</p>
+            <p class="error-detail">{error}</p>
+            <button class="surface-button-secondary" onclick={() => { error = null; }}>Dismiss</button>
+          </section>
+        {/if}
+
+        <section class="surface-grid">
           <div class="surface-section-head">
             <div>
-              <span class="surface-kicker">Live States</span>
-              <h2>All Symbol States</h2>
+              <span class="surface-kicker">Entry Candidates</span>
+              <h2>Accumulation alerts</h2>
             </div>
-            <div class="section-head-right">
-              <select
-                class="sym-filter"
-                value={symbolFilter}
-                onchange={(e) => setSymbolFilter((e.target as HTMLSelectElement).value)}
-                aria-label="Filter by symbol"
-              >
-                <option value="">All symbols</option>
-                {#each symbolOptions as sym}
-                  <option value={sym}>{sym.replace('USDT', '')}</option>
-                {/each}
-              </select>
-              <span class="surface-chip">{filteredStates.length} active</span>
-            </div>
+            <span class="surface-chip">{accumulationCount} active</span>
           </div>
 
-          {#if states.length === 0}
+          {#if accumulationCount === 0}
             <div class="surface-card empty-card">
-              <p>No tracked symbols — run a scan to populate states</p>
-            </div>
-          {:else if filteredStates.length === 0}
-            <div class="surface-card empty-card">
-              <p>{symbolFilter} — no active states</p>
+              <p>No ACCUMULATION entry candidates — scan runs every 15 min</p>
             </div>
           {:else}
-            <div class="surface-card states-shell">
-              <div class="states-table">
-                <div class="table-header">
-                  <span>Symbol</span>
-                  <span>Pattern</span>
-                  <span>Current Phase</span>
-                  <span>Entry Time</span>
-                  <span>Candles</span>
-                </div>
-                {#each filteredStates as s}
-                  {@const meta = phaseMetaFor(s.phaseId, s.phaseLabel, s.phaseIdx)}
-                  <div class="table-row" class:highlight={s.phaseId === 'ACCUMULATION'}>
-                    <span class="row-sym">
-                      <a href="/cogochi?symbol={s.symbol}">{s.symbol.replace('USDT','')}</a>
-                    </span>
-                    <span class="row-pattern">{s.patternId.replace(/_/g,' ')}</span>
-                    <span class="row-phase" style="--phase-color:{meta.color}">{meta.label}</span>
-                    <span class="row-time">{s.enteredAt ? sinceHours(s.enteredAt) : '—'}</span>
-                    <span class="row-candles">{s.barsInPhase}</span>
+            <div class="candidate-grid">
+              {#each candidates.filter((c) => c.phaseId === 'ACCUMULATION') as cand}
+                {@const candidateKey = `${cand.patternSlug}:${cand.symbol}`}
+                <div class="surface-card candidate-card">
+                  <div class="cand-top">
+                    <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
+                    <span class="surface-chip accum-chip">Accumulation</span>
                   </div>
-                {/each}
-              </div>
+                  <div class="cand-meta">
+                    <span>{cand.patternId.replace(/_/g,' ')}</span>
+                    <span>{cand.enteredAt ? sinceHours(cand.enteredAt) : 'Entry time unknown'}</span>
+                  </div>
+                  <div class="cand-actions">
+                    <a class="surface-button-ghost compact-action" href="/cogochi?symbol={cand.symbol}">Open Chart</a>
+                    <button
+                      class="surface-button-secondary compact-action valid"
+                      onclick={() => saveCandidate(cand)}
+                      disabled={!cand.candidateTransitionId || savingCandidateIds.has(candidateKey)}
+                    >
+                      {savingCandidateIds.has(candidateKey) ? 'Saving…' : 'Save Setup'}
+                    </button>
+                  </div>
+                </div>
+              {/each}
             </div>
           {/if}
-        </div>
+        </section>
 
-        <div class="surface-grid">
-          <div class="surface-section-head">
-            <div>
-              <span class="surface-kicker">Pattern Stats</span>
-              <h2>Performance & Readiness</h2>
-            </div>
-            <span class="surface-chip">{stats.length} patterns</span>
-          </div>
-
-          <div class="stats-grid">
-            {#each stats as s}
-              <div class="surface-card stat-card">
-                <span class="stat-name">{s.pattern_slug.replace(/_/g,' ')}</span>
-                <div class="stat-row">
-                  <span class="stat-label">Hit Rate</span>
-                  <span class="stat-value {(s.hit_rate ?? 0) >= 0.6 ? 'good' : (s.hit_rate ?? 0) >= 0.4 ? 'mid' : 'bad'}">
-                    {fmtPct(s.hit_rate)}
-                  </span>
-                </div>
-                <div class="stat-row">
-                  <span class="stat-label">Avg Gain / Loss</span>
-                  <span class="stat-value">
-                    {s.avg_gain_pct != null ? `+${fmtPct(s.avg_gain_pct, 1)}` : '—'}
-                    {#if s.avg_loss_pct != null}
-                      <span class="stat-loss"> / {fmtPct(s.avg_loss_pct, 1)}</span>
-                    {/if}
-                  </span>
-                </div>
-                {#if s.expected_value != null}
-                  <div class="stat-row">
-                    <span class="stat-label">Expected Value</span>
-                    <span class="stat-value {s.expected_value >= 0 ? 'good' : 'bad'}">
-                      {s.expected_value >= 0 ? '+' : ''}{fmtPct(s.expected_value, 2)}
-                    </span>
-                  </div>
-                {/if}
-                <div class="stat-row">
-                  <span class="stat-label">Total Instances</span>
-                  <span class="stat-value">{s.total_instances}</span>
-                </div>
-                {#if s.ml_shadow}
-                  {@const mlReady = s.ml_shadow.ready_to_train ?? false}
-                  {@const mlUsable = s.ml_shadow.training_usable_count ?? 0}
-                  <div class="stat-row">
-                    <span class="stat-label">ML coverage</span>
-                    <span class="stat-value {s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.8 ? 'good' : s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.4 ? 'mid' : 'bad'}">
-                      {fmtPct(s.ml_shadow.score_coverage)}
-                    </span>
-                  </div>
-                  <div class="stat-row">
-                    <span class="stat-label">Training Ready</span>
-                    <span class="stat-value" class:good={mlReady} class:mid={!mlReady && mlUsable >= 10} class:bad={!mlReady && mlUsable < 10}>
-                      {mlReady ? 'Ready' : 'Shadow'}
-                    </span>
-                  </div>
-                  <p class="stat-footnote">{s.ml_shadow.readiness_reason}</p>
-                {/if}
+        <section class="surface-grid cols-2 patterns-lower">
+          <div class="surface-grid">
+            <div class="surface-section-head">
+              <div>
+                <span class="surface-kicker">Live States</span>
+                <h2>All Symbol States</h2>
               </div>
-            {/each}
-            {#if stats.length === 0}
+              <span class="surface-chip">{filteredStates.length} active</span>
+            </div>
+
+            {#if states.length === 0}
               <div class="surface-card empty-card">
-                <p>No verdict data yet — statistics appear once VALID/INVALID verdicts accumulate</p>
+                <p>No tracked symbols — run a scan to populate states</p>
+              </div>
+            {:else if filteredStates.length === 0}
+              <div class="surface-card empty-card">
+                <p>{symbolFilter} — no active states</p>
+              </div>
+            {:else}
+              <div class="surface-card states-shell">
+                <div class="states-table">
+                  <div class="table-header">
+                    <span>Symbol</span>
+                    <span>Pattern</span>
+                    <span>Current Phase</span>
+                    <span>Entry Time</span>
+                    <span>Candles</span>
+                  </div>
+                  {#each filteredStates as s}
+                    {@const meta = phaseMetaFor(s.phaseId, s.phaseLabel, s.phaseIdx)}
+                    <div class="table-row" class:highlight={s.phaseId === 'ACCUMULATION'}>
+                      <span class="row-sym">
+                        <a href="/cogochi?symbol={s.symbol}">{s.symbol.replace('USDT','')}</a>
+                      </span>
+                      <span class="row-pattern">{s.patternId.replace(/_/g,' ')}</span>
+                      <span class="row-phase" style="--phase-color:{meta.color}">{meta.label}</span>
+                      <span class="row-time">{s.enteredAt ? sinceHours(s.enteredAt) : '—'}</span>
+                      <span class="row-candles">{s.barsInPhase}</span>
+                    </div>
+                  {/each}
+                </div>
               </div>
             {/if}
           </div>
-        </div>
-      </section>
 
-      <!-- Recent Transitions panel -->
-      <section class="surface-grid">
-        <div class="surface-section-head">
-          <div>
-            <span class="surface-kicker">Transitions</span>
-            <h2>Recent Phase Transitions</h2>
-          </div>
-          <span class="surface-chip">{filteredTransitions.length} records</span>
-        </div>
-        {#if filteredTransitions.length === 0}
-          <div class="surface-card empty-card">
-            <p>No transitions recorded yet</p>
-          </div>
-        {:else}
-          <div class="surface-card transitions-shell">
-            <table class="transitions-table">
-              <thead>
-                <tr>
-                  <th>Symbol</th>
-                  <th class="hide-sm">Pattern</th>
-                  <th>From</th>
-                  <th class="arrow-th"></th>
-                  <th>To</th>
-                  <th class="hide-sm">Conf</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each filteredTransitions as t}
-                  <TransitionRow
-                    symbol={t.symbol}
-                    slug={t.pattern_slug}
-                    fromPhase={t.from_phase}
-                    toPhase={t.to_phase}
-                    confidence={t.confidence}
-                    transitionedAt={t.transitioned_at}
-                  />
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      </section>
+          <div class="surface-grid">
+            <div class="surface-section-head">
+              <div>
+                <span class="surface-kicker">Pattern Stats</span>
+                <h2>Performance & Readiness</h2>
+              </div>
+              <span class="surface-chip">{stats.length} patterns</span>
+            </div>
 
-      <!-- Verdict Inbox — collapsible, default closed -->
-      <section class="surface-grid">
-        <button class="verdict-inbox-toggle" onclick={() => (verdictInboxOpen = !verdictInboxOpen)}>
-          <span class="surface-kicker">Flywheel</span>
-          <span class="verdict-inbox-label">Verdict Inbox</span>
-          <span class="verdict-inbox-arrow">{verdictInboxOpen ? '▲' : '▼'}</span>
-        </button>
-        {#if verdictInboxOpen}
-          <VerdictInboxSection />
-        {/if}
-      </section>
+            <div class="stats-grid">
+              {#each stats as s}
+                <div class="surface-card stat-card">
+                  <span class="stat-name">{s.pattern_slug.replace(/_/g,' ')}</span>
+                  <div class="stat-row">
+                    <span class="stat-label">Hit Rate</span>
+                    <span class="stat-value {(s.hit_rate ?? 0) >= 0.6 ? 'good' : (s.hit_rate ?? 0) >= 0.4 ? 'mid' : 'bad'}">
+                      {fmtPct(s.hit_rate)}
+                    </span>
+                  </div>
+                  <div class="stat-row">
+                    <span class="stat-label">Avg Gain / Loss</span>
+                    <span class="stat-value">
+                      {s.avg_gain_pct != null ? `+${fmtPct(s.avg_gain_pct, 1)}` : '—'}
+                      {#if s.avg_loss_pct != null}
+                        <span class="stat-loss"> / {fmtPct(s.avg_loss_pct, 1)}</span>
+                      {/if}
+                    </span>
+                  </div>
+                  {#if s.expected_value != null}
+                    <div class="stat-row">
+                      <span class="stat-label">Expected Value</span>
+                      <span class="stat-value {s.expected_value >= 0 ? 'good' : 'bad'}">
+                        {s.expected_value >= 0 ? '+' : ''}{fmtPct(s.expected_value, 2)}
+                      </span>
+                    </div>
+                  {/if}
+                  <div class="stat-row">
+                    <span class="stat-label">Total Instances</span>
+                    <span class="stat-value">{s.total_instances}</span>
+                  </div>
+                  {#if s.ml_shadow}
+                    {@const mlReady = s.ml_shadow.ready_to_train ?? false}
+                    {@const mlUsable = s.ml_shadow.training_usable_count ?? 0}
+                    <div class="stat-row">
+                      <span class="stat-label">ML coverage</span>
+                      <span class="stat-value {s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.8 ? 'good' : s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.4 ? 'mid' : 'bad'}">
+                        {fmtPct(s.ml_shadow.score_coverage)}
+                      </span>
+                    </div>
+                    <div class="stat-row">
+                      <span class="stat-label">Training Ready</span>
+                      <span class="stat-value" class:good={mlReady} class:mid={!mlReady && mlUsable >= 10} class:bad={!mlReady && mlUsable < 10}>
+                        {mlReady ? 'Ready' : 'Shadow'}
+                      </span>
+                    </div>
+                    <p class="stat-footnote">{s.ml_shadow.readiness_reason}</p>
+                  {/if}
+                </div>
+              {/each}
+              {#if stats.length === 0}
+                <div class="surface-card empty-card">
+                  <p>No verdict data yet — statistics appear once VALID/INVALID verdicts accumulate</p>
+                </div>
+              {/if}
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent Transitions panel -->
+        <section class="surface-grid">
+          <div class="surface-section-head">
+            <div>
+              <span class="surface-kicker">Transitions</span>
+              <h2>Recent Phase Transitions</h2>
+            </div>
+            <span class="surface-chip">{filteredTransitions.length} records</span>
+          </div>
+          {#if filteredTransitions.length === 0}
+            <div class="surface-card empty-card">
+              <p>No transitions recorded yet</p>
+            </div>
+          {:else}
+            <div class="surface-card transitions-shell">
+              <table class="transitions-table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th class="hide-sm">Pattern</th>
+                    <th>From</th>
+                    <th class="arrow-th"></th>
+                    <th>To</th>
+                    <th class="hide-sm">Conf</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each filteredTransitions as t}
+                    <TransitionRow
+                      symbol={t.symbol}
+                      slug={t.pattern_slug}
+                      fromPhase={t.from_phase}
+                      toPhase={t.to_phase}
+                      confidence={t.confidence}
+                      transitionedAt={t.transitioned_at}
+                    />
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </section>
+      </div>
+
+      <!-- Right rail: Detail + Inbox tabs (hidden ≤1024px) -->
+      <div class="patterns-right-rail-wrap">
+        <PatternsRightRail />
+      </div>
+    </div>
   </div>
 </div>
 
@@ -448,31 +452,77 @@
   }
   .tertiary-link:hover { color: rgba(250, 247, 235, 0.7); border-color: rgba(250, 247, 235, 0.3); }
 
-  .verdict-inbox-toggle {
+  /* ---- 3-column layout ---- */
+  .patterns-body {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    background: none;
-    border: none;
-    border-bottom: 1px solid rgba(249, 216, 194, 0.06);
-    padding: 10px 0;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.08s;
-  }
-  .verdict-inbox-toggle:hover { background: rgba(255,255,255,0.02); }
-  .verdict-inbox-label {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 13px;
-    font-weight: 700;
-    color: rgba(250, 247, 235, 0.65);
+    flex-direction: column;
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
-  .verdict-inbox-arrow {
-    font-size: var(--ui-text-xs);
-    color: rgba(250, 247, 235, 0.3);
+
+  .patterns-3col {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
+
+  /* Left filter column: 200px fixed */
+  .patterns-filter-col {
+    width: 200px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    overflow-y: auto;
+    padding: var(--sp-3, 12px) var(--sp-3, 12px);
+  }
+
+  .filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3, 12px);
+  }
+
+  .filter-kicker {
+    display: block;
+  }
+
+  .sym-filter--stack {
+    width: 100%;
+  }
+
+  /* Center content: flex:1 */
+  .patterns-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--sp-3, 12px) var(--sp-4, 16px);
+    min-width: 0;
+  }
+
+  /* Right rail wrapper: 320px, visible ≥1025px */
+  .patterns-right-rail-wrap {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ≤1440px: right rail still shown but tabs stack (handled inside PatternsRightRail) */
+
+  /* ≤1024px: hide right rail and filter col, full-width grid */
+  @media (max-width: 1024px) {
+    .patterns-filter-col {
+      display: none;
+    }
+    .patterns-right-rail-wrap {
+      /* TODO: replace with slide-in drawer when drawer infra is available */
+      display: none;
+    }
+  }
+
+  /* ---- End 3-column layout ---- */
 
   .page-error,
   .empty-card {
