@@ -17,8 +17,6 @@
   } from '$lib/stores/positionStore';
   import { fetchUiStateApi, updateUiStateApi } from '$lib/api/preferencesApi';
   import { parseOutcomePrices } from '$lib/api/polymarket';
-  import PolymarketBetPanel from './connectors/PolymarketBetPanel.svelte';
-  import GmxTradePanel from './connectors/GmxTradePanel.svelte';
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import {
     scoreColor,
@@ -83,8 +81,6 @@
   ];
   let feedFilterOptions: Array<{ key: FeedFilter; label: string }> = FEED_FILTER_OPTIONS_ALL;
   let posView: 'mine' | 'markets' = 'mine';
-  let betMarket: any = null; // market to open in BetPanel
-  let showGmxPanel = false;  // GmxTradePanel visibility
   let tabCollapsed = false;
   let _uiStateSaveTimer: ReturnType<typeof setTimeout> | null = null;
   let _positionsPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -1691,9 +1687,6 @@
                 </div>
               {/each}
             {/if}
-            <button class="gmx-open-btn" on:click={() => showGmxPanel = true}>
-              ⚡ OPEN PERP POSITION
-            </button>
 
             <!-- MARKET BETS -->
             {#if displayPolymarketCount > 0}
@@ -1725,7 +1718,6 @@
                 <span class="pos-empty-txt">NO OPEN POSITIONS</span>
                 <span class="pos-empty-sub">Apply War Room signals to the chart or create a position directly.</span>
                 <div class="pos-empty-actions">
-                  <button class="pos-empty-btn primary" on:click={() => showGmxPanel = true}>OPEN PERP</button>
                   <button class="pos-empty-btn" on:click={() => { posView = 'markets'; }}>BROWSE MARKETS</button>
                 </div>
               </div>
@@ -1743,7 +1735,6 @@
                     <span class="mb-no">NO {outcome.no}¢</span>
                   </div>
                   <div class="mb-actions">
-                    <button class="mb-bet" on:click={() => { betMarket = market; }}>BET USDC</button>
                     <a class="mb-link" href="https://polymarket.com/event/{market.slug}" target="_blank" rel="noopener noreferrer">↗</a>
                   </div>
                 </div>
@@ -1754,13 +1745,6 @@
           {/if}
         </div>
 
-        <!-- Polymarket Bet Panel (slide-up) -->
-        <PolymarketBetPanel market={betMarket} onClose={() => { betMarket = null; }} />
-
-        <!-- GMX Trade Panel (slide-up) -->
-        {#if showGmxPanel}
-          <GmxTradePanel onClose={() => { showGmxPanel = false; }} />
-        {/if}
       {/if}
     </div>
   {/if}
