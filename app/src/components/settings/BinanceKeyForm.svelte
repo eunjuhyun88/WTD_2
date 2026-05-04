@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { exchangeKeys } from '$lib/stores/exchangeKeys';
+  import {
+    trackExchangeKeyRegistered,
+    trackExchangeKeyDeleted,
+    trackExchangeKeyValidationFailed,
+  } from '$lib/telemetry/exchange';
 
   export let onSaved: () => void = () => {};
 
@@ -35,12 +40,16 @@
     try {
       const result = await exchangeKeys.save(apiKey, secret);
       if (result.ok) {
+        trackExchangeKeyRegistered('binance', result.ipRestrict ?? false);
         showToast(`✓ 저장됨 (****${apiKey.slice(-4)})`);
         apiKey = '';
         secret = '';
         reenter = false;
         onSaved();
       } else {
+        if (result.code) {
+          trackExchangeKeyValidationFailed('binance', result.code as import('$lib/telemetry/exchange').ExchangeEventCode);
+        }
         if (result.code === 'trading_enabled') {
           showToast('❌ Trading 권한이 있는 키는 허용되지 않습니다');
         } else if (result.code === 'invalid_key') {
@@ -57,6 +66,7 @@
   async function handleDelete() {
     const result = await exchangeKeys.remove();
     if (result.ok) {
+      trackExchangeKeyDeleted('binance');
       showToast('키가 삭제됐습니다');
     } else {
       showToast(`❌ ${result.error ?? '삭제 실패'}`);
