@@ -270,6 +270,30 @@
   // W-T11: heatmap coloring for volume bars; volume profile right-side overlay
   let showHeatmap = $derived($activeTabState?.heatmapOn ?? false);
   let showVolumeProfile = $derived($activeTabState?.vpOn ?? false);
+  // W-T4: user-created alert price lines
+  let tabAlerts = $derived($activeTabState?.alerts ?? []);
+  let alertInput = $state('');
+  let alertLabelInput = $state('');
+
+  function addAlert() {
+    const price = parseFloat(alertInput.trim());
+    if (!isFinite(price) || price <= 0) return;
+    const label = alertLabelInput.trim() || `${price}`;
+    const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    shellStore.updateTabState((s) => ({
+      ...s,
+      alerts: [...(s.alerts ?? []), { id, price, label }],
+    }));
+    alertInput = '';
+    alertLabelInput = '';
+  }
+
+  function removeAlert(id: string) {
+    shellStore.updateTabState((s) => ({
+      ...s,
+      alerts: (s.alerts ?? []).filter((a) => a.id !== id),
+    }));
+  }
 
   let chartMode = $state<'candle' | 'line' | 'bar' | 'area' | 'heikin'>('candle');
   let priceScaleMode = $state<'normal' | 'log' | 'percent'>('normal');
@@ -1926,6 +1950,15 @@
     updateLevels();
   });
 
+  // W-T4: sync alert price lines when tabAlerts changes
+  $effect(() => {
+    void tabAlerts;
+    if (priceSeries && !loading) {
+      priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+      priceLineMgr.updateAlertLines(tabAlerts);
+    }
+  });
+
   // W-0210 Layer 1: Re-apply alpha overlay when analysisData changes (no chart rebuild)
   $effect(() => {
     void analysisData;
@@ -2036,6 +2069,26 @@
 
   <!-- ── Verdict banner (W-T4) ─────────────────────────────────────────────── -->
   <VerdictBanner {verdictLevels} livePrice={liveTick.price ?? 0} />
+
+  <!-- ── Alert price lines UI (W-T4) ─────────────────────────────────────── -->
+  <div class="alert-row">
+    <input
+      type="number"
+      class="alert-input"
+      placeholder="Price alert…"
+      bind:value={alertInput}
+      onkeydown={(e) => { if (e.key === 'Enter') addAlert(); }}
+      aria-label="Alert price"
+    />
+    {#each tabAlerts as alert (alert.id)}
+      <button
+        type="button"
+        class="alert-chip"
+        onclick={() => removeAlert(alert.id)}
+        title="Remove alert at {alert.price}"
+      >{alert.label} ×</button>
+    {/each}
+  </div>
 
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
   {#if loading}
@@ -2631,6 +2684,46 @@
   }
   .vp-poc .vp-bid,
   .vp-poc .vp-ask { outline: 1px solid rgba(255,255,255,0.25); }
+
+  /* W-T4: alert row */
+  .alert-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+    min-height: 24px;
+    border-bottom: 1px solid rgba(42, 46, 57, 0.6);
+    background: rgba(11, 13, 18, 0.7);
+    flex-wrap: wrap;
+  }
+  .alert-input {
+    height: 18px;
+    width: 90px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    color: rgba(255,255,255,0.7);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs);
+    padding: 0 5px;
+    outline: none;
+  }
+  .alert-input:focus { border-color: rgba(251,191,36,0.6); }
+  .alert-chip {
+    height: 18px;
+    padding: 0 6px;
+    background: rgba(251,191,36,0.1);
+    border: 1px solid rgba(251,191,36,0.35);
+    border-radius: 3px;
+    color: rgba(251,191,36,0.9);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .alert-chip:hover { background: rgba(251,191,36,0.2); }
+
   .save-toast {
     position: fixed;
     bottom: calc(var(--sc-consent-reserved-h, 0px) + 20px);

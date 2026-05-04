@@ -85,6 +85,8 @@ export interface TabState {
   heatmapOn: boolean;
   // W-T11: volume profile right-side overlay
   vpOn: boolean;
+  // W-T4: price alert lines
+  alerts: Array<{ id: string; price: number; label: string }>;
 }
 
 export interface Tab {
@@ -229,6 +231,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   compares: [],
   heatmapOn: false,
   vpOn: false,
+  alerts: [],
 });
 
 const makeDefault = (): ShellState => ({
@@ -288,6 +291,7 @@ function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
     compares: Array.isArray((tabState as any)?.compares) ? (tabState as any).compares : [],
     heatmapOn: (tabState as any)?.heatmapOn ?? false,
     vpOn: (tabState as any)?.vpOn ?? false,
+    alerts: Array.isArray((tabState as any)?.alerts) ? (tabState as any).alerts : [],
   };
 }
 
