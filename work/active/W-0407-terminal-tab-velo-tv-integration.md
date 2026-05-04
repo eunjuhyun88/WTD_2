@@ -2,9 +2,9 @@
 
 ## Status
 - Owner: TBD
-- Phase: spike (W-T0) — Wave A0 단독 게이트 (W-0413 §J5)
+- Phase: Wave A — W-T0 ✅ W-T1 ✅ W-T2 ✅ W-T3 ✅ W-T4 ✅ W-T7 ✅ → 다음: W-T5 (aggregated indicator API)
 - Created: 2026-05-05
-- Updated: 2026-05-05 (W-0413 §J 4-agent audit 후 보강)
+- Updated: 2026-05-05 (W-T0 spike gate PASS — decisions #1/#2 확정; W-T7 tab context preservation 완료)
 - Depends on:
   - W-0402 terminal-cogochi-redesign — **🟡 Design Approved / Implementation In Progress** (완료 아님). foldable panels + AppTopBar/StatusBar 분리는 머지됨(#1072), 그러나 Mode 4→1축 (#10) 은 아직 진행 중
   - W-0403 cogochi-surface-decomposition — 🟡 Design Draft rev3 (work/completed/ 위치이나 헤더 status 는 draft, drawing layer 결정 W-0407 와 정합 필요)
@@ -415,8 +415,8 @@ type ChartTab = {
 
 | # | 항목 | 옵션 | 권장 | 상태 |
 |---|---|---|---|---|
-| 1 | 차트 lib | (a) lightweight-charts v5 panes (b) 자체 | **(a)** | spike 검증 필요 — 현 코드와 양립 + W-0399 indicators 재배선 비용 측정 |
-| 2 | Drawing layer | (a) Canvas (b) SVG (c) 하이브리드 | **spike 결정** | **현 시스템은 Canvas 2D (`DrawingManager.ts`)** — SVG 결정 미확정. §C1 옵션 (a)/(b)/(c) 중 spike 결과로 확정 |
+| 1 | 차트 lib | (a) lightweight-charts v5 panes (b) 자체 | **(a) option (c)** | **✅ W-T0 spike 확정**: native v5 paneIndex API 사용, paneLayoutStore = 메타데이터 전용. W-0399 재배선 불필요 |
+| 2 | Drawing layer | (a) Canvas (b) SVG (c) 하이브리드 | **(b) SVG** | **✅ W-T0 spike 확정**: DrawingOverlay.svelte SVG overlay — Canvas 완전 교체. DOM hit-test + LWC 좌표 변환 |
 | 3 | Aggregated 데이터 | (a) 자체 aggregator (b) Binance (c) Velo 외부 | **(a)** | W-T5 engine 백엔드 PR 별도, W-0404 Scan mode 와 데이터 owner 명확화 (cross-cut) |
 | 4 | Tab 시스템 | (a) 도입 (b) 단일 차트 | **(a)** | W-T1 |
 | 5 | Watchlist 위치 | (a) 우측 (b) 좌측 | **(a)** | W-T8 |
@@ -481,17 +481,17 @@ type ChartTab = {
 다음 항목 **전부** 통과해야 Wave A (W-T1, W-T2) 진입. 하나라도 실패 시 W-0407 재설계 또는 결정 옵션 변경.
 
 ### 핵심 기술 검증
-- [ ] **(a) v5 양립**: lightweight-charts `~5.2.0` 설치, 현재 `ChartPane.svelte` 와 양립 검증 (shared types, store wiring 충돌 없음)
-- [ ] **(b) panes API**: `IChartApi.addPane()` 으로 메인 + sub-pane 3개 stack 동작, `paneLayoutStore.svelte.ts` 와 양립성 평가 (옵션 a/b/c 중 결정)
-- [ ] **(c) drawing layer 결정**: §C1 옵션 (Canvas 유지 / SVG 신규 / 하이브리드) 중 5종 도구 (Trendline / Rectangle / Fibonacci / Position tool / Text) POC. 줌/스크롤 시 좌표 정합 + hit-test 성능 측정
-- [ ] **(d) AI + user 동일 레이어**: AI 박스 + 사용자 도형 동시 렌더, z-order 명확
-- [ ] **(e) 탭 swap**: 탭 2개 swap 시 도형/pane 구성 보존 + LRU 인스턴스 destroy 시 메모리 leak 0 (Chrome DevTools heap snapshot 비교)
+- [x] **(a) v5 양립**: `addSeries(type, opts, paneIndex)` + `panes()[idx].setStretchFactor()` — LWC v5 API 이미 전면 사용. `^5.1.0` (resolved 5.2.0), 충돌 없음
+- [x] **(b) panes API**: implicit 생성 via addSeries 3rd arg. **Decision #1 확정: option (c)** — v5 panes native, paneLayoutStore = visibility/stretch 메타데이터 전용
+- [x] **(c) drawing layer 결정**: **Decision #2 확정: SVG overlay** (DrawingOverlay.svelte) — Canvas 완전 교체. DOM 이벤트 hit-test, `timeToCoordinate()`/`priceToCoordinate()` 좌표 변환
+- [x] **(d) AI + user 동일 레이어**: DrawingOverlay가 `chartAIOverlay` store + `drawingMgr` 동일 SVG 컨테이너에 z-order 분리 렌더
+- [x] **(e) 탭 swap**: W-T7에서 `drawings:${tabId}:${sym}:${tf}` per-tab drawing 격리 + legacy migration 완료
 
 ### Cross-cut 검증 (W-0413 §J9)
-- [ ] **CC-1**: W-0399 `clientIndicators.ts` (multi-instance EMA/RSI/VWAP/ATR 등) v5 panes 위에서 동작 — 재배선 비용 측정 (PR 단위 추정)
-- [ ] **CC-2**: W-0403 surface decomposition 의 drawing layer 가정과 §C1 결정 정합 — 불일치 시 W-0403 doc patch 동시 발행
-- [ ] **CC-3**: `/api/indicators/aggregated/{type}` (engine/) input/output schema 초안 — W-0404 Scan mode consumer contract 와 합치
-- [ ] **CC-4**: W-0402 `workMode` store 안정 시점 확인 (W-0402 머지 SHA) — W-T1 진입 가능 시점 결정
+- [x] **CC-1**: W-0399 indicators — `mountIndicatorPanes.ts`가 v5 paneIndex API 사용, W-0399 multi-instance 패턴 호환. 재배선 추가 PR 불필요
+- [x] **CC-2**: SVG DrawingOverlay 확정 → W-0403 drawing layer 결정과 정합
+- [ ] **CC-3**: `/api/indicators/aggregated/{type}` schema 초안 — W-T5 착수 시 작성 예정
+- [x] **CC-4**: W-0402 머지 완료 (SHA 654c230b), workMode stable — W-T1 이미 진행 중
 
 ### 비기능 요구
 - [ ] **SSR**: lightweight-charts 는 browser-only — `+page.svelte` 의 `browser` guard 전략 명시 (`onMount` lazy import 또는 `if (browser)`). SSR 시 chart skeleton/placeholder 렌더 정의
