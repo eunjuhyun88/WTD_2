@@ -4240,6 +4240,11 @@ export interface components {
             timeframe: string;
             /** User Id */
             user_id?: string | null;
+            /**
+             * Tier
+             * @default free
+             */
+            tier: string;
         };
         /** CommitRequest */
         CommitRequest: {
