@@ -15,10 +15,8 @@
   import TradeMode from './workspace/TradeMode.svelte';
   import WorkspaceStage from './workspace/WorkspaceStage.svelte';
   import { get } from 'svelte/store';
-  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta, isDecideMode, allVerdicts } from './shell.store';
+  import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta, allVerdicts } from './shell.store';
   import { chartFreshness } from '$lib/stores/chartFreshness';
-  import DecideRightPanel from './DecideRightPanel.svelte';
-  import MultiPaneChartAdapter from './workspace/MultiPaneChartAdapter.svelte';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
@@ -45,6 +43,7 @@
   let paletteQ = $state('');
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
+  let initialDecideId = $state<string | null>(null);
 
   // ── W-0392: Judge-Save flywheel state ─────────────────────────────────────
   let judgeLoading = $state(false);
@@ -263,6 +262,13 @@
     const targetPanel =
       workspacePanel === 'research' || workspacePanel === 'judge' || workspacePanel === 'verdict'
         ? workspacePanel : 'verdict';
+
+    // PR7-AC3: ?decide=<verdictId> deeplink — open JDG drawer with that verdict
+    const decideParam = searchParams?.get('decide');
+    if (decideParam) {
+      initialDecideId = decideParam;
+      shellStore.setRightPanelTab('judge');
+    }
 
     if (workspaceMode === 'detail') {
       if (get(viewportTier).tier === 'MOBILE') {
@@ -550,12 +556,7 @@
           onSettings={() => (indicatorSettingsOpen = true)}
         />
 
-        {#if $isDecideMode}
-          <div class="decide-canvas">
-            <MultiPaneChartAdapter />
-          </div>
-        {:else}
-          <WorkspaceStage
+        <WorkspaceStage
             tabs={$shellStore.tabs}
             activeTabId={$shellStore.activeTabId}
             workMode={$shellStore.workMode}
@@ -567,7 +568,6 @@
             workspaceRightSplitY={$shellStore.workspaceRightSplitY}
             onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
           />
-        {/if}
 
         <!-- W-0392: RangeSelectionPanel — judge-save flywheel dock (ChartBoard owns ResearchPanel) -->
         {#if $chartSaveMode.active && $chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
@@ -616,15 +616,12 @@
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
-          {#if $isDecideMode}
-            <DecideRightPanel />
-          {:else}
-            <AIAgentPanel
+          <AIAgentPanel
               symbol={desktopSymbol}
               timeframe={$activeTabState.timeframe ?? '4h'}
               onSelectSymbol={(s) => shellStore.setSymbol(s)}
+              initialDecideId={initialDecideId}
             />
-          {/if}
         </div>
       {:else}
         <button
@@ -813,13 +810,6 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    contain: layout paint;
-  }
-
-  .decide-canvas {
-    flex: 1;
-    min-height: 0;
     overflow: hidden;
     contain: layout paint;
   }

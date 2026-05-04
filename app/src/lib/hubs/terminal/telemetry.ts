@@ -134,6 +134,21 @@ export function trackTabSwitch(payload: TabSwitchPayload): void {
   fireGtag('wave6.tab_switch', parsed.data as unknown as Record<string, unknown>);
 }
 
+// ── decide_drawer_open (W-0403 PR7) ───────────────────────────────────────
+
+export const DecideDrawerOpenSchema = z.object({
+  verdict_id: z.string().optional(),
+  trigger: z.enum(['jdg_tab_button', 'deeplink']),
+});
+export type DecideDrawerOpenPayload = z.infer<typeof DecideDrawerOpenSchema>;
+
+export function trackDecideDrawerOpen(payload: DecideDrawerOpenPayload): void {
+  const parsed = DecideDrawerOpenSchema.safeParse(payload);
+  if (!parsed.success) { console.warn('[telemetry] decide_drawer_open invalid', parsed.error.issues); return; }
+  fireGtag('decide_drawer_open', parsed.data as unknown as Record<string, unknown>);
+  fireGtag('wave6.decide_drawer_open', parsed.data as unknown as Record<string, unknown>);
+}
+
 // ── inbox_dot_click (W-0403) ───────────────────────────────────────────────
 
 export const InboxDotClickSchema = z.object({
