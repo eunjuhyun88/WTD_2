@@ -35,6 +35,7 @@
   import TerminalHoldTimeAdapter from './panels/TerminalHoldTimeAdapter.svelte';
   import { track } from '$lib/analytics';
   import { trackPanelFoldToggle } from './telemetry';
+  import SaveRangeToast from './workspace/SaveRangeToast.svelte';
 
   // ── W-0395: HoldTime stats for StatusBar ──────────────────────────────────
   let holdP50 = $state<number | null>(null);
@@ -649,6 +650,10 @@
   {/if}
 
   <!-- Global overlays -->
+
+  <!-- W-0402 PR11: drag-to-save range toast (z:190, centered top, 5s auto-dismiss) -->
+  <SaveRangeToast />
+
   {#if desktopSymbolPickerOpen}
     <SymbolPickerSheet
       currentSymbol={desktopSymbol}

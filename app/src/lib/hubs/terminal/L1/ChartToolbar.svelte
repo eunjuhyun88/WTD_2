@@ -10,6 +10,7 @@
   import { shellStore, activeTabState } from '../shell.store';
   import type { ChartType } from '../shell.store';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { chartSaveModeV2 } from '$lib/stores/chartSaveMode.store';
 
   interface Props {
     onIndicators?: () => void;
@@ -45,6 +46,7 @@
 
   function startSave() {
     chartSaveMode.enterRangeMode();
+    chartSaveModeV2.enterRangeMode();
     shellStore.updateTabState((s) => ({ ...s, rangeSelection: true }));
   }
 
