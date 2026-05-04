@@ -10,6 +10,7 @@ declare global {
   interface Window {
     turnstile?: {
       render(container: HTMLElement, opts: Record<string, unknown>): string;
+      reset(widgetId: string): void;
     };
   }
 }
