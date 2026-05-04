@@ -134,6 +134,253 @@ BigQuery (raw) → engine/onchain/bq_client.py (6 SQL) → Supabase onchain_metr
 | Catalyst noise (CryptoPanic spam) | source whitelist (Tier-1 outlets) + dedup |
 | L2 chain indexing gap | Polygon/Arbitrum/Optimism/Base/BSC 모두 google_blockchain dataset 존재 — 격차 미미 |
 
+## M. Implementation Cookbook (구체적 "어떻게 찾는가")
+
+각 signal 의 데이터 소스 + 계산식 + 임계값 + 사전 신호 (pre-pump leading indicator) 를 명시.
+모든 SQL 은 `block_timestamp` partition 필터 필수 (BQ 비용 90% 절감).
+
+### M.1 Technical Compression (15) — 자체 Binance kline
+
+| Signal | 계산식 | Pre-pump 임계 |
+|--------|--------|---------------|
+| BB squeeze | `(BB_upper - BB_lower) / SMA20 < 6m percentile 10` | 압축 5+ 캔들 지속 |
+| Keltner squeeze | `BB ⊂ Keltner` (TTM Squeeze) | active 3+ 캔들 |
+| Volatility coil | `ATR_14 / ATR_50 < 0.6` | 7일 연속 |
+| MA confluence | EMA20/50/100/200 spread `< 2% of price` | cluster 3+ MA |
+| RSI hidden bull div | price HL + RSI LL (uptrend pullback) | 1d/4h timeframe |
+| MACD compression | hist abs `< 0.5% of price` for 5+ bars | crossover 임박 |
+| Wyckoff accumulation | spring + test on declining vol | volume profile valley |
+| Fibonacci confluence | 0.618 / 0.5 / 0.382 ±0.5% 겹침 | static + dynamic level |
+| Volume profile POC test | price retest POC on low vol | reaction wick |
+| Range contraction (NR7) | 7일 중 최저 range | breakout 통계 65% |
+| Ichimoku Kumo twist | 미래 cloud flip up | 5+ days lookahead |
+| Heikin Ashi flat | doji body 3+ consecutive | trend reset |
+| ADX < 20 | trend exhaustion | DI+/- crossover 임박 |
+| Donchian midline test | midline support hold | breakout setup |
+| Pivot S1/R1 reclaim | session pivot reclaim with vol | intraday |
+
+### M.2 Volume / Order Flow (10) — Binance trade tape
+
+| Signal | 계산식 |
+|--------|--------|
+| OBV bull div | OBV HH while price LL |
+| CVD slope | cumulative `(buy_vol - sell_vol)`, slope > 0 on consolidation |
+| Taker buy ratio | `taker_buy / total > 0.55` rolling 4h |
+| Kyle's λ | `\|Δprice\| / signed_volume`, low λ = high liquidity / smart accumulation |
+| Volume z-score | `(vol - μ_30d) / σ_30d > 2` on no-news |
+| Iceberg detection | repeated same-size limits at level (L2 snapshots) |
+| Absorption | large taker hits but price stationary |
+| Dark pool proxy | (CEX vs total reported volume) gap |
+| Buy/sell delta divergence | delta vs price divergence |
+| VWAP reversion | price < VWAP - 1σ then reclaim |
+
+### M.3 Derivatives Positioning (12) — Binance/Bybit funding API
+
+| Signal | 임계 |
+|--------|------|
+| Funding negative cluster | 8h funding < -0.01% for 3+ periods (shorts crowded) |
+| Funding spike | abs(funding) > 99th percentile |
+| OI / MCAP | OI/MCAP > 0.1 (high leverage, squeeze risk) |
+| OI 24h Δ | OI ↑20% while price flat (positioning build) |
+| Long/short ratio skew | top trader L/S < 0.7 (contrarian bull) |
+| Basis (perp - spot) | basis < 0 with spot bid (backwardation = bullish) |
+| Liquidation map cluster | $X above price = magnet for squeeze |
+| Open Interest weighted funding | OI-weighted funding < -0.005% |
+| Term structure | quarterly futures contango steepening |
+| Options put/call ratio | P/C > 1.2 (bearish crowded → contra) |
+| Options skew | 25Δ put IV - 25Δ call IV elevated → reversal |
+| Gamma exposure | dealer short gamma below price = sqz fuel |
+
+### M.4 Volatility Regime (6)
+
+| Signal | 계산 |
+|--------|------|
+| RV/IV gap | realized vol < implied vol → vol-of-vol expansion 임박 |
+| ATR contraction | ATR_14 / 90d percentile < 20 |
+| HV percentile | 30d HV < 6m percentile 10 |
+| Vol risk premium | IV - RV mean-reverts; extreme = signal |
+| Skew normalization | risk reversal → 0 from negative |
+| Vol cone | current IV vs historical IV cone |
+
+### M.5 Microstructure (5) — Binance L2 snapshot 수집
+
+| Signal | 계산 |
+|--------|------|
+| VPIN | `\|buy - sell\| / total` rolling buckets, > 0.4 = toxic flow |
+| Spread compression | bid-ask / mid < 6m percentile 10 |
+| Depth skew | (bid_depth_1% - ask_depth_1%) / total > 0.3 |
+| Order book imbalance | top 10 levels imbalance > 0.5 |
+| Quote stuffing | `cancel_rate / new_order_rate > 5` (manipulation) |
+
+### M.6 On-chain (12) — BigQuery ⭐
+
+#### C1. Whale concentration (Top 10 holders %)
+```sql
+WITH latest_balances AS (
+  SELECT address, SUM(CAST(value AS NUMERIC) *
+    CASE WHEN to_address = address THEN 1 ELSE -1 END) AS balance
+  FROM `bigquery-public-data.crypto_ethereum.token_transfers`
+  WHERE token_address = @token
+    AND block_timestamp BETWEEN TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY)
+                            AND CURRENT_TIMESTAMP()
+  GROUP BY address
+)
+SELECT SUM(balance) / (SELECT SUM(balance) FROM latest_balances) AS top10_pct
+FROM (SELECT balance FROM latest_balances ORDER BY balance DESC LIMIT 10);
+```
+**Pre-pump**: top10_pct ↑ 5%p over 7d on flat price = accumulation.
+
+#### C2. Exchange in/outflow
+```sql
+-- Pre-loaded CEX wallet list (Etherscan tags)
+WITH cex_addrs AS (SELECT address FROM `project.lookup.cex_wallets`)
+SELECT
+  SUM(CASE WHEN to_address IN (SELECT * FROM cex_addrs) THEN value END) AS inflow,
+  SUM(CASE WHEN from_address IN (SELECT * FROM cex_addrs) THEN value END) AS outflow
+FROM `bigquery-public-data.crypto_ethereum.token_transfers`
+WHERE token_address = @token
+  AND block_timestamp BETWEEN @start AND @end;
+```
+**Pre-pump**: net outflow > 7d avg × 2 (supply shock).
+
+#### C3. CDD (BTC)
+```sql
+SELECT SUM(value * DATE_DIFF(spent_date, created_date, DAY)) AS cdd
+FROM `bigquery-public-data.crypto_bitcoin.outputs`
+WHERE spent_date BETWEEN @start AND @end;
+```
+**Pre-pump**: CDD z-score < -1 (long-term holders not selling).
+
+#### C4. MVRV proxy
+```sql
+-- Cost basis = avg price at last balance change
+-- Market value = current price × balance
+SELECT (market_cap - realized_cap) / realized_cap AS mvrv
+FROM token_aggregates WHERE token = @token;
+```
+**Pre-pump**: MVRV < 1 (undervalued vs cost basis).
+
+#### C5. Smart money PnL leaderboard
+```sql
+WITH wallet_trades AS (
+  SELECT t.from_address AS wallet, t.token_address,
+         t.value, p.price_usd, t.block_timestamp,
+         CASE WHEN t.from_address = wallet THEN 'sell' ELSE 'buy' END AS side
+  FROM `bigquery-public-data.crypto_ethereum.token_transfers` t
+  JOIN `project.prices.daily` p
+    ON t.token_address = p.token AND DATE(t.block_timestamp) = p.date
+  WHERE block_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 180 DAY)
+),
+pnl AS (
+  SELECT wallet,
+    SUM(CASE WHEN side='sell' THEN value*price_usd ELSE -value*price_usd END) AS realized
+  FROM wallet_trades GROUP BY wallet
+)
+SELECT wallet, realized,
+       PERCENT_RANK() OVER (ORDER BY realized) AS rank
+FROM pnl
+QUALIFY rank > 0.99;  -- top 1%
+```
+**Pre-pump**: target token 의 24h 매수자 중 smart money overlap > 20%.
+
+#### C6. New address growth
+```sql
+SELECT COUNT(DISTINCT to_address) AS new_addrs
+FROM `bigquery-public-data.crypto_ethereum.token_transfers`
+WHERE token_address = @token
+  AND to_address NOT IN (
+    SELECT DISTINCT to_address
+    FROM `bigquery-public-data.crypto_ethereum.token_transfers`
+    WHERE token_address = @token AND block_timestamp < @start
+  )
+  AND block_timestamp BETWEEN @start AND @end;
+```
+**Pre-pump**: new_addrs 24h 성장률 > 7d avg × 1.5.
+
+#### Additional 6 (구현 후순위)
+- C7. HODL waves (BTC UTXO age distribution)
+- C8. SOPR (spent output profit ratio)
+- C9. Stablecoin supply ratio (USDT/USDC inflow to CEX)
+- C10. Bridge net flow (L1 ↔ L2)
+- C11. DEX/CEX volume ratio
+- C12. Active address velocity
+
+### M.7 Tokenomics (6)
+
+| Signal | 소스 | 계산 |
+|--------|------|------|
+| Unlock cliff (≤30d) | TokenUnlocks.app 무료 + on-chain vesting contracts | 30일 내 unlock < 5% supply 면 ✓ |
+| Vesting velocity | 컨트랙트 Transfer 이벤트 | 잔여 vest 양 |
+| Supply velocity | tx volume / supply | 회전율 가속 |
+| Burn rate | burn address 누적 수신 | deflationary pressure |
+| Inflation rate | mint/issuance 이벤트 | 신규 발행 속도 |
+| Treasury ratio | DAO multisig holdings / total | governance overhang |
+
+### M.8 Catalyst (6) — CryptoPanic 무료 + 자체 keyword filter
+
+| Signal | 검출 |
+|--------|------|
+| Listing rumor (Tier-1 CEX) | "Coinbase listing", "Binance listing" keyword + source whitelist |
+| Partnership leak | "partnership", "integration" + named entity |
+| Mainnet/upgrade date | github release notes scrape + roadmap |
+| Token economic change | governance forum post (Snapshot/Tally API) |
+| Funding round | Crunchbase + The Block scrape |
+| Regulatory decision | SEC/MAS/FSA filing scrape |
+
+### M.9 Attention (5) — 무료 tier
+
+| Signal | 소스 |
+|--------|------|
+| Twitter mention velocity | LunarCrush 무료 + Twitter API basic |
+| Google Trends spike | Google Trends API (pytrends) |
+| Telegram member growth | TG official bot member count |
+| Discord active users | scrape if public |
+| GitHub commit velocity | gh API (already accessible) |
+
+### M.10 Macro / Sector (8)
+
+| Signal | 소스 |
+|--------|------|
+| BTC dominance | Binance kline + market cap aggregator |
+| ETH/BTC ratio | Binance |
+| Sector rotation index | DefiLlama TVL by category |
+| DXY (USD index) | FRED API 무료 |
+| 10y treasury yield | FRED |
+| Fed funds rate | FRED |
+| Stablecoin total supply | DefiLlama 무료 |
+| BTC/SPX correlation | rolling 30d corr |
+
+### M.11 Composite Scoring
+
+```python
+def composite_score(signals: dict[str, float]) -> tuple[float, float]:
+    """Returns (raw_score, adjusted_score) ∈ [0, 100]."""
+    cat_scores = {cat: weighted_avg(sigs) for cat, sigs in signals.items()}
+    raw = sum(cat_scores.values()) / 10  # 10 categories
+
+    # W-0414 Bayesian posterior weights (per category)
+    weights = bayesian_bucket_posterior()
+    weighted = sum(cat_scores[c] * weights[c] for c in cat_scores)
+
+    # Confluence bonus
+    high_cats = sum(1 for s in cat_scores.values() if s >= 70)
+    multiplier = 1.0
+    if high_cats >= 3: multiplier = 1.1
+    if high_cats >= 5: multiplier = 1.2
+
+    return raw, min(weighted * multiplier, 100)
+```
+
+### M.12 Backtest 검증 protocol
+
+1. 24h gainer Top 50 list (지난 90일 매일) 추출 → label = 1
+2. 동일 기간 random sample (시총 매칭) → label = 0
+3. T-24h 시점에 80 signal 계산 → composite score
+4. ROC AUC + precision@top-K 측정
+5. AC7 검증: confluence ≥3 카테고리 ≥70 → 실제 +20% 24h pump precision ≥40%
+
+---
+
 ## H. References
 
 - BigQuery public crypto: https://console.cloud.google.com/marketplace/product/bigquery-public-data/crypto-ethereum
