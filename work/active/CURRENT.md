@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`03d492a6` — origin/main (2026-05-04) — chore(W-0403 PR14): delete 5-component terminal workspace cluster (#1100)
+`885062fc` — origin/main (2026-05-04) — chore(workspace): delete 15 dead orphan components + prune index.ts (#1113)
 
 W-0403 Wave 6 Cogochi Surface Decomposition: PR9a/9b/9c/10a/10b/11/12/13/14 all merged. StreakBadgeCard + VerdictInboxSection now live on /dashboard; 12 dead workspace orphans purged.
 
