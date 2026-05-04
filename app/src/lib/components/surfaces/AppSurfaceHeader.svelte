@@ -1,5 +1,6 @@
 <script lang="ts">
   import { priceStore } from '$lib/stores/priceStore';
+  import NavInboxBadge from '$lib/components/header/NavInboxBadge.svelte';
 
   interface Props {
     active: 'terminal' | 'patterns' | 'lab' | 'dashboard';
@@ -32,6 +33,8 @@
       <a class:active={active === 'lab'} class="app-surface-link lab" href="/lab">Lab ★</a>
       <a class:active={active === 'dashboard'} class="app-surface-link" href="/dashboard">Dashboard</a>
     </nav>
+
+    <NavInboxBadge />
 
     <a class="app-settings" href="/settings" aria-label="Settings">
       <svg viewBox="0 0 24 24" aria-hidden="true">
