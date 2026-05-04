@@ -186,8 +186,8 @@ function assignTabToWorkspacePanes(
 const DEFAULT_WORKSPACE_COLUMN_SPLIT = 56;
 const DEFAULT_WORKSPACE_LEFT_SPLIT_Y = 58;
 const DEFAULT_WORKSPACE_RIGHT_SPLIT_Y = 50;
-const DEFAULT_SIDEBAR_WIDTH = 178;
-const DEFAULT_AI_WIDTH = 320;
+const DEFAULT_SIDEBAR_WIDTH = 140;
+const DEFAULT_AI_WIDTH = 220;
 
 const FRESH_WORKSPACE_LAYOUT = (): Record<WorkspacePanelId, WorkspacePanelRect> => ({
   analyze: { x: 0, y: 0, w: 58, h: 56 },
@@ -672,12 +672,12 @@ function createShellStore() {
     setActiveSection: (id: 'library' | 'verdicts' | 'rules') => { update(st => ({ ...st, activeSection: id })); },
 
     resizeSidebar: (dx: number) => {
-      update(st => ({ ...st, sidebarWidth: clamp(160, st.sidebarWidth + dx, 420) }));
+      update(st => ({ ...st, sidebarWidth: clamp(120, st.sidebarWidth + dx, 360) }));
     },
     resetSidebarWidth: () => { update(st => ({ ...st, sidebarWidth: DEFAULT_SIDEBAR_WIDTH })); },
 
     resizeAI: (dx: number) => {
-      update(st => ({ ...st, aiWidth: clamp(240, st.aiWidth - dx, 600) }));
+      update(st => ({ ...st, aiWidth: clamp(180, st.aiWidth - dx, 500) }));
     },
     resetAIWidth: () => { update(st => ({ ...st, aiWidth: DEFAULT_AI_WIDTH })); },
 

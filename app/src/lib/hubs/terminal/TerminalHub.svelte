@@ -753,14 +753,14 @@
   .app-shell {
     height: 100dvh;
     display: grid;
-    grid-template-rows: 40px auto 1fr 28px;
+    grid-template-rows: 32px auto 1fr 20px;
     grid-template-columns:
-      var(--watch-w, 178px)
+      var(--watch-w, 140px)
       5px
-      40px
+      32px
       1fr
       5px
-      var(--ai-w, 320px);
+      var(--ai-w, 220px);
     grid-template-areas:
       "topbar    topbar  topbar topbar topbar  topbar"
       "news      news    news   news   news    news"
