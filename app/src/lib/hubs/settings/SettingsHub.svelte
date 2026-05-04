@@ -4,17 +4,37 @@
   import GeneralPanel from './panels/GeneralPanel.svelte';
   import SubscriptionPanel from './panels/SubscriptionPanel.svelte';
   import ApiKeysPanel from './panels/ApiKeysPanel.svelte';
+  import NotificationsPanel from './panels/NotificationsPanel.svelte';
+  import DisplayPanel from './panels/DisplayPanel.svelte';
   import Ac10Badge from './panels/Ac10Badge.svelte';
 
-  const tabs = [
-    { id: 'general', label: 'General' },
-    { id: 'subscription', label: 'Subscription' },
-    { id: 'api-keys', label: 'API Keys' },
-    { id: 'passport', label: 'Passport' },
-    { id: 'status', label: 'Status' },
+  /**
+   * W-0402 PR15: 3 primary tabs (Account / Notifications / Display).
+   * Legacy tab IDs (general, subscription, api-keys, passport, status) remain
+   * routable but are not shown in the primary strip — overflow is deferred.
+   *
+   * Tab mapping:
+   *   account       ← general + subscription + wallet (existing GeneralPanel + SubscriptionPanel)
+   *   notifications ← email digest, signal alerts, telegram (new NotificationsPanel)
+   *   display       ← theme, density toggle (new DisplayPanel)
+   */
+  const PRIMARY_TABS = [
+    { id: 'account',       label: 'Account' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'display',       label: 'Display' },
   ];
 
-  const activeTab = $derived($page.url.searchParams.get('tab') ?? 'general');
+  // Legacy tab IDs kept for backward compat (not shown in strip)
+  const LEGACY_MAP: Record<string, string> = {
+    general:      'account',
+    subscription: 'account',
+    'api-keys':   'account',
+    passport:     'account',
+    status:       'account',
+  };
+
+  const rawTab = $derived($page.url.searchParams.get('tab') ?? 'account');
+  const activeTab = $derived(LEGACY_MAP[rawTab] ?? rawTab);
 
   function switchTab(id: string) {
     goto(`/settings?tab=${id}`, { replaceState: true });
@@ -22,30 +42,33 @@
 </script>
 
 <div class="settings-shell">
-  <nav class="settings-tabs">
-    {#each tabs as tab}
+  <nav class="settings-tabs" aria-label="Settings sections">
+    {#each PRIMARY_TABS as tab}
       <button
         class="settings-tab"
         class:active={activeTab === tab.id}
+        aria-current={activeTab === tab.id ? 'page' : undefined}
         onclick={() => switchTab(tab.id)}
       >{tab.label}</button>
     {/each}
     <div class="tabs-spacer"></div>
     <!-- AC3: Ac10Badge always in DOM — opacity-controlled only, never v-if -->
-    <Ac10Badge visible={activeTab === 'api-keys'} />
+    <Ac10Badge visible={activeTab === 'account'} />
   </nav>
 
   <div class="settings-content">
-    {#if activeTab === 'general'}
-      <GeneralPanel />
-    {:else if activeTab === 'subscription'}
-      <SubscriptionPanel />
-    {:else if activeTab === 'api-keys'}
-      <ApiKeysPanel />
-    {:else if activeTab === 'passport'}
-      <div class="coming-soon">Passport settings — coming soon (PR2)</div>
-    {:else if activeTab === 'status'}
-      <div class="coming-soon">System status — coming soon (PR2)</div>
+    {#if activeTab === 'account'}
+      <div class="account-panels">
+        <GeneralPanel />
+        <div class="panel-divider"></div>
+        <SubscriptionPanel />
+        <div class="panel-divider"></div>
+        <ApiKeysPanel />
+      </div>
+    {:else if activeTab === 'notifications'}
+      <NotificationsPanel />
+    {:else if activeTab === 'display'}
+      <DisplayPanel />
     {/if}
   </div>
 </div>
@@ -58,6 +81,7 @@
     padding: 0 20px;
     border-bottom: 1px solid var(--g3, #1c1918);
     background: var(--g1, #0c0a09);
+    flex-shrink: 0;
   }
   .settings-tab {
     padding: 10px 16px;
@@ -77,11 +101,15 @@
   }
   .tabs-spacer { flex: 1; }
   .settings-content { flex: 1; overflow-y: auto; padding: 24px 20px; }
-  .coming-soon {
-    color: var(--g5, #3d3830);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: var(--ui-text-xs, 11px);
-    padding: 40px;
-    text-align: center;
+
+  .account-panels {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 640px;
+  }
+
+  .panel-divider {
+    height: 16px;
   }
 </style>
