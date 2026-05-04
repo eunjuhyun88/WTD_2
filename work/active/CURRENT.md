@@ -36,23 +36,16 @@
 
 ## main SHA
 
-`dea9125e` — origin/main (2026-05-05) — feat(W-0407): terminal redesign — tab system, SVG drawing, ChartToolbar, panel fixes (#1160)
+`dea9125e` — origin/main (2026-05-05) — feat(W-0407): terminal redesign W-T1~T4 + fixes (#1160)
 
-W-0407 W-T1~W-T4 완료 (#1160):
+W-0407 W-T1~T4 완료 (#1160):
 - W-T1: per-tab panes + ChartToolbar symbol/TF/price
 - W-T2: paneLayout per-tab sync, state_unsafe_mutation fix
 - W-T3: SVG DrawingOverlay unified drawing + AI shape layer
 - W-T4: VerdictBanner inline entry/TP/SL + toolbar consolidation
-- fix: drawing tool feedback loop, BULL rail collapse, double mobile footer
+- fix: drawing tool feedback loop (syncTool), BULL rail collapse, double footer
 
-W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
-- PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
-- PR4 TopBar 6-slot (#1137) / PR5 StatusBar Tier 분리 (#1136) / PR6 cogochi AI search bar (#1138)
-- PR7 panel router cogochi:ai-ask (#1142) / PR8 redirect (in main) / PR9 GTM dual-emit (#1128)
-- PR10 AI Drawer slide-out (#1141) / PR11 drag-to-save toast (#1131) / PR12 dashboard hero (#1127)
-- PR13 patterns 3-column (#1133) / PR14 mobile 5-region (#1139) / PR15 Settings 3-tab (#1130) / PR16 zone dedup (#1125)
-
-W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
+W-0405 PR1~PR4 완료 (#1150~#1159) / W-0404 PR1~PR5 완료. 다음 P0 = W-0407 W-T0 spike.
 
 ---
 
@@ -62,12 +55,19 @@ W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-PF-100-P2-eval-challenge` | P0 | 🟡 착수 가능 |
+| `W-0407-terminal-tab-velo-tv-integration` | P1 | 🟡 W-T1~T4 머지 완료 (#1160). **다음: W-T0 spike** (v5 addPane + drawing layer 결정) |
 | `W-0410-scrypt-per-user-salt` | P1 | ✅ PR #1173 OPEN — binanceConnector.ts + binance_tools.py + migrate 스크립트 |
 | `W-0408-token-blacklist-fail-closed` | P1 | 🔵 분석 완료, 구현 대기 — Redis 장애 시 토큰 재사용 방지 |
 | `W-0409-alpha-scan-real-data` | P2 | 🔵 분석 완료, 구현 대기 — 환각 LLM tool 제거 → Binance OI 배선 |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
+
+## Wave 8 완료 (2026-05-05)
+
+```
+완료:  W-0407 W-T1~T4 ✅ — terminal tab system + SVG drawing + ChartToolbar + panel fixes (#1160)
+```
 
 ## Wave 7 완료 (2026-05-04)
 
