@@ -42,7 +42,7 @@
   import { useChartDataFeed } from '$lib/chart/useChartDataFeed.svelte';
   import { createLiveTickState } from '$lib/chart/liveTickState.svelte';
   // ── W-0289: Drawing Tools ────────────────────────────────────────────────────
-  import DrawingCanvas from './DrawingCanvas.svelte';
+  import DrawingOverlay from './DrawingOverlay.svelte';
   import DrawingToolbar from './DrawingToolbar.svelte';
   import { DrawingManager, type DrawingToolType } from '$lib/chart/DrawingManager';
   import { PriceLineManager } from '$lib/chart/usePriceLines';
@@ -1995,19 +1995,7 @@
     <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
-      <!-- D-9: AI range box overlay -->
-      {#if aiBoxCoords.length > 0}
-        <svg class="ai-range-overlay" aria-hidden="true">
-          {#each aiBoxCoords as box}
-            <rect x={box.x} y={box.y} width={box.w} height={box.h}
-              fill={box.color} fill-opacity="0.10"
-              stroke={box.color} stroke-width="1" stroke-opacity="0.45" />
-            {#if box.label}
-              <text x={box.x + 4} y={box.y + 11} fill={box.color} font-size="8" opacity="0.75">{box.label}</text>
-            {/if}
-          {/each}
-        </svg>
-      {/if}
+      <!-- W-T3: moved to DrawingOverlay -->
       <div class="layer2-topright">
         <PhaseBadge phase={null} />
       </div>
@@ -2027,8 +2015,14 @@
     <div class="pane-main multi-pane-host" bind:this={mainEl}
       style="--price-frac: {priceFracPct}%">
       <!-- W-0289: Drawing overlay canvas -->
-      {#if $activeDrawingMode && drawingMgr}
-        <DrawingCanvas mgr={drawingMgr} containerEl={mainEl} />
+      {#if drawingMgr}
+        <DrawingOverlay
+          mgr={drawingMgr}
+          chart={mainChart}
+          series={priceSeries as ISeriesApi<SeriesType> | null}
+          containerEl={mainEl}
+          {symbol}
+        />
       {/if}
 
       <!-- W-0395 Phase 4: pane resize handles — 6px grab zone at each pane boundary -->
