@@ -39,6 +39,10 @@ export const GET: RequestHandler = async ({ cookies, url, getClientAddress, requ
     const user = await getAuthUserFromCookies(cookies);
     if (!user) return json({ error: 'Authentication required' }, { status: 401 });
 
+    if (!user.wallet_address) {
+      return json({ error: 'A connected wallet is required for Polymarket. Link your wallet in Settings → Passport.' }, { status: 400 });
+    }
+
     const walletAddress = url.searchParams.get('walletAddress') ?? '';
     if (!ETH_ADDRESS_RE.test(walletAddress)) {
       return json({ error: 'Invalid wallet address' }, { status: 400 });
@@ -79,6 +83,10 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
   try {
     const user = await getAuthUserFromCookies(cookies);
     if (!user) return json({ error: 'Authentication required' }, { status: 401 });
+
+    if (!user.wallet_address) {
+      return json({ error: 'A connected wallet is required for Polymarket. Link your wallet in Settings → Passport.' }, { status: 400 });
+    }
 
     const body = await readJsonBody<Record<string, unknown>>(request, 16 * 1024);
     if (!body) return json({ error: 'Invalid request body' }, { status: 400 });

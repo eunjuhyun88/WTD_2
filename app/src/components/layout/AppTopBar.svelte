@@ -8,6 +8,12 @@
 
   const wallet = $derived($walletStore);
   const connected = $derived($isWalletConnected);
+  // email-only (Privy) users: authenticated but no wallet
+  const isAuthenticated = $derived(connected || !!(wallet.email || wallet.nickname));
+  const displayLabel = $derived(
+    connected ? (wallet.shortAddr || wallet.nickname || wallet.email || 'Account')
+    : (wallet.nickname || wallet.email || 'Account')
+  );
   const activePath = $derived($page.url.pathname);
 
   const pageLabel = $derived(
@@ -50,11 +56,11 @@
 
   <div class="topbar-right">
     <LocaleToggle />
-    {#if connected}
+    {#if isAuthenticated}
       <div class="profile-wrap">
         <button class="wallet-btn connected" onclick={toggleProfile}>
           <span class="wallet-dot"></span>
-          {wallet.shortAddr}
+          {displayLabel}
         </button>
         {#if profileOpen}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -70,7 +76,7 @@
         {/if}
       </div>
     {:else}
-      <button class="wallet-btn" onclick={openWalletModal}>CONNECT</button>
+      <button class="wallet-btn" onclick={openWalletModal}>SIGN IN</button>
     {/if}
   </div>
 </header>

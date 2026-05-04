@@ -19,13 +19,21 @@ export const POST: RequestHandler = async ({ request }) => {
 
   try {
     if (wallet) {
-      // Upsert: if already on waitlist do nothing, if revoked update email
+      // Upsert: if already on waitlist do nothing, update email if provided
       await query(
         `INSERT INTO beta_allowlist (wallet_address, email, note, revoked_at)
          VALUES ($1, $2, 'waitlist_signup', now())
          ON CONFLICT (wallet_address) DO UPDATE SET
            email = COALESCE(EXCLUDED.email, beta_allowlist.email)`,
         [wallet, email],
+      );
+    } else if (email) {
+      // Email-only signup (no wallet connected)
+      await query(
+        `INSERT INTO beta_allowlist (email, note, revoked_at)
+         VALUES ($1, 'waitlist_signup', now())
+         ON CONFLICT (email) DO NOTHING`,
+        [email],
       );
     }
     return json({ ok: true });

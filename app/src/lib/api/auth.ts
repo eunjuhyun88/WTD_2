@@ -60,6 +60,7 @@ async function parseApiError(res: Response): Promise<string> {
 async function postJson<TResponse>(url: string, body: unknown): Promise<TResponse> {
   const res = await fetch(url, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'content-type': 'application/json',
     },
@@ -75,7 +76,7 @@ async function postJson<TResponse>(url: string, body: unknown): Promise<TRespons
 }
 
 async function getJson<TResponse>(url: string): Promise<TResponse> {
-  const res = await fetch(url, { method: 'GET' });
+  const res = await fetch(url, { method: 'GET', credentials: 'include' });
   if (!res.ok) {
     throw new Error(await parseApiError(res));
   }

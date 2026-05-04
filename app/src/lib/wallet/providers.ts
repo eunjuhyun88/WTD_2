@@ -240,8 +240,7 @@ async function getMetaMaskSdkProvider(): Promise<Eip1193Provider> {
 
   let mod: any;
   try {
-    const moduleName = '@metamask/sdk';
-    mod = await import(/* @vite-ignore */ moduleName);
+    mod = await import('@metamask/sdk');
   } catch {
     throw new Error('MetaMask SDK not available. Install the MetaMask browser extension or @metamask/sdk.');
   }
@@ -275,8 +274,7 @@ async function getPhantomSdkProvider(): Promise<Eip1193Provider> {
 
   let mod: any;
   try {
-    const moduleName = '@phantom/browser-sdk';
-    mod = await import(/* @vite-ignore */ moduleName);
+    mod = await import('@phantom/browser-sdk');
   } catch {
     throw new Error('Phantom Browser SDK not available. Install the Phantom extension or @phantom/browser-sdk.');
   }
@@ -318,8 +316,7 @@ async function getBaseAccountProvider(): Promise<Eip1193Provider> {
 
   let mod: any;
   try {
-    const moduleName = '@base-org/account';
-    mod = await import(/* @vite-ignore */ moduleName);
+    mod = await import('@base-org/account');
   } catch {
     throw new Error('Base Account SDK not available. Install @base-org/account.');
   }

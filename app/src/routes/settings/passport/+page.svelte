@@ -35,7 +35,7 @@
       const response = await fetch('/api/profile/passport');
       if (!response.ok) {
         if (response.status === 401) {
-          error = 'Connect wallet or log in to view your Passport.';
+          error = 'Sign in to view your Passport.';
           return;
         }
         throw new Error('Failed to load passport');
@@ -78,7 +78,7 @@
     <div class="surface-stats">
       <article class="surface-stat">
         <span class="surface-meta">Wallet</span>
-        <strong>{wallet.connected ? wallet.shortAddr : 'Not connected'}</strong>
+        <strong>{wallet.connected ? wallet.shortAddr : (wallet.email || wallet.nickname) ? (wallet.email ?? wallet.nickname ?? 'Email account') : 'Not connected'}</strong>
       </article>
       <article class="surface-stat">
         <span class="surface-meta">Tier</span>
@@ -92,6 +92,8 @@
     <div class="topbar-actions">
       {#if wallet.connected}
         <button class="surface-button" onclick={openWalletModal}>Wallet</button>
+      {:else if wallet.email || wallet.nickname}
+        <button class="surface-button" onclick={openWalletModal}>Link Wallet</button>
       {:else}
         <button class="surface-button" onclick={openWalletModal}>Connect</button>
       {/if}
@@ -109,7 +111,7 @@
       <span class="surface-meta">Access</span>
       <h2>{error}</h2>
       <div class="surface-inline-actions">
-        <button class="surface-button" onclick={openWalletModal}>Connect Wallet</button>
+        <button class="surface-button" onclick={openWalletModal}>Sign In</button>
         <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
       </div>
     </section>

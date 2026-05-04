@@ -88,7 +88,7 @@ function loadWallet(): WalletState {
 export const walletStore = writable<WalletState>(loadWallet());
 
 autoSave(walletStore, STORAGE_KEYS.wallet, (w) => {
-  const { showWalletModal, walletModalStep, signature, ...persistable } = w;
+  const { showWalletModal, walletModalStep, signature, connected, address, shortAddr, ...persistable } = w;
   return persistable;
 }, 300);
 
@@ -231,7 +231,7 @@ export function connectWallet(provider: string = 'metamask', address?: string, c
 export function signMessage(signature: string) {
   walletStore.update(w => ({
     ...w,
-    tier: w.email ? 'connected' : 'guest',
+    tier: w.tier === 'guest' ? 'connected' : w.tier,
     signature,
     phase: Math.max(resolveLifecyclePhase(w.matchesPlayed, w.totalLP), 2),
     walletModalStep: 'connected'

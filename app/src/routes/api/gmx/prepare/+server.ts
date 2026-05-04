@@ -37,11 +37,16 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
     }
 
     // Parse body
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
     const { market, direction, collateralUsd, leverage, walletAddress, slPrice, tpPrice } = body;
 
     // Validate
-    if (!market || !isValidMarket(market)) {
+    if (!market || typeof market !== 'string' || !isValidMarket(market)) {
       return json({ error: 'Invalid market address' }, { status: 400 });
     }
 
@@ -60,11 +65,16 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
       return json({ error: 'Leverage must be between 1x and 100x' }, { status: 400 });
     }
 
-    if (!walletAddress || !ETH_ADDRESS_RE.test(walletAddress)) {
+    if (!walletAddress || typeof walletAddress !== 'string' || !ETH_ADDRESS_RE.test(walletAddress)) {
       return json({ error: 'Invalid wallet address' }, { status: 400 });
     }
 
-    const marketInfo = findMarket(market);
+    // Verify wallet belongs to the authenticated user (prevent wallet spoofing)
+    if (user.wallet_address && user.wallet_address.toLowerCase() !== (walletAddress as string).toLowerCase()) {
+      return json({ error: 'Wallet address does not match session' }, { status: 403 });
+    }
+
+    const marketInfo = findMarket(market as string);
     if (!marketInfo) {
       return json({ error: 'Market not found' }, { status: 400 });
     }
@@ -72,11 +82,11 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
     // Build calldata
     const isLong = dir === 'LONG';
     const result = await buildIncreaseOrderCalldata({
-      market,
+      market: market as string,
       isLong,
       collateralUsd: collateral,
       leverage: lev,
-      walletAddress,
+      walletAddress: walletAddress as string,
       slPrice: slPrice ? Number(slPrice) : undefined,
       tpPrice: tpPrice ? Number(tpPrice) : undefined,
     });

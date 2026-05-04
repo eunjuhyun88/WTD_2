@@ -155,7 +155,7 @@ const _appHandle: Handle = async ({ event, resolve }) => {
   // B1: Beta allowlist gate — authenticated users must be in beta_allowlist.
   // Applies to page routes only (not APIs, to preserve JSON error handling).
   if (user && !isPublicPage && !isApiRoute) {
-    const allowed = await checkBetaAllowlist(user.wallet_address);
+    const allowed = await checkBetaAllowlist(user.wallet_address, user.email);
     if (!allowed) {
       event.locals.betaPending = true;
       throw redirect(303, '/?auth=beta-pending');

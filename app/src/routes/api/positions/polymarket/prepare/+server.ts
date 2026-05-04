@@ -62,6 +62,10 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
       return json({ error: 'Invalid wallet address' }, { status: 400 });
     }
 
+    if (user.wallet_address && user.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
+      return json({ error: 'Wallet address does not match session' }, { status: 403 });
+    }
+
     // Prepare order (fetches market, calculates amounts, builds EIP-712)
     const prepared = await prepareOrder({
       marketId: marketId.trim(),
