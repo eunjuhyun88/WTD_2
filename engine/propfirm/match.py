@@ -72,6 +72,20 @@ class LimitMatcher:
             mid_price,
             fee,
         )
+
+        # PAPER 계정 eval hook — 예외가 fill 성공을 막지 않도록 hook 내부에서 격리
+        if order.get("source") in ("AUTO_STRATEGY", "INTERNAL_RUN"):
+            from propfirm.rules.hook import on_fill  # type: ignore[import]
+            await on_fill(
+                account_id=order["account_id"],
+                fill_px=mid_price,
+                qty=qty,
+                fee=fee,
+                side=order.get("side", "BUY"),
+                symbol=symbol,
+                filled_at=filled_at,
+            )
+
         return True
 
     # ── helpers ──────────────────────────────────────────────────────────
