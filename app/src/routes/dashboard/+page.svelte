@@ -9,6 +9,8 @@
   import DashActivityGrid from '$lib/components/dashboard/DashActivityGrid.svelte';
   import { AlertStrip, OpportunityCard, StatsZone, SystemStatusZone } from '$lib/hubs/dashboard';
   import F60ProgressCard from '$lib/components/ai/F60ProgressCard.svelte';
+  import StreakBadgeCard from '$lib/components/passport/StreakBadgeCard.svelte';
+  import { streakSnapshot, startStreakPolling } from '$lib/stores/streak.store';
   import { track } from '$lib/analytics';
   import type { CaptureRow, OpportunityScore } from './+page.server';
 
@@ -26,19 +28,25 @@
   const wallet = $derived($walletStore);
   let passport = $state<PassportSummary | null>(null);
 
-  onMount(async () => {
-    try {
-      const r = await fetch('/api/profile/passport');
-      if (r.ok) {
-        const d = (await r.json()) as { passport?: PassportSummary };
-        if (d.passport) passport = d.passport;
-      }
-    } catch { /* silent */ }
+  onMount(() => {
+    const stopStreak = startStreakPolling();
 
-    track('dashboard_view', {
-      opportunities_count: topOpportunities.length,
-      streak: passport?.streak ?? 0,
-    });
+    (async () => {
+      try {
+        const r = await fetch('/api/profile/passport');
+        if (r.ok) {
+          const d = (await r.json()) as { passport?: PassportSummary };
+          if (d.passport) passport = d.passport;
+        }
+      } catch { /* silent */ }
+
+      track('dashboard_view', {
+        opportunities_count: topOpportunities.length,
+        streak: passport?.streak ?? 0,
+      });
+    })();
+
+    return () => stopStreak();
   });
 
   const sourcePendingVerdicts = $derived(data.pendingVerdicts ?? []);
@@ -344,6 +352,14 @@
     {/if}
   </section>
 
+  <!-- Streak hero (W-0403 PR11) -->
+  <section class="dash-streak-hero" data-testid="dashboard-streak-hero">
+    <StreakBadgeCard
+      streak_days={$streakSnapshot.streak_days}
+      streak_next_threshold={$streakSnapshot.streak_next_threshold}
+    />
+  </section>
+
   <DashActivityGrid
     {topOpportunities}
     {opportunityPersonalized}
@@ -360,6 +376,11 @@
 </div>
 
 <style>
+  /* ── Streak hero (W-0403 PR11) ── */
+  .dash-streak-hero {
+    padding: 8px 16px 0;
+  }
+
   /* ── Zone A: 오늘의 기회 ── */
   .dash-opportunity-zone {
     padding: 12px 16px 0;
