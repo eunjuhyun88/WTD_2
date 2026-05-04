@@ -177,15 +177,15 @@ WHERE array_length(string_to_array(api_key_encrypted, ':'), 1) = 3;
 
 ## Exit Criteria
 
-- [ ] 신규 encrypt → 4-part, salt_hex 매번 다름 (테스트 통과)
-- [ ] 구 3-part ciphertext → dual-path decrypt 정상 (기존 rows 읽기 가능)
-- [ ] 마이그레이션 후 3-part rows = 0
-- [ ] 실패 rows → `status='invalid'` (삭제 아님)
-- [ ] TS + Python 테스트 통과
+- [x] 신규 encrypt → 4-part, salt_hex 매번 다름 (테스트 통과)
+- [x] 구 3-part ciphertext → dual-path decrypt 정상 (기존 rows 읽기 가능)
+- [ ] 마이그레이션 후 3-part rows = 0 (PR merge 후 prod 실행 필요)
+- [x] 실패 rows → `status='invalid'` (삭제 아님)
+- [x] TS + Python 테스트 통과
 
 ## Handoff Checklist
 
 - [x] 설계 완료 (Issue #1172)
-- [ ] PR1 구현
-- [ ] PR2 스크립트
-- [ ] PR3 prod 실행
+- [x] PR1 구현 (PR #1173 — binanceConnector.ts + binance_tools.py + tests)
+- [x] PR2 스크립트 (PR #1173 — engine/scripts/migrate_scrypt_salt.py)
+- [ ] PR3 prod 실행 (PR merge 후: `python engine/scripts/migrate_scrypt_salt.py --dry-run` → 확인 → 실 실행)
