@@ -36,12 +36,14 @@
 
 ## main SHA
 
-`654c230b` — origin/main (2026-05-05) — feat(W-0405): 4-layer AI prompt injection defense (#1159)
+`dea9125e` — origin/main (2026-05-05) — feat(W-0407): terminal redesign — tab system, SVG drawing, ChartToolbar, panel fixes (#1160)
 
-W-0405 PR1~PR4 완료:
-- PR1 ExchangeTab Binance API key UI (#1150) / PR2 /api/agent/binance (#1151) / PR3 telemetry (#1153)
-- PR4 get_binance_balance + get_binance_positions tools (#1156)
-- fix: ExchangeTab SettingsHub wiring (#1158) / 4-layer prompt injection defense (#1159)
+W-0407 W-T1~W-T4 완료 (#1160):
+- W-T1: per-tab panes + ChartToolbar symbol/TF/price
+- W-T2: paneLayout per-tab sync, state_unsafe_mutation fix
+- W-T3: SVG DrawingOverlay unified drawing + AI shape layer
+- W-T4: VerdictBanner inline entry/TP/SL + toolbar consolidation
+- fix: drawing tool feedback loop, BULL rail collapse, double mobile footer
 
 W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
 - PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
