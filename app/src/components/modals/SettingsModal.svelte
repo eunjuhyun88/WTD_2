@@ -2,8 +2,11 @@
   import { activePairState, setActivePair, setActiveTimeframe, setActiveSpeed } from '$lib/stores/activePairStore';
   import { RESETTABLE_STORAGE_KEYS } from '$lib/stores/storageKeys';
   import { CORE_TIMEFRAME_OPTIONS, normalizeTimeframe } from '$lib/utils/timeframe';
+  import ExchangeTab from '../settings/ExchangeTab.svelte';
 
   export let onClose: () => void = () => {};
+
+  let activeTab: 'general' | 'exchange' = 'general';
 
   let state = $activePairState;
   $: state = $activePairState;
@@ -37,84 +40,93 @@
       <div class="st-close" onclick={onClose}>✕</div>
     </div>
 
+    <div class="st-tabs">
+      <button type="button" class="tab-btn" class:active={activeTab === 'general'} onclick={() => activeTab = 'general'}>GENERAL</button>
+      <button type="button" class="tab-btn" class:active={activeTab === 'exchange'} onclick={() => activeTab = 'exchange'}>EXCHANGE</button>
+    </div>
+
     <div class="st-body">
-      <!-- Speed -->
-      <div class="st-section">
-        <div class="st-label">BATTLE SPEED</div>
-        <div class="st-btns">
-          {#each [1, 2, 3] as s}
-            <button class="spd-btn" class:active={speed === s} onclick={() => setSpeed(s)}>
-              {s}x
-            </button>
-          {/each}
+      {#if activeTab === 'exchange'}
+        <ExchangeTab />
+      {:else}
+        <!-- Speed -->
+        <div class="st-section">
+          <div class="st-label">BATTLE SPEED</div>
+          <div class="st-btns">
+            {#each [1, 2, 3] as s}
+              <button class="spd-btn" class:active={speed === s} onclick={() => setSpeed(s)}>
+                {s}x
+              </button>
+            {/each}
+          </div>
         </div>
-      </div>
 
-      <!-- Audio -->
-      <div class="st-section">
-        <div class="st-label">SOUND EFFECTS</div>
-        <div class="st-toggle">
-          <button class="tg-btn" class:active={audioOn} onclick={() => audioOn = true}>ON</button>
-          <button class="tg-btn" class:active={!audioOn} onclick={() => audioOn = false}>OFF</button>
+        <!-- Audio -->
+        <div class="st-section">
+          <div class="st-label">SOUND EFFECTS</div>
+          <div class="st-toggle">
+            <button class="tg-btn" class:active={audioOn} onclick={() => audioOn = true}>ON</button>
+            <button class="tg-btn" class:active={!audioOn} onclick={() => audioOn = false}>OFF</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Theme -->
-      <div class="st-section">
-        <div class="st-label">THEME</div>
-        <div class="st-btns">
-          <button class="thm-btn active">🎨 COMIC POP</button>
-          <button class="thm-btn" disabled>🌙 DARK (soon)</button>
+        <!-- Theme -->
+        <div class="st-section">
+          <div class="st-label">THEME</div>
+          <div class="st-btns">
+            <button class="thm-btn active">🎨 COMIC POP</button>
+            <button class="thm-btn" disabled>🌙 DARK (soon)</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Chart -->
-      <div class="st-section">
-        <div class="st-label">DEFAULT PAIR</div>
-        <div class="st-btns">
-          {#each ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'] as p}
-            <button class="pair-btn" class:active={state.pair === p}
-              onclick={() => setActivePair(p)}>
-              {p.split('/')[0]}
-            </button>
-          {/each}
+        <!-- Chart -->
+        <div class="st-section">
+          <div class="st-label">DEFAULT PAIR</div>
+          <div class="st-btns">
+            {#each ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'] as p}
+              <button class="pair-btn" class:active={state.pair === p}
+                onclick={() => setActivePair(p)}>
+                {p.split('/')[0]}
+              </button>
+            {/each}
+          </div>
         </div>
-      </div>
 
-      <!-- Timeframe -->
-      <div class="st-section">
-        <div class="st-label">DEFAULT TIMEFRAME</div>
-        <div class="st-btns">
-          {#each CORE_TIMEFRAME_OPTIONS as tf}
-            <button class="tf-btn" class:active={normalizeTimeframe(state.timeframe) === tf.value}
-              onclick={() => setActiveTimeframe(tf.value)}>
-              {tf.label}
-            </button>
-          {/each}
+        <!-- Timeframe -->
+        <div class="st-section">
+          <div class="st-label">DEFAULT TIMEFRAME</div>
+          <div class="st-btns">
+            {#each CORE_TIMEFRAME_OPTIONS as tf}
+              <button class="tf-btn" class:active={normalizeTimeframe(state.timeframe) === tf.value}
+                onclick={() => setActiveTimeframe(tf.value)}>
+                {tf.label}
+              </button>
+            {/each}
+          </div>
         </div>
-      </div>
 
-      <!-- Data API -->
-      <div class="st-section">
-        <div class="st-label">DATA SOURCE</div>
-        <div class="api-info">
-          <span class="api-badge">📡 BINANCE API</span>
-          <span class="api-status">CONNECTED</span>
+        <!-- Data API -->
+        <div class="st-section">
+          <div class="st-label">DATA SOURCE</div>
+          <div class="api-info">
+            <span class="api-badge">📡 BINANCE API</span>
+            <span class="api-status">CONNECTED</span>
+          </div>
+          <div class="api-endpoints">
+            <div class="api-ep">REST: api.binance.com</div>
+            <div class="api-ep">WS: stream.binance.com:9443</div>
+          </div>
         </div>
-        <div class="api-endpoints">
-          <div class="api-ep">REST: api.binance.com</div>
-          <div class="api-ep">WS: stream.binance.com:9443</div>
-        </div>
-      </div>
 
-      <!-- Danger Zone -->
-      <div class="st-section danger">
-        <div class="st-label">DANGER ZONE</div>
-        <button class="reset-btn" onclick={resetData}>
-          🗑 RESET ALL DATA
-        </button>
-        <div class="reset-warn">This will clear all match history, agent data, and settings.</div>
-      </div>
+        <!-- Danger Zone -->
+        <div class="st-section danger">
+          <div class="st-label">DANGER ZONE</div>
+          <button class="reset-btn" onclick={resetData}>
+            🗑 RESET ALL DATA
+          </button>
+          <div class="reset-warn">This will clear all match history, agent data, and settings.</div>
+        </div>
+      {/if}
     </div>
   </div>
 </div>
@@ -144,6 +156,22 @@
   .st-title { font-size: 14px; font-weight: 900; font-family: var(--fd); letter-spacing: 3px; }
   .st-close { margin-left: auto; font-size: 16px; cursor: pointer; color: #555; }
   .st-close:hover { color: #000; }
+
+  .st-tabs {
+    display: flex; gap: 0;
+    border-bottom: 2px solid #1a1a2e;
+    padding: 0 14px;
+    background: #0a0a1a;
+  }
+  .tab-btn {
+    padding: 8px 14px;
+    background: none; border: none; border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    color: #555; font-size: var(--ui-text-xs); font-weight: 900; font-family: var(--fd);
+    letter-spacing: 2px; cursor: pointer; transition: color .15s;
+  }
+  .tab-btn:hover { color: #888; }
+  .tab-btn.active { color: #E8967D; border-bottom-color: #E8967D; }
 
   .st-body { padding: 14px; overflow-y: auto; max-height: calc(80vh - 60px); }
 
