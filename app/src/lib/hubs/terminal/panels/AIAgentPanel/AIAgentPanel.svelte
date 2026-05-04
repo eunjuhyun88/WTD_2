@@ -4,16 +4,16 @@
   import { trackRightpanelTabSwitch, trackTabSwitch, trackDecideDrawerOpen } from '../../telemetry';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
-  import AIPanel from './AIPanel.svelte';
+  import type { TerminalSource } from '$lib/types/terminal';
   import VerdictInboxPanel from '../../peek/VerdictInboxPanel.svelte';
-  import UnverifiedDot from '$lib/components/header/UnverifiedDot.svelte';
   import JudgePanel from '../../peek/JudgePanel.svelte';
   import DecisionHUDAdapter from '../../workspace/DecisionHUDAdapter.svelte';
   import DecideRightPanel from '../../DecideRightPanel.svelte';
   import DrawerSlide from './DrawerSlide.svelte';
   import PatternTab from './PatternTab.svelte';
   import AskInput from './AskInput.svelte';
-  import ChatThread from './ChatThread.svelte';
+  import DirectionBadge from '$lib/shared/panels/DirectionBadge.svelte';
+  import SourcePill from '../../workspace/SourcePill.svelte';
 
   // ── Types ─────────────────────────────────────────────────────────────────
   interface EngineCapture {
@@ -28,14 +28,14 @@
     blocks_triggered?: string[];
   }
 
-  // Quant workflow order: Chat → Research → Pattern → Verdict → Decision → Judge
-  const TABS: Array<{ id: RightPanelTab; label: string }> = [
-    { id: 'chat',      label: 'Chat'      },
-    { id: 'research',  label: 'Research'  },
-    { id: 'pattern',   label: 'Pattern'   },
-    { id: 'verdict',   label: 'Verdict'   },
-    { id: 'decision',  label: 'Decision'  },
-    { id: 'judge',     label: 'Judge'     },
+  // W-0402 PR3 tab order: Decision → Pattern → Verdict → Research → Judge
+  // `short` is the 5-char strip label; `label` is the full word (kept for existing tests).
+  const TABS: Array<{ id: RightPanelTab; label: string; short: string }> = [
+    { id: 'decision',  label: 'Decision',  short: 'DEC' },
+    { id: 'pattern',   label: 'Pattern',   short: 'PAT' },
+    { id: 'verdict',   label: 'Verdict',   short: 'VER' },
+    { id: 'research',  label: 'Research',  short: 'RES' },
+    { id: 'judge',     label: 'Judge',     short: 'JDG' },
   ];
 
   const DRAWER_TITLE: Record<NonNullable<TabState['drawerKind']>, string> = {
@@ -48,40 +48,33 @@
     'decide-full':     'DECIDE',
   };
 
-  interface Message { role: 'user' | 'assistant'; text: string; }
   interface Props {
-    messages?: Message[];
-    onSend?: (text: string, msgs: Message[]) => void;
-    onSelectSymbol?: (s: string) => void;
     symbol?: string;
     timeframe?: string;
     /** deeplink: pre-open decide drawer for this verdict id */
     initialDecideId?: string | null;
+    /** @deprecated — kept for TerminalHub compat; ChatThread removed in PR3 */
+    messages?: unknown[];
+    onSend?: unknown;
+    onSelectSymbol?: (s: string) => void;
   }
-  let { messages = [], onSend, onSelectSymbol, symbol = 'BTCUSDT', timeframe = '4h', initialDecideId = null }: Props = $props();
+  let { symbol = 'BTCUSDT', timeframe = '4h', initialDecideId = null, onSelectSymbol }: Props = $props();
 
-  // ── Feature flag: decide_in_jdg ─────────────────────────────────────────
-  // Default ON. Disable via URL ?decide_in_jdg=off or localStorage decide_in_jdg=off
-  const decideInJdg = $derived.by<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    const url = new URLSearchParams(window.location.search);
-    if (url.get('decide_in_jdg') === 'off') return false;
-    try { if (localStorage.getItem('decide_in_jdg') === 'off') return false; } catch { /* ignore */ }
-    return true;
-  });
+  // ── 3-state: default (320) / wide (480) / folded (20) ─────────────────────
+  // `folded` is internal to the panel; wide derives from shellStore.aiWide.
+  let folded = $state(false);
+  const wide = $derived($shellStore.aiWide);
 
+  // ── Active tab ─────────────────────────────────────────────────────────────
   const activeTab  = $derived($activeRightPanelTab);
   const expanded   = $derived($activeTabState.rightPanelExpanded ?? false);
   const drawerOpen = $derived($activeTabState.drawerOpen);
   const drawerKind = $derived($activeTabState.drawerKind);
 
-  // ── Pending verdict count (for UnverifiedDot in header) ─────────────────
+  // ── Pending verdict count (for tab badge) ──────────────────────────────────
   let pendingVerdictCount = $state(0);
 
-  // ── AI Search — delegated to AskInput.svelte ─────────────────────────────
-  // (Cmd+L shortcut is handled inside AskInput)
-
-  // ── DEC tab — auto-refresh on tab switch or symbol change ─────────────────
+  // ── DEC tab — Decision inline ──────────────────────────────────────────────
   let decisionData = $state<AnalyzeEnvelope | null>(null);
   let decisionLoading = $state(false);
   let decisionCacheKey = $state('');
@@ -98,6 +91,27 @@
 
   $effect(() => { if (activeTab === 'decision') void loadDecision(); });
   $effect(() => { void symbol; void timeframe; decisionData = null; decisionCacheKey = ''; });
+
+  // Derive direction and confidence from decisionData
+  const decDirection = $derived(
+    decisionData?.ensemble?.direction ??
+    decisionData?.deep?.verdict ??
+    'neutral'
+  );
+  const decConfidence = $derived(
+    decisionData?.entryPlan?.confidencePct ?? null
+  );
+  const decSources = $derived<TerminalSource[]>(
+    (decisionData?.sources ?? []).slice(0, 3).map(s => ({
+      label:    s.name,
+      category: (s.kind === 'market' ? 'Market'
+               : s.kind === 'derived' ? 'Derived'
+               : s.kind === 'model'   ? 'Model'
+               : 'News') as TerminalSource['category'],
+      freshness: 'live' as const,
+      updatedAt: Date.parse(s.timestamp) || Date.now(),
+    }))
+  );
 
   // ── PAT tab ───────────────────────────────────────────────────────────────
   function capToPatternRecord(cap: EngineCapture): PatternCaptureRecord {
@@ -171,6 +185,20 @@
   let judgeLoading     = $state(false);
   let judgeCacheKey    = $state('');
 
+  // 7-day win/avoid stats derived from captures
+  const judge7dStats = $derived.by(() => {
+    const cutoff = Date.now() - 7 * 86400_000;
+    const recent = judgeCaptures.filter(c => Date.parse(c.createdAt) >= cutoff);
+    if (recent.length === 0) return { winRate: null, avoidRate: null, total: 0 };
+    const wins   = recent.filter(c => c.decision?.verdict === 'bullish').length;
+    const avoids = recent.filter(c => c.decision?.verdict === 'bearish').length;
+    return {
+      winRate:   Math.round((wins   / recent.length) * 100),
+      avoidRate: Math.round((avoids / recent.length) * 100),
+      total: recent.length,
+    };
+  });
+
   async function loadJudgeCaptures() {
     try {
       const res = await fetch('/api/captures?limit=30');
@@ -189,10 +217,7 @@
       const res = await fetch('/api/terminal/agent/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cmd: 'judge',
-          context: { symbol, timeframe },
-        }),
+        body: JSON.stringify({ cmd: 'judge', context: { symbol, timeframe } }),
       });
       if (res.ok) {
         const data = await res.json() as JudgeResult & { cmd: string };
@@ -209,13 +234,8 @@
         verdict,
         note,
         ...(judgeResult
-          ? {
-              entry: judgeResult.entry,
-              stop: judgeResult.stop,
-              target: judgeResult.target,
-              p_win: judgeResult.p_win,
-              rationale: judgeResult.rationale,
-            }
+          ? { entry: judgeResult.entry, stop: judgeResult.stop, target: judgeResult.target,
+              p_win: judgeResult.p_win, rationale: judgeResult.rationale }
           : {}),
       };
       await fetch('/api/terminal/agent/dispatch', {
@@ -223,13 +243,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cmd: 'save',
-          context: {
-            symbol,
-            timeframe,
-            snapshot: judgeResult?.snapshot ?? {},
-            decision,
-            trigger_origin: 'agent_judge',
-          },
+          context: { symbol, timeframe, snapshot: judgeResult?.snapshot ?? {}, decision, trigger_origin: 'agent_judge' },
         }),
       });
       judgeLoaded = false;
@@ -243,7 +257,6 @@
       void loadJudgeAnalysis();
     }
   });
-
   $effect(() => { void symbol; void timeframe; judgeResult = null; judgeCacheKey = ''; });
 
   // ── Tab switch with telemetry ─────────────────────────────────────────────
@@ -251,16 +264,12 @@
     const prev = activeTab;
     shellStore.setRightPanelTab(tab);
     if (prev !== tab) {
-      trackRightpanelTabSwitch(prev, tab); // legacy
+      trackRightpanelTabSwitch(prev, tab);
       trackTabSwitch({ from: prev, to: tab, trigger: 'manual' });
     }
   }
 
-  // ── Expand + Drawer ───────────────────────────────────────────────────────
-  function toggleExpand() {
-    shellStore.updateTabState(s => ({ ...s, rightPanelExpanded: !s.rightPanelExpanded }));
-  }
-
+  // ── Drawer helpers ────────────────────────────────────────────────────────
   function openMoreDrawer(kind: TabState['drawerKind']) {
     shellStore.openDrawer(kind);
   }
@@ -270,138 +279,197 @@
     trackDecideDrawerOpen({ verdict_id: verdictId ?? undefined, trigger });
   }
 
+  /**
+   * openDrawer(tab) — stub for PR10 AI Drawer.
+   * PR10 will replace this with real slide-out implementation.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function openDrawer(_tab: string) {
+    // PR10: wire to Drawer slide-out
+  }
+
   // Deeplink: if initialDecideId is provided, switch to judge tab and open decide drawer
   $effect(() => {
-    if (initialDecideId && decideInJdg) {
+    if (initialDecideId) {
       shellStore.setRightPanelTab('judge');
       openDecideDrawer(initialDecideId, 'deeplink');
     }
   });
 </script>
 
-<div class="agent-panel" class:expanded>
-  <!-- ── Tab bar ── -->
-  <div class="tab-bar">
-    {#each TABS as tab}
-      {@const badge = tab.id === 'pattern' ? (patternLoaded ? patternRecords.length : 0)
-                    : tab.id === 'verdict' ? $verdictCount
-                    : 0}
-      <button
-        class="tab-btn"
-        class:active={activeTab === tab.id}
-        onclick={() => switchRightPanelTab(tab.id)}
-      >{tab.label}{#if badge > 0}<span class="tab-badge">{badge}</span>{/if}{#if tab.id === 'verdict'}<UnverifiedDot count={pendingVerdictCount} />{/if}</button>
-    {/each}
+<!--
+  AIAgentPanel — 3-state shell (W-0402 PR3)
+  data-ai-state:  default (320px) | wide (480px) | folded (20px)
+-->
+<div
+  class="agent-panel"
+  class:wide
+  class:folded
+  class:expanded
+  data-ai-state={folded ? 'folded' : wide ? 'wide' : 'default'}
+>
+
+  {#if folded}
+    <!-- ── Folded state: 20px strip with unfold button ── -->
     <button
-      class="expand-btn"
-      onclick={toggleExpand}
-      title={expanded ? 'Collapse panel' : 'Expand panel'}
-    >{expanded ? '⤡' : '⤢'}</button>
-  </div>
+      class="unfold-strip"
+      onclick={() => { folded = false; }}
+      title="Expand AI panel"
+      aria-label="Expand AI panel"
+    >[&lt;]</button>
 
-  <!-- ── AI Search ── -->
-  <AskInput />
+  {:else}
+    <!-- ── Tab strip (40px) ── -->
+    <div class="tab-bar">
+      {#each TABS as tab}
+        {@const badge = tab.id === 'pattern' ? (patternLoaded ? patternRecords.length : 0)
+                      : tab.id === 'verdict' ? $verdictCount
+                      : 0}
+        <button
+          class="tab-btn"
+          class:active={activeTab === tab.id}
+          onclick={() => switchRightPanelTab(tab.id)}
+          title={tab.label}
+          aria-label={tab.label}
+        >{tab.short}{#if badge > 0}<span class="tab-badge">{badge}</span>{/if}</button>
+      {/each}
+      <button
+        class="fold-btn"
+        onclick={() => { folded = true; }}
+        title="Fold AI panel"
+        aria-label="Fold AI panel"
+      >&gt;</button>
+    </div>
 
-  <!-- ── Tab content ── -->
-  <div class="tab-content">
-
-    {#if activeTab === 'chat'}
-      <div class="tab-inner">
-        <div class="tab-scroll" style="padding: 0; overflow: hidden;">
-          <ChatThread {symbol} {timeframe} />
-        </div>
-      </div>
-
-    {:else if activeTab === 'decision'}
-      <div class="tab-inner">
-        <div class="tab-scroll">
-          <DecisionHUDAdapter analysisData={decisionData} isLoading={decisionLoading} />
-        </div>
-        <div class="more-btn">
-          <button onclick={() => openMoreDrawer('evidence-grid')}>Evidence →</button>
-        </div>
-      </div>
-
-    {:else if activeTab === 'pattern'}
-      <PatternTab
-        records={patternRecords}
-        loading={patternLoading}
-        loaded={patternLoaded}
-        filter={patternFilter}
-        verdictFilter={patternVerdictFilter}
-        selectedIdx={patternSelectedIdx}
-        onFilterChange={(v) => { patternFilter = v; patternSelectedIdx = -1; }}
-        onVerdictFilterChange={(v) => { patternVerdictFilter = v; patternSelectedIdx = -1; }}
-        onSelectCapture={(r, idx) => { patternSelectedIdx = idx; openCapture(r); }}
-        onOpenLibrary={() => openMoreDrawer('pattern-library')}
+    <!-- ── AI Search (32px sticky) — inert input, PR6 will wire ── -->
+    <div class="search-row">
+      <input
+        type="text"
+        class="ai-search"
+        placeholder="AI search... (⌘L)"
+        readonly
+        tabindex="-1"
+        aria-label="AI search"
       />
+    </div>
 
-    {:else if activeTab === 'verdict'}
-      <div class="tab-inner">
-        <div class="tab-scroll">
-          <VerdictInboxPanel
-            onVerdictSubmit={(captureId, _verdict) => shellStore.selectVerdict(captureId)}
-            onPendingCountChange={(n) => { pendingVerdictCount = n; }}
-          />
-        </div>
-        <div class="more-btn">
-          <button onclick={() => openMoreDrawer('verdict-card')}>Detail →</button>
-        </div>
-      </div>
+    <!-- ── Tab content (scrollable) ── -->
+    <div class="tab-content">
 
-    {:else if activeTab === 'research'}
-      <div class="tab-inner">
-        <div class="tab-scroll">
-          <AIPanel
-            {messages}
-            onSend={onSend}
-            {symbol}
-            {timeframe}
-            onSelectSymbol={onSelectSymbol}
-            onClose={() => {}}
-          />
-        </div>
-        <div class="more-btn">
-          <button onclick={() => openMoreDrawer('research-full')}>Full →</button>
-        </div>
-      </div>
-
-    {:else if activeTab === 'judge'}
-      <div class="tab-inner">
-        <div class="tab-scroll">
-          <JudgePanel
-            {symbol}
-            {timeframe}
-            verdict={judgeResult ? { direction: judgeResult.verdict as 'bullish' | 'bearish' | 'neutral' } : null}
-            entry={judgeResult?.entry ?? null}
-            stop={judgeResult?.stop ?? null}
-            target={judgeResult?.target ?? null}
-            pWin={judgeResult?.p_win ?? null}
-            captures={judgeCaptures}
-            saving={judgeSaving || judgeLoading}
-            onSaveJudgment={handleSaveJudgment}
-            onOpenCapture={openCapture}
-          />
-          {#if decideInJdg}
-            <div class="decide-hud-inline">
-              <div class="decide-hud-label">DECISION HUD</div>
-              <DecisionHUDAdapter />
+      {#if activeTab === 'decision'}
+        <!-- DEC: Direction badge + Confidence% + 3 SourcePills + → 더 보기 -->
+        <div class="tab-inner" class:wide-pad={wide}>
+          <div class="dec-header">
+            <DirectionBadge direction={decDirection} confidence={decConfidence} showConfidence size="md" variant="soft" />
+            {#if decConfidence != null}
+              <span class="conf-pct">{Math.round(decConfidence)}%</span>
+            {/if}
+          </div>
+          {#if decisionLoading}
+            <div class="tab-placeholder">Loading…</div>
+          {:else if decSources.length > 0}
+            <div class="source-pills">
+              {#each decSources as src}
+                <SourcePill source={src} />
+              {/each}
             </div>
+          {:else}
+            <div class="tab-placeholder">—</div>
           {/if}
+          <div class="more-row">
+            <button class="more-link" onclick={() => openDrawer('decision')}>→ 더 보기</button>
+          </div>
         </div>
-        <div class="more-btn">
-          <button onclick={() => openMoreDrawer('judge-full')}>History →</button>
-          {#if decideInJdg}
-            <button class="decide-btn" onclick={() => openDecideDrawer(undefined, 'jdg_tab_button')}>Decide →</button>
-          {/if}
-        </div>
-      </div>
 
-    {/if}
-  </div>
+      {:else if activeTab === 'pattern'}
+        <!-- PAT: 5 matching capture cards + library link -->
+        <PatternTab
+          records={patternRecords}
+          loading={patternLoading}
+          loaded={patternLoaded}
+          filter={patternFilter}
+          verdictFilter={patternVerdictFilter}
+          selectedIdx={patternSelectedIdx}
+          onFilterChange={(v) => { patternFilter = v; patternSelectedIdx = -1; }}
+          onVerdictFilterChange={(v) => { patternVerdictFilter = v; patternSelectedIdx = -1; }}
+          onSelectCapture={(r, idx) => { patternSelectedIdx = idx; openCapture(r); }}
+          onOpenLibrary={() => openMoreDrawer('pattern-library')}
+        />
+
+      {:else if activeTab === 'verdict'}
+        <!-- VER: 10 latest verdicts -->
+        <div class="tab-inner" class:wide-pad={wide}>
+          <div class="tab-scroll">
+            <VerdictInboxPanel
+              onVerdictSubmit={(captureId, _verdict) => shellStore.selectVerdict(captureId)}
+              onPendingCountChange={(n) => { pendingVerdictCount = n; }}
+            />
+          </div>
+          <div class="more-row">
+            <button class="more-link" onclick={() => openMoreDrawer('verdict-card')}>VIEW →</button>
+          </div>
+        </div>
+
+      {:else if activeTab === 'research'}
+        <!-- RES: query input + last-analysis 3-line summary (placeholder for PR6) -->
+        <div class="tab-inner" class:wide-pad={wide}>
+          <div class="res-query-row">
+            <input type="text" class="res-input" placeholder="Search or ask…" />
+          </div>
+          <div class="res-summary">
+            <div class="res-summary-line">마지막 분석: 데이터 없음</div>
+            <div class="res-summary-line res-muted">—</div>
+            <div class="res-summary-line res-muted">—</div>
+          </div>
+          <div class="more-row">
+            <button class="more-link" onclick={() => openMoreDrawer('research-full')}>Full →</button>
+          </div>
+        </div>
+
+      {:else if activeTab === 'judge'}
+        <!-- JDG: WinRate / AvoidRate (7d) summary cards + full history -->
+        <div class="tab-inner" class:wide-pad={wide}>
+          <div class="judge-stats">
+            <div class="stat-card">
+              <span class="stat-label">Win Rate (7d)</span>
+              <span class="stat-value {judge7dStats.winRate != null && judge7dStats.winRate >= 50 ? 'pos' : 'neg'}">
+                {judge7dStats.winRate != null ? `${judge7dStats.winRate}%` : '—'}
+              </span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Avoid Rate (7d)</span>
+              <span class="stat-value">
+                {judge7dStats.avoidRate != null ? `${judge7dStats.avoidRate}%` : '—'}
+              </span>
+            </div>
+          </div>
+          <div class="tab-scroll">
+            <JudgePanel
+              {symbol}
+              {timeframe}
+              verdict={judgeResult ? { direction: judgeResult.verdict as 'bullish' | 'bearish' | 'neutral' } : null}
+              entry={judgeResult?.entry ?? null}
+              stop={judgeResult?.stop ?? null}
+              target={judgeResult?.target ?? null}
+              pWin={judgeResult?.p_win ?? null}
+              captures={judgeCaptures}
+              saving={judgeSaving || judgeLoading}
+              onSaveJudgment={handleSaveJudgment}
+              onOpenCapture={openCapture}
+            />
+          </div>
+          <div class="more-row">
+            <button class="more-link" onclick={() => openMoreDrawer('judge-full')}>History →</button>
+            <button class="more-link decide" onclick={() => openDecideDrawer(undefined, 'jdg_tab_button')}>Decide →</button>
+          </div>
+        </div>
+
+      {/if}
+    </div>
+  {/if}
 </div>
 
-<!-- ── Drawer ── -->
+<!-- ── Drawer (PR10 will extend) ── -->
 <DrawerSlide
   open={drawerOpen}
   title={drawerKind ? DRAWER_TITLE[drawerKind] : ''}
@@ -420,14 +488,10 @@
       <p>Select a verdict from the VER tab to view full details here.</p>
     </div>
   {:else if drawerKind === 'research-full'}
-    <AIPanel
-      {messages}
-      onSend={onSend}
-      {symbol}
-      {timeframe}
-      onSelectSymbol={onSelectSymbol}
-      onClose={() => shellStore.closeDrawer()}
-    />
+    <div class="drawer-placeholder">
+      <span>Research Full</span>
+      <p>Full research panel coming in PR6.</p>
+    </div>
   {:else if drawerKind === 'judge-full'}
     <JudgePanel
       {symbol}
@@ -453,6 +517,7 @@
 </DrawerSlide>
 
 <style>
+/* ── Root panel ── */
 .agent-panel {
   display: flex;
   flex-direction: column;
@@ -461,57 +526,85 @@
   overflow: hidden;
 }
 
-/* ── Tab bar ── */
-.tab-bar {
+/* ── Folded state: 20px vertical strip ── */
+.agent-panel.folded {
+  width: 20px;
+  min-width: 20px;
+}
+
+.unfold-strip {
   display: flex;
   align-items: center;
-  height: 28px;
-  padding: 0 8px;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--g5, #3d3830);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: var(--sp-2, 8px) 0;
+  transition: color 0.08s;
+}
+.unfold-strip:hover { color: var(--g7, #9d9690); }
+
+/* ── Tab strip (40px) ── */
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
   border-bottom: 1px solid var(--g4, #272320);
   flex-shrink: 0;
-  gap: 0;
 }
 
 .tab-btn {
+  flex: 1;
   height: 100%;
-  padding: 0 9px;
+  padding: 0 var(--sp-1, 4px);
   border: none;
   border-bottom: 2px solid transparent;
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--ui-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   color: var(--g5, #3d3830);
   cursor: pointer;
   background: transparent;
   transition: color 0.08s, border-color 0.08s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1, 4px);
 }
 .tab-btn:hover { color: var(--g7, #9d9690); }
 .tab-btn.active {
   color: var(--g9, #eceae8);
-  border-bottom-color: var(--amb, #f5a623);
+  border-bottom-color: var(--accent-amb, var(--amb, #f5a623));
 }
 
 .tab-badge {
   display: inline-block;
-  min-width: 16px;
-  height: 16px;
-  line-height: 16px;
-  padding: 0 3px;
-  margin-left: 3px;
-  background: var(--amb, #f5a623);
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  padding: 0 2px;
+  background: var(--accent-amb, var(--amb, #f5a623));
   color: var(--g0, #080706);
-  border-radius: 8px;
+  border-radius: 7px;
   font-size: var(--ui-text-xs);
   font-weight: 700;
   text-align: center;
   vertical-align: middle;
 }
 
-.expand-btn {
-  margin-left: auto;
-  width: 22px;
-  height: 22px;
+.fold-btn {
+  width: 28px;
+  flex-shrink: 0;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -519,10 +612,37 @@
   cursor: pointer;
   background: transparent;
   border: none;
+  border-left: 1px solid var(--g4, #272320);
   font-size: var(--ui-text-xs);
+  font-family: 'JetBrains Mono', monospace;
   transition: color 0.08s;
 }
-.expand-btn:hover { color: var(--g7, #9d9690); }
+.fold-btn:hover { color: var(--g7, #9d9690); }
+
+/* ── Search row (32px sticky) ── */
+.search-row {
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-2, 8px);
+  border-bottom: 1px solid var(--g4, #272320);
+}
+
+.ai-search {
+  width: 100%;
+  height: 22px;
+  background: var(--g2, #110f0d);
+  border: 1px solid var(--g4, #272320);
+  border-radius: 2px;
+  color: var(--g6, #6e6860);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  padding: 0 var(--sp-2, 8px);
+  cursor: default;
+  outline: none;
+}
+.ai-search::placeholder { color: var(--g5, #3d3830); }
 
 /* ── Tab content ── */
 .tab-content {
@@ -538,6 +658,14 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  padding: var(--sp-3, 12px);
+  gap: var(--sp-2, 8px);
+}
+
+/* Wide mode: more breathing room */
+.tab-inner.wide-pad {
+  padding: var(--sp-4, 16px);
+  gap: var(--sp-3, 12px);
 }
 
 .tab-scroll {
@@ -546,17 +674,115 @@
   overflow-y: auto;
 }
 
-/* ── More button ── */
-.more-btn {
+/* ── DEC tab ── */
+.dec-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+  flex-shrink: 0;
+}
+
+.conf-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  font-weight: 700;
+  color: var(--g7, #9d9690);
+}
+
+.source-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1, 4px);
+  flex-shrink: 0;
+}
+
+/* ── RES tab ── */
+.res-query-row {
+  flex-shrink: 0;
+}
+
+.res-input {
+  width: 100%;
+  height: 24px;
+  background: var(--g2, #110f0d);
+  border: 1px solid var(--g4, #272320);
+  border-radius: 2px;
+  color: var(--g7, #9d9690);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  padding: 0 var(--sp-2, 8px);
+  outline: none;
+  box-sizing: border-box;
+}
+.res-input::placeholder { color: var(--g5, #3d3830); }
+.res-input:focus { border-color: var(--g5, #3d3830); }
+
+.res-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1, 4px);
+  flex-shrink: 0;
+}
+
+.res-summary-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  color: var(--g7, #9d9690);
+  line-height: 1.5;
+}
+
+.res-muted { color: var(--g5, #3d3830); }
+
+/* ── JDG tab stats ── */
+.judge-stats {
+  display: flex;
+  gap: var(--sp-2, 8px);
+  flex-shrink: 0;
+}
+
+.stat-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-2, 8px);
+  background: var(--g2, #110f0d);
+  border: 1px solid var(--g4, #272320);
+  border-radius: 2px;
+}
+
+.stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--g5, #3d3830);
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  font-weight: 700;
+  color: var(--g7, #9d9690);
+}
+
+.stat-value.pos { color: #4caf50; }
+.stat-value.neg { color: var(--g7, #9d9690); }
+
+/* ── More / action row ── */
+.more-row {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 6px 10px;
+  gap: var(--sp-1, 4px);
+  padding-top: var(--sp-1, 4px);
   border-top: 1px solid var(--g3, #1c1918);
   flex-shrink: 0;
 }
-.more-btn button {
-  padding: 3px 8px;
+
+.more-link {
+  padding: 3px var(--sp-2, 8px);
   background: transparent;
   border: 1px solid var(--g4, #272320);
   border-radius: 2px;
@@ -566,43 +792,30 @@
   cursor: pointer;
   transition: color 0.07s, border-color 0.07s;
 }
-.more-btn button:hover { color: var(--g7, #9d9690); border-color: var(--g5, #3d3830); }
+.more-link:hover { color: var(--g7, #9d9690); border-color: var(--g5, #3d3830); }
 
-/* ── Decide HUD inline (JDG tab) ── */
-.decide-hud-inline {
-  border-top: 1px solid var(--g3, #1c1918);
-  padding-top: 8px;
-  margin-top: 8px;
+.more-link.decide {
+  border-color: var(--accent-amb, var(--amb, #f5a623));
+  color: var(--accent-amb, var(--amb, #f5a623));
 }
-.decide-hud-label {
+.more-link.decide:hover {
+  background: color-mix(in srgb, var(--accent-amb, var(--amb, #f5a623)) 12%, transparent);
+}
+
+/* ── Tab placeholder ── */
+.tab-placeholder {
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--ui-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
   color: var(--g5, #3d3830);
-  padding: 0 2px 6px;
-  text-transform: uppercase;
+  padding: var(--sp-2, 8px) 0;
 }
-.decide-btn {
-  padding: 3px 8px;
-  background: transparent;
-  border: 1px solid var(--amb, #f5a623);
-  border-radius: 2px;
-  color: var(--amb, #f5a623);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--ui-text-xs);
-  cursor: pointer;
-  transition: color 0.07s, border-color 0.07s, background 0.07s;
-  margin-left: 6px;
-}
-.decide-btn:hover { background: color-mix(in srgb, var(--amb, #f5a623) 12%, transparent); }
 
 /* ── Drawer placeholder ── */
 .drawer-placeholder {
-  padding: 24px 16px;
+  padding: var(--sp-5, 24px) var(--sp-4, 16px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2, 8px);
 }
 .drawer-placeholder span {
   font-family: 'JetBrains Mono', monospace;
