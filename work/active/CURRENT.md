@@ -36,9 +36,9 @@
 
 ## main SHA
 
-`f61f658e` — origin/main (2026-05-04) — feat(W-0404 PR4): generative UI directives + VerdictCard/SimilarityCard/PassportMiniCard (#1120)
+`d1f54e5f` — origin/main (2026-05-04) — feat(W-0404 PR5): quota enforcement + tier routing + upgrade page (#1126)
 
-W-0404 PR4 merged: directive parser + 3 card components + system prompt update. PR5 next (Quota/Tier/Stripe).
+W-0404 PR1~PR5 전부 완료. PR6 조건부 (4주 telemetry 후). 다음 P0 = W-PF-100-P2-eval-challenge.
 
 ---
 
@@ -47,8 +47,17 @@ W-0404 PR4 merged: directive parser + 3 card components + system prompt update. 
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
-| `W-PF-100-P2-eval-challenge` | P0 | 🟡 24h live AC 검증 완료 후 착수 |
+| `W-PF-100-P2-eval-challenge` | P0 | 🟡 착수 가능 |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
+
+---
+
+## Wave 7 완료 (2026-05-04)
+
+```
+완료:  W-0404 PR1~PR5 ✅ — AI Agent NL Interface (Chat+SSE+tools+eval+directives+quota) (#1106 #1110 #1114 #1120 #1126)
+완료:  Charter Frozen 해제 ✅ — dispatcher/agent product In-Scope + claim.sh regex sync
+```
 
 ---
 
@@ -105,6 +114,8 @@ W-0404 PR4 merged: directive parser + 3 card components + system prompt update. 
 - **Contract CI active 테이블**: 나열된 work item 파일이 실제 존재해야 통과. 없으면 즉시 제거.
 - **font gate CI**: hubs/ 내 font-size < 11px 직접 사용 즉시 CI 실패 → var(--ui-text-xs).
 - **rebase 충돌 전략**: HEAD의 typed API (SecondaryIndicatorPayload) 우선 유지 + 내 tracking 추가.
+- **Contract CI + [skip ci]**: openapi sync commit에 [skip ci] 붙이면 Contract CI 재트리거 안 됨 → 빈 커밋으로 재트리거 필수.
+- **engine tier model override**: `LLMRuntimeSettings`는 frozen dataclass — `_replace()` 없이 새 인스턴스 생성 필요.
 
 ---
 
