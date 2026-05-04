@@ -2932,7 +2932,7 @@
     margin-left: 4px;
   }
 
-  .observe-mode :global(.chart-live .chart-toolbar), .observe-mode :global(.chart-live .chart-header--tv) {
+  .observe-mode :global(.chart-live .chart-toolbar) {
     display: none !important;
   }
 
