@@ -42,19 +42,19 @@ function createExchangeKeysStore() {
       } catch { /* keep cached state */ }
     },
 
-    async save(apiKey: string, secret: string): Promise<{ ok: boolean; error?: string; code?: string }> {
+    async save(apiKey: string, secret: string): Promise<{ ok: boolean; error?: string; code?: string; ipRestrict?: boolean }> {
       try {
         const res = await fetch('/api/exchange/binance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ apiKey, secret }),
         });
-        const data = await res.json() as { ok?: boolean; error?: string; code?: string; apiKeyLast4?: string; savedAt?: string };
+        const data = await res.json() as { ok?: boolean; error?: string; code?: string; apiKeyLast4?: string; savedAt?: string; ipRestrict?: boolean };
         if (res.ok && data.ok && data.apiKeyLast4 && data.savedAt) {
           const entry: ExchangeKey = { exchange: 'binance', apiKeyLast4: data.apiKeyLast4, savedAt: data.savedAt };
           if (browser) localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
           set(entry);
-          return { ok: true };
+          return { ok: true, ipRestrict: data.ipRestrict };
         }
         return { ok: false, error: data.error ?? '저장 실패', code: data.code };
       } catch (err: unknown) {

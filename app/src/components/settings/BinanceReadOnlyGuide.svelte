@@ -1,9 +1,16 @@
 <script lang="ts">
+  import { trackExchangeGuideViewed } from '$lib/telemetry/exchange';
+
   let open = false;
+
+  function toggleGuide() {
+    open = !open;
+    if (open) trackExchangeGuideViewed('binance');
+  }
 </script>
 
 <div class="guide">
-  <button type="button" class="guide-toggle" onclick={() => open = !open}>
+  <button type="button" class="guide-toggle" onclick={toggleGuide}>
     <span class="guide-icon">{open ? '▾' : '▸'}</span>
     Read-Only API Key 발급 가이드
   </button>
