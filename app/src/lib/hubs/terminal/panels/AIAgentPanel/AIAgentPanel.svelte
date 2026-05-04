@@ -1,6 +1,7 @@
 <script lang="ts">
   import { shellStore, activeRightPanelTab, activeTabState, verdictCount } from '../../shell.store';
   import type { RightPanelTab, TabState } from '../../shell.store';
+  import { pendingQuery } from '$lib/hubs/cogochi/panelRouter';
   import { trackRightpanelTabSwitch, trackTabSwitch, trackDecideDrawerOpen } from '../../telemetry';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
@@ -260,6 +261,42 @@
   });
   $effect(() => { void symbol; void timeframe; judgeResult = null; judgeCacheKey = ''; });
 
+  // ── RES tab — query input value ───────────────────────────────────────────
+  let resQueryValue = $state('');
+
+  // ── PR7: consume pendingQuery from panelRouter ────────────────────────────
+  $effect(() => {
+    const pq = $pendingQuery;
+    if (!pq) return;
+
+    switch (pq.tab) {
+      case 'research':
+        resQueryValue = pq.query;
+        break;
+      case 'pattern':
+        if (pq.query) { patternFilter = pq.query; patternSelectedIdx = -1; }
+        void loadPatterns();
+        break;
+      case 'decision':
+        // Reset cache to force reload with current symbol context
+        decisionData = null;
+        decisionCacheKey = '';
+        void loadDecision();
+        break;
+      case 'judge':
+        judgeResult = null;
+        judgeCacheKey = '';
+        void loadJudgeAnalysis();
+        break;
+      case 'verdict':
+        // VerdictInboxPanel loads its own data reactively; switching tab is sufficient
+        break;
+    }
+
+    // Consume: clear after handling so panels don't re-react on re-render
+    pendingQuery.set(null);
+  });
+
   // ── Tab switch with telemetry ─────────────────────────────────────────────
   function switchRightPanelTab(tab: RightPanelTab) {
     const prev = activeTab;
@@ -423,7 +460,7 @@
         <!-- RES: query input + last-analysis 3-line summary (placeholder for PR6) -->
         <div class="tab-inner" class:wide-pad={wide}>
           <div class="res-query-row">
-            <input type="text" class="res-input" placeholder="Search or ask…" />
+            <input type="text" class="res-input" placeholder="Search or ask…" bind:value={resQueryValue} />
           </div>
           <div class="res-summary">
             <div class="res-summary-line">마지막 분석: 데이터 없음</div>
