@@ -388,7 +388,7 @@ function createShellStore() {
 
     // ── Tab CRUD ─────────────────────────────────────────────────────────
 
-    openTab: (tab: Partial<Tab>) => {
+    openTab: (tab: Partial<Tab> & { symbol?: string; prompt?: string }) => {
       update(st => {
         const id = `t${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         const newTab: Tab = {
@@ -398,7 +398,7 @@ function createShellStore() {
           mode: tab.mode || (tab.kind === 'train' || tab.kind === 'flywheel' ? tab.kind : 'trade'),
           kind: tab.kind || 'trade',
           title: tab.title || 'new session',
-          tabState: { ...FRESH_TAB_STATE(), tradePrompt: (tab as any).prompt || '' },
+          tabState: { ...FRESH_TAB_STATE(), tradePrompt: tab.prompt || '', ...(tab.symbol ? { symbol: tab.symbol } : {}) },
           extra: null,
         };
         const tabs = [...st.tabs, newTab];

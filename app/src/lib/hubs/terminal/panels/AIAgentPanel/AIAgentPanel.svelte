@@ -1,6 +1,6 @@
 <script lang="ts">
   import { shellStore, activeRightPanelTab, activeTabState, verdictCount } from '../../shell.store';
-  import type { RightPanelTab, TabState } from '../../shell.store';
+  import type { RightPanelTab, TabState, PaneConfig } from '../../shell.store';
   import { pendingQuery } from '$lib/hubs/cogochi/panelRouter';
   import { trackRightpanelTabSwitch, trackTabSwitch, trackDecideDrawerOpen } from '../../telemetry';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
@@ -301,7 +301,7 @@
           shellStore.updateTabState((s) => {
             const exists = s.panes.some((p) => p.kind === paneKey);
             if (exists) return s;
-            return { ...s, panes: [...s.panes, { kind: paneKey as 'funding', visible: true }] };
+            return { ...s, panes: [...s.panes, { kind: paneKey as PaneConfig['kind'], visible: true }] };
           });
           return;
         }
