@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
   import { catalogSearch, initCatalogSearch } from '$lib/indicators/catalogSearch';
-  import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import { indicatorInstances } from '$lib/chart/indicatorInstances.svelte';
   import type { IndicatorDef } from '$lib/indicators/types';
 
   interface Props {

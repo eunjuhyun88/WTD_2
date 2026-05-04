@@ -3,7 +3,6 @@
   import { priceStore } from '$lib/stores/priceStore';
   import { getBaseSymbolFromPair } from '$lib/utils/price';
 
-  const TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'] as const;
   const MODES = [
     { id: 'trade',    label: 'TRADE' },
     { id: 'train',    label: 'TRAIN' },
@@ -12,12 +11,10 @@
 
   interface Props {
     onSymbolTap?: () => void;
-    onIndicators?: () => void;
   }
-  let { onSymbolTap, onIndicators }: Props = $props();
+  let { onSymbolTap }: Props = $props();
 
   const symbol   = $derived($activeTabState.symbol ?? 'BTCUSDT');
-  const tf       = $derived($activeTabState.timeframe ?? '4h');
 
   const baseSym  = $derived(getBaseSymbolFromPair(symbol));
   const dispSym  = $derived(baseSym ? `${baseSym}/USDT` : symbol);
@@ -132,19 +129,6 @@
 
     <div class="vdivider"></div>
 
-    <!-- Timeframe strip -->
-    <div class="tf-strip">
-      {#each TIMEFRAMES as t}
-        <button
-          class="tf-btn"
-          class:active={tf === t}
-          onclick={() => shellStore.setTimeframe(t)}
-        >{t}</button>
-      {/each}
-    </div>
-
-    <div class="vdivider"></div>
-
     <!-- Price + 24h stats -->
     <div class="price-block {priceClass}">
       <span class="price-val">{fmtPrice(liveP)}</span>
@@ -172,11 +156,6 @@
       {/each}
     </div>
 
-    <div class="vdivider"></div>
-
-    <!-- Controls -->
-    <button class="ctrl-btn" onclick={onIndicators} title="Indicators">IND</button>
-    <button class="ctrl-btn" onclick={() => {}} title="Settings">⚙</button>
   </div>
 
   <!-- L2 quant strip — hidden at ≤1024px -->
@@ -273,34 +252,6 @@
   flex-shrink: 0;
 }
 
-/* ── Timeframes ── */
-.tf-strip {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-.tf-btn {
-  padding: 0 5px;
-  height: 32px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  font-family: var(--font-mono, monospace);
-  font-size: var(--ui-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--g6);
-  cursor: pointer;
-  transition: color 0.08s, border-color 0.08s;
-  white-space: nowrap;
-}
-.tf-btn:hover { color: var(--g8); }
-.tf-btn.active {
-  color: var(--amb);
-  border-bottom-color: var(--amb);
-  font-weight: 700;
-}
-
 /* ── Price ── */
 .price-block {
   display: flex;
@@ -380,23 +331,6 @@
   border-color: var(--amb);
   color: var(--amb);
 }
-
-/* ── Controls ── */
-.ctrl-btn {
-  padding: 0 6px;
-  height: 32px;
-  background: transparent;
-  border: none;
-  font-family: var(--font-mono, monospace);
-  font-size: var(--ui-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--g6);
-  cursor: pointer;
-  transition: color 0.08s;
-  flex-shrink: 0;
-}
-.ctrl-btn:hover { color: var(--g8); }
 
 /* ── L2 quant strip ── */
 .l2-strip {

@@ -24,7 +24,6 @@
   import SaveSetupModal from './SaveSetupModal.svelte';
   import SaveStrip from './SaveStrip.svelte';
   import ResearchPanel from './ResearchPanel.svelte';
-  import ChartToolbar from './ChartToolbar.svelte';
   import ChartBoardHeader from './ChartBoardHeader.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
@@ -57,7 +56,7 @@
     type IndicatorSeriesRefs,
     type SecondaryIndicatorPayload,
   } from '$lib/chart/mountIndicatorPanes';
-  import { indicatorInstances } from '$lib/chart/indicatorInstances';
+  import { indicatorInstances } from '$lib/chart/indicatorInstances.svelte';
   import {
     calcRSI,
     calcMACD,
@@ -67,7 +66,7 @@
     calcATRBands,
   } from './chartIndicatorCalc';
   import { createCrosshairSync, type CrosshairChips, type CrosshairUnsubscribe } from '$lib/chart/paneCrosshairSync';
-  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore';
+  import { createPaneLayoutStore, type PaneKind } from '$lib/chart/paneLayoutStore.svelte';
   import PaneInfoBar from './PaneInfoBar.svelte';
   import KpiStrip from './KpiStrip.svelte';
   import type { KpiInputBundle } from '$lib/chart/kpiStrip';
@@ -1835,14 +1834,6 @@
   data-deriv-overlay={derivativesOnMain ? '1' : '0'}
   data-surface={surfaceStyle}
 >
-
-  <!-- ── ChartToolbar (TF selector + export + drawing mode) ────── -->
-  <ChartToolbar
-    {tf}
-    onTfChange={selectTf}
-    drawingMode={$activeDrawingMode}
-    onToggleDrawing={() => shellStore.setDrawingTool('trendLine')}
-  />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
   <ChartBoardHeader

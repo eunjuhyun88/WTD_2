@@ -11,6 +11,9 @@
   import type { ChartType } from '../shell.store';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
+  const TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'] as const;
+  const tf = $derived($activeTabState.timeframe ?? '4h');
+
   interface Props {
     onIndicators?: () => void;
     onSettings?: () => void;
@@ -73,6 +76,19 @@
 </script>
 
 <div class="chart-toolbar" role="toolbar" aria-label="Chart toolbar">
+  <!-- TF strip -->
+  <div class="tf-strip">
+    {#each TIMEFRAMES as t}
+      <button
+        class="tf-btn"
+        class:active={tf === t}
+        onclick={() => shellStore.setTimeframe(t)}
+      >{t}</button>
+    {/each}
+  </div>
+
+  <span class="tb-divider"></span>
+
   <!-- Chart type dropdown -->
   <div class="ct-wrap" bind:this={typeMenu}>
     <button
@@ -144,6 +160,34 @@
     font-family: 'JetBrains Mono', monospace;
     color: var(--g8);
     overflow: hidden;
+  }
+
+  .tf-strip {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .tf-btn {
+    padding: 0 5px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-family: inherit;
+    font-size: var(--ui-text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--g6);
+    cursor: pointer;
+    transition: color 0.08s, border-color 0.08s;
+    white-space: nowrap;
+  }
+  .tf-btn:hover { color: var(--g8); }
+  .tf-btn.active {
+    color: var(--amb, #d6a347);
+    border-bottom-color: var(--amb, #d6a347);
+    font-weight: 700;
   }
 
   .tb-divider {

@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`940e0955` — origin/main (2026-05-04) — feat(W-0401-P1): verdict streak distinct-day + 5 배지 + StreakCard UI (#1028)
+`d49bbc82` — origin/main (2026-05-04) — feat(research): wire autoresearch loop UI into lab nav (#1069)
 
 ---
 
@@ -45,7 +45,6 @@
 | Work Item | Priority | 상태 |
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
-| `W-0400-2a-engine-indicators` | P1 | 🟡 설계 완료, 구현 대기 (engine/indicators/ 신규) |
 | `W-PF-100-P2-eval-challenge` | P0 | 🟡 24h live AC 검증 완료 후 착수 |
 
 ---
@@ -69,6 +68,7 @@
 완료:  W-0400 Ph1B ✅ — IndicatorCatalogModal + Fuse.js search + / shortcut (#1020)
 완료:  W-0400 Ph1C ✅ — catalogFavorites localStorage + Recents/Favorites sections (#1024)
 완료:  W-0401-P1 ✅ — verdict streak distinct-day 카운터 + 5 배지 + StreakCard UI (#1028)
+완료:  W-0399-P2 ✅ — all Tier-A multi-instance + param edit + VWAP/ATRBands/clientIndicators test (#1042)
 완료:  W-0395 Ph7 PR2 ✅ — EquityCurve SVG + shared HoldTimeStrip (#1015)
 완료:  W-0395 Ph8 Settings PR1+2 ✅ — 5탭 shell + Subscription tier card (#1007 #1014)
 완료:  W-0395 Ph1 PR2 ✅ — TRAIN mode QuizStage + train_answers migration (#1012)
