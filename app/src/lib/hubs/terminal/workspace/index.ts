@@ -8,6 +8,4 @@ export { default as ActionStrip } from './ActionStrip.svelte';
 export { default as WhyPanel } from './WhyPanel.svelte';
 export { default as VerdictCard } from './VerdictCard.svelte';
 export { default as AssetInsightCard } from './AssetInsightCard.svelte';
-export { default as WorkspaceGrid } from './WorkspaceGrid.svelte';
 export { default as ChartBoard } from './ChartBoard.svelte';
-export { default as BoardToolbar } from './BoardToolbar.svelte';
