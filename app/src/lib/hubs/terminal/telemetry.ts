@@ -133,3 +133,26 @@ export function trackTabSwitch(payload: TabSwitchPayload): void {
   fireGtag('rightpanel_tab_switch', parsed.data as unknown as Record<string, unknown>); // legacy
   fireGtag('wave6.tab_switch', parsed.data as unknown as Record<string, unknown>);
 }
+
+// ── inbox_dot_click (W-0403) ───────────────────────────────────────────────
+
+export const InboxDotClickSchema = z.object({
+  unread_count: z.number().int().nonnegative(),
+  destination: z.literal('/cogochi?panel=vdt'),
+});
+export type InboxDotClickPayload = z.infer<typeof InboxDotClickSchema>;
+
+export function trackInboxDotClick(unreadCount: number): void {
+  const payload: InboxDotClickPayload = {
+    unread_count: unreadCount,
+    destination: '/cogochi?panel=vdt',
+  };
+  const parsed = InboxDotClickSchema.safeParse(payload);
+  if (!parsed.success) {
+    console.warn('[telemetry] inbox_dot_click validation failed', parsed.error.issues);
+    return;
+  }
+  // dual-emit: legacy + wave6 namespace
+  fireGtag('inbox_dot_click', parsed.data as unknown as Record<string, unknown>);
+  fireGtag('wave6.inbox_dot_click', parsed.data as unknown as Record<string, unknown>);
+}

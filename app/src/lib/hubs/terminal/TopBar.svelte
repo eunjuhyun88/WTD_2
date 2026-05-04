@@ -2,6 +2,7 @@
   import { shellStore, activeTabState, activeMode } from './shell.store';
   import { priceStore } from '$lib/stores/priceStore';
   import { getBaseSymbolFromPair } from '$lib/utils/price';
+  import NavInboxBadge from '$lib/components/header/NavInboxBadge.svelte';
 
   const TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'] as const;
   const MODES = [
@@ -177,6 +178,7 @@
     <!-- Controls -->
     <button class="ctrl-btn" onclick={onIndicators} title="Indicators">IND</button>
     <button class="ctrl-btn" onclick={() => {}} title="Settings">⚙</button>
+    <NavInboxBadge />
   </div>
 
   <!-- L2 quant strip — hidden at ≤1024px -->
