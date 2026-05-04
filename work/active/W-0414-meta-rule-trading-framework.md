@@ -374,22 +374,25 @@ CREATE TABLE meta_runner_state (
 | D2 | Regime detection 1차 구현 | **rule-based 3-axis binning**, HMM 은 PR 추가 | 시작 단순성, 인터페이스 동일하게 유지 |
 | D3 | Bayesian prior | **uniform Beta(1,1)** | 데이터 적은 초기에는 informative prior 가 위험, 점차 데이터 누적 |
 | D4 | Status 임계값 | **(low_sample<30 / watch<0.40 / learning<0.55 / promising≥0.55+50 / ok≥0.55+200+CI)** | López de Prado 가이드 + 우리 trade 빈도 (월 ~50개 가정) |
-| D5 | Kelly fraction cap | **25% Kelly, max 5% per trade** | full Kelly 너무 공격적, 25% Kelly 가 표준 (Thorp) |
-| D6 | Vol target | **annualized 15%** (default, configurable) | Moreira-Muir 기준값 |
-| D7 | Triple-barrier ATR multiplier | **TP=2·ATR, SL=1·ATR, T=avg_holding_time × 2** | 1:2 RR + 충분한 horizon |
-| D8 | Paper runner trigger | **signal stream 푸시 (이벤트 기반), polling X** | 지연 최소화, kafka/redis pub-sub 인프라 있다면 그것 사용 |
-| D9 | Circuit breaker 임계값 | **max_daily_loss = $200 (default), max_drawdown_30d = 20%** | 사용자 Settings 에서 조정 가능, 기본값은 보수적 |
-| D10 | LIVE (실거래) 자동매매 | **본 W 에서 미포함, 별도 W item + 명시 opt-in** | 안전 |
-| D11 | DSR 계산 시점 | **매 backtest 직후** (Workshop 슬라이더 auto-rerun 시) | 즉시 피드백 |
-| D12 | Online learning 빈도 | **매 trade close 즉시 update + 일 1회 status 재평가** | 실시간 반영 + nightly 안정화 |
+| D5 | Kelly fraction cap | **default 25%, toggle 5%~75%** (Settings) | full Kelly = 이론 최적이지만 DD 50%+ 일상. 25% = Thorp 권장. 사용자 토글 |
+| D6 | Vol target | **default 15%/yr, toggle 5%~40%** (Settings) | Moreira-Muir 기준값. BTC vol ~80% → 15% = 1/5 사이즈 |
+| D7 | Triple-barrier ATR multiplier | **default TP=2·ATR / SL=1·ATR / T=avg_holding×2, 각각 슬라이더 0.5~5x** | RR 비율 사용자 선호 |
+| D8 | Paper runner trigger | **signal stream 푸시 (이벤트 기반), polling fallback** | PR7 audit 후 인프라 결정 |
+| **D9** | **Circuit breaker — 핵심 안전장치** | **max_daily_loss = balance × 2% (잔고 비례, default), max_drawdown_30d = 20%, 둘 다 Settings 토글 0.5~5%** | **사용자 명시: "잔고대비 2%씩만". balance 가 변하면 자동 추종** |
+| D10 | LIVE (실거래) 모드 | **default = paper only (잠금). Settings 에서 LIVE 토글 — 활성화 시 2단계 confirm + Turnstile** | 사용자가 직접 켤 수 있되 실수 방지 |
+| D11 | DSR 계산 시점 | **매 backtest 직후** | 즉시 피드백 |
+| D12 | Online learning 빈도 | **default = per-trade + nightly 둘 다, Settings 토글 (per-trade only / nightly only / both / off)** | 사용자 선호 |
 | D13 | Bucket 정의 | **(variable, bucket_value, signal_name)** 3-tuple, signal-conditional | kieran 동등 |
-| D14 | Gate weight optimizer | **hill_climbing.py 재사용** | 기존 인프라, 새 도입 X |
+| D14 | Gate weight optimizer | **hill_climbing.py 재사용** | PR1 audit 후 확정 |
 | D15 | gate_stack 평가 순서 | **regime → capacity → tier → sizing** (조기 reject 우선) | 비싼 sizing 계산은 마지막 |
-| D16 | meta_outcomes 보관 기간 | **무기한** (분석 가치) | 디스크 비용 미미, attribution 정확도 향상 |
-| D17 | Workshop 슬라이더 → live runner 적용 | **즉시 반영 X — "Apply to runner" 버튼 클릭 시만** | 실수로 라이브 게이트 변경 방지 |
-| D18 | Verdict label conflict 처리 | **둘 다 저장, attribution 은 barrier 만, dashboard 표시는 두 라벨 비교** | 차이점 자체가 신호 |
-| D19 | Regime 8 vs HMM N-state | **8 (rule-based) 시작, 데이터 1만+ trade 후 HMM 검토** | over-engineering 회피 |
-| D20 | DSR vs PSR 표시 | **DSR (multiple-testing 보정)** | Workshop 은 N개 backtest 비교 시나리오, DSR 적합 |
+| D16 | meta_outcomes 보관 기간 | **무기한** (분석 가치) | 디스크 비용 미미 |
+| D17 | Workshop 슬라이더 → live runner 적용 | **default = "Apply to runner" 버튼 명시, Settings 토글 (instant / explicit / disabled)** | 사용자 선호 |
+| D18 | Verdict ↔ barrier label 충돌 | **default = barrier 우선 (객관성), Settings 토글 (barrier / verdict / both-disagree-flagged)** | 사용자 선호 |
+| D19 | Regime 8 vs HMM N-state | **default = 8 (rule-based v1), Settings 토글 (rule-v1 / hmm-2 / hmm-4) — hmm은 PR 추가 후 활성** | 점진 도입 |
+| D20 | DSR vs PSR 표시 | **DSR default, Settings 토글 (DSR / PSR / both)** | Workshop 사용자 선호 |
+| **D21** | **모든 파라미터 user-tunable** (사용자 명시) | **§J 신규 — 모든 D5~D20 항목을 Settings UI 슬라이더/토글로 노출, DB 영속화, profile 저장 가능** | 사용자 명시 — "모든걸 선택하거나 조절할수있게" |
+| **D22** | **Paper account 시작 잔고** | **default $10,000, Settings 직접 입력. balance × 2% 가 daily loss cap 자동 계산** | D9 의 비례 계산 baseline |
+| **D23** | **Profile / Preset 시스템** | **3 preset 기본 제공: 보수(Conservative) / 표준(Balanced) / 공격(Aggressive). 사용자 custom profile 저장/공유** | 토글 편의 |
 
 ---
 
@@ -441,6 +444,171 @@ CREATE TABLE meta_runner_state (
 4. W-0409 PR5 (Workshop) 머지 진행 → W-0414 PR5 (UI) 의존 해제
 5. 7일 paper run dogfooding → ban list / DSR 동작 검증
 6. 검증 통과 시 LIVE 실거래 W item 분기 결정
+
+---
+
+## J. User-tunable Parameters (사용자 명시 — D21 락)
+
+> **원칙**: 모든 학술 파라미터를 Settings UI 에서 슬라이더/토글로 조작 가능. DB 영속화. Preset (보수/표준/공격) + 사용자 custom profile.
+
+### J1. 파라미터 인벤토리 (Settings → "Meta-rule Trading" 섹션)
+
+#### Risk (잔고 보호)
+| Key | Default | Range | UI |
+|-----|---------|-------|----|
+| `paper_starting_balance_usd` | 10000 | 1000 ~ 1000000 | 숫자 입력 |
+| **`max_daily_loss_pct`** | **2.0%** | 0.5% ~ 5% | **슬라이더 (사용자 명시)** |
+| `max_drawdown_30d_pct` | 20% | 5% ~ 50% | 슬라이더 |
+| `max_open_positions` | 5 | 1 ~ 20 | 정수 |
+| `kill_switch` | off | toggle | 큰 빨간 버튼 |
+| `daily_loss_cap_usd` (계산값) | balance × 2% | 자동 계산 | readonly 표시 |
+
+#### Position Sizing (Kelly + Vol-target)
+| Key | Default | Range | UI |
+|-----|---------|-------|----|
+| `kelly_fraction_cap_pct` | 25% | 5% ~ 75% | 슬라이더 (D5) |
+| `kelly_max_per_trade_pct` | 5% | 0.5% ~ 20% | 슬라이더 |
+| `vol_target_annualized_pct` | 15% | 5% ~ 40% | 슬라이더 (D6) |
+| `vol_lookback_days` | 30 | 7 ~ 90 | 정수 |
+
+#### Triple-barrier (TP/SL/Time)
+| Key | Default | Range | UI |
+|-----|---------|-------|----|
+| `tp_atr_multiplier` | 2.0 | 0.5 ~ 5.0 | 슬라이더 (D7) |
+| `sl_atr_multiplier` | 1.0 | 0.5 ~ 5.0 | 슬라이더 (D7) |
+| `horizon_multiplier` | 2.0 | 0.5 ~ 5.0 | 슬라이더 (D7) |
+| `min_holding_bars` | 4 | 1 ~ 100 | 정수 |
+| `atr_lookback` | 14 | 7 ~ 50 | 정수 |
+
+#### Gates (4-게이트)
+| Key | Default | Range | UI |
+|-----|---------|-------|----|
+| `regime_penalty_strength` | 0.5 | 0 ~ 1 | 슬라이더 |
+| `counter_multiplier_floor` | 0.5 | 0.3 ~ 1.0 | 슬라이더 |
+| `tier1_weight` | 1.0 | 0 ~ 2 | 슬라이더 |
+| `tier2_weight` | 0.7 | 0 ~ 2 | 슬라이더 |
+| `min_signal_confidence` | 0.5 | 0 ~ 1 | 슬라이더 |
+| `gate_score_threshold` | 0.6 | 0 ~ 1 | 슬라이더 |
+| `regime_classifier_mode` | rule-v1 | enum (rule-v1 / hmm-2 / hmm-4) | dropdown (D19) |
+
+#### Online Learning
+| Key | Default | Range | UI |
+|-----|---------|-------|----|
+| `attribution_update_mode` | both | enum (per-trade / nightly / both / off) | dropdown (D12) |
+| `bayesian_prior_strength` | uniform | enum (uniform / weak / medium) | dropdown |
+| `status_low_sample_n` | 30 | 10 ~ 500 | 정수 (D4) |
+| `status_watch_threshold` | 0.40 | 0.2 ~ 0.5 | 슬라이더 |
+| `status_promising_threshold` | 0.55 | 0.5 ~ 0.7 | 슬라이더 |
+| `status_promising_min_n` | 50 | 30 ~ 500 | 정수 |
+| `status_ok_min_n` | 200 | 100 ~ 2000 | 정수 |
+| `auto_ban_enabled` | on | toggle | 토글 |
+
+#### Backtest 우연성 보정
+| Key | Default | Range | UI |
+|-----|---------|-------|----|
+| `dsr_metric_display` | DSR | enum (DSR / PSR / both) | dropdown (D20) |
+| `dsr_benchmark_sharpe` | 0 | -1 ~ 3 | 슬라이더 |
+| `min_dsr_for_production` | 0.95 | 0.5 ~ 0.99 | 슬라이더 |
+
+#### Live Runner 정책
+| Key | Default | Range | UI |
+|-----|---------|-------|----|
+| `runner_mode` | paper | enum (paper / live-opt-in) | dropdown (D10) — live 선택 시 2단계 confirm + Turnstile |
+| `runner_workshop_apply_mode` | explicit | enum (instant / explicit / disabled) | dropdown (D17) |
+| `verdict_attribution_priority` | barrier | enum (barrier / verdict / both-disagree-flagged) | dropdown (D18) |
+| `signal_stream_source` | event | enum (event / polling-30s) | dropdown (D8) |
+
+#### Profile (D23)
+| Key | Default | UI |
+|-----|---------|----|
+| `active_profile` | balanced | dropdown (conservative / balanced / aggressive / custom_*) |
+| `save_as_custom_profile` | — | "Save current as profile" 버튼 |
+
+### J2. Preset (3 기본)
+
+| Preset | Kelly cap | Vol target | TP/SL | Daily loss | DD 30d | Note |
+|--------|-----------|------------|-------|-----------|--------|------|
+| **Conservative** | 10% | 10% | 1.5·ATR / 1·ATR | 1% | 10% | 잔고 보호 우선 |
+| **Balanced** (default) | 25% | 15% | 2·ATR / 1·ATR | **2%** | 20% | Thorp + Moreira-Muir 표준 |
+| **Aggressive** | 50% | 25% | 3·ATR / 1·ATR | 3% | 30% | 공격적 사용자 |
+
+→ Preset 클릭 → 모든 J1 파라미터 일괄 적용. 사용자가 손대면 자동으로 `custom_*` profile 로 분기.
+
+### J3. DB schema (영속화)
+
+```sql
+CREATE TABLE meta_user_config (
+  user_id UUID NOT NULL,
+  config_key TEXT NOT NULL,
+  config_value JSONB NOT NULL,
+  profile_name TEXT NOT NULL DEFAULT 'balanced',
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, profile_name, config_key)
+);
+
+CREATE TABLE meta_user_profiles (
+  user_id UUID NOT NULL,
+  profile_name TEXT NOT NULL,
+  is_preset BOOLEAN NOT NULL DEFAULT FALSE,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  active BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (user_id, profile_name)
+);
+
+-- 3 preset seed
+INSERT INTO meta_user_profiles (user_id, profile_name, is_preset, description) VALUES
+  ('00000000-0000-0000-0000-000000000000', 'conservative', TRUE, '잔고 보호 우선'),
+  ('00000000-0000-0000-0000-000000000000', 'balanced', TRUE, '표준 (Thorp + Moreira-Muir)'),
+  ('00000000-0000-0000-0000-000000000000', 'aggressive', TRUE, '공격');
+```
+
+### J4. API
+
+```
+GET    /api/settings/meta-rule           → 활성 profile 의 모든 config 반환
+PATCH  /api/settings/meta-rule           → 단일 또는 batch key 갱신
+POST   /api/settings/meta-rule/profile   → 새 profile 저장 (현 config snapshot)
+PUT    /api/settings/meta-rule/profile/:name/activate → profile 전환
+GET    /api/settings/meta-rule/presets   → 3 preset 정의 반환
+```
+
+### J5. Hot-reload 정책
+
+- 파라미터 변경 → DB write → 다음 signal evaluation 시 자동 적용 (engine 측 cache TTL 5초)
+- runner 가동 중 변경 시: D17 `runner_workshop_apply_mode` 에 따라
+  - `instant`: 즉시 반영
+  - `explicit`: "Apply" 버튼 클릭 전까지 보류
+  - `disabled`: runner 중 변경 차단 (sticky lock)
+
+### J6. PR 추가 — PR9 신규
+
+기존 PR1~PR8 외에 **PR9 (Settings UI + DB + Preset) 추가** — W-0411 (Settings 재설계) PR2~PR4 머지 후 발급:
+
+- DB migration: `meta_user_config` + `meta_user_profiles`
+- API: `/api/settings/meta-rule/*` 5 endpoint
+- Settings 페이지에 "Meta-rule Trading" 섹션 추가 (W-0411 의 8섹션 사이드바에 신규 1개)
+- 4 sub-section: Risk / Sizing / Triple-barrier / Gates / Online / Live
+- 3 preset 버튼 + custom profile save/load
+- engine 측 `engine/config/user_config.py` 신규 — DB lookup + 5초 cache + hot-reload
+
+### J7. Workshop 와의 관계
+
+- Workshop 슬라이더 = **로컬 실험용** (이번 backtest 한 번만 적용)
+- Settings 슬라이더 = **글로벌 영속** (runner + 모든 future backtest)
+- Workshop 슬라이더 우상단 "Save to Settings" 버튼 → 현 슬라이더값을 Settings 로 promote
+
+### J8. AC 추가
+
+| AC | 검증 |
+|----|------|
+| AC16 | Settings 에서 모든 J1 파라미터 슬라이더/토글로 조작 가능 |
+| AC17 | preset 클릭 → 모든 J1 값 일괄 변경 + DB 저장 |
+| AC18 | balance 변경 → daily_loss_cap_usd readonly 자동 재계산 (예: $10000 → $200, $50000 → $1000) |
+| AC19 | runner 가동 중 Settings 변경 → D17 mode 따라 정확히 동작 (instant/explicit/disabled) |
+| AC20 | LIVE 토글 → 2단계 confirm + Turnstile 통과 후에만 활성, 새로고침해도 유지 |
+| AC21 | custom profile 저장/불러오기 정상, preset 은 read-only |
+| AC22 | engine 측 hot-reload — config DB 변경 후 5초 내 next signal evaluation 에 반영 |
 
 ---
 
