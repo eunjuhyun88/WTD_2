@@ -38,13 +38,26 @@
     onStartSaveSetup: () => void;
   }
 
+  interface AiAskEvent {
+    intent: string;
+    query: string;
+    ts: number;
+  }
+
   interface Props {
     data: AnalyzeData;
     actions: AnalyzeActions;
     state?: { microstructureView?: string };
+    aiAsk?: AiAskEvent | null;
+    onClearAiAsk?: () => void;
   }
 
-  let { data, actions, state }: Props = $props();
+  let { data, actions, state, aiAsk = null, onClearAiAsk }: Props = $props();
+
+  const AI_ASK_TTL_MS = 30_000;
+  const showAiAskBanner = $derived(
+    aiAsk !== null && Date.now() - aiAsk.ts < AI_ASK_TTL_MS
+  );
 
   // For convenience, destructure commonly used properties
   const {
@@ -73,6 +86,12 @@
 </script>
 
 <div class="workspace-body">
+  {#if showAiAskBanner && aiAsk}
+    <div class="ai-ask-banner">
+      <span class="ai-ask-text">🤖 AI ask · "{aiAsk.query}"</span>
+      <button class="ai-ask-clear" onclick={() => onClearAiAsk?.()} aria-label="Clear AI ask">✕</button>
+    </div>
+  {/if}
   <section class="workspace-hero" aria-label="Analyze thesis and phase path">
     <div class="workspace-hero-copy">
       <span class="workspace-kicker">PHASE TIMELINE</span>
@@ -862,5 +881,35 @@
   /* ── Proposal AI CTA (mobile) ── */
 
   /* ── JUDGE context header ── */
+
+  /* ── AI ask banner ── */
+  .ai-ask-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 24px;
+    padding: 0 8px;
+    background: var(--g2);
+    border-bottom: 1px solid var(--g4);
+    color: var(--g7);
+    font-family: monospace;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .ai-ask-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ai-ask-clear {
+    background: none;
+    border: none;
+    color: var(--g7);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 0 0 8px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
 
 </style>
