@@ -8,6 +8,8 @@
   import TrainStage from '$lib/hubs/terminal/panels/TrainStage.svelte';
   import FlywheelStage from '$lib/hubs/terminal/panels/FlywheelStage.svelte';
   import AiSearchBar from '$lib/hubs/cogochi/AiSearchBar.svelte';
+  import { routeAiAsk } from '$lib/hubs/cogochi/panelRouter';
+  import type { AiAskDetail } from '$lib/hubs/cogochi/panelRouter';
 
   const { data } = $props<{ data: { legacy: boolean; initialTab: RightPanelTab | null; decideId: string | null } }>();
 
@@ -27,10 +29,14 @@
     // PR7-AC3: ?decide=<id> — handled in TerminalHub.svelte via initialDecideId prop
     // (TerminalHub reads window.location.search directly in onMount)
 
-    // Keep currentTab in sync when panels dispatch cogochi:ai-ask
+    // PR7: route cogochi:ai-ask events to the correct panel + update currentTab
     const handleAiAsk = (e: Event) => {
-      const detail = (e as CustomEvent<{ tab: string }>).detail;
-      if (detail?.tab) currentTab = detail.tab;
+      const detail = (e as CustomEvent<AiAskDetail>).detail;
+      if (!detail) return;
+      routeAiAsk(detail, (tab) => {
+        shellStore.setRightPanelTab(tab);
+        currentTab = tab;
+      });
     };
     window.addEventListener('cogochi:ai-ask', handleAiAsk);
     return () => window.removeEventListener('cogochi:ai-ask', handleAiAsk);
