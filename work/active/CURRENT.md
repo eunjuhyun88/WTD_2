@@ -60,9 +60,7 @@ W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-PF-100-P2-eval-challenge` | P0 | 🟡 착수 가능 |
-| `W-0410-scrypt-per-user-salt` | P1 | ✅ PR #1173 OPEN — binanceConnector.ts + binance_tools.py + migrate 스크립트 |
-| `W-0408-token-blacklist-fail-closed` | P1 | 🔵 분석 완료, 구현 대기 — Redis 장애 시 토큰 재사용 방지 |
-| `W-0409-alpha-scan-real-data` | P2 | 🔵 분석 완료, 구현 대기 — 환각 LLM tool 제거 → Binance OI 배선 |
+| `W-0411-wallet-enterprise-hardening` | P1 | ✅ PR #1191 MERGED — Privy email + wallet fixes (20 files) |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
