@@ -1,9 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { inboxCount } from '$lib/stores/inboxCountStore';
+  import { inboxBadgeCount } from '$lib/stores/inboxBadge.store';
 
   const activePath = $derived($page.url.pathname);
-  const pendingCount = $derived($inboxCount);
+  const pendingCount = $derived($inboxBadgeCount);
 
   const items = [
     { label: 'Home',      href: '/dashboard', icon: 'home'      },
@@ -82,8 +82,8 @@
     background:
       linear-gradient(180deg, rgba(8, 8, 10, 0.96), rgba(5, 5, 7, 0.98));
     border-top: 1px solid rgba(249, 216, 194, 0.07);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .nav-item {

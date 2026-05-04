@@ -91,8 +91,8 @@
       radial-gradient(circle at 0% 0%, rgba(219, 154, 159, 0.04), transparent 30%),
       linear-gradient(180deg, rgba(10, 10, 11, 0.96), rgba(6, 6, 7, 0.94));
     border-bottom: 1px solid rgba(249, 216, 194, 0.07);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .topbar-left {

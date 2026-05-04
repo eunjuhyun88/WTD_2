@@ -169,8 +169,8 @@
     padding: 0 20px;
     font-family: var(--sc-font-body);
     color: var(--sc-text-0);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     box-shadow: 0 1px 0 rgba(249, 216, 194, 0.06), 0 8px 24px rgba(0, 0, 0, 0.18);
   }
 
@@ -384,7 +384,7 @@
       radial-gradient(circle at top right, rgba(219, 154, 159, 0.045), transparent 34%);
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
     transform: translateX(-50%);
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(8px);
   }
 
   #nav.home-mode .settings-btn {
