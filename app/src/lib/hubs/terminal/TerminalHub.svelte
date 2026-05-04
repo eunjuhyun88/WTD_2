@@ -209,6 +209,12 @@
       : Math.max(300, $shellStore.aiWidth),
   );
 
+  // W-0402 PR2: grid layout state for data-attrs → CSS var hooks
+  const watchDataAttr = $derived($shellStore.sidebarVisible ? 'open' : 'folded');
+  const aiDataAttr = $derived(
+    !$shellStore.aiVisible ? 'folded' : $shellStore.aiWide ? 'wide' : 'open'
+  );
+
   // D-10: status-bar mini Verdict / freshness wiring.
   const lastVerdictKind = $derived.by<'LONG' | 'SHORT' | 'WAIT' | null>(() => {
     const entries = Object.values($allVerdicts);
@@ -298,9 +304,12 @@
       if (mod && e.key === '0') { e.preventDefault(); shellStore.resetPanels(); trackPanelFoldToggle({ panel: 'reset', action: 'reset', trigger: 'keyboard', key: '⌘0' }); }
       // ⌘\: toggle AI wide mode
       if (mod && e.key === '\\') { e.preventDefault(); shellStore.toggleAIWide(); trackPanelFoldToggle({ panel: 'ai_wide', action: 'toggle', trigger: 'keyboard', key: '⌘\\' }); }
-      // ⌘[ / ⌘]: toggle side panels
+      // ⌘[ / ⌘]: toggle side panels (modifier version — preserved for compat)
       if (mod && e.key === '[') { e.preventDefault(); shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: 'toggle', trigger: 'keyboard', key: '⌘[' }); }
       if (mod && e.key === ']') { e.preventDefault(); shellStore.toggleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'toggle', trigger: 'keyboard', key: '⌘]' }); }
+      // W-0402 PR2: bare [ / ] — fold toggles (no modifier, desktop-only)
+      if (!mod && e.key === '[' && !isInputActive()) { e.preventDefault(); shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: 'toggle', trigger: 'keyboard', key: '[' }); }
+      if (!mod && e.key === ']' && !isInputActive()) { e.preventDefault(); shellStore.cycleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'toggle', trigger: 'keyboard', key: ']' }); }
       if (mod && e.key.toLowerCase() === 'w') {
         const st = get(shellStore);
         if (st.tabs.length > 1) { e.preventDefault(); shellStore.closeTab(st.activeTabId); }
@@ -431,7 +440,7 @@
   });
 </script>
 
-<div class="app-shell">
+<div class="app-shell" data-watch={watchDataAttr} data-ai={aiDataAttr}>
   {#if $viewportTier.tier === 'MOBILE'}
     <!-- ── MOBILE ── -->
     <MobileTopBar
@@ -483,170 +492,174 @@
     </BottomSheet>
 
   {:else}
-    <!-- ── DESKTOP / TABLET ── -->
+    <!-- ── DESKTOP / TABLET — W-0402 PR2 CSS Grid layout ── -->
     <!-- CommandBar: UNUSED — W-0375 (60px chrome saved) -->
 
-    <TopBar
-      onSymbolTap={() => (desktopSymbolPickerOpen = true)}
-      onIndicators={() => (indicatorLibraryOpen = true)}
-    />
+    <!-- grid-area: topbar -->
+    <div class="grid-topbar">
+      <TopBar
+        onSymbolTap={() => (desktopSymbolPickerOpen = true)}
+        onIndicators={() => (indicatorLibraryOpen = true)}
+      />
+    </div>
 
-    <!-- NewsFlashBar: auto-hides when no events, throttled headlines -->
-    <NewsFlashBar symbol={desktopSymbol} />
+    <!-- grid-area: news — auto-hides when no events, throttled headlines -->
+    <div class="grid-news">
+      <NewsFlashBar symbol={desktopSymbol} />
+    </div>
 
-    <div class="main-row">
-      <!-- Left: WatchlistRail — collapsible (⌘[) -->
-      {#if $shellStore.sidebarVisible}
-        <div class="sidebar-pane" style:width={`${Math.max(180, $shellStore.sidebarWidth)}px`}>
-          <WatchlistRail
-            activeSymbol={desktopSymbol}
-            onSelectSymbol={(s) => shellStore.setSymbol(s)}
-          />
-          <button
-            class="panel-fold-btn panel-fold-left"
-            onclick={() => { shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: 'hide', trigger: 'click' }); }}
-            title="Collapse watchlist (⌘[)"
-            aria-label="Collapse watchlist"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 2L3.5 5L6.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
-        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
-      {:else}
-        <button
-          class="panel-reveal-strip panel-reveal-left"
-          onclick={() => { shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: 'show', trigger: 'click' }); }}
-          title="Show watchlist (⌘[)"
-          aria-label="Show watchlist"
-        >
+    <!-- grid-area: watchlist — WatchlistRail column with fold chevron -->
+    <div class="watchlist-col">
+      <WatchlistRail
+        activeSymbol={desktopSymbol}
+        onSelectSymbol={(s) => shellStore.setSymbol(s)}
+      />
+      <!-- Fold chevron: right edge of watchlist column, hover-revealed -->
+      <button
+        class="col-fold-btn col-fold-watch"
+        onclick={() => { shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: $shellStore.sidebarVisible ? 'hide' : 'show', trigger: 'click' }); }}
+        title={$shellStore.sidebarVisible ? 'Collapse watchlist ([)' : 'Expand watchlist ([)'}
+        aria-label={$shellStore.sidebarVisible ? 'Collapse watchlist' : 'Expand watchlist'}
+      >
+        {#if $shellStore.sidebarVisible}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 2L3.5 5L6.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {:else}
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      {/if}
-
-      <!-- D-4: Drawing rail (left of canvas, desktop only) -->
-      <DrawingRail />
-
-      <!-- Center: Canvas + TabBar -->
-      <div class="canvas-col" style:position="relative">
-        {#if $chartSaveMode.active}
-          <div class="range-hint">
-            {$chartSaveMode.anchorA == null ? 'Click anchor A on chart' : 'Click anchor B on chart'} — <kbd>Esc</kbd> to cancel
-          </div>
         {/if}
-        <TabBar
+      </button>
+    </div>
+
+    <!-- grid-area: draw — DrawingRail (D-4, desktop only) -->
+    <div class="draw-col">
+      <DrawingRail />
+    </div>
+
+    <!-- grid-area: chart — canvas + tabbar + workspace -->
+    <div class="canvas-col" style:position="relative">
+      {#if $chartSaveMode.active}
+        <div class="range-hint">
+          {$chartSaveMode.anchorA == null ? 'Click anchor A on chart' : 'Click anchor B on chart'} — <kbd>Esc</kbd> to cancel
+        </div>
+      {/if}
+      <TabBar
+        tabs={$shellStore.tabs}
+        activeTabId={$shellStore.activeTabId}
+        setActiveTabId={(id) => shellStore.setActiveTabId(id)}
+        onCloseTab={(id) => shellStore.closeTab(id)}
+        onNewTab={() => shellStore.openTab({ kind: 'trade', title: 'new session' })}
+        sidebarVisible={$shellStore.sidebarVisible}
+        toggleSidebar={() => shellStore.toggleSidebar()}
+        workMode={$shellStore.workMode}
+        workspaceMode={$shellStore.workspaceMode}
+        workspacePaneIds={$shellStore.workspacePaneIds}
+        workspaceImmersivePaneId={$shellStore.workspaceImmersivePaneId}
+        onToggleCompare={(id) => shellStore.toggleTabCompare(id)}
+        onExpandPane={(id) => shellStore.expandWorkspacePane(id)}
+        onSetWorkMode={(mode) => shellStore.setWorkMode(mode)}
+        onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
+        onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
+        onIndicators={() => (indicatorLibraryOpen = true)}
+      />
+
+      <ChartToolbar
+        onIndicators={() => (indicatorLibraryOpen = true)}
+        onSettings={() => (indicatorSettingsOpen = true)}
+      />
+
+      <WorkspaceStage
           tabs={$shellStore.tabs}
           activeTabId={$shellStore.activeTabId}
-          setActiveTabId={(id) => shellStore.setActiveTabId(id)}
-          onCloseTab={(id) => shellStore.closeTab(id)}
-          onNewTab={() => shellStore.openTab({ kind: 'trade', title: 'new session' })}
-          sidebarVisible={$shellStore.sidebarVisible}
-          toggleSidebar={() => shellStore.toggleSidebar()}
           workMode={$shellStore.workMode}
           workspaceMode={$shellStore.workspaceMode}
           workspacePaneIds={$shellStore.workspacePaneIds}
           workspaceImmersivePaneId={$shellStore.workspaceImmersivePaneId}
-          onToggleCompare={(id) => shellStore.toggleTabCompare(id)}
-          onExpandPane={(id) => shellStore.expandWorkspacePane(id)}
-          onSetWorkMode={(mode) => shellStore.setWorkMode(mode)}
-          onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
-          onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
-          onIndicators={() => (indicatorLibraryOpen = true)}
+          workspaceColumnSplit={$shellStore.workspaceColumnSplit}
+          workspaceLeftSplitY={$shellStore.workspaceLeftSplitY}
+          workspaceRightSplitY={$shellStore.workspaceRightSplitY}
+          onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
         />
 
-        <ChartToolbar
-          onIndicators={() => (indicatorLibraryOpen = true)}
-          onSettings={() => (indicatorSettingsOpen = true)}
-        />
-
-        <WorkspaceStage
-            tabs={$shellStore.tabs}
-            activeTabId={$shellStore.activeTabId}
-            workMode={$shellStore.workMode}
-            workspaceMode={$shellStore.workspaceMode}
-            workspacePaneIds={$shellStore.workspacePaneIds}
-            workspaceImmersivePaneId={$shellStore.workspaceImmersivePaneId}
-            workspaceColumnSplit={$shellStore.workspaceColumnSplit}
-            workspaceLeftSplitY={$shellStore.workspaceLeftSplitY}
-            workspaceRightSplitY={$shellStore.workspaceRightSplitY}
-            onSymbolPickerOpen={(tabId) => openDesktopSymbolPicker(tabId)}
+      <!-- W-0392: RangeSelectionPanel — judge-save flywheel dock -->
+      {#if $chartSaveMode.active && $chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
+        <div class="range-selection-dock">
+          <RangeSelectionPanel
+            symbol={desktopSymbol}
+            tf={$activeTabState.timeframe ?? '4h'}
+            bars={slicedBars}
+            snapshot={rangeSnapshot}
+            onJudge={handleJudge}
+            onSaveOnly={handleSaveOnly}
+            onSave={handleSaveWithVerdict}
+            onRecall={handleRecall}
+            loading={judgeLoading}
+            recallLoading={recallLoading}
+            recallResults={recallResults}
+            verdict={judgeVerdict}
           />
-
-        <!-- W-0392: RangeSelectionPanel — judge-save flywheel dock (ChartBoard owns ResearchPanel) -->
-        {#if $chartSaveMode.active && $chartSaveMode.anchorA !== null && $chartSaveMode.anchorB !== null}
-          <div class="range-selection-dock">
-            <RangeSelectionPanel
-              symbol={desktopSymbol}
-              tf={$activeTabState.timeframe ?? '4h'}
-              bars={slicedBars}
-              snapshot={rangeSnapshot}
-              onJudge={handleJudge}
-              onSaveOnly={handleSaveOnly}
-              onSave={handleSaveWithVerdict}
-              onRecall={handleRecall}
-              loading={judgeLoading}
-              recallLoading={recallLoading}
-              recallResults={recallResults}
-              verdict={judgeVerdict}
-            />
-          </div>
-        {/if}
-      </div>
-
-      <!-- Right: AI agent panel or Decide panel — collapsible (⌘]) + wide (⌘\) -->
-      {#if $shellStore.aiVisible}
-        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
-        <div class="ai-pane" class:wide={$shellStore.aiWide} style:width={`${aiPaneWidth}px`}>
-          <div class="ai-pane-actions">
-            <button
-              class="ai-action-btn"
-              onclick={() => { shellStore.toggleAIWide(); trackPanelFoldToggle({ panel: 'ai_wide', action: 'toggle', trigger: 'click' }); }}
-              title={$shellStore.aiWide ? 'Narrow AI panel (⌘\\)' : 'Widen AI panel (⌘\\)'}
-              aria-label="Toggle AI panel width"
-            >
-              {#if $shellStore.aiWide}
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 3L7 5.5L3 8M8 2v7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              {:else}
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M8 3L4 5.5L8 8M3 2v7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              {/if}
-            </button>
-            <button
-              class="ai-action-btn"
-              onclick={() => { shellStore.toggleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'hide', trigger: 'click' }); }}
-              title="Collapse AI panel (⌘])"
-              aria-label="Collapse AI panel"
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
-          <AIAgentPanel
-              symbol={desktopSymbol}
-              timeframe={$activeTabState.timeframe ?? '4h'}
-              onSelectSymbol={(s) => shellStore.setSymbol(s)}
-              initialDecideId={initialDecideId}
-            />
         </div>
-      {:else}
-        <button
-          class="panel-reveal-strip panel-reveal-right"
-          onclick={() => { shellStore.toggleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'show', trigger: 'click' }); }}
-          title="Show AI panel (⌘])"
-          aria-label="Show AI panel"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 2L3.5 5L6.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
       {/if}
     </div>
 
+    <!-- grid-area: ai — AIAgentPanel column with fold/wide controls -->
+    <div class="ai-col" class:wide={$shellStore.aiWide}>
+      <!-- Fold chevron: left edge of AI column, hover-revealed -->
+      <button
+        class="col-fold-btn col-fold-ai"
+        onclick={() => { shellStore.cycleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'toggle', trigger: 'click' }); }}
+        title="Cycle AI panel: open → wide → fold (])"
+        aria-label="Cycle AI panel state"
+      >
+        {#if !$shellStore.aiVisible}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 2L3.5 5L6.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {:else}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {/if}
+      </button>
+      {#if $shellStore.aiVisible}
+        <div class="ai-pane-actions">
+          <button
+            class="ai-action-btn"
+            onclick={() => { shellStore.toggleAIWide(); trackPanelFoldToggle({ panel: 'ai_wide', action: 'toggle', trigger: 'click' }); }}
+            title={$shellStore.aiWide ? 'Narrow AI panel (⌘\\)' : 'Widen AI panel (⌘\\)'}
+            aria-label="Toggle AI panel width"
+          >
+            {#if $shellStore.aiWide}
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 3L7 5.5L3 8M8 2v7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {:else}
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M8 3L4 5.5L8 8M3 2v7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {/if}
+          </button>
+          <button
+            class="ai-action-btn"
+            onclick={() => { shellStore.toggleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'hide', trigger: 'click' }); }}
+            title="Collapse AI panel (⌘])"
+            aria-label="Collapse AI panel"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <AIAgentPanel
+            symbol={desktopSymbol}
+            timeframe={$activeTabState.timeframe ?? '4h'}
+            onSelectSymbol={(s) => shellStore.setSymbol(s)}
+            initialDecideId={initialDecideId}
+          />
+      {/if}
+    </div>
+
+    <!-- grid-area: statusbar -->
     <TerminalHoldTimeAdapter onStats={(p50, p90) => { holdP50 = p50; holdP90 = p90; }} />
-    <StatusBar
-      verdicts={$verdictCount}
-      modelDelta={$modelDelta}
-      sidebarVisible={$shellStore.sidebarVisible}
-      lastVerdictKind={lastVerdictKind}
-      lastUpdatedAt={$chartFreshness}
-      holdP50={holdP50}
-      holdP90={holdP90}
-    />
+    <div class="grid-statusbar">
+      <StatusBar
+        verdicts={$verdictCount}
+        modelDelta={$modelDelta}
+        sidebarVisible={$shellStore.sidebarVisible}
+        lastVerdictKind={lastVerdictKind}
+        lastUpdatedAt={$chartFreshness}
+        holdP50={holdP50}
+        holdP90={holdP90}
+      />
+    </div>
   {/if}
 
   <!-- Global overlays -->
@@ -685,10 +698,28 @@
 </div>
 
 <style>
+  /* ── W-0402 PR2: CSS Grid 4-column app-shell ─────────────────────────────
+     Row 0: topbar     (40px)
+     Row 1: news       (auto — NewsFlashBar self-hides when empty)
+     Row 2: main row   (1fr — watchlist | draw | chart | ai)
+     Row 3: statusbar  (28px)
+     Column widths controlled by --watch-w / --ai-w (PR1 tokens).
+     data-watch / data-ai attrs trigger token overrides defined in tokens.css.
+  ── */
   .app-shell {
     height: 100dvh;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: 40px auto 1fr 28px;
+    grid-template-columns:
+      var(--watch-w, 200px)
+      40px
+      1fr
+      var(--ai-w, 320px);
+    grid-template-areas:
+      "topbar    topbar topbar topbar"
+      "news      news   news   news"
+      "watchlist draw   chart  ai"
+      "statusbar statusbar statusbar statusbar";
     background: var(--g0);
     overflow: hidden;
     font-family: 'Geist', 'Inter', system-ui, sans-serif;
@@ -697,55 +728,74 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  @media (max-width: 768px) {
-    .app-shell {
-      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-    }
-  }
-
-  .main-row {
-    flex: 1;
+  /* Grid-area wrappers for full-width rows */
+  .grid-topbar {
+    grid-area: topbar;
     display: flex;
-    overflow: hidden;
     min-height: 0;
+    overflow: hidden;
+  }
+  .grid-topbar > :global(*) { flex: 1; min-width: 0; }
+
+  .grid-news {
+    grid-area: news;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .range-hint {
-    position: absolute;
-    top: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    background: var(--amb-d);
-    border: 1px solid var(--amb);
-    color: var(--amb);
-    font-size: var(--ui-text-xs);
-    padding: 3px 10px;
-    border-radius: 4px;
-    pointer-events: none;
-    white-space: nowrap;
-    letter-spacing: 0.04em;
+  .grid-statusbar {
+    grid-area: statusbar;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
   }
+  .grid-statusbar > :global(*) { flex: 1; min-width: 0; }
 
-  .range-hint kbd {
-    font-family: inherit;
-    background: var(--g4);
-    border: 1px solid var(--g5);
-    border-radius: 2px;
-    padding: 0 3px;
-    font-size: var(--ui-text-xs);
-    color: var(--g8);
-  }
-
-  .sidebar-pane {
-    flex-shrink: 0;
+  /* WatchlistRail column */
+  .watchlist-col {
+    grid-area: watchlist;
     display: flex;
     overflow: hidden;
     position: relative;
+    min-width: 0;
+    border-right: 1px solid var(--g3);
+    transition: width 0.18s ease;
   }
 
-  /* Fold/reveal buttons — minimalist hover-reveal */
-  .panel-fold-btn {
+  /* DrawingRail column */
+  .draw-col {
+    grid-area: draw;
+    display: flex;
+    overflow: hidden;
+    min-width: 0;
+    border-right: 1px solid var(--g3);
+  }
+
+  /* Chart / canvas column */
+  .canvas-col {
+    grid-area: chart;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    contain: layout paint;
+  }
+
+  /* AI Agent column */
+  .ai-col {
+    grid-area: ai;
+    overflow: hidden;
+    contain: layout paint;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--g3);
+    transition: width 0.18s ease;
+  }
+  .ai-col.wide { box-shadow: -4px 0 12px rgba(0, 0, 0, 0.18); }
+
+  /* Fold column buttons — hover-revealed chevrons at col edges */
+  .col-fold-btn {
     position: absolute;
     top: 8px;
     width: 18px;
@@ -761,30 +811,52 @@
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
-    z-index: 5;
+    z-index: 6;
   }
-  .sidebar-pane:hover .panel-fold-btn,
-  .ai-pane:hover .panel-fold-btn { opacity: 1; }
-  .panel-fold-btn:hover { background: var(--g3); color: var(--g9); }
-  .panel-fold-left { right: 4px; }
+  .watchlist-col:hover .col-fold-btn,
+  .ai-col:hover .col-fold-btn { opacity: 1; }
+  .col-fold-btn:hover { background: var(--g3); color: var(--g9); }
+  /* Watchlist fold btn: right edge */
+  .col-fold-watch { right: 2px; }
+  /* AI fold btn: left edge */
+  .col-fold-ai { left: 2px; }
 
-  .panel-reveal-strip {
-    flex-shrink: 0;
-    width: 14px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    background: var(--g1);
-    border: none;
-    border-right: 1px solid var(--g4);
-    color: var(--g6);
-    cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+  /* When watchlist is folded: hide content, show only thin strip */
+  [data-watch='folded'] .watchlist-col {
+    overflow: hidden;
+    border-right: 1px solid var(--g3);
   }
-  .panel-reveal-strip:hover { background: var(--g2); color: var(--g9); }
-  .panel-reveal-right { border-right: none; border-left: 1px solid var(--g4); }
+  [data-watch='folded'] .watchlist-col :global(*:not(.col-fold-btn)) {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  [data-watch='folded'] .watchlist-col .col-fold-btn {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+  }
 
+  /* When AI is folded: hide content, show only thin strip */
+  [data-ai='folded'] .ai-col {
+    overflow: hidden;
+    border-left: 1px solid var(--g3);
+  }
+  [data-ai='folded'] .ai-col :global(*:not(.col-fold-btn)) {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  [data-ai='folded'] .ai-col .col-fold-btn {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* AI action buttons (wide/close) */
   .ai-pane-actions {
     position: absolute;
     top: 6px;
@@ -808,36 +880,34 @@
     opacity: 0.5;
     transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
   }
-  .ai-pane:hover .ai-action-btn { opacity: 1; }
+  .ai-col:hover .ai-action-btn { opacity: 1; }
   .ai-action-btn:hover { background: var(--g3); color: var(--g9); }
 
-  .canvas-col {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    contain: layout paint;
-  }
-
-  /* ResearchPanel slides in from right side of chart area on range selection */
-  .research-overlay {
+  /* Range hint overlay at top of chart column */
+  .range-hint {
     position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 340px;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 20;
-    background: var(--g1, #0c0a09);
-    border-left: 1px solid var(--g4, #272320);
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
-    animation: slide-in-right 0.15s ease-out;
+    background: var(--amb-d);
+    border: 1px solid var(--amb);
+    color: var(--amb);
+    font-size: var(--ui-text-xs);
+    padding: 3px 10px;
+    border-radius: 4px;
+    pointer-events: none;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
   }
-
-  @keyframes slide-in-right {
-    from { transform: translateX(100%); opacity: 0; }
-    to   { transform: translateX(0);   opacity: 1; }
+  .range-hint kbd {
+    font-family: inherit;
+    background: var(--g4);
+    border: 1px solid var(--g5);
+    border-radius: 2px;
+    padding: 0 3px;
+    font-size: var(--ui-text-xs);
+    color: var(--g8);
   }
 
   /* W-0392: judge-save dock at bottom of chart column */
@@ -849,15 +919,24 @@
     z-index: 21;
   }
 
-  .ai-pane {
-    flex-shrink: 0;
-    overflow: hidden;
-    contain: layout paint;
-    position: relative;
-    transition: width 0.18s ease;
-  }
-  .ai-pane.wide { box-shadow: -4px 0 12px rgba(0, 0, 0, 0.18); }
+  /* ── Mobile (≤768px): single-column stack ──────────────────────────────── */
+  @media (max-width: 768px) {
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    }
 
+    /* Hide desktop grid columns on mobile */
+    .watchlist-col,
+    .draw-col,
+    .canvas-col,
+    .ai-col {
+      display: none; /* TODO: drawer overlay pattern for mobile */
+    }
+  }
+
+  /* Mobile canvas / agent host (used in {#if MOBILE} branch) */
   .mobile-canvas {
     flex: 1;
     min-height: 0;

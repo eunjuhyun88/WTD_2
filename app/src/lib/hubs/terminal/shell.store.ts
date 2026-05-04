@@ -600,6 +600,14 @@ function createShellStore() {
     toggleSidebar: () => { update(st => ({ ...st, sidebarVisible: !st.sidebarVisible })); },
     toggleAI: () => { update(st => ({ ...st, aiVisible: !st.aiVisible })); },
     toggleAIWide: () => { update(st => ({ ...st, aiWide: !st.aiWide, aiVisible: true })); },
+    // W-0402 PR2: 3-state AI cycle (open → wide → folded → open)
+    cycleAI: () => {
+      update(st => {
+        if (!st.aiVisible) return { ...st, aiVisible: true, aiWide: false };
+        if (!st.aiWide)    return { ...st, aiVisible: true, aiWide: true };
+        return { ...st, aiVisible: false, aiWide: false };
+      });
+    },
     resetPanels: () => { update(st => ({ ...st, sidebarVisible: true, aiVisible: true, aiWide: false })); },
     setActiveSection: (id: 'library' | 'verdicts' | 'rules') => { update(st => ({ ...st, activeSection: id })); },
 
