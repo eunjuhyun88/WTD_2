@@ -1,7 +1,7 @@
 # W-0411 Wallet Enterprise Hardening
 
 ## Goal
-Privy 이메일 로그인 + 지갑 연결 전체 플로우를 기업 배포 수준으로 hardening.
+Privy 이메일 로그인 + 지갑 연결 전체 플로우를 기업 배포 수준으로 hardening — 이메일 전용 유저도 완전한 인증 상태로 인식.
 
 ## Owner
 app
@@ -31,6 +31,11 @@ app
 - `app/src/routes/settings/passport/+page.svelte` — Link Wallet CTA
 - `app/src/routes/+page.svelte` — beta-pending banner
 
+## Non-Goals
+- DB migration (user_profiles 테이블 생성) — 별도 작업
+- Privy dashboard origin 등록 — 수동 설정
+- WalletConnect 프로젝트 세팅 변경
+
 ## Exit Criteria
 - [x] Privy 이메일 OTP 로그인 성공
 - [x] MetaMask/Phantom/Base SDK not found 제거
@@ -38,3 +43,37 @@ app
 - [x] 이메일 유저 인증 상태 Header/AppTopBar 반영
 - [x] Beta gate 이메일 체크
 - [x] GMX/Polymarket 지갑 소유권 검증
+
+## Canonical Files
+- `app/src/lib/wallet/privyClient.ts`
+- `app/src/lib/wallet/providers.ts`
+- `app/src/lib/api/auth.ts`
+- `app/src/lib/stores/walletStore.ts`
+- `app/src/hooks.server.ts`
+- `app/src/routes/api/auth/privy/+server.ts`
+
+## Facts
+- Privy `loginWithCode` 반환: `identity_token` / `token` (not `accessToken`)
+- `@vite-ignore` + variable = Vite가 번들 안함 → 런타임 "SDK not found"
+- `credentials:'include'` 없으면 cross-origin 쿠키 미전송
+- `hydrateAuthSession()` 미호출 시 이메일 세션 재로드 불가
+
+## Assumptions
+- Privy dashboard에 dev origin 등록됨
+- Supabase sessions 테이블 존재 (migrations 적용됨)
+
+## Open Questions
+- user_profiles 테이블 migration dev DB 미적용 → passport 로드 실패 잔존
+
+## Decisions
+- `accessToken` → `identity_token ?? token` 로 수정 (Privy SDK 실제 반환값 기준)
+- 이메일 전용 유저 `isAuthenticated = connected || !!(email || nickname)`
+
+## Next Steps
+- W-PF-100-P2-eval-challenge 착수
+- dev DB migration 적용 (user_profiles, auth_sessions 테이블)
+
+## Handoff Checklist
+- [x] PR #1191 merged
+- [x] CURRENT.md SHA 업데이트 (PR #1193)
+- [x] work item 파일 생성
