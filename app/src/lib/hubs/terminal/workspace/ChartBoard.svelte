@@ -185,11 +185,23 @@
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
 
   // ── W-0289: Drawing tools ──────────────────────────────────────────────────
-  let drawingActiveTool     = $state<DrawingToolType>('cursor');
+  // drawingActiveTool derived from shellStore — DrawingRail is the single source of truth
+  const drawingActiveTool = $derived($shellStore.drawingTool as DrawingToolType);
   let drawingToolsVisible   = $state(false);
   let drawingMgr = $state<DrawingManager | null>(null);
 
   const onToggleDrawingTools = () => { drawingToolsVisible = !drawingToolsVisible; shellStore.setDrawingTool(drawingToolsVisible ? 'trendLine' : 'cursor'); };
+
+  // Sync shellStore.drawingTool → drawingMgr via syncTool (no toggle, no onToolChange re-emission)
+  $effect(() => {
+    const tool = $shellStore.drawingTool as DrawingToolType;
+    const mgr = drawingMgr;
+    if (mgr) setTimeout(() => mgr.syncTool(tool), 0);
+  });
+
+  // Handle clear/delete dispatched from DrawingRail via DOM events
+  function onDrawingClearAll() { drawingMgr?.clearAll(); }
+  function onDrawingDeleteSelected() { drawingMgr?.deleteSelected(); }
 
   let indicatorLibraryOpen = $state(false);
   let catalogModalOpen = $state(false);
@@ -507,16 +519,19 @@
   function _syncPanesFromTab(tabState: { panes?: { kind: string; visible: boolean; stretch: number }[] }) {
     const panes = tabState?.panes;
     if (!panes?.length) return;
-    const vis: Partial<Record<PaneKind, boolean>> = {};
-    for (const p of panes) {
-      if (_LAYOUT_KINDS.has(p.kind)) vis[p.kind as PaneKind] = p.visible;
-    }
-    paneLayout.syncVisibility(vis);
-    for (const p of panes) {
-      if (_LAYOUT_KINDS.has(p.kind) && p.visible) {
-        paneLayout.setStretch(p.kind as PaneKind, p.stretch);
+    // setTimeout escapes Svelte 5 reactive flush (prevents state_unsafe_mutation)
+    setTimeout(() => {
+      const vis: Partial<Record<PaneKind, boolean>> = {};
+      for (const p of panes) {
+        if (_LAYOUT_KINDS.has(p.kind)) vis[p.kind as PaneKind] = p.visible;
       }
-    }
+      paneLayout.syncVisibility(vis);
+      for (const p of panes) {
+        if (_LAYOUT_KINDS.has(p.kind) && p.visible) {
+          paneLayout.setStretch(p.kind as PaneKind, p.stretch);
+        }
+      }
+    }, 0);
   }
   let _unsubPanes: (() => void) | undefined;
 
@@ -1513,7 +1528,7 @@
           drawingMgr?.detach();
           drawingMgr = new DrawingManager({ storageKey: key });
         }
-        drawingMgr.onToolChange = (t) => { drawingActiveTool = t; };
+        drawingMgr.onToolChange = (t) => { shellStore.setDrawingTool(t); };
         drawingMgr.attach(mainChart, priceSeries as ISeriesApi<SeriesType>);
       }
     });
@@ -1755,6 +1770,9 @@
     window.addEventListener('keydown', handleDrawingModeKeydown);
     // / key opens indicator library (W-0399)
     window.addEventListener('keydown', handleIndicatorLibraryKeydown);
+    // DrawingRail clear/delete events (siblings in grid, can't share props)
+    window.addEventListener('wtd:drawing:clear-all', onDrawingClearAll);
+    window.addEventListener('wtd:drawing:delete-selected', onDrawingDeleteSelected);
     // Initial viewport width
     onWin();
     return () => {
@@ -1768,6 +1786,8 @@
       window.removeEventListener('keydown', handleRangeModeKeydown);
       window.removeEventListener('keydown', handleDrawingModeKeydown);
       window.removeEventListener('keydown', handleIndicatorLibraryKeydown);
+      window.removeEventListener('wtd:drawing:clear-all', onDrawingClearAll);
+      window.removeEventListener('wtd:drawing:delete-selected', onDrawingDeleteSelected);
     }
     disconnectWS();
     destroyCharts();

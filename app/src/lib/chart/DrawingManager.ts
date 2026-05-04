@@ -181,6 +181,16 @@ export class DrawingManager {
     this.render();
   }
 
+  /** Sync active tool from store without toggling and without emitting onToolChange. */
+  syncTool(tool: DrawingToolType) {
+    if (this.activeTool === tool) return;
+    this.activeTool = tool;
+    this.fsmState = 'idle';
+    this.pendingPoints = [];
+    this.previewPoint = null;
+    this.render();
+  }
+
   getActiveTool(): DrawingToolType { return this.activeTool; }
   getDrawings(): Drawing[] { return [...this.drawings]; }
 

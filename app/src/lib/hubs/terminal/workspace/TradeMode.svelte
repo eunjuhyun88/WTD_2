@@ -1398,6 +1398,14 @@
         aria-pressed={multiChartMode}
         onclick={() => { multiChartMode = !multiChartMode; }}
       >⊞</button>
+      <button
+        class="chart-save-compact hud-toggle"
+        class:active={!sidebarAnalyzeDockCollapsed}
+        type="button"
+        title={sidebarAnalyzeDockCollapsed ? 'Show Decision HUD' : 'Hide Decision HUD'}
+        aria-pressed={!sidebarAnalyzeDockCollapsed}
+        onclick={() => { sidebarAnalyzeDockCollapsed = !sidebarAnalyzeDockCollapsed; }}
+      >HUD</button>
     </div>
     <div class="chart-body">
       <div class="chart-live">
@@ -2456,9 +2464,11 @@
     transition: width 0.16s ease, margin 0.16s ease;
   }
   .lc-sidebar.collapsed {
-    width: 56px;
+    width: 0;
+    min-width: 0;
     overflow: hidden;
-    align-items: center;
+    margin: 0;
+    border: none;
   }
   .lc-sidebar-rail {
     width: 100%;
@@ -3070,12 +3080,7 @@
   }
 
   .mobile-tab-strip {
-    height: 32px;
-    flex-shrink: 0;
-    display: flex;
-    background: var(--g2);
-    border-top: 1px solid var(--g4);
-    border-bottom: 1px solid var(--g4);
+    display: none; /* MobileBottomNav in TerminalHub is the canonical mobile nav */
   }
 
   .mts-tab {
