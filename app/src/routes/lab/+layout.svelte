@@ -10,12 +10,11 @@
   const tabs = [
     { href: '/lab',              label: 'Backtest' },
     { href: '/lab/analyze',      label: 'AI Analysis' },
-    { href: '/research/ledger',  label: 'Research' },
+    { href: '/lab/ledger',       label: 'Ledger' },
   ];
 
   function active(href: string): boolean {
     if (href === '/lab') return path === '/lab';
-    if (href === '/research/ledger') return path.startsWith('/research');
     return path === href || path.startsWith(href + '/');
   }
 </script>
