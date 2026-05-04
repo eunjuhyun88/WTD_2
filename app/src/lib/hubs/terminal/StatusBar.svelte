@@ -137,11 +137,15 @@
   </span>
 
   <span class="shortcuts">
-    <span class="status-item">⌘B <span class="divider">·</span> sidebar</span>
+    <span class="status-item">⌘[ <span class="divider">·</span> watch</span>
     <span class="divider">│</span>
-    <span class="status-item">⌘K <span class="divider">·</span> prompt</span>
+    <span class="status-item">⌘] <span class="divider">·</span> ai</span>
     <span class="divider">│</span>
-    <span class="status-item">⌘T <span class="divider">·</span> new tab</span>
+    <span class="status-item">⌘\ <span class="divider">·</span> wide</span>
+    <span class="divider">│</span>
+    <span class="status-item">⌘0 <span class="divider">·</span> reset</span>
+    <span class="divider">│</span>
+    <span class="status-item">⌘K <span class="divider">·</span> cmd</span>
     <span class="divider">│</span>
   </span>
   <span class="time">{currentTime}</span>
