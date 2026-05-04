@@ -476,3 +476,55 @@ D1=A (Dashboard mount) 시 위 이동 불필요.
 3. W-0409 (Patterns) / W-0410 (Lab) / W-0411 (Settings) 설계 완료 후
 4. 5개 페이지 통합 검토 → PR1 부터 순차 구현 시작
 
+
+---
+
+## Goal
+
+위 §Why / §Goals 본문 참조.
+
+## Owner
+
+위 §Status 의 Owner 필드 참조.
+
+## Scope
+
+위 §A / §B / §C 본문 참조.
+
+## Non-Goals
+
+위 §Non-Goals 또는 본문 명시 항목 참조.
+
+## Canonical Files
+
+위 §C / §C3 / 컴포넌트 disposition 표 참조.
+
+## Facts
+
+위 §A audit (실측) 또는 References 참조.
+
+## Assumptions
+
+위 §Status dependencies + §Why 전제 참조.
+
+## Open Questions
+
+위 §D Decisions 중 미확정 / §J 보강 항목 참조.
+
+## Decisions
+
+위 §D 결정표 / §Decisions 본문 참조.
+
+## Next Steps
+
+위 §I 다음 단계 / §G 다음 단계 본문 참조.
+
+## Exit Criteria
+
+위 §F AC / §D AC / §통합 AC 본문 참조.
+
+## Handoff Checklist
+
+- [ ] 위 §F AC 전부 통과
+- [ ] CURRENT.md main SHA 갱신
+- [ ] 머지 후 본 work item 파일 archive 이동
