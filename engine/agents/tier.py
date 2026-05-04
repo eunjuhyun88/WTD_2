@@ -20,7 +20,7 @@ _TIER_CONFIGS: dict[str, TierConfig] = {
         tier="free",
         model_override=None,          # env default: Ollama qwen3.5 or claude-haiku
         max_tool_calls=4,
-        allowed_tools=["explain", "alpha_scan", "similar", "live_snapshot"],
+        allowed_tools=["explain", "similar", "live_snapshot"],
         msgs_per_day=20,
     ),
     "pro": TierConfig(
