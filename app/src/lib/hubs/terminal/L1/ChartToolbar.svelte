@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { shellStore, activeTabState } from '../shell.store';
+  import { shellStore, activeTabState, activeDrawingMode } from '../shell.store';
   import type { ChartType } from '../shell.store';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { chartSaveModeV2 } from '$lib/stores/chartSaveMode.store';
@@ -176,6 +176,16 @@
     <span class="tb-glyph">fx</span>
   </button>
 
+  <button
+    class="tb-btn"
+    class:active={$activeDrawingMode}
+    onclick={() => shellStore.setDrawingTool('trendLine')}
+    title="Drawing tools"
+    aria-pressed={$activeDrawingMode}
+  >
+    <span class="tb-text">Draw</span>
+  </button>
+
   <button class="tb-btn" onclick={() => dispatch('toggle_replay')} title="Replay">
     <span class="tb-glyph">▶</span><span class="tb-text">Replay</span>
   </button>
@@ -246,7 +256,7 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 3px;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.82);
     font-family: inherit;
     font-size: var(--ui-text-xs, 11px);
     cursor: pointer;
@@ -309,7 +319,7 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 3px;
-    color: rgba(255, 255, 255, 0.52);
+    color: rgba(255, 255, 255, 0.75);
     font-family: var(--fm, 'JetBrains Mono', monospace);
     font-size: var(--ui-text-xs, 11px);
     cursor: pointer;
@@ -421,11 +431,11 @@
   .ct-item-full { font-size: var(--ui-text-xs, 11px); }
   .ct-item-check { color: var(--brand, #4a9eff); font-size: var(--ui-text-xs, 11px); }
 
-  @media (max-width: 1099px) {
+  @media (max-width: 600px) {
     .tb-text { display: none; }
     .sym-price, .sym-change { display: none; }
   }
-  @media (max-width: 800px) {
+  @media (max-width: 480px) {
     .tf-strip { display: none; }
   }
 </style>

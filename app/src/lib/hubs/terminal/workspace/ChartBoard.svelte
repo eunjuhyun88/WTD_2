@@ -24,7 +24,6 @@
   import SaveSetupModal from './SaveSetupModal.svelte';
   import SaveStrip from './SaveStrip.svelte';
   import ResearchPanel from './ResearchPanel.svelte';
-  import ChartToolbar from './ChartToolbar.svelte';
   import ChartBoardHeader from './ChartBoardHeader.svelte';
   import VerdictBanner from './VerdictBanner.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
@@ -1919,14 +1918,6 @@
   data-deriv-overlay={derivativesOnMain ? '1' : '0'}
   data-surface={surfaceStyle}
 >
-
-  <!-- ── ChartToolbar (TF selector + export + drawing mode) ────── -->
-  <ChartToolbar
-    {tf}
-    onTfChange={selectTf}
-    drawingMode={$activeDrawingMode}
-    onToggleDrawing={() => shellStore.setDrawingTool('trendLine')}
-  />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
   <ChartBoardHeader

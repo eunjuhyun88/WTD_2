@@ -508,6 +508,7 @@
     <!-- grid-area: topbar -->
     <div class="grid-topbar">
       <TopBar
+        hideChartControls={true}
         onSymbolTap={() => (desktopSymbolPickerOpen = true)}
         onIndicators={() => (indicatorLibraryOpen = true)}
       />
