@@ -216,3 +216,174 @@ Wave E — 모바일 + 폴리시 (Wave D 후)
 2. **W-0407 spike 부터 시작** (lightweight-charts v5 + SVG overlay POC)
 3. spike 결과 보고 → Wave A 머지 시작 합의
 4. Wave 단위 진행
+
+---
+
+## J. 검증 후 보강 (2026-05-05 4-agent 실측 audit)
+
+### J1. EquityCurve — 3개 컴포넌트 (가정 부정확)
+
+기존 §B1 가정: "Lab + Patterns/[slug] 2개, W-0409 PR5 에서 단일화".
+
+실측: **3개 별개 컴포넌트, props 전부 다름.**
+
+| 컴포넌트 | 경로 | Props | 사용처 |
+|----------|------|-------|--------|
+| `EquityCurveChart` | `components/lab/EquityCurveChart.svelte` | `series: EquitySeries\|null` | LabHub |
+| `PatternEquityCurve` | `lib/components/patterns/PatternEquityCurve.svelte` | `points: PnLStatsPoint[]` | patterns/[slug] |
+| `EquityCurve` | `lib/hubs/agent/panels/EquityCurve.svelte` | `agentId: string` | AgentHub |
+
+→ **단순 props superset 통합 불가**. W-0409 PR5 의 "단일화" 는 Lab+Patterns 2개로 한정. **Agent 의 `EquityCurve` 는 별도 owner 유지** (props 가 fetch 래퍼 — agentId only). W-0409 PR5 에서 Lab/Patterns 두 개만 통합, Agent 컴포넌트는 그대로.
+
+### J2. MobileFooter — 현재 Settings 항목 없음
+
+기존 §B2: "MobileFooter `/lab` LAB 항목 → 삭제" + "Settings 진입점 갱신".
+
+실측: 현재 `navItems = [{cogochi}, {home}, {lab}, {dashboard}]`. **Settings 항목 자체가 없음.** Settings 는 `Header.svelte` desktop 에만.
+
+→ W-0409 PR5 = LAB 삭제. W-0411 PR1 = **Settings 항목 신규 추가** (갱신이 아니라). 두 PR 이 같은 `navItems` 배열 같은 영역(line 24~27) 수정 → 충돌 위험. **머지 순서: W-0409 PR5 → W-0411 PR1** (LAB 삭제 후 Settings 추가).
+
+### J3. appSurfaces.ts — settings surface 부재 + MobileFooter 미사용
+
+기존 §B4: "W-0411 settings surface 변경 없음 (utility nav, 직접 하드코딩)".
+
+실측: **`AppSurfaceId` 타입에도 SURFACE_MAP 에도 `settings` 정의 없음.** MobileFooter 는 이 파일 미사용 (자체 navItems 하드코딩). 소비처는 `Header.svelte` (DESKTOP_NAV_SURFACES) 만.
+
+→ W-0411 가 Settings 를 nav 에 통합 노출하려면 **AppSurfaceId 타입 + SURFACE_MAP 신규 항목 추가** 필요. 현 W-0411 §K15 "settings 는 utility nav 별도 하드코딩" 결정과 일치하나, 만약 통합 nav 로 가면 appSurfaces 도 W-0411 owner. **결정 유지**: settings 는 utility nav, appSurfaces 건드리지 않음.
+
+### J4. W-0408 PR2 "VerdictInboxSection 삭제" 용어 모호성
+
+W-0408 §E PR2 본문: "DashActivityGrid + VerdictInboxSection **삭제**". §C: "dashboard 에서만 unmount — 컴포넌트 자체 삭제 금지".
+
+→ PR2 구현 시 컴포넌트 파일을 실수로 삭제하면 W-0409 PR3 의 rail Inbox 깨짐. **W-0408 §E PR2 본문 용어 정정 필요**: "삭제" → "Dashboard 에서 unmount (컴포넌트 파일 보존)".
+
+### J5. W-0407 W-T0 spike → W-T2 게이트 명시
+
+기존 §C1 Wave A: "W-0407 PR1~PR3 (Terminal spike + lightweight-charts v5 마이그레이션)".
+
+실측: W-T0 spike 통과 후에야 W-T2 (lightweight-charts v5 마이그레이션) 발급. Wave A 에 W-T0+W-T2 묶으면 **순서 위반 위험**.
+
+→ Wave A 분리: **W-T0 spike 단독** → spike 통과 게이트 → W-T1+W-T2 진행. **Wave A → Wave A.5 (spike pass) → 나머지**.
+
+### J6. W-T5 백엔드 병목 (Aggregated API engine/)
+
+W-T5 = Aggregated 인디케이터 API (engine/) 신규. **engine 측 PR 필요** — frontend PR 와 별도 직렬.
+
+→ W-0413 timeline 추정에 engine 백엔드 병목 미반영. **W-T5 는 별도 백엔드 PR + frontend 통합 PR 2단**.
+
+### J7. inboxCountStore — W-0408 삭제 vs W-0411 read
+
+W-0408 M4: `inboxCountStore` 삭제, `inboxBadge.store` 단일 source 통합.
+W-0411 §K13: Notifications 섹션이 `inboxBadge.store` / `inboxCountStore` 표시 — **삭제될 store 를 read 명시**.
+
+→ **W-0411 §K13 정정**: `inboxCountStore` 제거, `inboxBadge.store` 만 read. **머지 순서: W-0408 PR (M4 포함) → W-0411 PR2 (Notifications)** — 하지만 §C1 Wave 분류는 W-0408 흡수가 Wave D, W-0411 PR2 가 Wave B → 순서 역전. **W-0411 PR2 가 잠정적으로 두 store 모두 read 후 W-0408 머지 시점에 정리 sub-PR 필요**.
+
+### J8. §C3 파일 락 테이블 — 6건 누락
+
+| 파일 | W item | 머지 순서 |
+|------|--------|----------|
+| `components/layout/AppTopBar.svelte` | W-0407 W-T9 + W-0411 K7 PR1 | W-0411 PR1 → W-0407 W-T9 |
+| `lib/shared/panels/AppNavRail.svelte` 또는 `MobileBottomNav.svelte` | W-0409 PR7 (lab 항목 제거) + W-0411 PR1 (Settings 진입점) | W-0409 PR7 → W-0411 PR1 |
+| `routes/dashboard/+page.svelte` | W-0408 다수 PR + **W-0409 PR5** (`goto('/lab')` 교체) | W-0408 직렬 완료 → W-0409 PR5 rebase |
+| `hubs/terminal/workspace/ChartBoardHeader.svelte` | W-0407 W-T14 (폐기) + W-0409 PR5 (URL 교체) | **W-0409 PR5 → W-0407 W-T14** (URL 먼저, 폐기 나중) |
+| `hubs/terminal/workspace/SaveStrip.svelte` | 위 동일 | 위 동일 |
+| `hubs/terminal/workspace/ChartBoard.svelte` | 위 동일 | 위 동일 |
+| `lib/stores/inboxCountStore.ts` | W-0408 (삭제) + W-0411 (read) | W-0411 잠정 read → W-0408 삭제 → W-0411 정리 sub-PR |
+
+→ **§C3 파일 락 테이블에 7행 추가** + CURRENT.md 파일 락 테이블에 PR 시작 시 등록.
+
+### J9. W-0407 Cross-cut Decision (12개 중 4개)
+
+| W-0407 Decision | Cross-cut 대상 | 영향 |
+|-----------------|---------------|------|
+| #1 lightweight-charts v5 | W-0399 (multi-instance indicators, clientIndicators.ts) | v5 마이그레이션 후 W-0399 산출물 재배선 필요 |
+| #2 SVG overlay | W-0403 (surface decomposition) drawing layer | 정합 검증 필요 |
+| #10 Mode 4→1축 (workMode 단일) | W-0402 (terminal foldable panels) mode 처리 | 직접 cross-cut |
+| #3 자체 aggregator | W-0404 (AI NL litellm) Scan mode 결과 | aggregated data 소유권 명확화 |
+
+→ §B1 컴포넌트 공유 표에 추가 cross-cut 4건 명시.
+
+### J10. W-0407 Cross-page orphan disposition
+
+| Orphan | W-0407 처리 → 실제 owner |
+|--------|-------------------------|
+| `PatternLibraryPanelAdapter`, `PatternClassBreakdown` | AI 패널 Pattern mode 흡수 — Patterns(W-0409) 와 공유 가능성 |
+| `PineGenerator` | Lab 귀속 → W-0409 (Lab 흡수) |
+| `DogeOSWalletButton` | Settings 귀속 → W-0411 §K16 |
+| `CopyTradingLeaderboard` | Dashboard 귀속 → W-0408 cross-page mount + W-0409 PR4 (Compare 탭) — **2 owner 충돌** |
+| `AIAgentPanel` | W-0404 multi-provider litellm 대상과 동일 — 중첩 |
+| `ResearchBlockRenderer` | W-0407 흡수 + W-0409 PR7 흡수 — **2 owner 충돌** |
+
+→ **`CopyTradingLeaderboard` + `ResearchBlockRenderer` 2건 owner 충돌**. 결정 필요:
+- `CopyTradingLeaderboard`: W-0409 PR4 (Compare 탭) **단독 owner**, W-0408 cross-page mount 후보에서 제외
+- `ResearchBlockRenderer`: W-0409 PR7 (Research 탭) **단독 owner**, W-0407 AI Research mode 는 별도 컴포넌트 신설
+
+### J11. 통합 timeline 재추정
+
+기존: 4주.
+
+실측 보강 후:
+- W-T0 spike 단독 → +0.5주 (game gate)
+- W-T5 백엔드 병목 → +0.5주
+- inboxCountStore 정리 sub-PR → +0.2주
+- ChartBoardHeader 등 머지 순서 직렬화 (W-0409 PR5 → W-0407 W-T14) → +0.3주
+
+→ **재추정: ~5주** (기존 4주 + 1주 buffer).
+
+### J12. Wave 분류 갱신
+
+```
+Wave A0 — Spike gate (단독)
+  └ W-0407 W-T0 (lightweight-charts v5 + SVG overlay POC)
+
+Wave A — 무의존 골격 (W-T0 통과 후)
+  ├ W-0408 PR1 (Dashboard 골격)
+  ├ W-0409 PR1 (탭 골격 + Compare 흡수)
+  ├ W-0411 PR1 (Layout sidebar + AC10 + AppTopBar K7)
+  └ W-0407 W-T1, W-T2 (TabBar + ChartPane v5)
+
+Wave B — Cross-page 단일화
+  ├ W-0408 PR2 (VerdictInboxSection unmount, 컴포넌트 보존)
+  ├ W-0409 PR3 (Patterns 단독 owner)
+  ├ W-0408 PR2.5 (cross-page mount 1차)
+  ├ W-0409 PR2 (Search + Lifecycle)
+  ├ W-0411 PR2 (GeneralPanel 분해, inboxCountStore 잠정 read)
+  └ W-0407 W-T3, W-T4 (drawing overlay + range capture)
+
+Wave C — 핵심 기능 흡수
+  ├ W-0409 PR4 ([slug] Formula + CopyTradingLeaderboard 단독 owner)
+  ├ W-0409 PR5 (Workshop + Lab 흡수 1차 + Terminal /lab URL 교체)
+  ├ W-0411 PR3 (Subscription + /upgrade)
+  ├ W-0411 PR4 (Profile + /passport + Privy/wallet)
+  ├ W-0407 W-T5 (engine aggregated API — 백엔드)
+  └ W-0407 W-T6, W-T7, W-T8
+
+Wave D — 고급 기능
+  ├ W-0409 PR6 (Workshop Refinement/Counterfactual + Live)
+  ├ W-0409 PR7 (Research + lab surface 제거)
+  ├ W-0411 PR5 (Privacy/Legal + Usage)
+  ├ W-0411 PR6 (AI key 서버 persist)
+  └ W-0408 PR3~PR5 (흡수 + 모바일 + WVPL, inboxCountStore 삭제)
+
+Wave E — 모바일 + 폴리시 + 잔여
+  ├ W-0411 정리 sub-PR (inboxBadge 단일화)
+  ├ W-0409 PR8 (모바일 drawer)
+  ├ W-0411 PR7 (System + Theme/Lang + 모바일 + 테스트)
+  ├ W-0408 PR6 (cross-page mount 3차)
+  ├ W-0407 W-T9 (AppTopBar 통합 — W-0411 PR1 후)
+  ├ W-0407 W-T10~W-T13
+  ├ W-0407 W-T14 (orphan 일괄 삭제 — 모든 Cross-W 정리 후)
+  └ W-0412 i18n
+```
+
+### J13. 추가 IAC
+
+| AC | 검증 |
+|----|------|
+| IAC17 | W-0407 W-T0 spike 통과 후에만 W-T2 시작 (게이트 검증) |
+| IAC18 | EquityCurve Lab+Patterns 통합, Agent 별도 owner 유지 |
+| IAC19 | MobileFooter LAB 항목 제거 + Settings 항목 추가 (충돌 없는 머지 순서) |
+| IAC20 | inboxCountStore 삭제 후 inboxBadge.store 단일 source — Notifications 섹션 정상 작동 |
+| IAC21 | CopyTradingLeaderboard W-0409 PR4 단독 owner (W-0408 mount 0) |
+| IAC22 | ResearchBlockRenderer W-0409 PR7 단독 owner |
+| IAC23 | W-0408 PR2 머지 후 VerdictInboxSection.svelte 파일 존재 (unmount only, 삭제 X) |
