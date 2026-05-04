@@ -38,19 +38,38 @@
     onOpenTradeTab: (candidate: ScanCandidate) => void;
   }
 
+  interface AiAskEvent {
+    intent: string;
+    query: string;
+    ts: number;
+  }
+
   interface Props {
     data: ScanData;
     actions: ScanActions;
+    aiAsk?: AiAskEvent | null;
+    onClearAiAsk?: () => void;
   }
 
-  let { data, actions }: Props = $props();
+  let { data, actions, aiAsk = null, onClearAiAsk }: Props = $props();
 
   // Convenience destructuring for template
   const { confluence, scanState, scanProgress, scanCandidates, scanSelected, pastCaptures } = data;
   const { onOpenAnalyze, onSetScanSelected, onOpenTradeTab } = actions;
+
+  const AI_ASK_TTL_MS = 30_000;
+  const showAiAskBanner = $derived(
+    aiAsk !== null && Date.now() - aiAsk.ts < AI_ASK_TTL_MS
+  );
 </script>
 
 <div class="scan-panel">
+  {#if showAiAskBanner && aiAsk}
+    <div class="ai-ask-banner">
+      <span class="ai-ask-text">🤖 AI ask · "{aiAsk.query}"</span>
+      <button class="ai-ask-clear" onclick={() => onClearAiAsk?.()} aria-label="Clear AI ask">✕</button>
+    </div>
+  {/if}
   <div class="scan-header">
     <span class="scan-step">03</span>
     {#if confluence}
@@ -147,4 +166,35 @@
     </div>
   </div>
 </div>
+
+<style>
+  .ai-ask-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 24px;
+    padding: 0 8px;
+    background: var(--g2);
+    border-bottom: 1px solid var(--g4);
+    color: var(--g7);
+    font-family: monospace;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .ai-ask-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ai-ask-clear {
+    background: none;
+    border: none;
+    color: var(--g7);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 0 0 8px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+</style>
 

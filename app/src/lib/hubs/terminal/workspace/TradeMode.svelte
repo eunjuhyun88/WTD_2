@@ -32,6 +32,8 @@
   import AnalyzePanel from './AnalyzePanel.svelte';
   import ScanPanel from './ScanPanel.svelte';
   import JudgePanel from './JudgePanel.svelte';
+  import { mapAskToDrawerTab, type AiAskEvent } from '$lib/hubs/terminal/aiAskRouter';
+  import { trackTabSwitch } from '$lib/hubs/terminal/telemetry';
 
   type ChartBar = ChartSeriesPayload['klines'][number];
   type MicroOrderbook = MarketMicrostructurePayload['orderbook'];
@@ -441,6 +443,28 @@
     }
     window.addEventListener('cogochi:cmd', onCmd);
     return () => window.removeEventListener('cogochi:cmd', onCmd);
+  });
+
+  // ── cogochi:ai-ask listener — opens peek drawer tab based on intent ────────
+  let aiAskQuery = $state<AiAskEvent | null>(null);
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    function onAiAsk(e: Event) {
+      const detail = (e as CustomEvent<AiAskEvent>).detail;
+      if (!detail?.intent || !detail?.query) return;
+      const tab = mapAskToDrawerTab(detail.intent);
+      if (tab === null) return; // recall / inbox / unknown — handled elsewhere
+      const prevDrawerTab = tabState.drawerTab;
+      openWorkspaceTab(tab);
+      if (detail.intent === 'scan') {
+        _loadAlphaWorldModel();
+      }
+      aiAskQuery = { intent: detail.intent, query: detail.query, ts: detail.ts ?? Date.now() };
+      trackTabSwitch({ from: prevDrawerTab ?? 'verdict', to: tab, trigger: 'ai_ask' });
+    }
+    window.addEventListener('cogochi:ai-ask', onAiAsk);
+    return () => window.removeEventListener('cogochi:ai-ask', onAiAsk);
   });
 
   // ── SCAN state — live from /api/cogochi/alpha/world-model ─────────────────
@@ -1584,6 +1608,8 @@
                 onStartSaveSetup: startSaveSetup,
               }}
               state={{ microstructureView }}
+              aiAsk={aiAskQuery}
+              onClearAiAsk={() => { aiAskQuery = null; }}
             />
           {:else if drawerTab === 'research'}
             <ScanPanel
@@ -1600,6 +1626,8 @@
                 onSetScanSelected: (id) => scanSelected = id,
                 onOpenTradeTab: (x) => shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` }),
               }}
+              aiAsk={aiAskQuery}
+              onClearAiAsk={() => { aiAskQuery = null; }}
             />
           {:else if drawerTab === 'judge'}
             <JudgePanel
@@ -1623,6 +1651,8 @@
                 onSetJudgeOutcome: (o) => { judgeOutcome = o; judgeRejudged = null; },
                 onSetJudgeRejudged: (r) => judgeRejudged = r,
               }}
+              aiAsk={aiAskQuery}
+              onClearAiAsk={() => { aiAskQuery = null; }}
             />
           {/if}
         </div>
