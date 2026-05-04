@@ -1,16 +1,24 @@
 <script lang="ts">
+  import { parseDirectives } from '$lib/agent/directives';
+  import type { Segment, VerdictCardPayload, SimilarityCardPayload, PassportCardPayload } from '$lib/agent/directives';
+  import VerdictCard from './cards/VerdictCard.svelte';
+  import SimilarityCard from './cards/SimilarityCard.svelte';
+  import PassportMiniCard from './cards/PassportMiniCard.svelte';
+
   interface Message { role: 'user' | 'assistant'; text: string; streaming?: boolean; }
-  interface Props { symbol?: string; timeframe?: string; }
-  let { symbol = 'BTCUSDT', timeframe = '4h' }: Props = $props();
+  interface Props {
+    symbol?: string;
+    timeframe?: string;
+    onSelectSymbol?: (s: string) => void;
+  }
+  let { symbol = 'BTCUSDT', timeframe = '4h', onSelectSymbol }: Props = $props();
 
   let messages = $state<Message[]>([]);
   let input = $state('');
   let busy = $state(false);
   let bottomEl = $state<HTMLDivElement | null>(null);
 
-  function scrollBottom() {
-    bottomEl?.scrollIntoView({ behavior: 'smooth' });
-  }
+  function scrollBottom() { bottomEl?.scrollIntoView({ behavior: 'smooth' }); }
 
   async function send() {
     const text = input.trim();
@@ -56,7 +64,6 @@
                   i === messages.length - 1 ? { ...m, text: m.text + trace } : m
                 );
               }
-              // tool_result and done events are handled silently (streaming ends naturally)
             } catch { /* skip malformed */ }
             lastEvent = '';
           }
@@ -78,13 +85,29 @@
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
   }
+
+  function getSegments(msg: Message): Segment[] {
+    if (msg.role === 'user') return [{ kind: 'text', text: msg.text }];
+    return parseDirectives(msg.text);
+  }
 </script>
 
 <div class="chat-thread">
   <div class="messages">
     {#each messages as msg}
+      {@const segs = getSegments(msg)}
       <div class="msg msg--{msg.role}">
-        <span class="msg-text">{msg.text}{#if msg.streaming}<span class="cursor">&#x2587;</span>{/if}</span>
+        {#each segs as seg, si}
+          {#if seg.kind === 'text'}
+            <span class="msg-text">{seg.text}{#if msg.streaming && si === segs.length - 1}<span class="cursor">&#x2587;</span>{/if}</span>
+          {:else if seg.directive.type === 'verdict_card'}
+            <VerdictCard payload={seg.directive.payload as VerdictCardPayload} {onSelectSymbol} />
+          {:else if seg.directive.type === 'similarity_card'}
+            <SimilarityCard payload={seg.directive.payload as SimilarityCardPayload} />
+          {:else if seg.directive.type === 'passport_card'}
+            <PassportMiniCard payload={seg.directive.payload as PassportCardPayload} />
+          {/if}
+        {/each}
       </div>
     {/each}
     <div bind:this={bottomEl}></div>
@@ -107,8 +130,8 @@
 <style>
 .chat-thread { display: flex; flex-direction: column; height: 100%; gap: 0; }
 .messages { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-.msg { max-width: 90%; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 1.5; }
-.msg--user { align-self: flex-end; background: #1a3a5c; color: #cce8ff; }
+.msg { max-width: 95%; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 1.5; display: flex; flex-direction: column; gap: 6px; }
+.msg--user { align-self: flex-end; background: #1a3a5c; color: #cce8ff; max-width: 80%; }
 .msg--assistant { align-self: flex-start; background: #1a1a2e; color: #c8ccd4; }
 .msg-text { white-space: pre-wrap; word-break: break-word; }
 .cursor { animation: blink 1s step-end infinite; }
