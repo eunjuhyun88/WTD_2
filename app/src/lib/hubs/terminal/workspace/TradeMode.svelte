@@ -1295,20 +1295,6 @@
     </div>
     {/if}
   {:else}
-  {#if workMode !== 'observe'}
-    <nav class="layout-strip" aria-label="Workspace controls">
-      <span class="ls-label" id="layout-group-label">WORKSPACE</span>
-      <div class="ls-static" aria-live="polite">
-        <span class="ls-id">C</span>
-        <span class="ls-name">SIDEBAR</span>
-        <span class="ls-desc">· single layout</span>
-      </div>
-      <span class="spacer"></span>
-      <WorkspacePresetPicker />
-      <span class="ls-hint" role="status" aria-live="polite">ANALYZE can be collapsed</span>
-    </nav>
-  {/if}
-
   <!-- ═══ LAYOUT C · Chart + peek bar + sidebar (merged C+D) ═══════════════ -->
   <div class="layout-c">
     <div class="chart-section lc-main">
