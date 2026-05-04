@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`5042e679` — origin/main (2026-05-04) — feat(W-0402): DB audit — migrations 057-063 (#1054)
+`7b1e6fb9` — origin/main (2026-05-04) — chore: CURRENT.md — main SHA 5042e679, W-0402/W-0395-Ph6PR3 완료 표시 (#1056)
 
 ---
 
