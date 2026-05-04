@@ -32,6 +32,7 @@
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
+      let lastEvent = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -40,15 +41,24 @@
         const lines = buf.split('\n');
         buf = lines.pop() ?? '';
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith('event: ')) {
+            lastEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
             try {
-              const d = JSON.parse(line.slice(6)) as { text?: string };
-              if (d.text) {
+              const d = JSON.parse(line.slice(6)) as { text?: string; name?: string; input?: unknown };
+              if (lastEvent === 'chunk' && d.text) {
                 messages = messages.map((m, i) =>
                   i === messages.length - 1 ? { ...m, text: m.text + d.text } : m
                 );
+              } else if (lastEvent === 'tool_call' && d.name) {
+                const trace = `\n[tool: ${d.name}]`;
+                messages = messages.map((m, i) =>
+                  i === messages.length - 1 ? { ...m, text: m.text + trace } : m
+                );
               }
+              // tool_result and done events are handled silently (streaming ends naturally)
             } catch { /* skip malformed */ }
+            lastEvent = '';
           }
         }
       }
