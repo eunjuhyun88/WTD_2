@@ -40,7 +40,7 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
       return json({ error: 'Missing positionId' }, { status: 400 });
     }
 
-    if (!txHash || !TX_HASH_RE.test(txHash)) {
+    if (!txHash || typeof txHash !== 'string' || !TX_HASH_RE.test(txHash)) {
       return json({ error: 'Invalid transaction hash' }, { status: 400 });
     }
 
