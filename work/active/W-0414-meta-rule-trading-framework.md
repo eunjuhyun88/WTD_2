@@ -1,0 +1,530 @@
+# W-0414 — Meta-rule Trading Framework
+
+## Status
+
+- Phase: 설계 (이론 분석 + 우리 구조 매핑)
+- Owner: ej
+- Priority: P1
+- Created: 2026-05-05
+- Depends on: W-0409 (Workshop UI — 노출 지점), W-0404 (AI Agent — directives 호환)
+- Branch: TBD
+
+## Why
+
+kieran.ai (Hypertrader) 분석 결과: 우리와 signal/backtest/lifecycle 은 동급이지만 **3개 핵심이 빠져 있음**:
+
+1. **진입 메타게이트** (signal ≠ entry) — regime/capacity/sizing 4축 통과 필요
+2. **online self-correction** — bucket × outcome attribution 으로 변수 가중치 자동 보정
+3. **라이브 무인 루프** — signal listener → gate → auto-entry → triple-barrier exit → attribution
+
+이 셋을 **퀀트 논문의 표준 방법론**으로 풀어 우리 구조에 이식. 단순 kieran 모방이 아닌 학술 근거 기반.
+
+## Goals
+
+1. **Triple-barrier 라벨링** (López de Prado 2018) — verdict 시스템과 호환되는 dual-source label
+2. **Bayesian bucket attribution** (Beta-Binomial conjugate) — 변수×버킷별 자동 status
+3. **4-게이트 진입 평가기** — regime_penalty / portfolio_capacity / position_sizing / tier_score
+4. **Deflated Sharpe Ratio** (Bailey & López de Prado 2014) — 백테스트 우연성 정량화
+5. **online learning loop** — 매 trade close → attribution refresh → gate 가중치 갱신
+6. **Paper runner v2** — INTERNAL_RUN account 위에 signal-listener + auto-entry + safe-stop
+7. **Workshop 노출** — 4-게이트 임계값을 슬라이더로 조정 + DSR 표시
+
+## Non-Goals
+
+- 실거래(LIVE) 자동매매 — paper only. LIVE 는 별도 W item + 사용자 명시적 opt-in
+- 신규 ML 모델 학습 (DL/RL) — 본 W 는 frequentist + Bayesian conjugate 만
+- HFT/마켓메이킹 — 본 W 는 swing/position trading scope (≥4h holding)
+- 신규 시그널 정의 — 기존 8 FACTOR_BLOCKS + W-0399 indicators 재사용
+
+---
+
+## A. 학술 근거 (이론 매핑)
+
+### A1. Meta-labeling (López de Prado 2018, Ch 3.6)
+
+**원리**: 1차 모델 M1 = signal generator. 2차 모델 M2 = (context, M1_output) → P(TP_hit). M2 가 threshold 이상일 때만 trade.
+
+**우리 매핑**:
+- M1 = `engine/scoring/` 기존 시그널 (FACTOR_BLOCKS 조합)
+- M2 = 4-gate stack (regime + capacity + sizing + tier) — 합쳐서 `pre_trade_score ∈ [0, 1]`
+- gate threshold = Workshop 슬라이더로 노출
+
+### A2. Triple-Barrier (López de Prado 2018, Ch 3.4)
+
+**원리**: 매 entry 시 3 barrier — Take-Profit (+kσ), Stop-Loss (−kσ), Time-Horizon (T bars). 가장 먼저 닿는 것이 outcome label ∈ {TP, SL, TIMEOUT}.
+
+**동적 barrier**:
+- TP = entry × (1 + α · ATR_pct)
+- SL = entry × (1 − β · ATR_pct)
+- T = `MARKET_CYCLES` 의 avg_holding_time × scale
+
+**우리 매핑**:
+- DB: `pattern_outcomes` (또는 신규 `meta_outcomes`) 테이블에 `barrier_label` (`TP|SL|TIMEOUT`), `barrier_time_bars`, `tp_distance_atr`, `sl_distance_atr` column 추가
+- engine: `engine/labeling/triple_barrier.py`
+- **verdict 와 dual-source**: 사용자 verdict (수동) + triple_barrier (자동) 둘 다 저장. attribution 은 triple_barrier 기반(객관성), verdict 는 사용자 직관 시그널
+
+### A3. Bayesian Bucket Attribution (Beta-Binomial conjugate)
+
+**원리**: 변수 v 의 bucket b 마다 outcome counter (TP, SL, TIMEOUT). Posterior tp_rate ~ Beta(α=1+TP_n, β=1+SL_n). E[p|b] = α/(α+β).
+
+**Status 룰**:
+- `low_sample`: n < 30
+- `watch`: n ≥ 30, posterior_mean < 0.40 (95% credible interval upper < 0.50)
+- `learning`: 0.40 ≤ posterior_mean < 0.55
+- `promising`: posterior_mean ≥ 0.55, n ≥ 50
+- `ok`: posterior_mean ≥ 0.55, n ≥ 200, lower 95% CI ≥ 0.50
+
+**우리 매핑**:
+- engine: `engine/attribution/bucket_stats.py` — 단일 진입점 `update(variable, bucket, outcome)` + `lookup(variable, bucket) → BucketStat`
+- DB: `meta_bucket_stats` (variable, bucket, alpha, beta, n, status, last_update)
+- API: `GET /api/research/bucket-attribution?variable=&signal=&regime=`
+- Workshop: Research 탭 sub-section `BucketAttribution.svelte`
+
+### A4. Regime Detection (Hamilton 1989, Ang-Bekaert 2002 — 단순화 버전)
+
+**1차 버전 — Rule-based 3-axis binning** (HMM 도입은 PR 추가):
+- `trend`: `close > SMA(200)` ? bull : bear
+- `vol`: ATR_pct z-score 90d ≥ 1 ? high : low
+- `momentum`: r_{12-1} > 0 ? up : down
+
+→ 8 regime ID (2³). 향후 HMM 으로 교체 가능 (인터페이스 동일).
+
+**우리 매핑**:
+- engine: `engine/regime/detector.py` — `classify(symbol, ts) → regime_id`
+- DB: `regime_history` (symbol, ts, regime_id, features) — daily snapshot
+- 학술 출처: TSMOM (Moskowitz, Ooi, Pedersen 2012) — same-direction-as-trend 통계적 우위
+
+### A5. Counter-trend Penalty
+
+**원리**: 진입 방향 vs regime trend 정합도 → counter_multiplier.
+
+```
+regime_distance = direction_mismatch(entry_dir, regime_trend) ∈ {0, 1}
+                + |z(realized_vol) − z(target_vol)| · ε
+counter_multiplier = max(0.5, 1 − regime_distance · penalty_strength)
+gate_pass: random/score gate × counter_multiplier ≥ threshold
+```
+
+**학술**: Moskowitz et al. (2012) TSMOM — 매도 시그널이 강세 regime 에서 통계적 노이즈인 경우 다수.
+
+### A6. Portfolio Capacity (slot_utilization)
+
+**원리**: 동시 보유 max_positions M (예: 5). 현재 사용률 u = active / M. Bayesian attribution 으로 bucket 별 historical TP rate 추적.
+
+```
+slot_utilization_bucket = floor(u × 3) / 3  → {0-33%, 34-66%, 67-99%}
+gate_pass: bucket_stats(slot_utilization, bucket).posterior_mean > 0.45
+         ∧ active < M
+```
+
+**학술**: bandit with budget (Auer et al. 2002 UCB1, 변형 — limited slot exploration).
+
+### A7. Position Sizing (Fractional Kelly + Vol-Target)
+
+**Kelly fraction** (Kelly 1956, Thorp 2006):
+```
+f* = (bp − q) / b
+   where b = avg_win / avg_loss (from bucket_stats),
+         p = posterior_mean(tp_rate),
+         q = 1 − p
+fractional_kelly = clip(0.25 × f*, 0, 0.05)  # 25% Kelly cap
+```
+
+**Vol-targeting** (Moreira & Muir 2017):
+```
+size_usd = equity × fractional_kelly × (target_vol / realized_strategy_vol_30d)
+         × capped_at(max_risk_per_trade)
+```
+
+**학술**: Kelly 1956 (정보이론 → 도박 사이징), Thorp 1962 ("Beat the Dealer"), Moreira-Muir 2017 (vol-managed portfolios).
+
+### A8. Deflated Sharpe Ratio (Bailey & López de Prado 2014)
+
+**문제**: Workshop 에서 N개 strategy 백테스트 → best Sharpe 는 multiple-testing 으로 inflated.
+
+**보정**:
+```
+PSR(SR | T, γ₃, γ₄, SR_benchmark) = Φ((SR − SR_benchmark) · √(T-1) /
+                                     √(1 − γ₃·SR + (γ₄−1)/4 · SR²))
+DSR = PSR adjusted for N_trials (Bailey-LDP 2014 eq. 7)
+```
+
+**우리 매핑**:
+- engine: `engine/scoring/deflated_sharpe.py`
+- Workshop 우측 통계: 기존 Sharpe 옆에 DSR + "이 결과가 우연일 확률 X%" 표시
+- N_trials = simulationStore 의 backtest_count (세션 내 누적)
+
+### A9. Online Learning Loop (Contextual Bandit, delayed feedback)
+
+**원리**: Li et al. (2010) LinUCB 의 delayed-feedback 버전.
+
+```
+context = (signal_tier, signal_name, regime_id, slot_utilization_bucket, ...)
+action  = trade / skip
+reward  = triple_barrier_label · pnl_normalized
+```
+
+**구현 단순화**: full LinUCB 미구현, 대신 bucket_stats 의 Bayesian update 가 동등 효과 (각 bucket 이 독립 arm).
+
+### A10. Execution Cost Modeling (Almgren-Chriss 2000, Perold 1988)
+
+**원리**: 실거래 도입 전, paper 단계에서도 fee + spread + slippage + funding 을 모델링.
+
+**우리 매핑** (kieran 의 `execution_costs` 객체 직접 채택):
+```
+estimated_round_trip_fee_usd = 2 × maker_or_taker_fee × notional
+estimated_spread_cost_usd = (top_ask − top_bid) / 2 × size
+estimated_slippage_usd = sqrt(size / depth) × σ × notional  # square-root law
+estimated_funding_8h = funding_rate × notional · sign(direction)
+```
+
+**학술**: Almgren-Chriss 2000 (impact = σ·√(size/V)), Kyle 1985 (lambda·order_flow).
+
+### A11. Probabilistic Guarantee (PSR for go/no-go)
+
+**원리**: López de Prado 2014 — strategy 가 production 갈 자격 = `PSR(SR=0) > 0.95`.
+
+**Production gate**:
+- backtest 통과만으로 부족
+- DSR > 0.95 + 최소 trade count > 100 + max_drawdown < 20% + ledger 30d forward-walk pass
+
+---
+
+## B. 우리 구조 매핑 (Architecture)
+
+### B1. 모듈 배치
+
+```
+engine/
+├── labeling/
+│   └── triple_barrier.py         # A2
+├── attribution/
+│   ├── bucket_stats.py           # A3
+│   └── deflated_sharpe.py        # A8
+├── regime/
+│   └── detector.py               # A4
+├── gating/
+│   ├── regime_penalty.py         # A5
+│   ├── portfolio_capacity.py     # A6
+│   ├── position_sizing.py        # A7
+│   ├── tier_score.py             # composite
+│   └── gate_stack.py             # 4-gate orchestrator
+├── runner/
+│   └── paper_runner.py           # A9 + A10
+└── api/routes/
+    ├── meta_gates.py             # POST /api/gates/evaluate
+    ├── meta_attribution.py       # GET /api/research/bucket-attribution
+    └── meta_runner.py            # POST /api/runner/{start,stop,status}
+
+app/src/
+├── lib/contracts/metaGates.ts    # gate response 타입
+└── (W-0409) routes/patterns/_tabs/
+    ├── Workshop.svelte → 우측 패널 위에 PreTradeGatesPanel
+    ├── Research.svelte → BucketAttributionSection
+    └── Live.svelte → PaperRunnerControl
+```
+
+### B2. 데이터 흐름 (single-trade lifecycle)
+
+```
+1. signal emitter (engine/jobs/signal_emitter.py 가정 — 없으면 신규)
+   → emit({ticker, signal_name, tier, conf, bias, ts})
+2. paper_runner.on_signal(signal):
+   2a. context = build_context(ticker, ts)  # regime, slot_util, equity, vol
+   2b. gate_result = gate_stack.evaluate(signal, context)
+       → { pass: bool, score: float, gate_details: {...}, suggested_size_usd }
+   2c. if not gate_result.pass: log skip + return
+   2d. position = paper_account.enter(ticker, side, size, price)
+   2e. attach barriers: triple_barrier(entry_price, atr, horizon)
+3. exit (next bar evaluation OR async):
+   3a. barrier_hit = check_barriers(position, current_price, current_ts)
+   3b. close → outcome_label ∈ {TP, SL, TIMEOUT}
+   3c. attribution.update_all_buckets(context, outcome)
+4. nightly cron (engine/jobs/attribution_refresh.py):
+   4a. recompute bucket statuses
+   4b. update gate weights / ban-list
+```
+
+### B3. DB schema (신규)
+
+```sql
+-- 기존 patterns/captures/verdict 와 별개
+CREATE TABLE meta_outcomes (
+  id BIGSERIAL PRIMARY KEY,
+  position_id UUID NOT NULL,
+  signal_name TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  entry_ts TIMESTAMPTZ NOT NULL,
+  exit_ts TIMESTAMPTZ NOT NULL,
+  barrier_label TEXT NOT NULL CHECK (barrier_label IN ('TP','SL','TIMEOUT')),
+  pnl_pct NUMERIC NOT NULL,
+  context JSONB NOT NULL,  -- regime, slot_util, vol, etc.
+  verdict_label TEXT,       -- nullable, 사용자 verdict (이중 소스)
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE meta_bucket_stats (
+  id BIGSERIAL PRIMARY KEY,
+  variable TEXT NOT NULL,
+  bucket TEXT NOT NULL,
+  signal_name TEXT,         -- nullable, signal-conditional bucket
+  alpha NUMERIC NOT NULL DEFAULT 1,
+  beta NUMERIC NOT NULL DEFAULT 1,
+  n INT NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'low_sample',
+  posterior_mean NUMERIC GENERATED ALWAYS AS (alpha / (alpha + beta)) STORED,
+  last_update TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (variable, bucket, signal_name)
+);
+
+CREATE TABLE meta_regime_history (
+  ticker TEXT NOT NULL,
+  ts TIMESTAMPTZ NOT NULL,
+  regime_id INT NOT NULL,
+  trend SMALLINT NOT NULL,
+  vol_bucket SMALLINT NOT NULL,
+  momentum SMALLINT NOT NULL,
+  features JSONB,
+  PRIMARY KEY (ticker, ts)
+);
+
+CREATE TABLE meta_runner_state (
+  id INT PRIMARY KEY DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'stopped',  -- running|stopped|circuit_breaker
+  started_at TIMESTAMPTZ,
+  daily_loss_usd NUMERIC DEFAULT 0,
+  max_daily_loss_usd NUMERIC NOT NULL DEFAULT 200,
+  CHECK (id = 1)
+);
+```
+
+### B4. 기존 시스템과의 통합
+
+| 기존 | 통합 방식 |
+|---|---|
+| `runMultiCycleBacktest` (W-0409) | meta_outcomes 시뮬 데이터 공급원 (백테스트 시 triple_barrier 라벨 자동 생성) |
+| `verdict` 시스템 (W-0397/0401) | dual-source label — meta_outcomes.verdict_label 에 link |
+| `engine/scoring/hill_climbing.py` | gate_stack 의 weight optimizer 로 재사용 (gate threshold 자동 튜닝) |
+| `engine/api/routes/counterfactual.py` | bucket_stats 의 baseline 비교용 |
+| W-PF-100 propfirm evaluation | max_daily_loss circuit breaker 와 같은 인프라 — 코드 공유 |
+| W-0399 indicator catalog | gate context feature 소스 (RSI/MACD 등을 bucket 변수로 사용 가능) |
+| W-0404 AI Agent | directives `--gate-strict` 등으로 gate threshold 조작 가능 |
+| `MARKET_CYCLES` 10 사이클 | regime_id labeled — 각 cycle 별 gate 성능 비교 |
+
+---
+
+## C. PR 분기 (8 PR)
+
+### PR1 — Triple-barrier labeling + meta_outcomes 테이블
+- `engine/labeling/triple_barrier.py` — 동적 ATR-based barriers
+- migration: `meta_outcomes` 테이블 + `meta_bucket_stats` 빈 스켈레톤
+- backfill: 기존 `pattern_outcomes` (있다면) → triple_barrier label 재계산
+- AC: backtest 1회 실행 → meta_outcomes 행 생성, label 분포 (TP/SL/TIMEOUT) 검증
+
+### PR2 — Bayesian bucket attribution
+- `engine/attribution/bucket_stats.py` — Beta posterior + status 룰
+- API: `GET /api/research/bucket-attribution`
+- nightly job: `engine/jobs/attribution_refresh.py`
+- AC: 변수×버킷 30+ 조합에서 status 분포 정상, posterior_mean / 95% CI 노출
+
+### PR3 — Regime detector (rule-based v1)
+- `engine/regime/detector.py` — 3-axis binning (8 regime)
+- `meta_regime_history` daily snapshot job
+- API: `GET /api/regime/current?ticker=&ts=`
+- AC: BTC 90일 backfill → regime 전환 시점 시각화 가능
+
+### PR4 — 4-gate stack + evaluator API
+- `engine/gating/{regime_penalty, portfolio_capacity, position_sizing, tier_score, gate_stack}.py`
+- API: `POST /api/gates/evaluate` (signal + context → gate_result)
+- AC: 각 gate 단독 통과 + 4-gate 합성 점수, kieran-style breakdown 응답
+
+### PR5 — Workshop UI: PreTradeGatesPanel + DSR
+- W-0409 Workshop 우측 통계 위에 `PreTradeGatesPanel.svelte`
+- 4-gate 임계값 슬라이더 (debounce 300ms → re-evaluate)
+- `engine/scoring/deflated_sharpe.py` + Workshop 통계에 DSR + "우연성 확률" 표시
+- AC: 슬라이더 조정 → gate 통과율 실시간 갱신, DSR 표시 정상
+
+### PR6 — Research 탭: BucketAttributionSection
+- `hubs/patterns/research/BucketAttributionSection.svelte`
+- 변수×버킷 표 + posterior_mean + status chip + sparkline
+- 변수 select (slot_util / risk_pct / regime_dist / signal_tier ...)
+- AC: kieran `/api/formula-attribution` 동등 정보 노출
+
+### PR7 — Paper runner v2 (signal listener + auto-entry + safe-stop)
+- `engine/runner/paper_runner.py`
+- `meta_runner_state` 테이블 + circuit breaker (max_daily_loss / max_drawdown)
+- API: `POST /api/runner/{start,stop,status}`
+- W-0409 Live 탭에 `PaperRunnerControl.svelte` (start/stop + status chip + daily PnL bar)
+- Settings 에 kill-switch + max_daily_loss config
+- AC: signal stream 1시간 가동 → meta_outcomes 행 누적, circuit breaker 동작 확인
+
+### PR8 — Online learning loop wiring (gate weight 자동 갱신)
+- 매 trade close → bucket_stats.update → 다음 entry 게이트에 자동 반영
+- gate threshold 자동 튜닝 (hill_climbing 재사용, 일 1회)
+- "ban list" 표시 (Research 탭): 자동 차단된 (변수, bucket) 목록
+- AC: 7일 가동 후 ban list 1개+ 발생, gate threshold 변동 로그 확인
+
+---
+
+## D. 결정 락 (D1~D20)
+
+| # | 결정 | 락 | 이유 |
+|---|------|---|------|
+| D1 | Verdict vs triple_barrier 라벨 우위 | **dual-source 저장, attribution 은 triple_barrier 우선** | 객관성 + verdict 는 사용자 직관 시그널로 별도 분석 |
+| D2 | Regime detection 1차 구현 | **rule-based 3-axis binning**, HMM 은 PR 추가 | 시작 단순성, 인터페이스 동일하게 유지 |
+| D3 | Bayesian prior | **uniform Beta(1,1)** | 데이터 적은 초기에는 informative prior 가 위험, 점차 데이터 누적 |
+| D4 | Status 임계값 | **(low_sample<30 / watch<0.40 / learning<0.55 / promising≥0.55+50 / ok≥0.55+200+CI)** | López de Prado 가이드 + 우리 trade 빈도 (월 ~50개 가정) |
+| D5 | Kelly fraction cap | **25% Kelly, max 5% per trade** | full Kelly 너무 공격적, 25% Kelly 가 표준 (Thorp) |
+| D6 | Vol target | **annualized 15%** (default, configurable) | Moreira-Muir 기준값 |
+| D7 | Triple-barrier ATR multiplier | **TP=2·ATR, SL=1·ATR, T=avg_holding_time × 2** | 1:2 RR + 충분한 horizon |
+| D8 | Paper runner trigger | **signal stream 푸시 (이벤트 기반), polling X** | 지연 최소화, kafka/redis pub-sub 인프라 있다면 그것 사용 |
+| D9 | Circuit breaker 임계값 | **max_daily_loss = $200 (default), max_drawdown_30d = 20%** | 사용자 Settings 에서 조정 가능, 기본값은 보수적 |
+| D10 | LIVE (실거래) 자동매매 | **본 W 에서 미포함, 별도 W item + 명시 opt-in** | 안전 |
+| D11 | DSR 계산 시점 | **매 backtest 직후** (Workshop 슬라이더 auto-rerun 시) | 즉시 피드백 |
+| D12 | Online learning 빈도 | **매 trade close 즉시 update + 일 1회 status 재평가** | 실시간 반영 + nightly 안정화 |
+| D13 | Bucket 정의 | **(variable, bucket_value, signal_name)** 3-tuple, signal-conditional | kieran 동등 |
+| D14 | Gate weight optimizer | **hill_climbing.py 재사용** | 기존 인프라, 새 도입 X |
+| D15 | gate_stack 평가 순서 | **regime → capacity → tier → sizing** (조기 reject 우선) | 비싼 sizing 계산은 마지막 |
+| D16 | meta_outcomes 보관 기간 | **무기한** (분석 가치) | 디스크 비용 미미, attribution 정확도 향상 |
+| D17 | Workshop 슬라이더 → live runner 적용 | **즉시 반영 X — "Apply to runner" 버튼 클릭 시만** | 실수로 라이브 게이트 변경 방지 |
+| D18 | Verdict label conflict 처리 | **둘 다 저장, attribution 은 barrier 만, dashboard 표시는 두 라벨 비교** | 차이점 자체가 신호 |
+| D19 | Regime 8 vs HMM N-state | **8 (rule-based) 시작, 데이터 1만+ trade 후 HMM 검토** | over-engineering 회피 |
+| D20 | DSR vs PSR 표시 | **DSR (multiple-testing 보정)** | Workshop 은 N개 backtest 비교 시나리오, DSR 적합 |
+
+---
+
+## E. AC (Exit Criteria)
+
+| AC | 검증 |
+|----|------|
+| AC1 | `engine/labeling/triple_barrier.py` 단위 테스트 — TP/SL/TIMEOUT 분류 정확 |
+| AC2 | `meta_outcomes` 테이블 backfill 후 행 수 ≥ 기존 verdict 수 |
+| AC3 | bucket_stats Beta posterior 정확 (단위 테스트: alpha=11, beta=21 → posterior_mean=0.34375) |
+| AC4 | `GET /api/research/bucket-attribution` 응답에 ≥30 bucket 표시 + status 분포 정상 |
+| AC5 | Regime detector BTC 90일 backfill — regime 전환 일자 ≥3건 |
+| AC6 | 4-gate evaluator: signal 100건 입력 → gate 통과율 정상 분포 (예: 20-40%) |
+| AC7 | Workshop PreTradeGatesPanel 슬라이더 조정 → 300ms debounce → gate 통과율 실시간 갱신 |
+| AC8 | Workshop 통계에 DSR 표시 + "우연성 확률" tooltip |
+| AC9 | Research 탭 BucketAttribution: kieran-equivalent 정보 (variable × bucket × n × tp_rate × accepted_rate × status) |
+| AC10 | Paper runner 1시간 가동 → meta_outcomes 행 누적, position 라이프사이클 정상 (entry → barrier_hit → close) |
+| AC11 | Circuit breaker — daily_loss > $200 시 runner status='circuit_breaker' 자동 전환 |
+| AC12 | 7일 가동 후 ban list 1개+ 발생 (online loop 동작 증거) |
+| AC13 | Settings 에 kill-switch + max_daily_loss 노출, 변경 즉시 반영 |
+| AC14 | DSR 단위 테스트: 알려진 시나리오 (Bailey-LDP 2014 Table 2) 와 일치 |
+| AC15 | Contract CI 통과 (memkraft:protocol 12 sections) |
+
+---
+
+## F. 위험 + 완화
+
+| Risk | 완화 |
+|------|------|
+| Triple-barrier label 이 verdict 와 너무 다르면 사용자 혼란 | dual-source 표시 + Research 탭에 "label disagreement rate" 메트릭 |
+| Bayesian prior(1,1) 가 초기 n<10 에서 노이즈 | status='low_sample' gate 로 자동 차단 (D4) |
+| Regime rule-based 가 실제 regime 과 mismatch | HMM 으로 점진 교체 가능한 인터페이스 (D2/D19) |
+| Kelly fraction 이 backtest 과적합 시 과대평가 | DSR < 0.95 면 sizing 보수적 적용 (multiplier 0.5x) |
+| Paper runner 가 signal stream 폭주 시 OOM | rate limit + queue depth 모니터링 (W-0404 quota 인프라 재사용) |
+| Circuit breaker 가 정상적 drawdown 에 과민 반응 | trailing 30d max_drawdown 기준, 하드 stop 은 $200 daily 만 |
+| online loop 가 ban list 폭증 → 거래 0 | weekly review + manual override (Research 탭 "Unban" 버튼) |
+| LIVE 실거래로 잘못 흘러감 | code-level guard: `paper_account` only path, LIVE 는 별도 W |
+| Multiple-testing 으로 DSR 계산 비용 | session 내 N_trials 누적, 캐시 |
+| `engine/jobs/signal_emitter.py` 가 없으면 PR7 막힘 | PR7 시작 전 audit, 없으면 PR7 스코프에 emitter 신규 포함 |
+| W-0409 Workshop 머지 전이면 PR5 UI 의존 | W-0409 PR5 머지 후 PR5 (W-0414) 발급 |
+
+---
+
+## G. 다음 단계
+
+1. ~~설계 락~~ ✅ (이 문서)
+2. **사용자 검토 + D1~D20 수정 결정**
+3. PR1 (triple_barrier + 테이블) — 가장 작고 독립적, 시작점
+4. W-0409 PR5 (Workshop) 머지 진행 → W-0414 PR5 (UI) 의존 해제
+5. 7일 paper run dogfooding → ban list / DSR 동작 검증
+6. 검증 통과 시 LIVE 실거래 W item 분기 결정
+
+---
+
+## H. References (학술)
+
+- López de Prado, M. (2018). *Advances in Financial Machine Learning*. Wiley. (Ch 3 triple-barrier, Ch 3.6 meta-labeling)
+- Bailey, D. H., & López de Prado, M. (2014). "The Deflated Sharpe Ratio". *Journal of Portfolio Management* 40(5).
+- Hamilton, J. D. (1989). "A New Approach to the Economic Analysis of Nonstationary Time Series". *Econometrica* 57(2).
+- Ang, A., & Bekaert, G. (2002). "International Asset Allocation With Regime Shifts". *Review of Financial Studies* 15(4).
+- Moskowitz, T., Ooi, Y. H., & Pedersen, L. H. (2012). "Time series momentum". *Journal of Financial Economics* 104(2).
+- Moreira, A., & Muir, T. (2017). "Volatility-Managed Portfolios". *Journal of Finance* 72(4).
+- Kelly, J. L. (1956). "A New Interpretation of Information Rate". *Bell System Technical Journal* 35(4).
+- Thorp, E. O. (2006). "The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market". *Handbook of Asset and Liability Management*.
+- Almgren, R., & Chriss, N. (2000). "Optimal execution of portfolio transactions". *Journal of Risk* 3(2).
+- Li, L., Chu, W., Langford, J., & Schapire, R. E. (2010). "A contextual-bandit approach to personalized news article recommendation". *WWW '10*.
+- Auer, P., Cesa-Bianchi, N., & Fischer, P. (2002). "Finite-time analysis of the multiarmed bandit problem". *Machine Learning* 47.
+
+---
+
+## I. References (우리 시스템)
+
+- W-0409 §B Workshop UI — UI 노출 지점
+- W-0404 AI Agent — directives 호환
+- W-0399 indicator catalog — gate context features
+- W-PF-100 — circuit breaker 코드 공유
+- `engine/scoring/hill_climbing.py` — gate weight optimizer 재사용
+
+---
+
+## Goal
+
+위 §Why / §Goals 본문 참조.
+
+## Owner
+
+위 §Status 의 Owner 필드 (ej).
+
+## Scope
+
+위 §A 학술 매핑 + §B 모듈 배치 + §C PR 분기 본문.
+
+## Non-Goals
+
+위 §Non-Goals 명시 4항목.
+
+## Canonical Files
+
+§B1 모듈 트리 + §B3 DB schema 참조.
+
+## Facts
+
+§A 학술 출처 + §B4 기존 시스템 통합 표 + §H References.
+
+## Assumptions
+
+- W-0409 Workshop UI (PR5) 가 본 W PR5 시작 시점에 머지되어 있음
+- `engine/jobs/signal_emitter.py` 가 존재하거나 PR7 에서 신규 작성
+- DB migration 권한 보유 (Supabase prod)
+- INTERNAL_RUN paper account 기존 인프라 활용 가능
+
+## Open Questions
+
+- §D D2 — HMM 도입 시점 임계값 (10k trade vs 1y 가동 vs DSR 0.7+)
+- §D D8 — signal stream 실측 인프라 (kafka/redis/polling) 미확인 — PR7 audit 필요
+- §D D9 — circuit breaker 기본값 $200 의 적정성 — paper 잔고 규모 의존
+- 학술 모델 (Kelly, vol-target) 의 우리 데이터 적용 시 fit 정도 — PR2 후 검증
+
+## Decisions
+
+위 §D 결정표 D1~D20 락.
+
+## Next Steps
+
+위 §G 본문 참조.
+
+## Exit Criteria
+
+위 §E AC1~AC15 본문 참조.
+
+## Handoff Checklist
+
+- [ ] 사용자 D1~D20 검토 완료
+- [ ] PR1 (triple_barrier) 발급 → 머지
+- [ ] W-0409 PR5 (Workshop) 머지 확인 → 본 W PR5 발급 가능
+- [ ] 7일 paper run dogfooding 성공
+- [ ] CURRENT.md main SHA 갱신
+- [ ] 머지 후 본 work item 파일 archive 이동
