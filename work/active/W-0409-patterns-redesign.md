@@ -504,3 +504,149 @@ Price action — 블록을 조합해 entry/exit 룰 구성.
 2. CURRENT.md 업데이트 (W-0410 별도 work item 취소, W-0409 가 흡수)
 3. W-0411 (Settings) 설계
 4. 5개 페이지 통합 검토 → 구현 시작 (Workshop 이 가장 큰 미지수)
+
+---
+
+## J. 누락 보강 (2026-05-05 실측 audit 후 추가)
+
+### J1. Terminal/Dashboard → Lab 하드코딩 링크 (URL 교체 필수)
+
+| 파일 | 현재 | 교체 |
+|------|------|------|
+| `hubs/terminal/workspace/ChartBoardHeader.svelte` | `/lab?captureId=...&autorun=1` | `/patterns?tab=workshop&capture=...&autorun=1` |
+| `hubs/terminal/workspace/SaveStrip.svelte` (2곳: `window.location.href` + `<a>`) | `/lab?captureId=...` | `/patterns?tab=workshop&capture=...` |
+| `hubs/terminal/workspace/ChartBoard.svelte` (toast) | `/lab?captureId=...&autorun=1` | `/patterns?tab=workshop&capture=...&autorun=1` |
+| `lib/shared/panels/mobile/DetailMode.svelte` | `/lab?captureId=...` | `/patterns?tab=workshop&capture=...` |
+| `lib/shared/panels/mobile/MobileFooter.svelte` | `{ href: '/lab', label: 'LAB' }` | **삭제** (Patterns 항목으로 통합) |
+| `routes/dashboard/+page.svelte` | `goto('/lab')` + `href="/lab"` (Open Lab / more in Lab) | redirect 로 자동 작동, 단 버튼 라벨 "Open in Workshop" 으로 변경 |
+| `lib/shared/panels/StrategyCard.svelte` | `goto('/lab')` + `forkStrategy` import | `goto('/patterns?tab=workshop')`, store 경로 갱신 |
+| `lib/components/AppSurfaceHeader.svelte` | `href="/lab"` "Lab ★" | **삭제** (lab surface 자체 제거 — J2) |
+
+→ **PR5 (Workshop 흡수) 안에서 일괄 처리**, redirect 로 외부 호환은 보장하지만 내부 링크는 직접 교체 (UX 텍스트/추적 일관성).
+
+### J2. `appSurfaces.ts` Lab Surface 처리
+
+- 현재: `AppSurfaceId = ... | 'lab' | ...` 독립 surface, NavRail/MobileBottomNav/SiteFooter 모두 노출
+- 결정: **`lab` surface 자체 제거**, `patterns` surface 의 `activePaths` 에 `/lab`, `/strategies`, `/benchmark` 추가 (redirect 도착 후 patterns nav 가 active 표시되도록)
+- PR7 (Research 흡수) 안에서 처리 — Lab 관련 모든 페이지 흡수 끝난 시점
+
+### J3. `hubs/lab/panels/research/` 블록 렌더러 5개 (Research 탭 핵심)
+
+| 파일 | 처리 |
+|------|------|
+| `DualPaneFlowChartBlock.svelte` | **이동** → `hubs/patterns/research/blocks/` |
+| `HeatmapFlowChartBlock.svelte` | **이동** → `hubs/patterns/research/blocks/` |
+| `InlinePriceChartBlock.svelte` | **이동** → `hubs/patterns/research/blocks/` |
+| `MetricStripBlock.svelte` | **이동** → `hubs/patterns/research/blocks/` |
+| `ResearchBlockRenderer.svelte` | **이동** → `hubs/patterns/research/ResearchBlockRenderer.svelte` |
+| `lib/contracts/researchView.ts` (블록 스키마 contract) | **유지** (경로 그대로, 블록 렌더러 import 만 갱신) |
+
+→ Research 탭(PR7)에서 Ledger/Analyze 모두 이 렌더러 의존 — 같이 이동.
+
+### J4. Lab util 파일명 정정 + 누락 추가
+
+| 실제 파일 | 처리 |
+|----------|------|
+| `lib/lab/backtest.ts` (← 설계 §C 의 `runMultiCycleBacktest.ts` 오기) | **이동** → `hubs/patterns/workshop/backtest/index.ts` |
+| `lib/lab/equityCurve.ts` (`buildBtcHoldSeries`, `buildStrategySeries`, `buildEquitySeries`, `buildCycleMarkers`) | **이동** → `hubs/patterns/workshop/equityCurve.ts` |
+| `lib/lab/counterfactualStats.ts` | **이동** → `hubs/patterns/workshop/counterfactualStats.ts` |
+| `lib/lab/captureDraft.ts` (← 설계 §C 의 `buildLabDraftFromCapture.ts` 오기) | **이동** → `hubs/patterns/workshop/captureDraft.ts` |
+| `lib/lab/captureDraft.test.ts` | **이동** (코드와 동반) |
+| `lib/lab/counterfactualStats.test.ts` | **이동** (코드와 동반) |
+| `lib/lab/backtest.test.ts` (있다면) | **이동** (코드와 동반) |
+
+### J5. `hubs/lab/panels/SendToTerminalButton.svelte`
+
+- **이동** → Live 탭 안 (`hubs/patterns/live/SendToTerminalButton.svelte`)
+- `/api/lab/send-to-terminal` API endpoint 자체는 보존 (route 만 이동, endpoint 살아있음)
+
+### J6. `lib/research/` 모듈 (별도 평가 인프라)
+
+`lib/research/{baselines,evaluation,pipeline,source}/`, `stats.ts`, `weightSweep.ts`, `schedule.ts`
+
+- **유지 (이동 X)** — Research 탭이 호출하는 백엔드 평가 라이브러리
+- 단, Research 탭 sub-section 이 import 하는 entry point 만 명시
+- Workshop/Live 와 분리되어 있으므로 이동 시 의존성 폭발 위험
+
+### J7. Lab subroute load functions
+
+| 파일 | 처리 |
+|------|------|
+| `routes/lab/+layout.svelte` (탭 nav) | **삭제** (Workshop/Research 탭이 patterns 탭 nav 로 통합) |
+| `routes/lab/counterfactual/+page.ts` | **삭제** (server-side redirect 로 충분) |
+| `routes/lab/ledger/+page.ts` | **삭제** |
+| `routes/patterns/formula/page.svelte.test.ts` | **삭제** (페이지 흡수) |
+| `routes/lab/counterfactual/page.svelte.test.ts` | **삭제 또는 Workshop CounterfactualSection 으로 이전** (PR6) |
+
+### J8. `/strategies`, `/benchmark` redirect 일관성
+
+- 현재: 이미 `/patterns/benchmark`, `/patterns/strategies` (path segment) 로 redirect 중
+- 설계: `?tab=compare` (query param) 방식
+- **결정: query param 방식으로 통일** — 단일 source of truth (`?tab=`)
+- PR1 안에서 redirect target 을 `/patterns?tab=compare§ion=benchmark` / `/patterns?tab=compare§ion=strategies` 로 교체
+
+### J9. `lib/strategy/PatternStrategyCard.svelte`
+
+- `StrategyGrid` 가 import 하므로 **유지** (Compare 탭 의존성)
+- 명시적으로 §C 추가
+
+### J10. `lib/stores/captureAnnotationsStore.ts`
+
+- 사용처 grep 결과 chart annotation 레이어 — Terminal 차트와 연동
+- **유지** (Terminal/Patterns 양쪽 사용 가능성, 추가 audit 후 결정)
+
+### J11. 추가 API endpoint (§A4 보강)
+
+Workshop/Research/Live 구현 시 호출 가능 — 모두 **endpoint 자체는 살아있음**:
+
+- `GET /api/research/blocked-candidates`
+- `GET /api/research/tv-import/{author,commit,estimate,preview,twin}`
+- `GET /api/refinement/stats`
+- `GET /api/patterns/recall`
+- `POST /api/patterns/draft-from-range`
+- `POST /api/patterns/[slug]/capture`
+- `GET /api/captures/chart-annotations`
+- `GET /api/captures/watch-hits`
+- `GET /api/captures/[id]/watch`
+- `POST /api/captures/[id]/verdict-link`
+- `GET /api/patterns/[slug]/lifecycle-status` (`lifecycle` 와 별개 endpoint)
+
+→ 모두 page route 와 무관. PR 진행 중 필요한 것만 호출.
+
+### J12. Engine endpoint 보강
+
+| Endpoint | Workshop 연동 |
+|----------|--------------|
+| `engine/api/routes/universe.py` | **UniverseSelector 의 심볼 목록 공급원** — Workshop universe 멀티 심볼 옵션 제공 |
+| `engine/api/routes/backtest_thread.py` | **Workshop 비동기 백테스트** — 긴 universe×기간 조합 시 사용 (auto-rerun debounce 와 연동) |
+| `engine/api/routes/patterns_thread.py` | 비동기 패턴 처리 — Library 의 long-running scan 에 사용 가능 |
+| `engine/api/routes/refinement.py` | leaderboard/suggestions 외 추가 endpoint — Refinement 패널이 호출 |
+
+→ **결정**: Workshop auto-rerun 은 1차 클라이언트 `runMultiCycleBacktest` (기존 P6 보존) → 무거운 조합 시 `backtest_thread` fallback. PR5 안에서 임계치 결정.
+
+### J13. PR 매핑 (J 항목 → 기존 PR 번호)
+
+| J 항목 | 처리 PR |
+|--------|---------|
+| J1 (링크 교체) | PR5 (Workshop), PR6 (Live), PR7 (Research) — 각자 흡수 PR 안에서 |
+| J2 (lab surface 제거) | PR7 |
+| J3 (research blocks) | PR7 |
+| J4 (util 파일명) | PR5 |
+| J5 (SendToTerminalButton) | PR6 |
+| J6 (`lib/research/` 유지) | PR7 (참조만) |
+| J7 (layout/+page.ts 삭제) | PR5 (lab layout), PR6 (counterfactual), PR7 (ledger) |
+| J8 (redirect query param) | PR1 |
+| J9 (PatternStrategyCard) | PR1 |
+| J10 (captureAnnotationsStore) | 추가 audit (구현 시) |
+| J11 (API 추가) | 호출 시점에 발생 |
+| J12 (engine universe/backtest_thread) | PR5 (Workshop 임계치 결정) |
+
+### J14. 추가 AC
+
+| AC | 검증 |
+|----|------|
+| AC15 | Terminal/Dashboard 의 모든 `/lab` 하드코딩 링크가 `/patterns?tab=workshop` 으로 교체됨 (grep 검증) |
+| AC16 | `appSurfaces.ts` 에서 `lab` surface 제거, `patterns` 의 `activePaths` 가 `/lab`, `/strategies`, `/benchmark` 포함 |
+| AC17 | Workshop UniverseSelector 가 `engine/universe` 에서 심볼 목록 fetch |
+| AC18 | Lab 의 모든 util/test 파일이 `hubs/patterns/workshop/` 으로 이동 (lab 디렉터리 삭제 또는 빈 상태) |
+| AC19 | `/strategies`, `/benchmark` redirect target = `/patterns?tab=compare§ion=...` (query param 방식) |
