@@ -149,6 +149,27 @@ export function trackDecideDrawerOpen(payload: DecideDrawerOpenPayload): void {
   fireGtag('wave6.decide_drawer_open', parsed.data as unknown as Record<string, unknown>);
 }
 
+// ── panel_fold_toggle (W-0403 PR8) ────────────────────────────────────────
+
+export const PanelFoldToggleSchema = z.object({
+  panel: z.enum(['sidebar', 'ai', 'ai_wide', 'reset']),
+  action: z.enum(['show', 'hide', 'toggle', 'reset']),
+  trigger: z.enum(['keyboard', 'click']),
+  key: z.string().optional(),
+});
+export type PanelFoldTogglePayload = z.infer<typeof PanelFoldToggleSchema>;
+
+export function trackPanelFoldToggle(payload: PanelFoldTogglePayload): void {
+  const parsed = PanelFoldToggleSchema.safeParse(payload);
+  if (!parsed.success) {
+    console.warn('[telemetry] panel_fold_toggle validation failed', parsed.error.issues);
+    return;
+  }
+  // dual-emit: legacy + wave6 namespace
+  fireGtag('panel_fold_toggle', parsed.data as unknown as Record<string, unknown>);
+  fireGtag('wave6.panel_fold_toggle', parsed.data as unknown as Record<string, unknown>);
+}
+
 // ── inbox_dot_click (W-0403) ───────────────────────────────────────────────
 
 export const InboxDotClickSchema = z.object({

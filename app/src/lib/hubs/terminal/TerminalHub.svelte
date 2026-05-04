@@ -34,6 +34,7 @@
   import CommandPalette from '$lib/shared/panels/CommandPalette.svelte';
   import TerminalHoldTimeAdapter from './panels/TerminalHoldTimeAdapter.svelte';
   import { track } from '$lib/analytics';
+  import { trackPanelFoldToggle } from './telemetry';
 
   // ── W-0395: HoldTime stats for StatusBar ──────────────────────────────────
   let holdP50 = $state<number | null>(null);
@@ -293,12 +294,12 @@
       if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); paletteOpen = !paletteOpen; if (paletteOpen) track('cmdpalette_open', { trigger: 'keyboard_p' }); }
       if (mod && e.key.toLowerCase() === 't') { e.preventDefault(); shellStore.openTab({ kind: 'trade', title: 'new session' }); }
       // ⌘0: reset panels (both visible, AI default width)
-      if (mod && e.key === '0') { e.preventDefault(); shellStore.resetPanels(); }
+      if (mod && e.key === '0') { e.preventDefault(); shellStore.resetPanels(); trackPanelFoldToggle({ panel: 'reset', action: 'reset', trigger: 'keyboard', key: '⌘0' }); }
       // ⌘\: toggle AI wide mode
-      if (mod && e.key === '\\') { e.preventDefault(); shellStore.toggleAIWide(); }
+      if (mod && e.key === '\\') { e.preventDefault(); shellStore.toggleAIWide(); trackPanelFoldToggle({ panel: 'ai_wide', action: 'toggle', trigger: 'keyboard', key: '⌘\\' }); }
       // ⌘[ / ⌘]: toggle side panels
-      if (mod && e.key === '[') { e.preventDefault(); shellStore.toggleSidebar(); }
-      if (mod && e.key === ']') { e.preventDefault(); shellStore.toggleAI(); }
+      if (mod && e.key === '[') { e.preventDefault(); shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: 'toggle', trigger: 'keyboard', key: '⌘[' }); }
+      if (mod && e.key === ']') { e.preventDefault(); shellStore.toggleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'toggle', trigger: 'keyboard', key: '⌘]' }); }
       if (mod && e.key.toLowerCase() === 'w') {
         const st = get(shellStore);
         if (st.tabs.length > 1) { e.preventDefault(); shellStore.closeTab(st.activeTabId); }
@@ -502,7 +503,7 @@
           />
           <button
             class="panel-fold-btn panel-fold-left"
-            onclick={() => shellStore.toggleSidebar()}
+            onclick={() => { shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: 'hide', trigger: 'click' }); }}
             title="Collapse watchlist (⌘[)"
             aria-label="Collapse watchlist"
           >
@@ -513,7 +514,7 @@
       {:else}
         <button
           class="panel-reveal-strip panel-reveal-left"
-          onclick={() => shellStore.toggleSidebar()}
+          onclick={() => { shellStore.toggleSidebar(); trackPanelFoldToggle({ panel: 'sidebar', action: 'show', trigger: 'click' }); }}
           title="Show watchlist (⌘[)"
           aria-label="Show watchlist"
         >
@@ -597,7 +598,7 @@
           <div class="ai-pane-actions">
             <button
               class="ai-action-btn"
-              onclick={() => shellStore.toggleAIWide()}
+              onclick={() => { shellStore.toggleAIWide(); trackPanelFoldToggle({ panel: 'ai_wide', action: 'toggle', trigger: 'click' }); }}
               title={$shellStore.aiWide ? 'Narrow AI panel (⌘\\)' : 'Widen AI panel (⌘\\)'}
               aria-label="Toggle AI panel width"
             >
@@ -609,7 +610,7 @@
             </button>
             <button
               class="ai-action-btn"
-              onclick={() => shellStore.toggleAI()}
+              onclick={() => { shellStore.toggleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'hide', trigger: 'click' }); }}
               title="Collapse AI panel (⌘])"
               aria-label="Collapse AI panel"
             >
@@ -626,7 +627,7 @@
       {:else}
         <button
           class="panel-reveal-strip panel-reveal-right"
-          onclick={() => shellStore.toggleAI()}
+          onclick={() => { shellStore.toggleAI(); trackPanelFoldToggle({ panel: 'ai', action: 'show', trigger: 'click' }); }}
           title="Show AI panel (⌘])"
           aria-label="Show AI panel"
         >
