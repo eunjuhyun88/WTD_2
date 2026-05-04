@@ -72,6 +72,23 @@ class LimitMatcher:
             mid_price,
             fee,
         )
+
+        # ── PropFirm eval hook (W-PF-202) ──────────────────────
+        try:
+            from propfirm.rules.hook import on_fill as _on_fill
+            await _on_fill(
+                account_id=order["account_id"],
+                fill_px=mid_price,
+                qty=qty,
+                fee=fee,
+                side=order.get("side", "BUY"),
+                symbol=symbol,
+                filled_at=filled_at,
+            )
+        except Exception as _hook_exc:
+            log.error("match: eval hook error (non-fatal): %s", _hook_exc)
+        # ── end hook ─────────────────────────────────────────────
+
         return True
 
     # ── helpers ──────────────────────────────────────────────────────────
