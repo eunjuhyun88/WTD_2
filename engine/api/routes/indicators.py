@@ -1,7 +1,9 @@
 """W-0400 Phase 2A: Indicator series API.
 
-GET /indicators/catalog   — list all registered indicators (≥100)
-GET /indicators/series    — compute indicator values for a symbol+timeframe
+GET /indicators/catalog          — list all registered indicators (≥100)
+GET /indicators/series           — compute indicator values for a symbol+timeframe
+GET /indicators/aggregated/{type} — raw perp/kline aggregated series for chart sub-panes
+                                    types: funding, oi, liq, vol, returns
 """
 from __future__ import annotations
 
@@ -264,3 +266,106 @@ async def get_series(
             "points": points,
             "count": len(points),
         }
+
+
+# ---------------------------------------------------------------------------
+# Aggregated sub-pane series
+# ---------------------------------------------------------------------------
+
+_AGG_CACHE = TTLCache(max_size=128, ttl=120.0)  # 2-min TTL for perp data
+_AGG_SF = Singleflight()
+
+_AGG_TYPES = frozenset({"funding", "oi", "liq", "vol", "returns"})
+
+
+def _fetch_aggregated_sync(type_: str, symbol: str, limit: int, period: str) -> dict:
+    """Blocking fetch for one aggregated series type. Runs in executor."""
+    import pandas as pd
+    from data_cache.fetch_binance_perp import fetch_funding_rate, fetch_oi_hist
+    from data_cache.loader import load_klines
+
+    def to_points(series: pd.Series) -> list[dict]:
+        out = []
+        for idx, val in series.dropna().tail(limit).items():
+            t = int(idx.timestamp() * 1000) if hasattr(idx, "timestamp") else int(idx)
+            out.append({"t": t, "v": float(val)})
+        return out
+
+    if type_ == "funding":
+        df = fetch_funding_rate(symbol, limit=min(limit, 1000))
+        points = to_points(df["funding_rate"])
+
+    elif type_ == "oi":
+        df = fetch_oi_hist(symbol, period=period, limit=min(limit, 500))
+        points = to_points(df["oi_raw"])
+
+    elif type_ == "liq":
+        # Proxy: taker-buy ratio (%) from futures klines — buy aggression pressure
+        df = load_klines(symbol, "1h").tail(limit + 1)
+        if "taker_buy_base_volume" in df.columns and "volume" in df.columns:
+            buy_ratio = (df["taker_buy_base_volume"] / df["volume"].replace(0.0, float("nan"))) * 100.0
+            points = to_points(buy_ratio)
+        else:
+            from data_cache.fetch_binance_perp import fetch_ls_ratio
+            df_ls = fetch_ls_ratio(symbol, period=period, limit=min(limit, 500))
+            points = to_points(df_ls["long_short_ratio"])
+
+    elif type_ == "vol":
+        df = load_klines(symbol, "1h").tail(limit)
+        points = to_points(df["volume"])
+
+    elif type_ == "returns":
+        df = load_klines(symbol, "1h").tail(limit + 1)
+        returns = df["close"].pct_change().tail(limit)
+        points = to_points(returns)
+
+    else:
+        raise ValueError(f"Unknown aggregated type: {type_!r}")
+
+    return {"type": type_, "symbol": symbol, "points": points, "count": len(points)}
+
+
+@router.get("/aggregated/{type}")
+@limiter.limit("60/minute")
+async def get_aggregated(
+    request: Request,
+    type: str,
+    symbol: str = Query(default="BTCUSDT", description="Trading pair, e.g. BTCUSDT"),
+    limit: int = Query(default=500, ge=1, le=2000, description="Max output points"),
+    period: str = Query(default="1h", description="OI/LS period bucket (1h, 4h, ...)"),
+) -> dict:
+    """Return a raw aggregated data series for a chart sub-pane.
+
+    Types:
+      - funding  — 8h funding rate history (Binance /fapi/v1/fundingRate)
+      - oi       — open interest (sumOpenInterest, hourly)
+      - liq      — taker-buy ratio % (aggression proxy; falls back to LS ratio)
+      - vol      — futures volume (hourly klines)
+      - returns  — close pct_change (hourly klines)
+
+    Response: {"type": str, "symbol": str, "points": [{"t": ms, "v": float}], "count": int}
+    """
+    if type not in _AGG_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown type {type!r}. Supported: {sorted(_AGG_TYPES)}",
+        )
+
+    symbol = symbol.upper()
+    cache_key = f"agg:{type}:{symbol}:{period}:{limit}"
+
+    async def _compute() -> dict:
+        cached = _AGG_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+        result = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _fetch_aggregated_sync(type, symbol, limit, period)
+        )
+        _AGG_CACHE.set(cache_key, result)
+        return result
+
+    try:
+        return await _AGG_SF.call(cache_key, _compute)
+    except Exception as exc:
+        log.warning("aggregated fetch failed type=%s sym=%s: %s", type, symbol, exc)
+        raise HTTPException(status_code=502, detail=f"Failed to fetch aggregated data: {exc}") from exc
