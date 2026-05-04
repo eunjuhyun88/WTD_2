@@ -3129,6 +3129,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/propfirm/payment/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Payment
+         * @description PENDING → ACTIVE 수동 전환.
+         *     Stripe PI 상태 confirmed 후 evaluation을 ACTIVE로 업데이트.
+         *     webhook 재시도 3회 실패 시 ops가 직접 호출.
+         */
+        post: operations["confirm_payment_propfirm_payment_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/explain": {
         parameters: {
             query?: never;
@@ -4234,6 +4256,15 @@ export interface components {
             timeframe?: string | null;
             /** Direction */
             direction?: string | null;
+        };
+        /** ConfirmPaymentRequest */
+        ConfirmPaymentRequest: {
+            /** Evaluation Id */
+            evaluation_id: string;
+            /** Stripe Payment Intent */
+            stripe_payment_intent: string;
+            /** User Id */
+            user_id: string;
         };
         /** CounterfactualReviewResponse */
         CounterfactualReviewResponse: {
@@ -11920,6 +11951,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateAccountBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_payment_propfirm_payment_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmPaymentRequest"];
             };
         };
         responses: {
