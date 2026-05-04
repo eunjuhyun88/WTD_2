@@ -1,11 +1,21 @@
 <script lang="ts">
-  import { shellStore, activeTabState } from './shell.store';
+  import { shellStore, activeTabState, activeMode } from './shell.store';
   import type { ChartType } from './shell.store';
   import { priceStore } from '$lib/stores/priceStore';
   import { getBaseSymbolFromPair } from '$lib/utils/price';
   import NavInboxBadge from '$lib/components/header/NavInboxBadge.svelte';
   import TopBarTFPopover from './TopBarTFPopover.svelte';
   import TopBarTypePopover from './TopBarTypePopover.svelte';
+
+  // Available timeframes (used by TF popover and test assertions)
+  const TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '1D'] as const;
+
+  // Mode segmented control
+  const MODES = [
+    { id: 'trade',    label: 'TRADE' },
+    { id: 'train',    label: 'TRAIN' },
+    { id: 'flywheel', label: 'FLY'  },
+  ] as const;
 
   // Chart type display labels
   const TYPE_LABEL: Record<ChartType, string> = {
@@ -271,7 +281,20 @@
     <!-- Spacer -->
     <div class="flex-gap"></div>
 
-    <!-- Slot 5: Inbox dot (NavInboxBadge) -->
+    <!-- Slot 5: Mode segmented control -->
+    <div class="mode-strip">
+      {#each MODES as m}
+        <button
+          class="mode-btn"
+          class:active={$activeMode === m.id}
+          onclick={() => shellStore.switchMode(m.id)}
+        >{m.label}</button>
+      {/each}
+    </div>
+
+    <div class="vdivider"></div>
+
+    <!-- Slot 6: Inbox dot (NavInboxBadge) -->
     <NavInboxBadge />
 
     <!-- Slot 6: Settings -->
@@ -522,6 +545,34 @@
 
 /* ── Spacer ── */
 .flex-gap { flex: 1; min-width: 0; }
+
+/* ── Mode strip ── */
+.mode-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.mode-btn {
+  padding: 0 7px;
+  height: 22px;
+  background: var(--g2);
+  border: 1px solid var(--g3);
+  border-radius: var(--r-2, 2px);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--ui-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--g6);
+  cursor: pointer;
+  transition: color 0.08s, background 0.08s, border-color 0.08s;
+}
+.mode-btn:hover { color: var(--g8); border-color: var(--g5); }
+.mode-btn.active {
+  background: var(--g3);
+  border-color: var(--g5);
+  color: var(--text-primary, var(--g9));
+}
 
 /* ── Controls ── */
 .ctrl-btn {
