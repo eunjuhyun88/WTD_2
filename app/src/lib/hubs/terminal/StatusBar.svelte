@@ -331,4 +331,11 @@
     color: var(--text-secondary, #9aa3b2);
     white-space: nowrap;
   }
+
+  /* PR14: StatusBar hidden on mobile — critical items absorbed into MobileBottomNav */
+  @media (max-width: 768px) {
+    .status-bar {
+      display: none;
+    }
+  }
 </style>

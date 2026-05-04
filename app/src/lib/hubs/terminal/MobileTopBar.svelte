@@ -44,7 +44,7 @@
 
 <style>
   .mobile-top-bar {
-    height: 44px;
+    height: 40px;
     flex-shrink: 0;
     display: flex;
     align-items: center;

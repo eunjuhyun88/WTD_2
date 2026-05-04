@@ -3070,7 +3070,7 @@
   }
 
   .mobile-tab-strip {
-    height: 28px;
+    height: 32px;
     flex-shrink: 0;
     display: flex;
     background: var(--g2);

@@ -20,6 +20,7 @@
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
+  import MobileBottomNav from './MobileBottomNav.svelte';
   import { chartSaveMode, selectedRange } from '$lib/stores/chartSaveMode';
   import RangeSelectionPanel from '$lib/shared/chart/overlays/RangeSelectionPanel.svelte';
   import type { JudgeVerdict } from '$lib/shared/chart/overlays/RangeSelectionPanel.svelte';
@@ -490,6 +491,15 @@
         />
       </div>
     </BottomSheet>
+
+    <!-- PR14: MobileBottomNav — 56px fixed bottom (StatusBar absorbed + 4-nav) -->
+    <MobileBottomNav
+      activeView={$mobileMode.active === 'scan' ? 'research' : $mobileMode.active === 'judge' ? 'judge' : $mobileMode.active === 'chart' ? 'chart' : 'verdict'}
+      onViewChange={(v) => mobileMode.setActive(v === 'verdict' ? 'detail' : v === 'research' ? 'scan' : v as 'chart' | 'judge')}
+      lastVerdictKind={lastVerdictKind}
+      lastUpdatedAt={$chartFreshness}
+      verdicts={$verdictCount}
+    />
 
   {:else}
     <!-- ── DESKTOP / TABLET — W-0402 PR2 CSS Grid layout ── -->

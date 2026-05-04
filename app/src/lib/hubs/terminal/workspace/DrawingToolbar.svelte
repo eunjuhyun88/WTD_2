@@ -85,22 +85,35 @@
   }
 
   @media (max-width: 768px) {
+    /* DrawingStrip: floating overlay on left edge of ChartCanvas.
+       Parent (.mobile-chart-section) must be position:relative.
+       Hidden by default; shown only when parent has [data-draw-mode] attribute
+       (set by TradeMode when shellStore.drawingMode === true). */
     .drawing-toolbar {
-      flex-direction: row;
-      width: 100%;
-      height: 36px;
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: auto;
+      max-height: 200px;
       border-right: none;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 4px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 4px 3px;
       gap: 2px;
-      overflow-x: auto;
+      z-index: 20;
+      overflow-y: auto;
       scrollbar-width: none;
     }
     .drawing-toolbar::-webkit-scrollbar { display: none; }
     .toolbar-divider {
-      width: 1px;
-      height: 20px;
-      margin: 0 4px;
+      width: 24px;
+      height: 1px;
+      margin: 2px 0;
     }
   }
 
