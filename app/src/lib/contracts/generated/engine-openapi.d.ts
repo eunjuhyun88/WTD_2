@@ -4258,13 +4258,6 @@ export interface components {
              * @default 4h
              */
             timeframe: string;
-            /** User Id */
-            user_id?: string | null;
-            /**
-             * Tier
-             * @default free
-             */
-            tier: string;
             /** Model */
             model?: string | null;
         };
