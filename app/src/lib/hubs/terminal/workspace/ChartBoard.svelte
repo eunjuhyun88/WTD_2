@@ -305,6 +305,34 @@
   });
 
   /**
+   * PR6-AC3: instance label map — when ≥2 instances share the same engineKey,
+   * assign "#1", "#2"… suffixes so PaneInfoBar shows "RSI #1", "RSI #2".
+   * instanceId → label suffix string (empty when family count = 1).
+   */
+  const instanceLabelSuffix = $derived.by((): Map<string, string> => {
+    const subInsts = indicatorInstances.instances.filter(
+      (i) => i.style.visible && SUB_PANE_KINDS.has(i.engineKey),
+    );
+    // Count per engineKey
+    const counts = new Map<string, number>();
+    for (const inst of subInsts) counts.set(inst.engineKey, (counts.get(inst.engineKey) ?? 0) + 1);
+    // Assign index only for multi-instance keys
+    const idx = new Map<string, number>();
+    const result = new Map<string, string>();
+    for (const inst of subInsts) {
+      const total = counts.get(inst.engineKey) ?? 1;
+      if (total >= 2) {
+        const n = (idx.get(inst.engineKey) ?? 0) + 1;
+        idx.set(inst.engineKey, n);
+        result.set(inst.instanceId, ` #${n}`);
+      } else {
+        result.set(inst.instanceId, '');
+      }
+    }
+    return result;
+  });
+
+  /**
    * Price pane takes stretchFactor=4 (adjustable); each sub-pane takes its
    * stored stretch factor. Used as a CSS custom property for pib-anchor overlays.
    */
@@ -2057,7 +2085,8 @@
         <!-- Secondary indicator instances (W-0399-P2) -->
         {#each indicatorInstances.instances.filter(i => i.style.visible && SUB_PANE_KINDS.has(i.engineKey)) as inst (inst.instanceId)}
           {@const top = instancePibTops.get(inst.instanceId) ?? 0}
-          {@const label = inst.engineKey.toUpperCase() + (inst.params.period ? ` ${inst.params.period}` : inst.params.fast ? ` ${inst.params.fast}/${inst.params.slow}` : '')}
+          {@const suffix = instanceLabelSuffix.get(inst.instanceId) ?? ''}
+          {@const label = inst.engineKey.toUpperCase() + (inst.params.period ? ` ${inst.params.period}` : inst.params.fast ? ` ${inst.params.fast}/${inst.params.slow}` : '') + suffix}
           <div class="pib-anchor" style="top: {top.toFixed(2)}%">
             <PaneInfoBar
               title={label}
