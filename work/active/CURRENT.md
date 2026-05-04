@@ -55,6 +55,7 @@ W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 |---|---|---|
 | `W-PF-100-propfirm-master-epic` | P0 | 🟢 P1 완료, P2 대기 (24h live AC 검증 후) |
 | `W-PF-100-P2-eval-challenge` | P0 | 🟡 착수 가능 |
+| `W-0407-terminal-tab-velo-tv-integration` | P1 | 🟡 설계 완료, W-T0 spike 대기 |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
