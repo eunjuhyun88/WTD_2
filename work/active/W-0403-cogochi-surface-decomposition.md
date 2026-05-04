@@ -81,7 +81,6 @@
 | A22 | AnalyzePanel | `app/src/lib/hubs/terminal/workspace/AnalyzePanel.svelte` | ANL tab |
 | A23 | ScanPanel | `app/src/lib/hubs/terminal/workspace/ScanPanel.svelte` | SCN tab |
 | A24 | JudgePanel (workspace) | `app/src/lib/hubs/terminal/workspace/JudgePanel.svelte` | JDG tab |
-| A25 | JudgePanel (peek) | `app/src/lib/hubs/terminal/peek/JudgePanel.svelte` | peek alias (dup) |
 | A26 | AIParserModal | `app/src/lib/hubs/terminal/sheets/AIParserModal.svelte` | parser modal |
 | A27 | aiQueryRouter | `app/src/lib/hubs/terminal/aiQueryRouter.ts` | NL→action |
 | A28 | aiSearchHistory | `app/src/lib/hubs/terminal/aiSearchHistory.ts` | history persist |
@@ -738,7 +737,6 @@ StatusBar = desktop-only; mobile shows fresh dot inside TopBar instead.
 | 66 | AnalyzePanel | Hub-2 AIAgentPanel ANL inline | L1 | keep |
 | 67 | ScanPanel | Hub-2 AIAgentPanel SCN inline | L1 | keep |
 | 68 | JudgePanel (workspace) | Hub-2 AIAgentPanel JDG inline | L1 | keep — DecideRightPanel 흡수 |
-| 69 | JudgePanel (peek) | - | (workspace로 통합) | - | delete (dup) |
 | 70 | LiveSignalPanel | Hub-2 ANL drawer | L3 | keep |
 | 71 | aiQueryRouter | Hub-2 utility | structural | keep |
 | 72 | aiSearchHistory | Hub-2 utility | structural | keep |
@@ -804,16 +802,7 @@ StatusBar = desktop-only; mobile shows fresh dot inside TopBar instead.
 | 134 | WorkspaceGrid | Hub-2 | (옵션 multi-chart mode) | structural | keep |
 | 135 | WorkspacePanel | Hub-2 | (ChartPane 흡수) | - | absorb |
 | 136 | WorkspacePresetPicker | Hub-2 TopBar Mode menu | L3 | keep |
-| 137 | peek/AIAgentPanel | - | (canonical AIAgentPanel) | - | delete (dup) |
-| 138 | peek/CenterPanel | - | (workspace stage center) | - | delete (dup) |
-| 139 | peek/IndicatorPanel | - | (PaneInfoBar 클릭 시) | - | delete (dup) |
-| 140 | peek/JudgePanel | - | (workspace JudgePanel) | - | delete (dup) |
-| 141 | peek/ModePill | - | (TabBar workMode) | - | delete (dup) |
-| 142 | peek/PeekDrawer | - | (DrawerSlide canonical) | - | delete (dup) |
-| 143 | peek/RightRailPanel | - | (AIAgentPanel) | - | delete (dup) |
-| 144 | peek/ScanGrid | - | (ScanPanel) | - | delete (dup) |
 | 145 | peek/VerdictInboxPanel | Hub-2 PAT inline + Hub-1 | L1 | keep — canonical 위치 옮기기 (panels/) |
-| 146 | peek/WatchlistRail | - | (panels/WatchlistRail canonical) | - | delete (dup) |
 | 147 | warroom/WarRoom | - | dead | - | delete |
 | 148 | warroom/WarRoomFooterSection | - | dead | - | delete |
 | 149 | warroom/WarRoomHeaderSection | - | dead | - | delete |
@@ -992,7 +981,6 @@ StatusBar = desktop-only; mobile shows fresh dot inside TopBar instead.
 - `app/src/lib/hubs/terminal/panels/IntelPanel.svelte` (dead)
 - `app/src/lib/hubs/terminal/workspace/{TerminalLeftRail,TerminalRightRail,TerminalCommandBar,CollectedMetricsDock,MarketDrawer}.svelte` (5)
 - `app/src/lib/hubs/terminal/workspace/{TerminalContextPanel,TerminalContextPanelSummary,TerminalHeaderMeta,TerminalBottomDock,BottomPanel}.svelte` (5; absorb after verify)
-- `app/src/lib/hubs/terminal/workspace/cogochi-components/DrawerSlide.svelte` (dup)
 - `app/src/lib/hubs/terminal/workspace/PineScriptGenerator.svelte` (canonical PineGenerator 사용)
 - `app/src/routes/patterns/filter-drag/+page.svelte` (실험)
 - `app/src/routes/terminal/peek/+page.svelte` (peek 라우트 deprecate)
