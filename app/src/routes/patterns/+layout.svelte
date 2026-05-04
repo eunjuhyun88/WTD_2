@@ -1,11 +1,13 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import type { Snippet } from 'svelte';
 
   interface Props { children: Snippet }
   let { children }: Props = $props();
 
   const path = $derived($page.url.pathname);
+  const queryTab = $derived($page.url.searchParams.get('tab') ?? '');
 
   const isDetailPage = $derived.by(() => {
     const parts = path.split('/').filter(Boolean);
@@ -13,29 +15,59 @@
       !['strategies', 'benchmark', 'lifecycle', 'search'].includes(parts[1]);
   });
 
+  // On /patterns, active tab is driven by ?tab= query param
+  // On sub-routes (legacy, pre-redirect), active tab is driven by pathname
+  const activeTab = $derived.by(() => {
+    if (path === '/patterns') {
+      return queryTab || 'library';
+    }
+    if (path === '/patterns/benchmark') return 'benchmark';
+    if (path === '/patterns/lifecycle') return 'lifecycle';
+    if (path === '/patterns/search') return 'search';
+    if (path === '/patterns/strategies') return 'strategies';
+    return 'library';
+  });
+
   const tabs = [
-    { href: '/patterns',            label: 'Library' },
-    { href: '/patterns/strategies', label: 'Strategies' },
-    { href: '/patterns/benchmark',  label: 'Benchmark' },
-    { href: '/patterns/lifecycle',  label: 'Lifecycle' },
-    { href: '/patterns/search',     label: 'Search' },
+    { id: 'library',     label: 'Library' },
+    { id: 'benchmark',   label: 'Benchmark' },
+    { id: 'lifecycle',   label: 'Lifecycle' },
+    { id: 'search',      label: 'Search' },
+    { id: 'strategies',  label: 'Strategies' },
   ];
 
-  function active(href: string): boolean {
-    if (href === '/patterns') return path === '/patterns';
-    return path === href || path.startsWith(href + '/');
+  function selectTab(id: string) {
+    if (id === 'library') {
+      const url = new URL($page.url);
+      url.searchParams.delete('tab');
+      goto(url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : ''), {
+        replaceState: false,
+        noScroll: true,
+        keepFocus: true,
+      });
+    } else {
+      const url = new URL($page.url);
+      url.pathname = '/patterns';
+      url.searchParams.set('tab', id);
+      goto(url.pathname + '?' + url.searchParams.toString(), {
+        replaceState: false,
+        noScroll: true,
+        keepFocus: true,
+      });
+    }
   }
 </script>
 
 {#if !isDetailPage}
   <nav class="hub-tabs" aria-label="Patterns navigation">
     {#each tabs as tab}
-      <a
-        href={tab.href}
+      <button
         class="hub-tab"
-        class:active={active(tab.href)}
-        aria-current={active(tab.href) ? 'page' : undefined}
-      >{tab.label}</a>
+        class:active={activeTab === tab.id}
+        aria-current={activeTab === tab.id ? 'page' : undefined}
+        onclick={() => selectTab(tab.id)}
+        type="button"
+      >{tab.label}</button>
     {/each}
   </nav>
 {/if}
@@ -59,10 +91,13 @@
     font-size: 12px;
     font-weight: 500;
     color: rgba(250, 247, 235, 0.38);
-    text-decoration: none;
+    background: none;
+    border: none;
     border-bottom: 2px solid transparent;
+    cursor: pointer;
     transition: color 0.15s, border-color 0.15s;
     white-space: nowrap;
+    font-family: inherit;
   }
 
   .hub-tab:hover {
