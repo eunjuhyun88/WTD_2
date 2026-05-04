@@ -366,7 +366,7 @@
     color: rgba(255, 255, 255, 0.88);
   }
   .tb-arrow {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.42);
   }
 

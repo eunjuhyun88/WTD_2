@@ -107,7 +107,7 @@
   .vb-toggle:hover { color: rgba(255, 255, 255, 0.72); }
 
   .vb-icon {
-    font-size: 9px;
+    font-size: var(--ui-text-xs);
     line-height: 1;
     transition: transform 0.1s;
   }
@@ -148,7 +148,7 @@
 
   .vb-lbl {
     font-family: var(--fb, 'Space Grotesk', sans-serif);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -165,7 +165,7 @@
 
   .vb-pct {
     font-family: var(--fm, 'JetBrains Mono', monospace);
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     color: rgba(255, 255, 255, 0.38);
   }
   .vb-chip.target .vb-pct { color: rgba(38, 166, 154, 0.7); }
