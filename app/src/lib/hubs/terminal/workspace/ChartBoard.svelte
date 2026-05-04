@@ -936,6 +936,51 @@
   let rateLimitRetryIn = $derived(feed.rateLimitRetryIn);
   let chartData = $derived(feed.chartData);
 
+  // W-T5: aggregated perp fallback — fetched when toggle is ON but chartData has no data
+  let aggOiBars     = $state<Array<{ time: number; value: number; color: string }>>([]);
+  let aggFundingBars = $state<Array<{ time: number; value: number; color: string }>>([]);
+
+  $effect(() => {
+    const sym = symbol;
+    const needOI      = showOI      && !(chartData?.oiBars?.length);
+    const needFunding = showFundingPane && !(chartData?.fundingBars?.length);
+    if (!sym || (!needOI && !needFunding)) return;
+
+    void (async () => {
+      const [oiRes, fundRes] = await Promise.allSettled([
+        needOI      ? fetch(`/api/indicators/aggregated/oi?symbol=${sym}&limit=500`)      : Promise.resolve(null),
+        needFunding ? fetch(`/api/indicators/aggregated/funding?symbol=${sym}&limit=500`) : Promise.resolve(null),
+      ]);
+      if (oiRes.status === 'fulfilled' && oiRes.value?.ok) {
+        const d = (await oiRes.value.json()) as { points?: Array<{ t: number; v: number }> };
+        if (d.points?.length) {
+          aggOiBars = d.points.map((p) => ({ time: Math.floor(p.t / 1000), value: p.v, color: '#63b3ed' }));
+        }
+      }
+      if (fundRes.status === 'fulfilled' && fundRes.value?.ok) {
+        const d = (await fundRes.value.json()) as { points?: Array<{ t: number; v: number }> };
+        if (d.points?.length) {
+          aggFundingBars = d.points.map((p) => ({
+            time: Math.floor(p.t / 1000),
+            value: p.v,
+            color: p.v >= 0 ? 'rgba(52,211,153,0.8)' : 'rgba(248,113,113,0.8)',
+          }));
+        }
+      }
+    })();
+  });
+
+  // Effective payload: chartData with aggregated fallback for missing perp series
+  const effectiveChartData = $derived(
+    chartData
+      ? {
+          ...chartData,
+          oiBars:      chartData.oiBars?.length      ? chartData.oiBars      : aggOiBars,
+          fundingBars: chartData.fundingBars?.length  ? chartData.fundingBars : aggFundingBars,
+        }
+      : null,
+  );
+
   // Keep chartSaveMode payload in sync so SaveStrip can slice indicators (W-0117 Slice B)
   $effect(() => {
     chartSaveMode.setPayload(feed.chartData);
@@ -945,8 +990,8 @@
   // ── Pane info chips (current value + Δ for each line in each pane) ───────
   // Recomputed any time chartData / tf changes. Cheap (O(N) per pane).
   const oiChips = $derived.by(() => {
-    if (!chartData?.oiBars?.length) return null;
-    return computePaneChips('oi', chartData.oiBars.map((b) => ({ time: b.time, value: b.value })), tf);
+    if (!effectiveChartData?.oiBars?.length) return null;
+    return computePaneChips('oi', effectiveChartData.oiBars.map((b) => ({ time: b.time, value: b.value })), tf);
   });
   const cvdChips = $derived.by(() => {
     if (!chartData) return null;
@@ -963,12 +1008,12 @@
     return computePaneChips('cvd', raw, tf);
   });
   const fundingChips = $derived.by(() => {
-    if (!chartData?.fundingBars?.length) return null;
-    return computePaneChips('funding', chartData.fundingBars.map((b) => ({ time: b.time, value: b.value })), tf);
+    if (!effectiveChartData?.fundingBars?.length) return null;
+    return computePaneChips('funding', effectiveChartData.fundingBars.map((b) => ({ time: b.time, value: b.value })), tf);
   });
   const liqChips = $derived.by(() => {
-    if (!chartData?.liqBars?.length) return null;
-    return computeLiqChips(chartData.liqBars, tf);
+    if (!effectiveChartData?.liqBars?.length) return null;
+    return computeLiqChips(effectiveChartData.liqBars, tf);
   });
   const rsiOrMacdChips = $derived.by(() => {
     if (!chartData) return null;
@@ -1740,7 +1785,7 @@
         const count = indicatorInstances.countByDef(indicator.id);
         if (count < MAX_INSTANCES) {
           indicatorInstances.add(indicator.id, key);
-          if (chartData) renderCharts(chartData);
+          if (effectiveChartData) renderCharts(effectiveChartData);
         }
         indicatorLibraryOpen = false;
         return;
@@ -1754,13 +1799,13 @@
   /** W-0399: Remove a secondary indicator instance and re-render. */
   function removeInstance(instanceId: string) {
     indicatorInstances.remove(instanceId);
-    if (chartData) renderCharts(chartData);
+    if (effectiveChartData) renderCharts(effectiveChartData);
   }
 
   /** W-0399: Update params on a secondary indicator instance and re-render. */
   function updateInstance(instanceId: string, params: Record<string, number | string | boolean>) {
     indicatorInstances.updateParams(instanceId, params);
-    if (chartData) renderCharts(chartData);
+    if (effectiveChartData) renderCharts(effectiveChartData);
   }
 
   onMount(() => {
@@ -1860,7 +1905,9 @@
     void derivativesOnMain;
     void showComparison;
     void $comparisonStore.data;  // re-render when comparison data arrives
-    const data = chartData;
+    void aggOiBars;
+    void aggFundingBars;
+    const data = effectiveChartData;
     if (!data || loading) return;
     void tick().then(() => {
       renderCharts(data);
@@ -2128,7 +2175,7 @@
               sublabel={tf}
               chips={[]}
               closable
-              onClose={() => { indicatorInstances.remove(inst.instanceId); if (chartData) renderCharts(chartData); }}
+              onClose={() => { indicatorInstances.remove(inst.instanceId); if (effectiveChartData) renderCharts(effectiveChartData); }}
             />
           </div>
         {/each}
