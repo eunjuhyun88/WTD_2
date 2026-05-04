@@ -75,6 +75,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/options-snapshot',  // W-0122-C1: Deribit options snapshot (public), 5m cache
   '/api/market/chains/',           // W-0122 extension: supported chain search/catalog (public read-only)
   '/api/terminal/intel-policy',    // terminal read-only policy synthesis for public terminal shell
+  '/api/terminal/agent/chat',      // AI agent SSE stream — user_id optional, quota tracked per-user when authed
+  '/api/terminal/agent/models',    // AI agent model list — public read-only, no personal data
   '/api/coingecko/',
   '/api/feargreed',
   '/api/chart/',          // chart klines + feed — public market data, rate-limited

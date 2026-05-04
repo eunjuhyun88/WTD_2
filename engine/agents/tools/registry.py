@@ -22,6 +22,7 @@ log = logging.getLogger("engine.agents.tools.registry")
 
 
 # ── Tool schemas (Anthropic tool-use format) ──────────────────────────────────
+# litellm/OpenAI format is auto-derived via to_openai_tools() below.
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -102,6 +103,26 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
 ]
+
+
+def to_openai_tools(schemas: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    """Convert Anthropic-format tool schemas → litellm/OpenAI function-calling format.
+
+    Anthropic: {"name": ..., "description": ..., "input_schema": {...}}
+    OpenAI:    {"type": "function", "function": {"name": ..., "description": ..., "parameters": {...}}}
+    """
+    src = schemas or TOOL_SCHEMAS
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t.get("description", ""),
+                "parameters": t.get("input_schema", {"type": "object", "properties": {}}),
+            },
+        }
+        for t in src
+    ]
 
 
 # ── Tool dispatcher ───────────────────────────────────────────────────────────

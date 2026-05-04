@@ -1,13 +1,15 @@
-"""Agent chat SSE endpoint — PR2: real LLM conversation with tool-use.
+"""Agent chat SSE endpoint — litellm multi-provider conversation with tool-use.
 
 POST /agent/chat
-Body: { "message": str, "symbol"?: str, "timeframe"?: str, "user_id"?: str }
+Body: { "message": str, "symbol"?: str, "timeframe"?: str, "user_id"?: str, "model"?: str }
 
 Streams: text/event-stream
   event: chunk       data: {"text": "..."}
   event: tool_call   data: {"name": "...", "input": {...}}
   event: tool_result data: {"name": "...", "preview": "..."}
   event: done        data: {"latency_ms": N, "tokens": N}
+
+GET /agent/chat/models  → list of available models for UI selector
 """
 from __future__ import annotations
 
@@ -29,6 +31,14 @@ class ChatRequest(BaseModel):
     timeframe: str = "4h"
     user_id: str | None = None
     tier: str = "free"
+    model: str | None = None  # e.g. "groq/llama-3.3-70b-versatile"
+
+
+@router.get("/agent/chat/models")
+async def get_available_models():
+    """Return available models for UI model selector."""
+    from agents.conversation import AVAILABLE_MODELS
+    return {"models": AVAILABLE_MODELS}
 
 
 async def _chat_stream(req: ChatRequest):
@@ -42,6 +52,7 @@ async def _chat_stream(req: ChatRequest):
             timeframe=req.timeframe,
             user_id=req.user_id,
             tier=req.tier,
+            model=req.model,
         ):
             if "text" in chunk:
                 yield f"event: chunk\ndata: {json.dumps({'text': chunk['text']})}\n\n"
