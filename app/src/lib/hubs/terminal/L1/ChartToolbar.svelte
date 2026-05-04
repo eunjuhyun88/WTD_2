@@ -219,7 +219,8 @@
     align-items: center;
     gap: 2px;
     padding: 0 6px;
-    background: transparent;
+    background: rgba(11, 13, 18, 0.94);
+    backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     font-family: var(--fb, 'Space Grotesk', sans-serif);
     color: rgba(255, 255, 255, 0.75);
