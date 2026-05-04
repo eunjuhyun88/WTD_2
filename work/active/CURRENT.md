@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`4318f83c` — origin/main (2026-05-04) — chore: CURRENT.md sync 2767ed49 + sweep W-0395B/W-0401-p4/W-0402 → completed (#1061)
+`d49bbc82` — origin/main (2026-05-04) — feat(research): autoresearch loop UI nav + real BFF routes (#1069)
 
 ---
 
