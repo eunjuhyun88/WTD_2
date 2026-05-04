@@ -83,6 +83,8 @@ export interface TabState {
   compares: string[];
   // W-0407: heatmap overlay toggle
   heatmapOn: boolean;
+  // W-T11: volume profile right-side overlay
+  vpOn: boolean;
 }
 
 export interface Tab {
@@ -226,6 +228,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   panes: [...DEFAULT_PANES],
   compares: [],
   heatmapOn: false,
+  vpOn: false,
 });
 
 const makeDefault = (): ShellState => ({
@@ -285,6 +288,7 @@ function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
     panes: normalizePanes((tabState as any)?.panes),
     compares: Array.isArray((tabState as any)?.compares) ? (tabState as any).compares : [],
     heatmapOn: (tabState as any)?.heatmapOn ?? false,
+    vpOn: (tabState as any)?.vpOn ?? false,
   };
 }
 

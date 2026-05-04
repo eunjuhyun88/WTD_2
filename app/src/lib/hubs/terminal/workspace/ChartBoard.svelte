@@ -267,6 +267,9 @@
   // W-0210 Layer 3: comparison overlay (BTC or benchmark symbol)
   let showComparison = $derived($chartIndicators.comparison);
   let isVeloSurface = $derived(surfaceStyle === 'velo');
+  // W-T11: heatmap coloring for volume bars; volume profile right-side overlay
+  let showHeatmap = $derived($activeTabState?.heatmapOn ?? false);
+  let showVolumeProfile = $derived($activeTabState?.vpOn ?? false);
 
   let chartMode = $state<'candle' | 'line' | 'bar' | 'area' | 'heikin'>('candle');
   let priceScaleMode = $state<'normal' | 'log' | 'percent'>('normal');
@@ -1500,6 +1503,7 @@
       showCVD,
       showFundingPane,
       showLiqPane,
+      heatmapVolume: showHeatmap,
     }, tf);
     panePositions = mountResult.positions;
     indicatorSeriesRefs = mountResult.seriesRefs;
@@ -1904,6 +1908,7 @@
     void cvdDivergence;
     void derivativesOnMain;
     void showComparison;
+    void showHeatmap;
     void $comparisonStore.data;  // re-render when comparison data arrives
     void aggOiBars;
     void aggFundingBars;
@@ -2066,6 +2071,17 @@
         <PhaseBadge phase={null} />
       </div>
     </div>
+    <!-- W-T11: Volume profile right-side overlay -->
+    {#if showVolumeProfile && volumeProfileRows.length > 0}
+      <div class="volume-profile-overlay">
+        {#each volumeProfileRows as row}
+          <div class="vp-row" style="opacity: {row.opacity}" class:vp-poc={row.isPoc}>
+            <div class="vp-bid" style="width: {row.bidWidth}; background: rgba(38,166,154,0.55)"></div>
+            <div class="vp-ask" style="width: {row.askWidth}; background: rgba(239,83,80,0.55)"></div>
+          </div>
+        {/each}
+      </div>
+    {/if}
     <!-- W-0358: Floating note button (bottom-right of chart) -->
     <FloatingNoteButton
       {symbol}
@@ -2613,6 +2629,8 @@
   .vp-ask {
     background: linear-gradient(90deg, rgba(80,178,232,0.72), rgba(80,178,232,0.20));
   }
+  .vp-poc .vp-bid,
+  .vp-poc .vp-ask { outline: 1px solid rgba(255,255,255,0.25); }
   .save-toast {
     position: fixed;
     bottom: calc(var(--sc-consent-reserved-h, 0px) + 20px);
