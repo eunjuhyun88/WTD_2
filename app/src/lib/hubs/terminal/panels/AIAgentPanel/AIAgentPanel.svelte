@@ -13,6 +13,7 @@
   import DrawerSlide from './DrawerSlide.svelte';
   import PatternTab from './PatternTab.svelte';
   import AskInput from './AskInput.svelte';
+  import ChatThread from './ChatThread.svelte';
 
   // ── Types ─────────────────────────────────────────────────────────────────
   interface EngineCapture {
@@ -27,8 +28,9 @@
     blocks_triggered?: string[];
   }
 
-  // Quant workflow order: Research → Pattern → Verdict → Decision → Judge
+  // Quant workflow order: Chat → Research → Pattern → Verdict → Decision → Judge
   const TABS: Array<{ id: RightPanelTab; label: string }> = [
+    { id: 'chat',      label: 'Chat'      },
     { id: 'research',  label: 'Research'  },
     { id: 'pattern',   label: 'Pattern'   },
     { id: 'verdict',   label: 'Verdict'   },
@@ -303,7 +305,14 @@
   <!-- ── Tab content ── -->
   <div class="tab-content">
 
-    {#if activeTab === 'decision'}
+    {#if activeTab === 'chat'}
+      <div class="tab-inner">
+        <div class="tab-scroll" style="padding: 0; overflow: hidden;">
+          <ChatThread {symbol} {timeframe} />
+        </div>
+      </div>
+
+    {:else if activeTab === 'decision'}
       <div class="tab-inner">
         <div class="tab-scroll">
           <DecisionHUDAdapter analysisData={decisionData} isLoading={decisionLoading} />
