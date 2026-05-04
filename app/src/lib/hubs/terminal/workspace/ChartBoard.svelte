@@ -1972,19 +1972,6 @@
       <button onclick={() => void feed.loadData()}>Retry</button>
     </div>
   {:else}
-    <!-- W-0289: Drawing toolbar (left of chart) -->
-    {#if $activeDrawingMode}
-      <DrawingToolbar
-        activeTool={drawingActiveTool}
-        onSelectTool={(t) => {
-          drawingActiveTool = t;
-          drawingMgr?.setTool(t);
-        }}
-        onClearAll={() => drawingMgr?.clearAll()}
-        onDeleteSelected={() => drawingMgr?.deleteSelected()}
-      />
-    {/if}
-
     <!-- W-0374 Phase D-4: IndicatorLibrary drawer -->
     {#if indicatorLibraryOpen}
       <IndicatorLibrary
