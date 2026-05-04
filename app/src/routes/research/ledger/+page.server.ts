@@ -1,0 +1,8 @@
+import { redirect } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+
+export const load: PageServerLoad = ({ url }) => {
+  const params = url.searchParams.toString();
+  const target = params ? `/lab/ledger?${params}` : '/lab/ledger';
+  redirect(301, target);
+};

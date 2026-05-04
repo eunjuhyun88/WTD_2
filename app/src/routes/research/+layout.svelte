@@ -8,7 +8,7 @@
   const path = $derived($page.url.pathname);
 
   const tabs = [
-    { href: '/research/ledger',   label: 'Ledger' },
+    { href: '/lab/ledger',        label: 'Ledger' },
     { href: '/research/battle',   label: 'Battle' },
     { href: '/research/ensemble', label: 'Ensemble' },
   ];
