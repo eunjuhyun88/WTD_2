@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { parseDirectives } from '$lib/agent/directives';
   import type { Segment, VerdictCardPayload, SimilarityCardPayload, PassportCardPayload } from '$lib/agent/directives';
   import VerdictCard from './cards/VerdictCard.svelte';
   import SimilarityCard from './cards/SimilarityCard.svelte';
   import PassportMiniCard from './cards/PassportMiniCard.svelte';
 
+  interface ModelOption { id: string; label: string; badge: string; }
   interface Message { role: 'user' | 'assistant'; text: string; streaming?: boolean; }
   interface Props {
     symbol?: string;
@@ -13,10 +15,36 @@
   }
   let { symbol = 'BTCUSDT', timeframe = '4h', onSelectSymbol }: Props = $props();
 
+  // Default model list (shown before fetch completes)
+  const DEFAULT_MODELS: ModelOption[] = [
+    { id: 'groq/llama-3.3-70b-versatile', label: 'Groq Llama-3.3 70B', badge: 'fast' },
+    { id: 'groq/llama-3.1-8b-instant', label: 'Groq Llama-3.1 8B', badge: 'fastest' },
+    { id: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5', badge: 'smart' },
+    { id: 'anthropic/claude-haiku-3-5', label: 'Claude Haiku 3.5', badge: '' },
+    { id: 'gemini/gemini-2.0-flash', label: 'Gemini 2.0 Flash', badge: '' },
+    { id: 'deepseek/deepseek-chat', label: 'DeepSeek Chat', badge: 'cheap' },
+    { id: 'cerebras/llama-3.3-70b', label: 'Cerebras Llama-3.3', badge: 'fast' },
+    { id: 'ollama/qwen3.5:latest', label: 'Ollama Qwen3.5 (local)', badge: 'local' },
+  ];
+
+  let models = $state<ModelOption[]>(DEFAULT_MODELS);
+  let selectedModel = $state<string>('groq/llama-3.3-70b-versatile');
   let messages = $state<Message[]>([]);
   let input = $state('');
   let busy = $state(false);
   let bottomEl = $state<HTMLDivElement | null>(null);
+
+  onMount(async () => {
+    try {
+      const res = await fetch('/api/terminal/agent/models');
+      if (res.ok) {
+        const data = await res.json() as { models?: ModelOption[] };
+        if (data.models && data.models.length > 0) {
+          models = data.models;
+        }
+      }
+    } catch { /* use defaults */ }
+  });
 
   function scrollBottom() { bottomEl?.scrollIntoView({ behavior: 'smooth' }); }
 
@@ -33,7 +61,7 @@
       const res = await fetch('/api/terminal/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, symbol, timeframe }),
+        body: JSON.stringify({ message: text, symbol, timeframe, model: selectedModel }),
       });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
@@ -93,6 +121,18 @@
 </script>
 
 <div class="chat-thread">
+  <!-- Model selector bar -->
+  <div class="model-bar">
+    <span class="model-label">Model</span>
+    <select class="model-select" bind:value={selectedModel} disabled={busy}>
+      {#each models as m}
+        <option value={m.id}>
+          {m.label}{m.badge ? ` · ${m.badge}` : ''}
+        </option>
+      {/each}
+    </select>
+  </div>
+
   <div class="messages">
     {#each messages as msg}
       {@const segs = getSegments(msg)}
@@ -129,6 +169,26 @@
 
 <style>
 .chat-thread { display: flex; flex-direction: column; height: 100%; gap: 0; }
+
+/* Model selector bar */
+.model-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid #2a2a3a;
+  background: #0e0e1a;
+}
+.model-label { font-size: 10px; color: #5a6a8a; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
+.model-select {
+  flex: 1;
+  background: #141428; color: #8899bb;
+  border: 1px solid #2a2a3a; border-radius: 4px;
+  padding: 2px 4px; font-size: 11px;
+  cursor: pointer; outline: none;
+  appearance: auto;
+}
+.model-select:focus { border-color: #4a6fa5; }
+.model-select:disabled { opacity: 0.5; cursor: default; }
+
 .messages { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .msg { max-width: 95%; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 1.5; display: flex; flex-direction: column; gap: 6px; }
 .msg--user { align-self: flex-end; background: #1a3a5c; color: #cce8ff; max-width: 80%; }

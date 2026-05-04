@@ -17,6 +17,7 @@ const ChatSchema = z.object({
   message: z.string().min(1).max(4000),
   symbol: z.string().default('BTCUSDT'),
   timeframe: z.string().default('4h'),
+  model: z.string().optional(),  // e.g. "groq/llama-3.3-70b-versatile"
 });
 
 export async function POST({ request, cookies }: RequestEvent) {
