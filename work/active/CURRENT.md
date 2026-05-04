@@ -36,9 +36,9 @@
 
 ## main SHA
 
-`885062fc` — origin/main (2026-05-04) — chore(workspace): delete 15 dead orphan components + prune index.ts (#1113)
+`33079c99` — origin/main (2026-05-04) — feat(propfirm): W-PF-207 — SSR routes + beta whitelist (#1135)
 
-W-0403 Wave 6 Cogochi Surface Decomposition: PR9a/9b/9c/10a/10b/11/12/13/14 all merged. StreakBadgeCard + VerdictInboxSection now live on /dashboard; 12 dead workspace orphans purged.
+W-PF-207 merged: /propfirm beta gate + /propfirm/dashboard + /propfirm/verify/[id] + GET /api/propfirm/evaluation. W-PF-201~207 all complete.
 
 ---
 
