@@ -75,6 +75,7 @@ def _make_client(
                     "tier_id": TIER_ID,
                     "trading_days": trading_days,
                     "started_at": "2026-05-01T00:00:00+00:00",
+                    "equity_start": equity_start,
                 }]
                 if has_active_eval else []
             )
@@ -101,7 +102,6 @@ def _make_client(
             chain.execute.return_value = _make_response({
                 "mll_pct": mll_pct,
                 "min_trading_days": min_trading_days,
-                "equity_start": equity_start,
             })
             tbl.select.return_value = chain
 

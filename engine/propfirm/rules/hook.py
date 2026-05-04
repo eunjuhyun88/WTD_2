@@ -58,12 +58,10 @@ async def on_fill(
             return []
         user_id: str = ta_resp.data["user_id"]
 
-        # 2. active evaluation
+        # 2. active evaluation (equity_start은 evaluations에서 읽음 — challenge_tiers에 없음)
         eval_resp = (
             client.table("evaluations")
-            .select(
-                "id, status, tier_id, trading_days, started_at"
-            )
+            .select("id, status, tier_id, trading_days, started_at, equity_start")
             .eq("user_id", user_id)
             .eq("status", "ACTIVE")
             .limit(1)
@@ -76,11 +74,12 @@ async def on_fill(
         eval_id: str = evaluation["id"]
         tier_id: str = evaluation["tier_id"]
         trading_days: int = evaluation.get("trading_days") or 0
+        equity_start: float = float(evaluation.get("equity_start") or 10000)
 
-        # 3. challenge_tiers → mll_pct, min_trading_days, equity_start
+        # 3. challenge_tiers → mll_pct, min_trading_days
         tier_resp = (
             client.table("challenge_tiers")
-            .select("mll_pct, min_trading_days, equity_start")
+            .select("mll_pct, min_trading_days")
             .eq("id", tier_id)
             .single()
             .execute()
@@ -91,7 +90,6 @@ async def on_fill(
         tier = tier_resp.data
         mll_pct: float = float(tier["mll_pct"])
         min_trading_days: int = int(tier["min_trading_days"])
-        equity_start: float = float(tier["equity_start"])
 
         # 4. MLL 계산용 데이터 수집
 
