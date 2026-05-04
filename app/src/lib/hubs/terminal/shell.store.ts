@@ -80,6 +80,7 @@ export interface ShellState {
   workspaceRightSplitY: number;
   sidebarVisible: boolean;
   aiVisible: boolean;
+  aiWide: boolean;
   activeSection: 'library' | 'verdicts' | 'rules';
   sidebarWidth: number;
   aiWidth: number;
@@ -210,6 +211,7 @@ const makeDefault = (): ShellState => ({
   workspaceRightSplitY: DEFAULT_WORKSPACE_RIGHT_SPLIT_Y,
   sidebarVisible: false,
   aiVisible: false,
+  aiWide: false,
   activeSection: 'verdicts',
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
   aiWidth: DEFAULT_AI_WIDTH,
@@ -597,6 +599,8 @@ function createShellStore() {
 
     toggleSidebar: () => { update(st => ({ ...st, sidebarVisible: !st.sidebarVisible })); },
     toggleAI: () => { update(st => ({ ...st, aiVisible: !st.aiVisible })); },
+    toggleAIWide: () => { update(st => ({ ...st, aiWide: !st.aiWide, aiVisible: true })); },
+    resetPanels: () => { update(st => ({ ...st, sidebarVisible: true, aiVisible: true, aiWide: false })); },
     setActiveSection: (id: 'library' | 'verdicts' | 'rules') => { update(st => ({ ...st, activeSection: id })); },
 
     resizeSidebar: (dx: number) => {

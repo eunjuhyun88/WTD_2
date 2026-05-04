@@ -19,7 +19,6 @@
   import { chartFreshness } from '$lib/stores/chartFreshness';
   import DecideRightPanel from './DecideRightPanel.svelte';
   import MultiPaneChartAdapter from './workspace/MultiPaneChartAdapter.svelte';
-  import PatternLibraryPanelAdapter from './PatternLibraryPanelAdapter.svelte';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
@@ -203,7 +202,11 @@
   let indicatorLibraryOpen = $state(false);
 
   const desktopSymbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
-  const aiPaneWidth = $derived($activeTabState.rightPanelExpanded ? 480 : Math.max(300, $shellStore.aiWidth));
+  const aiPaneWidth = $derived(
+    $activeTabState.rightPanelExpanded || $shellStore.aiWide
+      ? 520
+      : Math.max(300, $shellStore.aiWidth),
+  );
 
   // D-10: status-bar mini Verdict / freshness wiring.
   const lastVerdictKind = $derived.by<'LONG' | 'SHORT' | 'WAIT' | null>(() => {
@@ -239,12 +242,14 @@
     });
   }
 
+  // Desktop default: panels visible on first load only (respect user fold thereafter).
+  let didInitDesktopLayout = false;
   $effect(() => {
     if ($viewportTier.tier === 'MOBILE') {
       shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
       shellStore.updateTabState(s => ({ ...s, layoutMode: 'C' }));
-    } else {
-      // Desktop / tablet: WatchlistRail + AIPanel are always visible.
+    } else if (!didInitDesktopLayout) {
+      didInitDesktopLayout = true;
       shellStore.update(s =>
         s.sidebarVisible && s.aiVisible ? s : { ...s, sidebarVisible: true, aiVisible: true },
       );
@@ -281,6 +286,13 @@
       // Cmd+B / Cmd+L removed: WatchlistRail + AIPanel are always visible on desktop.
       if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); paletteOpen = !paletteOpen; if (paletteOpen) track('cmdpalette_open', { trigger: 'keyboard_p' }); }
       if (mod && e.key.toLowerCase() === 't') { e.preventDefault(); shellStore.openTab({ kind: 'trade', title: 'new session' }); }
+      // ⌘0: reset panels (both visible, AI default width)
+      if (mod && e.key === '0') { e.preventDefault(); shellStore.resetPanels(); }
+      // ⌘\: toggle AI wide mode
+      if (mod && e.key === '\\') { e.preventDefault(); shellStore.toggleAIWide(); }
+      // ⌘[ / ⌘]: toggle side panels
+      if (mod && e.key === '[') { e.preventDefault(); shellStore.toggleSidebar(); }
+      if (mod && e.key === ']') { e.preventDefault(); shellStore.toggleAI(); }
       if (mod && e.key.toLowerCase() === 'w') {
         const st = get(shellStore);
         if (st.tabs.length > 1) { e.preventDefault(); shellStore.closeTab(st.activeTabId); }
@@ -475,14 +487,33 @@
     <NewsFlashBar symbol={desktopSymbol} />
 
     <div class="main-row">
-      <!-- Left: WatchlistRail — always visible -->
-      <div class="sidebar-pane" style:width={`${Math.max(180, $shellStore.sidebarWidth)}px`}>
-        <WatchlistRail
-          activeSymbol={desktopSymbol}
-          onSelectSymbol={(s) => shellStore.setSymbol(s)}
-        />
-      </div>
-      <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
+      <!-- Left: WatchlistRail — collapsible (⌘[) -->
+      {#if $shellStore.sidebarVisible}
+        <div class="sidebar-pane" style:width={`${Math.max(180, $shellStore.sidebarWidth)}px`}>
+          <WatchlistRail
+            activeSymbol={desktopSymbol}
+            onSelectSymbol={(s) => shellStore.setSymbol(s)}
+          />
+          <button
+            class="panel-fold-btn panel-fold-left"
+            onclick={() => shellStore.toggleSidebar()}
+            title="Collapse watchlist (⌘[)"
+            aria-label="Collapse watchlist"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 2L3.5 5L6.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} onReset={() => shellStore.resetSidebarWidth()} />
+      {:else}
+        <button
+          class="panel-reveal-strip panel-reveal-left"
+          onclick={() => shellStore.toggleSidebar()}
+          title="Show watchlist (⌘[)"
+          aria-label="Show watchlist"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      {/if}
 
       <!-- D-4: Drawing rail (left of canvas, desktop only) -->
       <DrawingRail />
@@ -559,19 +590,52 @@
         {/if}
       </div>
 
-      <!-- Right: AI agent panel or Decide panel — always visible -->
-      <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
-      <div class="ai-pane" style:width={`${aiPaneWidth}px`}>
-        {#if $isDecideMode}
-          <DecideRightPanel />
-        {:else}
-          <AIAgentPanel
-            symbol={desktopSymbol}
-            timeframe={$activeTabState.timeframe ?? '4h'}
-            onSelectSymbol={(s) => shellStore.setSymbol(s)}
-          />
-        {/if}
-      </div>
+      <!-- Right: AI agent panel or Decide panel — collapsible (⌘]) + wide (⌘\) -->
+      {#if $shellStore.aiVisible}
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} onReset={() => shellStore.resetAIWidth()} />
+        <div class="ai-pane" class:wide={$shellStore.aiWide} style:width={`${aiPaneWidth}px`}>
+          <div class="ai-pane-actions">
+            <button
+              class="ai-action-btn"
+              onclick={() => shellStore.toggleAIWide()}
+              title={$shellStore.aiWide ? 'Narrow AI panel (⌘\\)' : 'Widen AI panel (⌘\\)'}
+              aria-label="Toggle AI panel width"
+            >
+              {#if $shellStore.aiWide}
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 3L7 5.5L3 8M8 2v7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {:else}
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M8 3L4 5.5L8 8M3 2v7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {/if}
+            </button>
+            <button
+              class="ai-action-btn"
+              onclick={() => shellStore.toggleAI()}
+              title="Collapse AI panel (⌘])"
+              aria-label="Collapse AI panel"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          {#if $isDecideMode}
+            <DecideRightPanel />
+          {:else}
+            <AIAgentPanel
+              symbol={desktopSymbol}
+              timeframe={$activeTabState.timeframe ?? '4h'}
+              onSelectSymbol={(s) => shellStore.setSymbol(s)}
+            />
+          {/if}
+        </div>
+      {:else}
+        <button
+          class="panel-reveal-strip panel-reveal-right"
+          onclick={() => shellStore.toggleAI()}
+          title="Show AI panel (⌘])"
+          aria-label="Show AI panel"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 2L3.5 5L6.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      {/if}
     </div>
 
     <TerminalHoldTimeAdapter onStats={(p50, p90) => { holdP50 = p50; holdP90 = p90; }} />
@@ -606,11 +670,6 @@
     open={indicatorLibraryOpen}
     onClose={() => (indicatorLibraryOpen = false)}
   />
-
-  <!-- Pattern Library overlay (modal) — only on desktop -->
-  {#if $viewportTier.tier !== 'MOBILE'}
-    <PatternLibraryPanelAdapter />
-  {/if}
 
   <!-- CommandPalette — ⌘K / ⌘P -->
   {#if paletteOpen}
@@ -679,7 +738,75 @@
     flex-shrink: 0;
     display: flex;
     overflow: hidden;
+    position: relative;
   }
+
+  /* Fold/reveal buttons — minimalist hover-reveal */
+  .panel-fold-btn {
+    position: absolute;
+    top: 8px;
+    width: 18px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--g2);
+    border: 1px solid var(--g4);
+    border-radius: 3px;
+    color: var(--g7);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+    z-index: 5;
+  }
+  .sidebar-pane:hover .panel-fold-btn,
+  .ai-pane:hover .panel-fold-btn { opacity: 1; }
+  .panel-fold-btn:hover { background: var(--g3); color: var(--g9); }
+  .panel-fold-left { right: 4px; }
+
+  .panel-reveal-strip {
+    flex-shrink: 0;
+    width: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--g1);
+    border: none;
+    border-right: 1px solid var(--g4);
+    color: var(--g6);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .panel-reveal-strip:hover { background: var(--g2); color: var(--g9); }
+  .panel-reveal-right { border-right: none; border-left: 1px solid var(--g4); }
+
+  .ai-pane-actions {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: inline-flex;
+    gap: 4px;
+    z-index: 5;
+  }
+  .ai-action-btn {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--g2);
+    border: 1px solid var(--g4);
+    border-radius: 3px;
+    color: var(--g7);
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .ai-pane:hover .ai-action-btn { opacity: 1; }
+  .ai-action-btn:hover { background: var(--g3); color: var(--g9); }
 
   .canvas-col {
     flex: 1;
@@ -730,7 +857,10 @@
     flex-shrink: 0;
     overflow: hidden;
     contain: layout paint;
+    position: relative;
+    transition: width 0.18s ease;
   }
+  .ai-pane.wide { box-shadow: -4px 0 12px rgba(0, 0, 0, 0.18); }
 
   .mobile-canvas {
     flex: 1;
