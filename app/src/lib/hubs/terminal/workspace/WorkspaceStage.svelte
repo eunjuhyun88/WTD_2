@@ -126,6 +126,7 @@
               updateTabState={(updater) => shellStore.updateTabStateFor(tab.id, updater)}
               symbol={tab.tabState.symbol ?? 'BTCUSDT'}
               timeframe={tab.tabState.timeframe ?? '4h'}
+              tabId={tab.id}
               {workMode}
               isPaneFocused={tab.id === activeTabId}
               onSymbolTap={onSymbolPickerOpen ? () => onSymbolPickerOpen!(tab.id) : undefined}

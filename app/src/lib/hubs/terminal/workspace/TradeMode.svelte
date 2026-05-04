@@ -44,6 +44,7 @@
     updateTabState: (updater: (ts: TabState) => TabState) => void;
     symbol?: string;
     timeframe?: string;
+    tabId?: string;
     mobileView?: 'chart' | 'verdict' | 'research' | 'judge';
     workMode?: ShellWorkMode;
     setMobileView?: (v: 'chart' | 'verdict' | 'research' | 'judge') => void;
@@ -53,7 +54,7 @@
     isPaneFocused?: boolean;
   }
 
-  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, workMode = 'analyze', setMobileView, setMobileSymbol, onSymbolTap, onTFChange, isPaneFocused = true }: Props = $props();
+  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', tabId, mobileView, workMode = 'analyze', setMobileView, setMobileSymbol, onSymbolTap, onTFChange, isPaneFocused = true }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
@@ -1139,6 +1140,7 @@
       <ChartBoard
         {symbol}
         tf={timeframe}
+        {tabId}
         initialData={chartPayload ?? undefined}
         verdictLevels={verdictLevels}
         change24hPct={analyzeData?.change24h ?? null}
@@ -1419,6 +1421,7 @@
           <ChartBoard
             {symbol}
             tf={timeframe}
+            {tabId}
             initialData={chartPayload ?? undefined}
             surfaceStyle="velo"
             verdictLevels={verdictLevels}

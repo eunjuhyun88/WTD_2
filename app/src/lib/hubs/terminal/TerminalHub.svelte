@@ -264,6 +264,18 @@
     }
   });
 
+  // W-T7: URL sync — update ?sym=&tf= on active tab change
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const sym = $activeTabState.symbol;
+    const tf = $activeTabState.timeframe;
+    if (!sym) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('sym', sym);
+    if (tf) url.searchParams.set('tf', tf);
+    history.replaceState(null, '', url.toString());
+  });
+
   onMount(() => {
     const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const workspaceMode = searchParams?.get('m');
@@ -271,6 +283,12 @@
     const targetPanel =
       workspacePanel === 'research' || workspacePanel === 'judge' || workspacePanel === 'verdict'
         ? workspacePanel : 'verdict';
+
+    // W-T7: ?sym=&tf= deeplink — apply to active tab on load
+    const symParam = searchParams?.get('sym');
+    const tfParam = searchParams?.get('tf');
+    if (symParam) shellStore.setSymbol(symParam.toUpperCase());
+    if (tfParam) shellStore.setTimeframe(tfParam);
 
     // PR7-AC3: ?decide=<verdictId> deeplink — open JDG drawer with that verdict
     const decideParam = searchParams?.get('decide');
@@ -590,6 +608,7 @@
         onSetWorkspaceMode={(mode) => shellStore.setWorkspaceStageMode(mode)}
         onResetWorkspaceStage={() => shellStore.resetWorkspaceStage()}
         onIndicators={() => (indicatorLibraryOpen = true)}
+        onReorderTabs={(fromId, toId) => shellStore.reorderTabs(fromId, toId)}
       />
 
       <ChartToolbar

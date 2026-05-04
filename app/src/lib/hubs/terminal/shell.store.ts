@@ -427,6 +427,18 @@ function createShellStore() {
       }));
     },
 
+    reorderTabs: (fromId: string, toId: string) => {
+      update(st => {
+        const tabs = [...st.tabs];
+        const fromIdx = tabs.findIndex(t => t.id === fromId);
+        const toIdx = tabs.findIndex(t => t.id === toId);
+        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return st;
+        const [moved] = tabs.splice(fromIdx, 1);
+        tabs.splice(toIdx, 0, moved);
+        return { ...st, tabs };
+      });
+    },
+
     updateTabPanes: (updater: (panes: PaneConfig[]) => PaneConfig[], tabId?: string) => {
       update(st => {
         const id = tabId ?? st.activeTabId;

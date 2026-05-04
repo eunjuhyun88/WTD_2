@@ -97,6 +97,7 @@
   interface Props {
     symbol:         string;
     tf?:            string;       // controlled externally (gTf); falls back to internal state
+    tabId?:         string;       // W-T7: per-tab drawing isolation
     verdictLevels?: VerdictLevels;
     initialData?: ChartSeriesPayload | null;
     depthSnapshot?: DepthLadderEnvelope['data'] | null;
@@ -150,6 +151,7 @@
   let {
     symbol,
     tf: externalTf,
+    tabId,
     verdictLevels,
     initialData = null,
     depthSnapshot = null,
@@ -1524,10 +1526,16 @@
       mainChart?.timeScale().scrollToRealTime();
 
       // W-0289: init DrawingManager after chart is ready
+      // W-T7: use tabId-scoped key for per-tab isolation; fall back to legacy sym:tf key
       if (mainChart && priceSeries) {
-        const key = `drawings:${symbol}:${tf}`;
+        const legacyKey = `drawings:${symbol}:${tf}`;
+        const key = tabId ? `drawings:${tabId}:${symbol}:${tf}` : legacyKey;
         if (!drawingMgr || drawingMgr.storageKey !== key) {
           drawingMgr?.detach();
+          // migrate legacy drawings into per-tab key on first use
+          if (tabId && !localStorage.getItem(key) && localStorage.getItem(legacyKey)) {
+            localStorage.setItem(key, localStorage.getItem(legacyKey)!);
+          }
           drawingMgr = new DrawingManager({ storageKey: key });
         }
         drawingMgr.onToolChange = (t) => { shellStore.setDrawingTool(t); };
