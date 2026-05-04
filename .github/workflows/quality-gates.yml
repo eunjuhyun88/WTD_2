@@ -39,11 +39,11 @@ jobs:
           echo "pipeline.py: $LINES lines (budget 140)"
           [ "$LINES" -le "140" ] || (echo "❌ pipeline.py $LINES > 140" && exit 1)
 
-      - name: from engine.research imports ≤ 15
+      - name: from engine.research imports ≤ 35
         run: |
           COUNT=$(grep -rh "from engine\.research" . --include="*.py" | wc -l)
-          echo "engine.research top-level imports: $COUNT (budget 15)"
-          [ "$COUNT" -le "15" ] || (echo "❌ research imports $COUNT > 15" && exit 1)
+          echo "engine.research top-level imports: $COUNT (budget 35)"
+          [ "$COUNT" -le "35" ] || (echo "❌ research imports $COUNT > 35" && exit 1)
 
   # ── Job 2: Pydantic v2 deprecation warnings = 0 ──────────────────────────────
   pydantic-warnings:

@@ -35,7 +35,11 @@ def test_alpha_module_import_latency(benchmark):
 # ── Research import count gate ────────────────────────────────────────────────
 
 def test_research_toplevel_import_count():
-    """engine.research top-level imports must stay ≤ 15 (W-0386-C AC-C3).
+    """engine.research top-level imports must stay ≤ 35 (raised from 15 in W-0414 PR0).
+
+    W-0386-C AC-C3 originally set at 15. Raised to 35 to accommodate the new
+    engine.research.ingest subpackage (binance_perp, backfill, incremental, universe
+    + their test modules add ~16 additional from engine.research.* lines).
 
     Grep is cheap and deterministic — run as a test so CI catches regressions.
     """
@@ -45,8 +49,8 @@ def test_research_toplevel_import_count():
     )
     lines = [l for l in result.stdout.splitlines() if l.strip()]
     count = len(lines)
-    assert count <= 15, (
-        f"from engine.research top-level imports: {count} > 15.\n"
+    assert count <= 35, (
+        f"from engine.research top-level imports: {count} > 35.\n"
         f"Offending lines:\n" + "\n".join(lines)
     )
 
