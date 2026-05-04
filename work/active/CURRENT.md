@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`cdfbdb7e` — origin/main (2026-05-04) — feat(W-0402 PR7): cogochi panel listeners for cogochi:ai-ask event (#1142)
+`dcc6fe61` — origin/main (2026-05-05) — design: W-0407/W-0408/W-0409/W-0411/W-0413 5페이지 재설계 통합 + W-0412 i18n stub (#1171)
 
 W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
 - PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
