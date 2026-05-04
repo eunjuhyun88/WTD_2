@@ -58,6 +58,7 @@ W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 | `W-0407-terminal-tab-velo-tv-integration` | P1 | 🟡 설계 완료, W-T0 spike 대기 |
 | `W-0408-dashboard-redesign` | P1 | 🟢 설계 완료, D1~D16 락 |
 | `W-0409-patterns-redesign` | P1 | 🟢 설계 완료(+Lab 흡수), D1~D22 락, 8 PR |
+| `W-0411-settings-redesign` | P1 | 🟢 설계 완료, D1~D22 락, 7 PR |
 | `W-0212-chart-ux-polish` | P2 | 🟡 대기 |
 
 ---
