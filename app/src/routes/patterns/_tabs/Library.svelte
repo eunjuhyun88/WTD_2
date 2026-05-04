@@ -182,7 +182,6 @@
       <button class="surface-button-secondary" onclick={() => goto('/patterns?tab=lifecycle')}>Lifecycle</button>
       <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Terminal</button>
       <div class="topbar-tertiary">
-        <a class="tertiary-link" href="/patterns/filter-drag" data-testid="patterns-filter-drag-link">Filter Drag</a>
         <a class="tertiary-link" href="/patterns/formula" data-testid="patterns-formula-link">Formula</a>
       </div>
     </div>
