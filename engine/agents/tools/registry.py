@@ -102,6 +102,24 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "required": ["symbol", "timeframe"],
         },
     },
+    {
+        "name": "get_binance_balance",
+        "description": "사용자의 Binance 스팟 계정 잔고를 조회합니다. 비어있지 않은 자산만 반환.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "get_binance_positions",
+        "description": "사용자의 Binance Futures 오픈 포지션을 조회합니다.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
 ]
 
 
@@ -152,6 +170,12 @@ async def dispatch_tool(
 
         if tool_name == "judge":
             return await _call_judge(tool_input)
+
+        if tool_name == "get_binance_balance":
+            return await _call_binance_balance(tool_input, user_id)
+
+        if tool_name == "get_binance_positions":
+            return await _call_binance_positions(tool_input, user_id)
 
         if tool_name == "save":
             if not tool_input.get("confirm"):
@@ -277,4 +301,18 @@ async def _call_save(tool_input: dict[str, Any], user_id: str) -> str:
         "agent_chat",
         None,
     )
+    return json.dumps(result)
+
+
+async def _call_binance_balance(tool_input: dict[str, Any], user_id: str | None) -> str:
+    from agents.tools.binance_tools import get_binance_balance
+
+    result = await get_binance_balance(user_id)
+    return json.dumps(result)
+
+
+async def _call_binance_positions(tool_input: dict[str, Any], user_id: str | None) -> str:
+    from agents.tools.binance_tools import get_binance_positions
+
+    result = await get_binance_positions(user_id)
     return json.dumps(result)
