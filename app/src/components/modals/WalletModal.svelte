@@ -306,11 +306,12 @@
     privyVerifying = true;
     actionError = '';
     try {
-      const { address, accessToken } = await privyLoginWithCode(privyEmail.trim(), privyCode.trim());
+      const emailForServer = privyEmail.trim();
+      const { address, accessToken } = await privyLoginWithCode(emailForServer, privyCode.trim());
       const res = await fetch('/api/auth/privy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken }),
+        body: JSON.stringify({ accessToken, email: emailForServer }),
         credentials: 'include',
       });
       const data = await res.json();
@@ -387,19 +388,21 @@
       <!-- Header -->
       <div class="wh">
         <div class="wh-left">
-          <span class="wh-tag">//WALLET AUTH</span>
+          <span class="wh-tag">//AUTH</span>
           <span class="wht">
-            {step === 'connecting' ? 'CONNECTING' : step === 'sign-message' ? 'VERIFY OWNERSHIP' : privyStep === 'otp' ? 'VERIFY EMAIL' : 'CONNECT WALLET'}
+            {step === 'connecting' ? 'CONNECTING' : step === 'sign-message' ? 'VERIFY OWNERSHIP' : privyStep === 'otp' ? 'CHECK YOUR EMAIL' : privyStep === 'email' ? 'SIGN IN' : 'SIGN IN'}
           </span>
         </div>
         <button class="whc" type="button" aria-label="Close" onclick={handleClose}>✕</button>
       </div>
 
-      <!-- Progress -->
+      <!-- Progress: only show for wallet flow -->
+      {#if step === 'connecting' || step === 'sign-message'}
       <div class="progress-row" aria-hidden="true">
-        <div class="pstep" class:active={step === 'wallet-select' || step === 'connecting'} class:done={state.connected}>1 CONNECT</div>
+        <div class="pstep" class:active={step === 'connecting'} class:done={state.connected}>1 CONNECT</div>
         <div class="pstep" class:active={step === 'sign-message'} class:done={hasWalletProof()}>2 SIGN</div>
       </div>
+      {/if}
 
       <!-- Error banner -->
       {#if actionError}
@@ -455,12 +458,25 @@
             <button class="btn-ghost" type="button" onclick={() => { privyStep = 'email'; privyCode = ''; actionError = ''; }}>RESEND CODE</button>
 
           {:else}
-            <!-- Wallet list -->
+            <!-- Default: Email-first layout -->
             <div class="step-hero">
-              <span class="hero-kicker">STEP 1</span>
-              <h3 class="hero-title">Connect your wallet</h3>
-              <p class="hero-sub">Sign in instantly — no email required.</p>
+              <h3 class="hero-title">Welcome back</h3>
+              <p class="hero-sub">Enter your email to sign in or create an account.</p>
             </div>
+
+            <!-- Privy email CTA — primary -->
+            {#if privyReady}
+              <button class="btn-email-primary" type="button" onclick={() => { privyStep = 'email'; actionError = ''; }}>
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style="flex-shrink:0">
+                  <path d="M5 7.5A1.5 1.5 0 0 1 6.5 6h7A1.5 1.5 0 0 1 15 7.5v5A1.5 1.5 0 0 1 13.5 14h-7A1.5 1.5 0 0 1 5 12.5v-5Z" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M5.5 7.5l4.5 3 4.5-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Continue with Email
+              </button>
+            {/if}
+
+            <!-- Divider -->
+            <div class="privy-divider"><span>or connect a wallet</span></div>
 
             <div class="wallet-list">
 
@@ -560,21 +576,6 @@
               {/if}
 
             </div>
-
-            <!-- Privy email login divider -->
-            {#if privyReady}
-              <div class="privy-divider"><span>or</span></div>
-              <button class="wopt wopt-email" type="button" onclick={() => { privyStep = 'email'; actionError = ''; }}>
-                <span class="wo-icon">
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <rect width="20" height="20" rx="6" fill="rgba(255,255,255,0.08)"/>
-                    <path d="M5 7.5A1.5 1.5 0 0 1 6.5 6h7A1.5 1.5 0 0 1 15 7.5v5A1.5 1.5 0 0 1 13.5 14h-7A1.5 1.5 0 0 1 5 12.5v-5Z" stroke="rgba(250,247,235,0.5)" stroke-width="1"/>
-                    <path d="M5.5 7.5l4.5 3 4.5-3" stroke="rgba(250,247,235,0.5)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </span>
-                <span class="wo-name">Continue with Email</span>
-              </button>
-            {/if}
 
           {/if}
         </div>
@@ -1013,6 +1014,27 @@
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Primary email button ── */
+  .btn-email-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    border-radius: 14px;
+    font-family: var(--sc-font-body);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px;
+    cursor: pointer;
+    border: 1px solid rgba(219, 154, 159, 0.24);
+    background: linear-gradient(180deg, rgba(250, 247, 235, 0.98), rgba(249, 246, 241, 0.96));
+    color: #0f0f12;
+    box-shadow: 0 8px 20px rgba(219, 154, 159, 0.12);
+    transition: transform 0.12s, opacity 0.12s;
+  }
+  .btn-email-primary:hover { transform: translateY(-1px); }
 
   /* ── Privy ── */
   .privy-divider {

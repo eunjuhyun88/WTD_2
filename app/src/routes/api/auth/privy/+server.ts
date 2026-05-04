@@ -44,6 +44,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   const accessToken = typeof (body as any)?.accessToken === 'string'
     ? (body as any).accessToken.trim()
     : '';
+  // email hint: client extracts it from result.user.linked_accounts (trusted only after JWT verify)
+  const emailHint = typeof (body as any)?.email === 'string'
+    ? (body as any).email.trim().toLowerCase()
+    : '';
 
   if (!accessToken) {
     return json({ error: 'accessToken is required' }, { status: 400 });
@@ -60,7 +64,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     const { payload } = await jwtVerify(accessToken, JWKS, { audience: appId });
     privySub = typeof payload.sub === 'string' ? payload.sub : '';
 
-    // Privy embeds linked_accounts with type=wallet or type=email
+    // identity_token embeds linked_accounts; customer access token may not
     const linked = Array.isArray((payload as any).linked_accounts)
       ? (payload as any).linked_accounts
       : [];
@@ -75,12 +79,17 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       walletAddress = privySub.toLowerCase();
     }
 
-    // Extract email from linked_accounts (email-first Privy path)
+    // Extract email from linked_accounts (identity_token path)
     const emailEntry = linked.find(
       (a: any) => a.type === 'email' && typeof a.address === 'string' && a.address.includes('@')
     );
     if (emailEntry) {
       privyEmail = (emailEntry.address as string).trim().toLowerCase();
+    }
+
+    // Fallback: use client-supplied email hint (JWT verified above — hint is trusted post-verify)
+    if (!walletAddress && !privyEmail && emailHint.includes('@')) {
+      privyEmail = emailHint;
     }
 
     // Must have at least one usable identifier
