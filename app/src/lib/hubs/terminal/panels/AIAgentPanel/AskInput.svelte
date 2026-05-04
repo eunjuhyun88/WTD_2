@@ -185,7 +185,7 @@
 
 .ask-toast {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--amb, #f5a623);
   padding: 2px 0 0;
   animation: fade-out 1s ease forwards;
@@ -209,7 +209,7 @@
   border-radius: 2px;
   color: var(--g5, #3d3830);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
   cursor: pointer;
   transition: color 0.07s, border-color 0.07s;
