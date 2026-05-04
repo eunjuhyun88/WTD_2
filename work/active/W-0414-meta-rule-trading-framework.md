@@ -720,6 +720,270 @@ def size_position(balance_usdc: float, signal: Signal, cfg: MetaConfig) -> Posit
 
 ---
 
+## L. Auto-cycle Pipeline + Concrete UI Spec (kieran 등가 표기)
+
+> **목적**: pattern 자동 발견 → gate 평가 → 자동 진입 → triple-barrier 라벨 → bucket 갱신 → 다음 signal 게이트 반영, **continuous closed loop**. 모든 결정 단계는 kieran.ai 처럼 **숫자로 노출** (왜 진입/스킵했는지, 어떤 bucket 이 작동중인지, 백테스트 결과는 무엇인지).
+
+### L1. 자동 cycle 데이터 흐름 (확장 다이어그램)
+
+```
+[패턴 발견기 (W-0409 Live)]
+     │ emit signal { ticker, signal_name, tier, conf, ts, atr, entry_px }
+     ▼
+[engine/jobs/signal_bus.py]  ── pubsub (Redis or Postgres LISTEN/NOTIFY)
+     │
+     ├──▶ [paper_runner.py]           ── auto-trade (default ON)
+     │         │
+     │         ├─ context = build_context(ticker, ts)
+     │         │     · regime (rule v1)
+     │         │     · slot_util, free_slots
+     │         │     · equity_usdc, daily_pnl
+     │         │     · vol (realized 7d)
+     │         │
+     │         ├─ gate_result = gate_stack.evaluate(signal, context, user_cfg)
+     │         │     ├─ regime_penalty   → score, penalty
+     │         │     ├─ portfolio_capacity → pass/block, slots_left
+     │         │     ├─ tier_score       → composite, threshold
+     │         │     ├─ position_sizing  → notional, leverage, margin, liq_dist
+     │         │     └─ rr_gate (D24)    → effective_rr, cost_breakdown
+     │         │
+     │         ├─ DECISION TRACE 저장 (meta_decisions 테이블, L4 참조)
+     │         │     · 진입/스킵 무관 모든 signal 의 gate-by-gate 평가 기록
+     │         │
+     │         ├─ if pass:
+     │         │     ├─ Hyperliquid SDK → place order (paper or live, D10)
+     │         │     ├─ open position 등록 (meta_positions, L4)
+     │         │     └─ attach triple_barrier (TP/SL/TIMEOUT, ATR-based)
+     │         │
+     │         └─ else: log skip with reason (L5 trade log "skipped" 표시)
+     │
+     ├──▶ [position_monitor.py]   ── 매 1m
+     │         · 보유 포지션 가격 추적 → barrier_hit 검출
+     │         · funding rate 1h 누적 (D28)
+     │         · liquidation distance 재계산
+     │         · TP/SL/TIMEOUT 도달 시 close → meta_outcomes 행 생성
+     │
+     ├──▶ [attribution.update_all_buckets(context, outcome)]
+     │         · alpha+=TP / beta+=SL → posterior_mean 갱신
+     │         · status 재계산 (watch / learning / promising / ok / bad)
+     │
+     └──▶ [backtest_runner.py]      ── nightly + on-demand
+               · 동일 gate_stack 으로 과거 N일 재실행
+               · DSR + equity curve + drawdown 계산
+               · meta_backtest_runs 행 생성
+
+[Workshop (W-0409) + Research 탭 + Live 탭]
+     · 위 모든 데이터를 SSE / WebSocket 으로 실시간 표기
+```
+
+### L2. UI 페이지 인벤토리 (kieran 등가)
+
+| kieran.ai 페이지 | 우리 등가 | 위치 | PR |
+|-----------------|----------|------|----|
+| Live signals stream | **LiveSignalsStream.svelte** | Patterns Live 탭 좌측 | PR5 (W-0409 PR5 통합) |
+| Open positions (`/api/positions`) | **OpenPositionsPanel.svelte** | Patterns Live 탭 중앙 | PR7 |
+| Formula attribution (`/api/formula-attribution`) | **BucketAttributionSection.svelte** | Patterns Research 탭 | PR6 |
+| Decision tree (signal 별) | **DecisionTraceModal.svelte** (신규) | LiveSignalsStream 클릭 시 | PR4+PR5 |
+| Backtest equity + drawdown | **BacktestResultPanel.svelte** (신규) | Patterns Workshop 우측 | **PR11 신규** |
+| Recent trades log | **TradeLogTable.svelte** | Patterns Live 탭 하단 | PR7 |
+| Settings (slider 전체) | **MetaRuleSettings.svelte** | Settings → Meta-rule Trading | PR9 |
+
+### L3. Decision transparency — kieran-style breakdown
+
+**모든 signal 에 대해 다음 4개 패널을 노출** (DecisionTraceModal):
+
+```
+┌─────────────────────────────────────────────────┐
+│ Signal: vwap_reclaim · BTC · 2026-05-05 14:32  │
+│ Tier 2 · Confidence 0.78 · Direction: Long      │
+├─────────────────────────────────────────────────┤
+│ [1] Regime Gate                          ✅ PASS │
+│   trend=up vol=mid mom=positive → regime_id=3   │
+│   penalty_multiplier = 1.00 (counter-trend X)   │
+│   bucket_status (regime=3, signal=vwap_reclaim) │
+│     posterior_mean = 0.62 ± 0.05 (n=87)         │
+├─────────────────────────────────────────────────┤
+│ [2] Capacity Gate                        ✅ PASS │
+│   open_slots = 2 / 5 (max_positions = 5)        │
+│   slot_util = 0.40 → bucket "low_util" promising│
+├─────────────────────────────────────────────────┤
+│ [3] Tier-2 Gate                          ✅ PASS │
+│   tier_score = 0.74 (threshold = 0.55)          │
+│   contributors: oi_surge_co=+0.18, vol_z=+0.12  │
+├─────────────────────────────────────────────────┤
+│ [4] Position Sizing + RR Gate            ✅ PASS │
+│   risk_usd = $200.00 (balance $10,000 × 2%)     │
+│   notional = $5,714 / leverage 5x / margin $1143│
+│   liq_distance = 4.2·ATR (buffer 2·ATR ✓)       │
+│   effective_RR = 1.83 (cost: fee $2.6 + funding │
+│                        $1.1 + slippage 0.05%)   │
+├─────────────────────────────────────────────────┤
+│ → ENTRY EXECUTED                                 │
+│   order_id: hl_oid_4a8e... · TP $103,420 (2·ATR)│
+│   SL $101,710 (1·ATR) · Timeout 240min          │
+└─────────────────────────────────────────────────┘
+```
+
+**스킵 케이스 동일 포맷, 실패 게이트만 ❌ 표시 + reason field.**
+
+### L4. DB schema 추가 (B3 보완)
+
+```sql
+-- 모든 signal 의 gate-by-gate 평가 기록 (진입/스킵 무관)
+CREATE TABLE meta_decisions (
+  id BIGSERIAL PRIMARY KEY,
+  signal_id UUID NOT NULL,
+  ticker TEXT NOT NULL,
+  signal_name TEXT NOT NULL,
+  ts TIMESTAMPTZ NOT NULL,
+  decision TEXT NOT NULL CHECK (decision IN ('entered','skipped','error')),
+  skip_reason TEXT,                    -- 'regime_block','capacity_full','tier_low','rr_below','liq_close',...
+  gate_trace JSONB NOT NULL,           -- 4-gate 별 score/threshold/pass/numbers (L3 모달 원본)
+  context JSONB NOT NULL,              -- regime, slot_util, equity, vol 등
+  position_id UUID,                    -- entered 인 경우만
+  user_cfg JSONB NOT NULL,             -- 그 시점 active profile snapshot
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX ON meta_decisions(ts DESC);
+CREATE INDEX ON meta_decisions(signal_name, decision);
+
+-- 보유 포지션 (paper + live 동일 schema)
+CREATE TABLE meta_positions (
+  id UUID PRIMARY KEY,
+  account_mode TEXT NOT NULL CHECK (account_mode IN ('paper','live')),
+  ticker TEXT NOT NULL,
+  side TEXT NOT NULL CHECK (side IN ('long','short')),
+  entry_ts TIMESTAMPTZ NOT NULL,
+  entry_px NUMERIC NOT NULL,
+  size_usdc NUMERIC NOT NULL,
+  leverage NUMERIC NOT NULL,
+  margin_usdc NUMERIC NOT NULL,
+  tp_px NUMERIC NOT NULL,
+  sl_px NUMERIC NOT NULL,
+  timeout_ts TIMESTAMPTZ NOT NULL,
+  liq_px NUMERIC NOT NULL,
+  exchange_order_id TEXT,
+  funding_paid_usdc NUMERIC DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'open', -- open|closed|liquidated
+  exit_ts TIMESTAMPTZ,
+  exit_px NUMERIC,
+  pnl_usdc NUMERIC,
+  outcome_label TEXT                    -- TP|SL|TIMEOUT|MANUAL|LIQ
+);
+
+-- 백테스트 실행 기록
+CREATE TABLE meta_backtest_runs (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  profile_snapshot JSONB NOT NULL,      -- 그 시점 모든 user_cfg
+  range_start DATE NOT NULL,
+  range_end DATE NOT NULL,
+  ticker_set TEXT[] NOT NULL,
+  total_signals INT NOT NULL,
+  entered INT NOT NULL,
+  skipped INT NOT NULL,
+  win_rate NUMERIC,
+  avg_rr NUMERIC,
+  cum_pnl_pct NUMERIC,
+  max_dd_pct NUMERIC,
+  sharpe NUMERIC,
+  dsr NUMERIC,                          -- Bailey-LdP deflated
+  equity_curve JSONB NOT NULL,          -- [{ts, equity}]
+  per_bucket_stats JSONB NOT NULL,      -- bucket → win/loss
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### L5. API 추가
+
+| Method | Endpoint | 응답 | PR |
+|--------|----------|------|----|
+| GET | `/api/runner/signals?limit=50` | 최근 signal feed (LiveSignalsStream용) | PR7 |
+| GET | `/api/runner/positions?mode=paper\|live` | 보유 포지션 (OpenPositionsPanel용) | PR7 |
+| GET | `/api/runner/decisions/{signal_id}` | 단일 signal 의 full gate trace (DecisionTraceModal) | PR4 |
+| GET | `/api/runner/decisions?since=&decision=` | 최근 결정 목록 (TradeLog) | PR4 |
+| GET | `/api/research/bucket-attribution?variable=` | bucket 표 (kieran formula-attribution 등가) | PR6 |
+| GET | `/api/runner/equity-curve?range=7d\|30d\|90d` | equity + dd 시계열 | PR7 |
+| POST | `/api/backtest/run` | profile snapshot + range → backtest 실행 | PR11 |
+| GET | `/api/backtest/runs?limit=20` | 과거 백테스트 목록 | PR11 |
+| GET | `/api/backtest/runs/{id}` | equity curve + per-bucket + DSR | PR11 |
+| **WS** | `/ws/runner` | signal / position / decision live push (SSE 대안 가능) | PR7 |
+
+### L6. Backtest harness (PR11 신규)
+
+**왜 별도 PR**: paper runner (PR7) 가 forward, backtest 는 backward 재생. 같은 `gate_stack.evaluate()` 재사용하되 시간축 모킹 필요.
+
+**구현 핵심**:
+```python
+def run_backtest(profile: MetaConfig, range_: DateRange, tickers: list[str]) -> BacktestRun:
+    signals = load_historical_signals(tickers, range_)  # 과거 signal_emitter 출력
+    equity = profile.starting_balance_usdc            # default 10000 (D22)
+    curve = []
+    decisions = []
+    for sig in signals:
+        ctx = build_historical_context(sig.ticker, sig.ts)  # regime, vol 등 t-시점
+        gr = gate_stack.evaluate(sig, ctx, profile)
+        decisions.append({**gr, "signal_id": sig.id})
+        if gr.pass_:
+            outcome = simulate_triple_barrier(sig, profile, ctx)  # TP/SL/TIMEOUT 결정
+            equity += outcome.pnl_usdc
+            curve.append({"ts": outcome.exit_ts, "equity": equity})
+    metrics = compute_metrics(decisions, curve, profile)  # win_rate, sharpe, dsr, dd
+    bucket_stats = aggregate_per_bucket(decisions)
+    return persist(metrics, curve, bucket_stats)
+```
+
+**UI** (BacktestResultPanel.svelte, Workshop 우측):
+- 상단: range picker (7d/30d/90d/custom) + ticker_set + "Run Backtest" 버튼
+- 결과 카드 4개: total signals · win rate · avg RR · DSR
+- equity curve (sparkline + 확대 가능)
+- drawdown chart (underwater)
+- per-bucket 표 (변수×버킷 → win/loss/EV) — kieran formula-attribution 등가
+- "이 결과로 profile 저장" 버튼 → meta_user_profiles 신규 row
+
+### L7. Trade log + 실시간 transparency (TradeLogTable)
+
+| Time | Signal | Ticker | Decision | Reason | Entry | Exit | PnL | Bucket Hit |
+|------|--------|--------|----------|--------|-------|------|-----|------------|
+| 14:32 | vwap_reclaim | BTC | ENTERED | — | 102.5K | TP 103.4K | +$182 | regime=3, low_util |
+| 14:18 | oi_surge | ETH | SKIPPED | rr_below | — | — | — | — |
+| 13:55 | breakout | SOL | SKIPPED | regime_block | — | — | — | counter-trend |
+| 13:42 | vwap_rejection | BTC | ENTERED | — | 101.9K | SL 102.1K | -$120 | regime=2 |
+
+· 클릭 시 DecisionTraceModal 오픈 (L3)
+· filter: decision (all/entered/skipped) · ticker · signal_name · reason
+· export CSV
+
+### L8. 자동 cycle scheduler (D31~D33 추가)
+
+| # | 결정 | default | Settings 토글 |
+|---|------|---------|--------------|
+| **D31** | signal_bus 트리거 | **Postgres LISTEN/NOTIFY** (의존 없음) | Redis 옵션 (인프라 추가 시) |
+| **D32** | position_monitor 주기 | **1m tick + funding 1h tick** | 토글 30s~5m |
+| **D33** | nightly job 시각 (UTC) | **02:00 UTC** (KST 11:00) | Settings 시각 입력 |
+
+### L9. AC 추가 (kieran 등가 검증)
+
+| AC | 검증 |
+|----|------|
+| AC29 | `meta_decisions` 행 — 1시간 가동 후 모든 signal 의 gate trace 100% 기록 (entered + skipped) |
+| AC30 | DecisionTraceModal — 임의 signal 클릭 시 4-gate breakdown + 숫자 + bucket posterior 1초 내 표시 |
+| AC31 | LiveSignalsStream — WS push 200ms 내 UI 반영, 재접속 시 마지막 50 signal replay |
+| AC32 | BacktestResultPanel — 90일 BTC 1티커 backtest < 30초 완료, equity curve 부드럽게 렌더 |
+| AC33 | TradeLogTable — 1000행 가상 스크롤 60fps, CSV export 정상 |
+| AC34 | per-bucket 표 — kieran `/api/formula-attribution` 응답과 동등 정보 (변수, bucket, posterior, n, status) |
+| AC35 | backtest profile snapshot — 과거 실행 결과를 그 시점 user_cfg 그대로 재현 가능 (deterministic) |
+
+### L10. PR 추가 / 변경
+
+- **PR4 확장**: `meta_decisions` 테이블 + `/api/runner/decisions` 추가 (gate trace 영속화)
+- **PR5 확장**: DecisionTraceModal 통합 (LiveSignalsStream 에서 클릭)
+- **PR7 확장**: WS endpoint `/ws/runner` + LiveSignalsStream + OpenPositionsPanel + TradeLogTable 통합
+- **PR11 신규**: Backtest harness — `/api/backtest/*` + BacktestResultPanel.svelte + DSR 표시
+- 총 PR: 10 → **11 PR**
+
+---
+
 ## H. References (학술)
 
 - López de Prado, M. (2018). *Advances in Financial Machine Learning*. Wiley. (Ch 3 triple-barrier, Ch 3.6 meta-labeling)
