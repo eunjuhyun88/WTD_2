@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional
 
 from cache.http_client import get_client
@@ -46,6 +47,9 @@ TELEGRAM_API = "https://api.telegram.org/bot{token}"
 # with resolve_threshold's policy table (W-0358).
 _DEFAULT_P_WIN_GATE = _resolve_threshold(1)  # policy_version=1 → 0.55
 P_WIN_GATE: float = float(os.environ.get("PATTERN_ALERT_P_WIN_GATE", str(_DEFAULT_P_WIN_GATE)))
+
+# Entry candidates older than this are stale and suppressed (even if "new" after restart).
+PATTERN_ENTRY_MAX_AGE_HOURS: int = int(os.environ.get("PATTERN_ENTRY_MAX_AGE_HOURS", "48"))
 
 # Per-pattern entry zone / target / stop defaults (as fractions of current price).
 # Source: benchmark avg gains from W-0086/W-0091/W-0100 + quant risk management.
@@ -236,6 +240,23 @@ async def send_pattern_entry_alert(
     if not _token or not _chat_id:
         log.debug("Telegram not configured — skipping entry alert for %s", record.get("symbol"))
         return False
+
+    # Staleness gate: suppress if the symbol entered this phase too long ago.
+    entered_at_str = record.get("entered_at")
+    if entered_at_str:
+        try:
+            entered_at = datetime.fromisoformat(entered_at_str)
+            if entered_at.tzinfo is None:
+                entered_at = entered_at.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - entered_at).total_seconds() / 3600
+            if age_hours > PATTERN_ENTRY_MAX_AGE_HOURS:
+                log.info(
+                    "Stale entry suppressed: %s %s (entered %.1fh ago > %dh limit)",
+                    record.get("symbol"), record.get("slug"), age_hours, PATTERN_ENTRY_MAX_AGE_HOURS,
+                )
+                return False
+        except Exception:
+            pass
 
     p_win = record.get("entry_p_win")
     if not _pwin_passes_gate(p_win):

@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 try:
@@ -71,10 +72,41 @@ async def _load_universe_with_watches(universe_name: str) -> list[str]:
 
 _scheduler: AsyncIOScheduler | None = None
 _last_pattern_entry_keys: set[str] = set()
+_last_block_alert_times: dict[str, float] = {}  # symbol → monotonic timestamp of last Telegram send
+
+# Pattern entry key persistence — survives server restarts
+_PATTERN_KEYS_FILE = Path(__file__).parent.parent / "data" / "pattern_entry_keys.json"
+
+
+def _load_pattern_keys() -> set[str]:
+    try:
+        _PATTERN_KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        if _PATTERN_KEYS_FILE.exists():
+            import json as _json
+            data = _json.loads(_PATTERN_KEYS_FILE.read_text())
+            keys = set(data.get("keys", []))
+            log.info("Loaded %d persisted pattern entry keys", len(keys))
+            return keys
+    except Exception as exc:
+        log.warning("Could not load pattern entry keys: %s", exc)
+    return set()
+
+
+def _save_pattern_keys(keys: set[str]) -> None:
+    try:
+        import json as _json, tempfile as _tmp
+        _PATTERN_KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with _tmp.NamedTemporaryFile("w", dir=_PATTERN_KEYS_FILE.parent, delete=False, suffix=".json") as f:
+            _json.dump({"keys": sorted(keys)}, f)
+            tmp_path = Path(f.name)
+        tmp_path.replace(_PATTERN_KEYS_FILE)
+    except Exception as exc:
+        log.warning("Could not save pattern entry keys: %s", exc)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 SCAN_INTERVAL = int(os.environ.get("SCAN_INTERVAL_SECONDS", "900"))
+BLOCK_ALERT_COOLDOWN_HOURS = int(os.environ.get("BLOCK_ALERT_COOLDOWN_HOURS", "4"))
 MIN_BLOCKS = int(os.environ.get("SCAN_MIN_BLOCKS", "1"))
 UNIVERSE_NAME = DEFAULT_SCAN_UNIVERSE
 _ON = {"1", "true", "yes", "on"}
@@ -151,6 +183,8 @@ async def _scan_universe() -> None:
         push_alert_fn=_push_alert,
         send_pattern_engine_alert=send_pattern_engine_alert,
         send_scan_summary=send_scan_summary,
+        last_block_alert_times=_last_block_alert_times,
+        block_alert_cooldown_seconds=BLOCK_ALERT_COOLDOWN_HOURS * 3600,
     )
 
 
@@ -164,6 +198,7 @@ async def _pattern_scan_job() -> None:
         load_universe_async=_load_universe_with_watches,
         send_pattern_scan_summary=send_pattern_scan_summary,
     )
+    _save_pattern_keys(_last_pattern_entry_keys)
 
 
 async def _auto_evaluate_job() -> None:
@@ -193,11 +228,12 @@ async def _corpus_bridge_sync_job() -> None:
 
 def start_scheduler() -> None:
     """Start the APScheduler background scan loop."""
-    global _scheduler
+    global _scheduler, _last_pattern_entry_keys
     if _scheduler is not None:
         log.debug("Scheduler already running")
         return
     validate_scheduler_secrets()
+    _last_pattern_entry_keys = _load_pattern_keys()
 
     _scheduler = AsyncIOScheduler(timezone="UTC")
     _add = _scheduler.add_job  # brevity alias
