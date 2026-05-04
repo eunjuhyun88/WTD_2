@@ -474,6 +474,779 @@ update bucket_stats → 다음 cycle 가중치
 
 ---
 
+## P. Extraction (1회 추출 — kieran spec 동결)
+
+> Goal: kieran.ai 의 시그널 / 게이트 / 엑싯 / 버킷 사양을 1회 크롤하여 4개 spec 파일로 동결. 이후 PR2/3/4/6 의 입력으로 사용.
+
+### P1. 디렉토리
+
+```
+engine/research/extract/
+├── crawler.py            # 1회 풀 크롤
+├── parsers/{signals,gates,exits,buckets}.py
+├── normalize.py          # 응답 → 정규 스키마
+└── freeze.py             # spec 파일 git tag
+
+engine/research/calibration/
+├── signal_specs.yaml
+├── gate_specs.yaml
+├── exit_rules.yaml
+├── bucket_priors.parquet
+├── raw_dump/2026-05-XX/  # 원본 audit
+└── changelog.md
+```
+
+### P2. 크롤 대상
+
+```python
+ENDPOINTS = ["/api/signals","/api/positions","/api/trades","/api/closed-trades",
+             "/api/formula-attribution","/api/equity","/api/stats","/api/health"]
+HTML_PAGES = ["/", "/positions","/signals","/research","/tape","/review","/formula"]
+```
+
+각 endpoint GET (5초 간격, UA 식별), 200 만 저장. HTML_PAGES 는 httpx + Playwright(Next.js `__NEXT_DATA__`) 둘 다 시도.
+
+### P3. 핵심 함수
+
+```python
+def crawl_all(out_dir: Path, ts: datetime) -> CrawlResult: ...
+def extract_signal_specs(dump_dir: Path) -> list[SignalSpec]: ...
+def extract_gate_specs(dump_dir: Path) -> GateSpecs: ...
+def extract_exit_rules(dump_dir: Path) -> ExitRules: ...    # entry/stop/tp1/2/3 vs ATR% 회귀
+def extract_bucket_priors(dump_dir: Path) -> pd.DataFrame:   # 5D 큐브, Beta(α=1+wins, β=1+losses)
+```
+
+### P4. signal_specs.yaml (계약)
+
+```yaml
+version: 1
+captured_at: "2026-05-05T00:00:00Z"
+signals:
+  - name: vwap_reclaim
+    side: [long]
+    timeframe: 1h
+    condition: { type: cross_above, base: vwap_session, lookback: 1, confirm_bars: 1 }
+  - name: range_resistance
+    side: [long]
+    timeframe: 1d
+    condition: { type: proximity_to_high, lookback_days: 56, threshold_pct: 0.9 }
+  - name: momentum_shift
+    side: [long, short]
+    timeframe: 2h
+    condition: { type: ema_cross, fast: 8, slow: 21, confirm: macd_hist_sign_flip }
+  - name: oi_surge
+    side: [long, short]
+    timeframe: 4h
+    condition: { type: zscore, var: open_interest, window: 4h, threshold: 2.0 }
+  - name: oi_divergence
+    side: [long, short]
+    timeframe: 4h
+    condition: { type: sign_diff, a: price_pct_change_4h, b: oi_pct_change_4h, min_oi_pct: 3.2 }
+  - name: oi_jump
+    side: [long, short]
+    timeframe: 15m
+    condition: { type: pct_change, var: open_interest, window: 15m, threshold_pct: 3.2 }
+  - name: range_top_rejection
+    side: [short]
+    timeframe: 4h
+    condition: { type: rejection, reference: range_high_20, pattern: bearish_engulfing|upper_wick }
+```
+
+### P5. gate_specs.yaml
+
+```yaml
+version: 1
+gates:
+  G1_tier2_score:
+    accept_range: [2, 5]
+    bins:
+      "[0,1]":  { observed_n: 213, accept_rate: 0.34, stop_rate: 0.61 }
+      "[2,5]":  { observed_n: 1043, accept_rate: 0.71, stop_rate: 0.40 }
+      "[6,inf)":{ observed_n: 244,  accept_rate: 0.42, stop_rate: 0.55 }
+    weights: { vwap_reclaim:1.0, range_resistance:1.2, momentum_shift:1.0, oi_surge:1.3,
+               oi_divergence:1.1, oi_jump:1.2, range_top_rejection:1.0 }
+  G2_regime_penalty:
+    vars: [btc_trend_4h, btc_dom_change, total_oi_z, funding_skew, dxy_proxy,
+           btc_above_ema200, total3_dominance, alt_breadth, vol_regime, regime_label]
+    rules: [...]    # 추출 시 채움, 10개
+  G3_portfolio_capacity:
+    max_open_positions: 8
+    slot_util_bins:
+      "[0,33]":  { accept_rate: 0.85 }
+      "[34,66]": { accept_rate: 0.55 }
+      "[67,99]": { accept_rate: 0.098 }
+    correlation_threshold: 0.7
+  G4_position_sizing:
+    min_risk_pct: 1.0
+    max_risk_pct: 2.5
+    leverage_default: 2
+    sizing_formula: "risk_pct * equity / (entry - stop) / leverage"
+    vars_count: 14
+```
+
+### P6. exit_rules.yaml
+
+```yaml
+version: 1
+brackets:
+  long:
+    stop: { type: atr_multiple, k: 1.5 }
+    tp1:  { type: atr_multiple, k: 1.0, size_pct: 33 }
+    tp2:  { type: atr_multiple, k: 2.0, size_pct: 33 }
+    tp3:  { type: atr_multiple, k: 3.0, size_pct: 34 }
+  short: { ... mirror ... }
+time_exit_hours: 24
+trailing: { enabled: false }
+```
+
+### P7. bucket_priors.parquet 컬럼
+
+```
+signal_type:str (7 enum), tier2_bin:str (3 enum),
+regime_bin:str (3 enum: up/sideways/down),
+slot_util_bin:str (3 enum: low/mid/high),
+risk_pct_bin:str (3 enum: small/mid/large),
+n:int, wins:int, losses:int,
+posterior_alpha:float, posterior_beta:float,
+posterior_mean:float, posterior_std:float,
+avg_pnl:float, avg_holding_h:float, stop_rate:float, tp3_rate:float
+```
+
+### P8. CLI
+
+```bash
+python -m engine.research.extract.crawler --out engine/research/calibration/raw_dump/$(date -I)
+python -m engine.research.extract.freeze
+# freeze: parsers 4개 → spec 4파일 → git tag "calibration-v1-$(date -I)"
+```
+
+### P9. AC
+
+- [ ] signal_specs.yaml 7개, condition 100%
+- [ ] gate_specs.yaml 4 게이트, G1 bin 3개 / G3 slot_util bin 3개 관측치 ≥ 30
+- [ ] exit_rules.yaml k 값 회귀 R² ≥ 0.7
+- [ ] bucket_priors.parquet ≥ 200 셀 (n≥3 셀)
+- [ ] raw_dump git-track, 1MB 미만
+- [ ] pytest engine/research/extract/ ≥ 8
+
+---
+
+## Q. Runtime Pipeline (9-Stage, PR0~PR9)
+
+> Goal: 추출된 spec 4개를 입력으로 받아 우리 시스템에서 kieran 동작을 재현. Binance hist 검증 → Hyperliquid live.
+
+### Q0. PR0 — Data Ingest (Binance perp)
+
+**Goal**: 20종 perp × 5 TF × 1년 OHLCV+OI+funding parquet 적재. 5분 cron 증분.
+
+**파일**: `engine/research/ingest/{binance_perp,universe,backfill,incremental}.py`
+
+**Universe** (20종):
+- TIER1: BTC, ETH, SOL, BNB, XRP
+- TIER2: DOGE, ADA, AVAX, LINK, TRX, DOT, MATIC, TON, SHIB, LTC
+- TIER3: NEAR, ATOM, UNI, ETC, XLM
+- TFs: 1m/5m/15m/1h/4h/1d
+
+**API 래퍼**:
+```python
+class BinancePerp:
+    def klines(self, symbol, tf, start_ms, end_ms): ...  # /fapi/v1/klines limit=1500
+    def open_interest_hist(self, symbol, period, start_ms, end_ms): ...  # /futures/data/openInterestHist
+    def funding_rate(self, symbol, start_ms, end_ms): ...  # /fapi/v1/fundingRate
+    def rate_limit(self): ...  # weight 1200/min
+```
+
+**스키마**:
+```
+data_cache/research/binance/{symbol}/{tf}.parquet
+  ts_ms, open, high, low, close, volume, quote_volume, trades,
+  taker_buy_volume, taker_buy_quote
+data_cache/research/binance/{symbol}/oi_{period}.parquet
+  ts_ms, open_interest, sum_open_interest_value
+data_cache/research/binance/{symbol}/funding.parquet
+  ts_ms, funding_rate, mark_price
+```
+
+**AC**:
+- 20종 × 5TF × 1년 적재, 결측 < 0.5%
+- OI 1h 결측 < 1%
+- rate-limit 위반 0
+- 증분 cron 5분 내 완료
+- pytest ≥ 10
+
+---
+
+### Q1. PR1 — Feature Engine
+
+**Goal**: 17 indicator + 6 kieran 파생 = 23 column. 증분 (warmup 만큼만 recompute).
+
+**파일**: `engine/research/features/{core,kieran,compute}.py`
+
+**Core 17 시그니처**:
+```python
+def rsi_14(close): ...
+def ema_trend(close, period=50): ...      # close > EMA50
+def ema_cross(close, fast=12, slow=26): ... # {-1,0,1}
+def macd_histogram(close): ...
+def cvd_slope(taker_buy_vol, total_vol, window=20): ...
+def volume_spike(volume, window=20): ...   # vol / vol_ma
+def obv_trend(close, volume, window=20): ...
+def atr_pct(high, low, close, period=14): ...
+def bb_position(close, period=20, std=2.0): ...
+def bb_width(close, period=20): ...
+def bb_squeeze(close, period=20, lookback=120): ...
+def higher_high(high, lookback=20): ...
+def lower_low(low, lookback=20): ...
+# + price_action_engulfing, divergence_rsi_price 등 = 17
+```
+
+**Kieran 파생 6**:
+```python
+def oi_z_4h(oi, tf): ...        # 4시간 윈도우 z-score
+def oi_pct_15m(oi, tf): ...
+def vwap_session(typical_price, volume, anchor="00:00 UTC"): ...
+def range_high_56d(high, tf): ...
+def ema8_2h(close, tf): ...
+def ema21_2h(close, tf): ...
+```
+
+**오케스트레이터**:
+```python
+def compute_features(symbol, tf, since_ts=None) -> Path:
+    # 1. binance parquet 로드
+    # 2. OI/funding merge_asof
+    # 3. 23 컬럼 계산
+    # 4. data_cache/research/features/{symbol}_{tf}.parquet 저장
+```
+
+**AC**:
+- 23 컬럼 NaN < 5% (워밍업 제외)
+- TS `app/src/lib/utils/indicators.ts` 와 RSI/EMA/MACD ε < 1e-6
+- VWAP fixture ε < 0.01
+- pytest ≥ 25
+
+---
+
+### Q2. PR2 — Signal Scanner
+
+**Goal**: 7 트리거 함수 + tier2_score → candidate stream parquet.
+
+**파일**: `engine/research/signals/{triggers,tier2,scanner}.py`
+
+**트리거 시그니처** (모두 동일):
+```python
+def trigger_X(features: pd.DataFrame, spec: dict) -> pd.Series: ...   # bool Series
+```
+
+**구현**:
+```python
+def vwap_reclaim(f, spec):
+    return (f.close.shift(1) < f.vwap_session.shift(1)) & (f.close >= f.vwap_session)
+
+def range_resistance(f, spec):
+    return f.high >= f.range_high_56d * (1 - spec["threshold_pct"]/100)
+
+def momentum_shift(f, spec):
+    cross = (f.ema8_2h.shift(1) < f.ema21_2h.shift(1)) & (f.ema8_2h >= f.ema21_2h)
+    return cross & (f.macd_hist > 0)
+
+def oi_surge(f, spec):
+    return f.oi_z_4h >= spec["threshold"]
+
+def oi_divergence(f, spec):
+    pd_ = np.sign(f.close.pct_change(4))
+    od = np.sign(f.oi_pct_15m.rolling(16).sum())
+    return (pd_ != od) & (f.oi_pct_15m.rolling(16).sum().abs() >= spec["min_oi_pct"]/100)
+
+def oi_jump(f, spec):
+    return f.oi_pct_15m.abs() >= spec["threshold_pct"]/100
+
+def range_top_rejection(f, spec):
+    near = f.high >= f.range_high_20 * 0.995
+    bear = f.engulfing_bear | (f.high - f.close > 2 * (f.close - f.low))
+    return near & bear
+```
+
+**tier2_score**: `sum(weights[name] for name in fires_true)`
+
+**출력 스키마**:
+```
+data_cache/research/candidates.parquet
+  candidate_id:uuid, ts_ms, symbol, side ("long"|"short"),
+  signals_fired:list[str], tier2_score:float, features_snapshot:json
+```
+
+**AC**:
+- tier2_score 분포 [0, 7]
+- 1년 20종 스캔 시 candidate 수 5000~30000
+- features_snapshot 22 필드 동결
+- pytest ≥ 15
+
+---
+
+### Q3. PR3 — Gate Stack
+
+**Goal**: 4 gate 순차 평가, 거절 사유 기록.
+
+**파일**: `engine/research/gates/{base,tier2,regime,capacity,sizing,stack}.py`
+
+**인터페이스**:
+```python
+@dataclass
+class GateResult:
+    name: str; passed: bool; score: float; reason: str; detail: dict
+
+@dataclass
+class EntryDecision:
+    candidate_id: str; ts_ms: int; symbol: str; side: str
+    gate_results: list[GateResult]; passed: bool
+    size_usd: float|None; leverage: float|None
+    stop: float|None; tp1: float|None; tp2: float|None; tp3: float|None
+```
+
+**G1 tier2**:
+```python
+def gate_tier2(candidate, ctx, spec):
+    score = candidate["tier2_score"]
+    lo, hi = spec["accept_range"]
+    passed = lo <= score <= hi
+    return GateResult("G1_tier2", passed, score,
+                      "ok" if passed else f"tier2_out_of_range:{score}", {"score": score})
+```
+
+**G2 regime**: 10 rules 순차 평가, sum penalty, threshold > -0.5 통과.
+
+**G3 capacity**:
+```python
+def gate_capacity(candidate, ctx, spec):
+    slot_util = sum(p.size_usd for p in ctx.open_positions) / ctx.equity
+    # correlation-adjusted
+    slot_util_adj = slot_util * mean_corr_to_candidate(...)
+    bin_ = bin_for(slot_util_adj, spec["slot_util_bins"])
+    passed = spec["slot_util_bins"][bin_]["accept_rate"] >= 0.15
+    ...
+```
+
+**G4 sizing**:
+```python
+def gate_sizing(candidate, ctx, spec):
+    risk_pct = (entry - stop) / entry * 100
+    if risk_pct < spec["min_risk_pct"] or risk_pct > spec["max_risk_pct"]:
+        return GateResult(..., passed=False, ...)
+    size_usd = risk_pct * ctx.equity / (entry - stop) / spec["leverage_default"]
+    ...
+```
+
+**Stack**: 순차 평가, 첫 실패에서 즉시 반환. 모두 통과 시 size/stop/tp 계산 (exit_rules.yaml 의 ATR k 사용).
+
+**Supabase 스키마**:
+```sql
+create table research_gate_decisions (
+    id uuid primary key default gen_random_uuid(),
+    candidate_id uuid not null, ts_ms bigint not null,
+    symbol text, side text,
+    g1_passed bool, g1_reason text, g1_score float,
+    g2_passed bool, g2_reason text, g2_score float,
+    g3_passed bool, g3_reason text, g3_score float,
+    g4_passed bool, g4_reason text, g4_score float,
+    final_passed bool not null,
+    size_usd float, leverage float, stop float, tp1 float, tp2 float, tp3 float,
+    created_at timestamptz default now()
+);
+create index on research_gate_decisions(ts_ms);
+create index on research_gate_decisions(symbol, ts_ms);
+```
+
+**AC**:
+- G3 slot_util ∈ [67,99] 거절율 ≥ 85%
+- G4 risk_pct < 1% 거절율 ≥ 99%
+- pytest ≥ 20
+
+---
+
+### Q4. PR4 — Paper Executor
+
+**Goal**: $2000 페이퍼 + bracket fill + fee/slippage.
+
+**파일**: `engine/research/exec/{paper_account,fill_model,fee_model,lifecycle}.py`
+
+**PaperAccount**:
+```python
+class PaperAccount:
+    def __init__(self, starting_equity=2000.0): ...
+    def equity(self): ...     # cash + sum(unrealized)
+    def open(self, decision, fill_price, fees) -> Position: ...
+    def close_partial(self, position_id, qty, price, fees, reason): ...
+
+@dataclass
+class Position:
+    id, candidate_id, symbol, side, entry_ts_ms, entry_price,
+    size, leverage, stop, tp1, tp2, tp3,
+    fills: list[Fill], status, closed_ts_ms, pnl_realized
+```
+
+**Fill model**:
+```python
+def market_fill(bar_next, side, slippage_bps=5.0):
+    base = bar_next["open"]
+    return base * (1 + slippage_bps/10000) if side=="long" else base * (1 - slippage_bps/10000)
+
+def bracket_check(position, bar) -> list[BracketEvent]:
+    # long: low ≤ stop → STOP; high ≥ tp_i → TP_i
+    # short: 반대
+    # 동시 트리거: stop 우선 (보수적)
+```
+
+**Fee model**:
+```python
+EXCHANGE_FEES = {"binance_perp": {"taker": 0.0005, "maker": 0.0002},
+                 "hyperliquid":  {"taker": 0.00025, "maker": 0.00015}}
+def compute_fee(notional, exchange, side="taker"): ...
+```
+
+**Lifecycle**:
+```python
+def step(account, bar, decisions) -> list[LifecycleEvent]:
+    # 1. 기존 open bracket_check
+    # 2. decisions passed=True 다음 바 open 진입
+    # 3. time_exit 24h 강제 청산
+```
+
+**Supabase**:
+```sql
+create table research_paper_accounts (
+    id uuid primary key, started_at timestamptz,
+    equity_start float, equity_current float, realized_pnl float,
+    exchange text, version int
+);
+create table research_positions (
+    id uuid primary key, account_id uuid, candidate_id uuid,
+    symbol text, side text,
+    entry_ts_ms bigint, entry_price float, size float, leverage float,
+    stop float, tp1 float, tp2 float, tp3 float,
+    status text, closed_ts_ms bigint,
+    pnl_realized float, fees_total float, slippage_total float,
+    created_at timestamptz default now()
+);
+create table research_fills (
+    id uuid primary key, position_id uuid,
+    ts_ms bigint, price float, qty float,
+    level text,  -- "entry"|"tp1"|"tp2"|"tp3"|"stop"|"time"
+    fees float
+);
+```
+
+**AC**:
+- equity = cash + sum(unrealized) 항상 일치
+- bracket 동시 트리거: stop 우선
+- DOGE 픽스처 (entry 0.113255 → exit 0.110435) PnL 차이 < 1%
+- pytest ≥ 18
+
+---
+
+### Q5. PR5 — Outcome Labeler
+
+**Goal**: closed position → exit_reason + bucket_keys + entry_flip.
+
+**파일**: `engine/research/outcomes/{labeler,buckets}.py`
+
+```python
+def label_trade(position, candidate, decision, regime_ctx) -> ClosedTrade:
+    exit_reason = position.fills[-1].level
+    pnl_gross = sum(f.pnl for f in position.fills)
+    pnl_after_fees = pnl_gross - position.fees_total
+    pnl_after_slip = pnl_after_fees - position.slippage_total
+    entry_flip = (candidate["side"] != decision.side)
+    bucket_keys = compute_bucket_keys(candidate, decision, regime_ctx)
+    return ClosedTrade(...)
+
+def compute_bucket_keys(candidate, decision, regime_ctx) -> dict:
+    return {
+        "signal_type": candidate["signals_fired"][0],
+        "tier2_bin": _bin_tier2(candidate["tier2_score"]),
+        "regime_bin": regime_ctx["label"],
+        "slot_util_bin": _bin_slot(decision.gate_results[2].detail["slot_util"]),
+        "risk_pct_bin": _bin_risk(decision.gate_results[3].detail["risk_pct"]),
+    }
+```
+
+**Supabase**:
+```sql
+create table research_closed_trades (
+    id uuid primary key, position_id uuid, candidate_id uuid,
+    entry_ts_ms bigint, exit_ts_ms bigint, holding_hours float,
+    entry_price float, exit_price_avg float,
+    pnl_gross float, pnl_after_fees float, pnl_after_slip float,
+    exit_reason text, entry_flip bool,
+    bucket_signal_type text, bucket_tier2 text, bucket_regime text,
+    bucket_slot_util text, bucket_risk_pct text,
+    created_at timestamptz default now()
+);
+create index on research_closed_trades(bucket_signal_type, bucket_tier2);
+create index on research_closed_trades(exit_reason);
+```
+
+**AC**:
+- entry_flip 정확도 100%
+- bucket_keys 5개 enum
+- pnl_after_slip ≤ pnl_after_fees ≤ pnl_gross
+- pytest ≥ 10
+
+---
+
+### Q6. PR6 — Bucket Attribution (Beta-Binomial)
+
+**Goal**: closed_trades → 5D 버킷 사후. 사전 = bucket_priors.parquet (PR-1 산출).
+
+**파일**: `engine/research/attribution/{posterior,pooling,update}.py`
+
+```python
+@dataclass
+class BucketState:
+    key: tuple
+    n: int; wins: int; losses: int
+    alpha: float; beta: float
+    posterior_mean: float; posterior_std: float
+
+def init_from_priors(priors_df) -> dict[tuple, BucketState]: ...
+
+def update(state: BucketState, win: bool) -> BucketState:
+    state.n += 1
+    if win: state.wins += 1; state.alpha += 1
+    else:   state.losses += 1; state.beta += 1
+    state.posterior_mean = state.alpha / (state.alpha + state.beta)
+    state.posterior_std = sqrt(state.alpha * state.beta /
+                               ((state.alpha + state.beta)**2 * (state.alpha + state.beta + 1)))
+    return state
+
+def hierarchical_shrink(buckets, group_by, shrink_factor=0.3) -> dict:
+    # posterior_mean_shrunk = (1-λ) * mean_b + λ * mean_group
+    # λ = shrink_factor / (1 + n_b/30)
+```
+
+**Supabase**:
+```sql
+create table research_buckets (
+    bucket_key text primary key,
+    n int, wins int, losses int,
+    alpha float, beta float,
+    posterior_mean float, posterior_std float,
+    avg_pnl float, avg_holding_h float, stop_rate float, tp3_rate float,
+    last_updated_at timestamptz default now()
+);
+```
+
+**AC**:
+- alpha+beta = 2 + n_prior (Laplace)
+- posterior_mean ∈ (0,1)
+- N=100 시뮬 사후 평균 ±5% 수렴
+- pytest ≥ 12
+
+---
+
+### Q7. PR7 — Threshold Auto-update
+
+**Goal**: 사후 → gate_config_v{N}.json 발행 (LCB 기반).
+
+**파일**: `engine/research/policy/{threshold_update,config_versioning}.py`
+
+```python
+def recompute_thresholds(buckets, k=1.0) -> dict:
+    # LCB = posterior_mean - k * posterior_std
+    # n < 30 → cold_start, base spec 사용
+    # stop_rate > 0.6 (n≥30) → 강제 acceptance = 0.0
+    out = {}
+    for key, state in buckets.items():
+        if state.n < 30:
+            out[key] = {"cold_start": True}; continue
+        lcb = state.posterior_mean - k * state.posterior_std
+        forced_block = (state.losses / state.n) > 0.6
+        out[key] = {"acceptance": 0.0 if forced_block else lcb}
+    return out
+
+def emit_gate_config(bucket_acceptances, base_specs, version) -> dict: ...
+def save_config(config, out_dir) -> int: ...    # gate_config_v{N}.json + symlink
+def load_current(out_dir) -> dict: ...
+```
+
+**트리거**: 매 50 거래 누적 시 또는 일별 cron.
+
+**Supabase**:
+```sql
+create table research_gate_configs (
+    version int primary key,
+    config_json jsonb not null,
+    created_at timestamptz default now(),
+    trigger text,  -- "trade_count_50"|"daily"|"manual"
+    n_trades_at_emit int
+);
+```
+
+**AC**:
+- cold-start 셀 base spec 사용
+- stop_rate>0.6 강제 차단
+- v{N+1} vs v{N} diff 출력
+- Stage3 매 평가 시 current 로드
+- pytest ≥ 8
+
+---
+
+### Q8. PR8 — Telemetry & Promotion Gate
+
+**Goal**: 모든 단계 로깅 + 일별 KPI + paper→live 승급 게이트.
+
+**파일**: `engine/research/telemetry/{logger,kpi,promotion}.py`
+
+```python
+class ResearchLogger:
+    def log_candidate(self, c): ...
+    def log_gate_decision(self, d): ...
+    def log_position_open(self, p): ...
+    def log_fill(self, f): ...
+    def log_trade_close(self, t): ...
+    def log_bucket_update(self, s): ...
+
+def daily_kpi(date) -> dict:
+    return {
+        "n_candidates": ..., "n_entries": ..., "n_closed": ...,
+        "win_rate": ..., "expectancy_gross": ...,
+        "expectancy_post_fee": ..., "expectancy_post_slip": ...,
+        "sharpe_30d": ..., "max_dd_30d": ...,
+        "entry_flip_rate": ...,
+        "gate_rejection_dist": {"G1": ..., "G2": ..., "G3": ..., "G4": ...},
+        "cold_start_bucket_pct": ...,
+    }
+
+PROMOTION_RULES = {
+    "n_total":               {"min": 300},
+    "sharpe_30d":            {"min": 1.0},   # post-cost
+    "max_dd_30d":            {"max": 0.20},
+    "cold_start_bucket_pct": {"max": 0.20},
+}
+
+def evaluate_promotion(kpi) -> PromotionResult:
+    failures = []
+    for rule, bounds in PROMOTION_RULES.items():
+        v = kpi.get(rule)
+        if "min" in bounds and v < bounds["min"]: failures.append((rule, v, bounds["min"]))
+        if "max" in bounds and v > bounds["max"]: failures.append((rule, v, bounds["max"]))
+    return PromotionResult(allowed=(len(failures)==0), failures=failures, evaluated_at=now())
+```
+
+**Supabase**:
+```sql
+create table research_candidates (
+    id uuid primary key, ts_ms bigint, symbol text, side text,
+    signals_fired jsonb, tier2_score float, features_snapshot jsonb,
+    created_at timestamptz default now()
+);
+create index on research_candidates(ts_ms);
+create index on research_candidates(symbol, ts_ms);
+
+create materialized view research_daily_kpi as
+select date_trunc('day', to_timestamp(exit_ts_ms/1000)) as day, ... from research_closed_trades ...;
+
+create table research_promotion_state (
+    id int primary key default 1,
+    promotion_allowed bool not null default false,
+    last_evaluated_at timestamptz,
+    failures jsonb,
+    enabled_live bool default false   -- 사용자 명시 토글
+);
+```
+
+**AC**:
+- 모든 단계 이벤트 DB 기록
+- daily_kpi refresh 5초 미만
+- promotion_allowed 4 룰 모두 통과 시만 true
+- enabled_live 별도 사용자 토글 (자동 활성화 금지)
+- pytest ≥ 12
+
+---
+
+### Q9. PR9 — Hyperliquid Live Track
+
+**Goal**: ingest 어댑터 + LIVE executor + 토글 + circuit breaker.
+
+**파일**:
+```
+engine/research/ingest/hyperliquid.py
+engine/research/exec/hyperliquid_live.py
+app/src/routes/research/live/+page.svelte    # 단순 토글 패널
+```
+
+**Hyperliquid ingest**:
+```python
+class HyperliquidIngest:
+    def klines(self, coin, interval, start_ms, end_ms): ...
+    def funding(self, coin): ...
+    def open_interest(self, coin): ...
+    # info API: POST /info {"type":"meta"|"candleSnapshot"|"metaAndAssetCtxs"}
+    # ws: subscribe candles
+```
+
+**Live executor**:
+```python
+class HyperliquidLiveExecutor:
+    """
+    Pre-conditions ALL must pass:
+      - account.enabled_live = True (user toggle)
+      - promotion_allowed = True
+      - circuit_breaker = GREEN
+    Fallback: paper if any fails.
+    """
+    def submit_entry(self, decision): ...
+    def submit_bracket_orders(self, position): ...
+    def cancel_all(self): ...
+```
+
+**Circuit breaker**:
+```python
+DAILY_LOSS_LIMIT_USD = 200
+DD_30D_LIMIT_PCT = 0.20
+def check_circuit(account) -> bool: ...
+# daily_loss > $200 OR dd_30d > 20% → 즉시 전체 청산 + enabled_live=false
+```
+
+**UI**: `/research/live` — 토글 + 4 룰 통과 시각화 + circuit 상태.
+
+**AC**:
+- paper/live 동일 코드 경로 (executor swap)
+- live 진입 전 4 룰 + circuit 검사
+- daily_loss > $200 → 즉시 청산 + disable
+- pytest ≥ 12 (모킹)
+
+---
+
+## R. 의존 그래프 + 일정
+
+```
+PR-1 ──┬──> PR2 ──> PR3 ──> PR4 ──> PR5 ──> PR6 ──> PR7
+       │                                    │
+       │                                    └──> PR8
+PR0 ──> PR1 ──> PR2                                    └──> PR9
+```
+
+병렬: PR-1 ↔ PR0, PR3↔PR4, PR6↔PR7, PR2~7↔PR8.
+
+총 추정: **42 working days (8.5 주, 1인). 병렬 시 6주.**
+
+| PR | 추정 (d) | 의존 |
+|----|---|---|
+| PR-1 Extraction | 5 | — |
+| PR0 Ingest | 3 | — |
+| PR1 Features | 4 | PR0 |
+| PR2 Signals | 4 | PR1, PR-1 |
+| PR3 Gates | 5 | PR2, PR-1 |
+| PR4 Executor | 4 | PR3, PR-1 |
+| PR5 Outcomes | 3 | PR4 |
+| PR6 Attribution | 4 | PR5, PR-1 |
+| PR7 Threshold | 3 | PR6 |
+| PR8 Telemetry | 5 | PR2~PR7 |
+| PR9 Hyperliquid | 5 | PR0, PR8 |
+
+---
+
 ## A. 학술 근거 (이론 매핑)
 
 ### A1. Meta-labeling (López de Prado 2018, Ch 3.6)
