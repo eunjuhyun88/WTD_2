@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`ab66fdbc` — origin/main (2026-05-04) — feat(terminal): foldable panels + ChartBoardHeader CSS fix (#1072)
+`2a598187` — origin/main (2026-05-04) — fix(dev): bypass auth gate in dev mode (#1074)
 
 ---
 
