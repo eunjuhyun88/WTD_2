@@ -404,3 +404,208 @@ URL: `?section=<id>` (브라우저 history + deep link 가능).
 2. CURRENT.md 업데이트
 3. 5개 페이지(Terminal/Dashboard/Patterns/Settings + W-0407 Spike) 통합 검토
 4. 구현 시작 (Patterns Workshop 이 가장 큰 미지수, Settings 는 분해 작업 위주)
+
+---
+
+## K. 누락 보강 (2026-05-05 실측 audit 후 추가)
+
+### K1. SettingsModal 병렬 UI 처리
+
+`/app/src/components/modals/SettingsModal.svelte` 가 Settings 페이지와 **병렬로 존재** — Trading speed/theme/reset 을 모달로 노출. GeneralPanel 분해 후 모달과 패널이 같은 필드를 다루면 mental model 충돌.
+
+- **결정**: Modal **삭제**, 모든 진입점을 `/settings?section=...` deep link 로 통일
+- 모달 트리거 호출처 grep → `goto('/settings?section=trading')` 또는 `display` 등으로 교체
+- PR2 (GeneralPanel 분해) 안에서 처리
+
+### K2. `/api/profile` (GET/PATCH) 추가
+
+ProfilePanel 의 nickname/avatar/displayTier/badges 편집 endpoint.
+
+- §A5 추가 + ProfilePanel C disposition 에 의존 endpoint 명시
+- PR4 (Profile 섹션) 안에서 호출
+
+### K3. `/api/exchange/connect` + `/api/exchange/import` (Binance 별도 경로)
+
+`/api/keys` 와 **별도** 시스템. 두 endpoint 모두 ApiKeysPanel 이 처리.
+
+- **결정**: ApiKeysPanel 이 두 시스템 모두 표시 (Keys 저장 + Exchange 연동·import 분리 sub-section)
+- §A5 추가
+- PR1 또는 별도 PR (현 ApiKeysPanel 유지 안에서 확장) — PR1 안에서 처리
+
+### K4. `/api/ui-state` (GET/PUT) 처리
+
+사용자별 UI 레이아웃 (terminal width, mobile tab, passport tab) 서버 persist.
+
+- **결정**: Display 섹션 안 "레이아웃 동기화" 토글 + reset 버튼 추가
+- PR7 (Display 활성화) 안에서 처리
+
+### K5. `/status` route redirect 갱신
+
+현재 `/status` → `/settings/status` 301. W-0411 가 `/settings/status` 흡수 (System 섹션) 후 redirect 대상 갱신 필요.
+
+- 갱신: `/status` → `/settings?section=system`
+- PR7 안에서 처리
+
+### K6. `KillSwitchToggle.svelte` (AI 섹션)
+
+`ADAPTER_MODE=live` 플래그 활성 시 Cogochi 베이스라인 모델 토글.
+
+- **결정**: AI 섹션 안 mount, env flag 의존 conditional render
+- §C 추가
+- PR2 (AiPanel 신설) 안에서 mount
+
+### K7. `AppTopBar.svelte` 진입점
+
+`/settings` href + 드롭다운 — `AppNavRail` 와 별개 컴포넌트.
+
+- §A6 추가
+- 좌 nav 신설 후 AppTopBar 의 settings 버튼은 `/settings?section=profile` (default deep link) 로 변경
+- PR1 안에서 처리
+
+### K8. `/api/auth/privy` + Privy 연동
+
+`PUBLIC_PRIVY_APP_ID` + `PRIVY_APP_SECRET` env 의존. Privy 인증 상태를 Settings 에 노출.
+
+- **결정**: Profile 섹션 안 "연결된 인증" 표시 (wallet + Privy + email 통합)
+- §A5 + §C 의 ProfilePanel disposition 에 추가
+- PR4 안에서 처리
+
+### K9. i18n 활성화 공수 (PR7 재평가)
+
+D8 Language 활성화 = Settings 전체 섹션 + 모든 페이지 i18n 키 추가. 현재 i18n 키는 patterns/terminal 도메인만.
+
+- **결정**: PR7 에서 Settings 섹션 i18n 키 만 우선 추가, 나머지 페이지는 별도 W item (W-0412 i18n) 분리
+- §H Risk 추가
+
+### K10. env vars 추가
+
+| Env | 용도 |
+|-----|------|
+| `PUBLIC_PRIVY_APP_ID` / `PRIVY_APP_SECRET` | Profile 섹션 인증 분기 |
+| `PUBLIC_EVM_CHAIN_ID` / `PUBLIC_WALLETCONNECT_PROJECT_ID` | Profile 섹션 지갑 연결 분기 |
+| `CEREBRAS_MODEL` / `GROQ_MODEL` / `OLLAMA_BASE_URL` | AI 섹션 provider selector — **결정**: 사용자 선택이 server env 보다 우선 (있을 때) |
+| `ADAPTER_MODE=live` | KillSwitchToggle 활성 조건 |
+
+`.env.example` 갱신 PR1 안에서 처리.
+
+### K11. Ollama local mode endpoint URL 필드
+
+`douniRuntime.DouniMode = 'TERMINAL' | 'HEURISTIC' | 'OLLAMA' | 'API'`. AI 섹션이 `OLLAMA` 모드 선택 시 endpoint URL 입력 필드 필요.
+
+- **결정**: AiPanel 안 conditional 입력 필드 추가
+- PR6 (AI key + provider selector) 안에서 처리
+
+### K12. Copy-trading 구독 관리
+
+`/api/copy-trading/subscribe` — 사용자가 팔로우 중인 트레이더 관리 UI 가 어디에도 없음.
+
+- **결정**: Trading 섹션 안 "구독 중인 트레이더" 미니 sub-section + `/patterns?tab=compare` Leaderboard 로 진입
+- §C TradingPanel disposition 에 추가
+- PR2 (TradingPanel 신설) 안에서 처리
+
+### K13. 누락 store 추가 (§A4 보강)
+
+| Store | 역할 | Settings 활용 |
+|-------|------|--------------|
+| `walletModalStore` (re-export) | 지갑 연결 모달 제어 | Profile 섹션에서 호출 |
+| `profileDrawerStore` | ProfileDrawer open state | Profile 섹션 deep link 시 close |
+| `inboxBadge.store` / `inboxCountStore` | 인박스 카운터 | Notifications 섹션 표시 |
+| `streak.store` | streak_days | Profile/Usage 섹션 표시 |
+
+### K14. 누락 API endpoint 추가 (§A5 보강)
+
+| Endpoint | 활용 섹션 |
+|----------|----------|
+| `GET/PATCH /api/profile` | Profile (K2) |
+| `GET/POST /api/exchange/connect`, `POST /api/exchange/import` | API Keys (K3) |
+| `GET/PUT /api/ui-state` | Display (K4) |
+| `GET /api/profile/streak` | Profile/Usage |
+| `GET /api/progression` | Profile/Usage (tier/LP) |
+| `GET /api/users/[userId]/f60-status` | Trading PropFirm 미니 |
+| `POST /api/copy-trading/subscribe` | Trading (K12) |
+| `POST /api/billing/webhook` | Subscription 상태 trigger (서버사이드) |
+| `POST /api/propfirm/checkout` | Trading PropFirm 미니 (별도 — `/api/billing/checkout` 와 분리) |
+| `/api/auth/privy` | Profile (K8) |
+| `/api/engine/[...path]` proxy | engine quota endpoint 접근 경로 (Usage) |
+
+### K15. 진입점 추가 (§A6 보강)
+
+| 진입점 | 처리 |
+|--------|------|
+| `AppTopBar` | K7 |
+| `ProfileDrawer.svelte` (`goto('/settings')`) | `?section=profile` deep link 로 갱신 |
+| `WalletModal.svelte` toast `href='/settings'` (2곳, lines 229, 323) | `?section=profile` 로 갱신 |
+| `appSurfaces.ts` settings surface 부재 | 명시: Settings 는 surface 가 아닌 utility nav, AppNavRail/AppTopBar 가 직접 하드코딩 — 변경 없음 |
+
+### K16. Wallet / Web3 추가
+
+| 항목 | 처리 |
+|------|------|
+| `DogeOSWalletButton.svelte` + `lib/wallet/eip6963.ts` (EIP-6963) | Profile 섹션 "연결된 지갑 관리" 안 mount |
+| WalletConnect (`PUBLIC_WALLETCONNECT_PROJECT_ID`) | Profile 섹션 인증 분기 |
+
+### K17. F60GateBar / 추가 가드 컴포넌트
+
+`F60GateBar.svelte` — PropFirm f60 상태 게이트.
+
+- **결정**: Trading 섹션 PropFirm 미니 카드 안 read-only 표시 (편집 X)
+- §C 추가
+
+### K18. Stripe webhook + PropFirm checkout 별도 처리
+
+`/api/billing/webhook` 과 `/api/billing/checkout` 외에 `/api/propfirm/checkout` 가 별도. Subscription 섹션은 `/api/billing/checkout` 만, Trading PropFirm 미니는 `/api/propfirm/checkout` 만 호출.
+
+- §A5 추가, 두 endpoint 분리 명시
+
+### K19. AI provider 우선순위 정책 (D15 보강)
+
+서버 env (`CEREBRAS_MODEL` 등) vs 사용자 선택 (douniRuntime).
+
+- **결정 (D15 보강)**: 사용자 선택이 우선 (설정한 경우), 미설정 시 server env fallback
+- AiPanel 에 "사용 중인 모델" 표시 (effective = user || env)
+
+### K20. AC10 Badge layout 승격 시 scope
+
+`/settings/**` 외 다른 페이지로 leak 방지.
+
+- 명시: AC10 은 `/settings/+layout.svelte` 안 mount, 다른 layout 영향 없음
+- 단 자동매매 비연결 status 자체는 모든 페이지에서 보여야 한다면 root layout — **결정**: 현 위치(Settings) 가 충분, 자동매매 발동 시점 사용자가 Settings 가서 확인하는 흐름
+
+### K21. PR 매핑 (K 항목 → 기존 PR)
+
+| K | 처리 PR |
+|---|---------|
+| K1 SettingsModal 삭제 | PR2 |
+| K2 `/api/profile` | PR4 |
+| K3 Exchange API | PR1 (ApiKeysPanel 확장) |
+| K4 ui-state | PR7 |
+| K5 `/status` redirect | PR7 |
+| K6 KillSwitchToggle | PR2 |
+| K7 AppTopBar | PR1 |
+| K8 Privy | PR4 |
+| K9 i18n 공수 | PR7 (스코프 축소) |
+| K10 env vars | PR1 (.env.example 갱신) |
+| K11 Ollama URL 필드 | PR6 |
+| K12 Copy-trading 구독 | PR2 |
+| K13 store 보강 | 호출 시점 |
+| K14 endpoint 보강 | 호출 시점 |
+| K15 진입점 갱신 | PR1 |
+| K16 wallet/EIP-6963 | PR4 |
+| K17 F60GateBar | PR2 |
+| K18 Stripe/PropFirm checkout 분리 | PR3 |
+| K19 AI provider 우선순위 | PR6 |
+| K20 AC10 scope | PR1 |
+
+### K22. 추가 AC
+
+| AC | 검증 |
+|----|------|
+| AC16 | SettingsModal 삭제, 모든 트리거가 `/settings?section=...` deep link 로 교체됨 (grep 검증) |
+| AC17 | `AppTopBar`, `ProfileDrawer`, `WalletModal` 진입점 모두 `?section=...` deep link |
+| AC18 | ApiKeysPanel 이 `/api/keys` + `/api/exchange/connect|import` 두 시스템 동시 표시 |
+| AC19 | AiPanel 의 effective model = user 선택 (있을 때) 또는 env fallback |
+| AC20 | KillSwitchToggle 가 `ADAPTER_MODE=live` env 일 때만 render |
+| AC21 | Profile 섹션이 Privy + wallet (EIP-6963/WalletConnect) 통합 표시 |
+| AC22 | Display 섹션 "레이아웃 동기화" 토글 → `/api/ui-state` PUT |
+| AC23 | `/status`, `/upgrade`, `/passport`(내) 모두 redirect 동작 |
+| AC24 | Trading 섹션 PropFirm 미니 카드 + 구독 중인 트레이더 sub-section 표시 |
