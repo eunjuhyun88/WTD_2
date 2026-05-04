@@ -36,9 +36,16 @@
 
 ## main SHA
 
-`d1f54e5f` — origin/main (2026-05-04) — feat(W-0404 PR5): quota enforcement + tier routing + upgrade page (#1126)
+`cdfbdb7e` — origin/main (2026-05-04) — feat(W-0402 PR7): cogochi panel listeners for cogochi:ai-ask event (#1142)
 
-W-0404 PR1~PR5 전부 완료. PR6 조건부 (4주 telemetry 후). 다음 P0 = W-PF-100-P2-eval-challenge.
+W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
+- PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
+- PR4 TopBar 6-slot (#1137) / PR5 StatusBar Tier 분리 (#1136) / PR6 cogochi AI search bar (#1138)
+- PR7 panel router cogochi:ai-ask (#1142) / PR8 redirect (in main) / PR9 GTM dual-emit (#1128)
+- PR10 AI Drawer slide-out (#1141) / PR11 drag-to-save toast (#1131) / PR12 dashboard hero (#1127)
+- PR13 patterns 3-column (#1133) / PR14 mobile 5-region (#1139) / PR15 Settings 3-tab (#1130) / PR16 zone dedup (#1125)
+
+W-0404 PR1~PR5 전부 완료. 다음 P0 = W-PF-100-P2-eval-challenge.
 
 ---
 
