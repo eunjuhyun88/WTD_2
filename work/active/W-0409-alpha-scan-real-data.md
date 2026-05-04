@@ -5,6 +5,34 @@
 > Status: 🔵 분석 완료 / 구현 대기
 > Created: 2026-05-05
 
+## Owner
+
+미지정
+
+## Scope
+
+### In-Scope
+- `engine/agents/registry.py` — `alpha_scan` 제거 (PR1) + 실제 tool 재등록 (PR2)
+- `engine/agents/tools/market_tools.py` — `get_open_interest`, `get_funding_rate` 신규 (PR2)
+- 기존 `alpha_scan` 핸들러 → `engine/agents/tools/_disabled/` 이동 (삭제 아님)
+
+### Non-Goals
+- Binance 외 거래소 OI/펀딩 데이터
+- 히스토리 DB 저장 (실시간 fetch만)
+- LLM 분석 레이어 추가
+
+## Canonical Files
+
+- `engine/agents/registry.py`
+- `engine/agents/tools/market_tools.py` (PR2 신규)
+- `engine/agents/tools/_disabled/` (alpha_scan 이동 대상)
+
+## Facts
+
+- `alpha_scan`: `engine/agents/registry.py` 등록 위치 실측 전 확인 필요 (`grep -r "alpha_scan" engine/`)
+- Binance Futures 공개 API (인증 불필요): OI (`/fapi/v1/openInterest`), 펀딩 (`/fapi/v1/fundingRate`)
+- Binance API weight: OI + 펀딩 동시 조회 = 2 weight (1200 weight/min 한도 내)
+
 ## Goal
 
 `alpha_scan`(및 유사 tool)은 실제 OI/펀딩 데이터 없이 LLM을 중첩 호출하여 환각된 "분석"을 반환한다. 이를 (a) 실제 Binance Futures 데이터로 교체하거나 (b) 실제 데이터 연결 전까지 TOOL_SCHEMAS에서 제거한다.
@@ -95,6 +123,28 @@ async def alpha_scan(symbol: str) -> dict:
 > **주의**: 이 work item 작성 시점에 실제 코드를 grep하지 않았음.
 > 구현 전 `grep -r "alpha_scan" engine/` 실행 후 실제 위치 확인 필수.
 
+## Assumptions
+
+- `alpha_scan`이 실제로 LLM 중첩 호출 방식임 — 구현 전 `grep -r "alpha_scan" engine/` 확인 필수
+- Binance Futures 공개 API 접근 제한 없음 (IP ban 없는 환경)
+- beta 규모: 레이턴시 < 1000ms 허용 (p95)
+
+## Open Questions
+
+- `alpha_scan` 외 LLM 중첩 tool이 더 있는지 (`grep "generate_llm_text" engine/agents/tools/`)
+- 실제 spot-only 심볼 요청 시 에러 처리 방법
+
+## Decisions
+
+- **Option B 먼저 (즉시)**: `alpha_scan` TOOL_SCHEMAS에서 제거 → 환각 즉시 차단
+- **Option A 후속 (PR2)**: 실제 Binance Futures 데이터로 `get_open_interest` + `get_funding_rate` 신규 등록
+- 기존 핸들러 삭제 아님 → `_disabled/` 이동 (재활용 가능)
+
+## Next Steps
+
+1. PR1: `grep -r "alpha_scan" engine/` 실측 → registry에서 제거 + `_disabled/` 이동
+2. PR2: `engine/agents/tools/market_tools.py` 신규, Binance Futures fetch + registry 재등록
+
 ## Exit Criteria
 
 ### PR1
@@ -119,3 +169,9 @@ async def alpha_scan(symbol: str) -> dict:
 - `engine/agents/registry.py`
 - `engine/agents/tools/market_tools.py` (PR2 신규)
 - 기존 alpha_scan 핸들러 파일 → `engine/agents/tools/_disabled/`
+
+## Handoff Checklist
+
+- [x] 설계 완료 (분석 문서)
+- [ ] PR1 구현 (alpha_scan 제거 + _disabled 이동)
+- [ ] PR2 구현 (실제 데이터 배선 + registry 재등록)

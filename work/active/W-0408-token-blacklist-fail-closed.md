@@ -3,11 +3,38 @@
 > Wave: 6 | Priority: P1 | Effort: S
 > Charter: 보안 강화 (Auth 레이어 보완)
 > Status: 🔵 분석 완료 / 구현 대기
+> Issue: #1172 (보안 분석 묶음)
 > Created: 2026-05-05
+
+## Owner
+
+미지정
 
 ## Goal
 
 현재 Redis가 다운되면 `is_revoked()`가 `False`를 반환(fail-open)하여 로그아웃된 토큰이 유효해진다. 이를 in-memory fallback blacklist + short TTL 방식으로 교체하여 Redis 장애 시에도 최소한의 보안을 유지한다.
+
+## Scope
+
+### In-Scope
+- `engine/api/auth/token_blacklist.py` — in-memory LRU fallback 추가
+- `engine/tests/test_token_blacklist.py` — unit test
+
+### Non-Goals
+- Redis HA(Sentinel/Cluster) 구축
+- Short-lived JWT + Refresh Token 교체
+- 다중 인스턴스 cross-instance blacklist 동기화
+
+## Canonical Files
+
+- `engine/api/auth/token_blacklist.py`
+- `engine/tests/test_token_blacklist.py`
+
+## Facts
+
+- `is_revoked()`: Redis 없을 때 `return False` (fail-open) — `engine/api/auth/token_blacklist.py`
+- 현재 주석: `"availability beats security for this tier — see P2 roadmap for Redis HA"`
+- 다중 인스턴스 환경: 인스턴스별 메모리 분리 (cross-instance 동기화 없음)
 
 ## 현재 상태 분석
 
@@ -114,6 +141,28 @@ async def is_revoked(jti: str) -> bool:
 - 다중 인스턴스 환경에서 Redis 장애 시: 인스턴스 A에서 로그아웃 → 인스턴스 B로 재요청 시 차단 불가
 - 이 위험을 완전히 제거하려면 Redis HA(Sentinel/Cluster) 필요 — 별도 인프라 작업
 
+## Assumptions
+
+- beta 규모: 동시 로그인 세션 수백 개 수준 → LRU 500개로 충분
+- Redis 단일 인스턴스 (Sentinel/Cluster 없음) — 장애 시 프로세스 메모리가 유일한 fallback
+- Fail-open이 완전히 제거되지 않음을 UX/SLA 관점에서 허용
+
+## Open Questions
+
+- in-memory LRU 500 개 상한이 충분한지 (beta 세션 수 실측 필요)
+- 다중 인스턴스로 확장 시 cross-instance sync 방법 (Redis HA vs. shared cache)
+
+## Decisions
+
+- **Option A 채택**: in-memory LRU fallback — 가용성과 보안 균형. Option B(완전 fail-closed)는 Redis SLA = 서비스 SLA로 수용 불가
+- **Option C 기각**: JWT short-lived + refresh 교체는 클라이언트 수정 범위 크고 별도 work item
+
+## Next Steps
+
+1. `engine/api/auth/token_blacklist.py` — in-memory LRU fallback 구현 (1-PR)
+2. `engine/tests/test_token_blacklist.py` — 신규 테스트 추가
+3. 주석에 다중 인스턴스 한계 명시
+
 ## Exit Criteria
 
 - [ ] `revoke()` 호출 시 Redis 성공 여부와 무관하게 메모리에 기록됨
@@ -130,3 +179,8 @@ async def is_revoked(jti: str) -> bool:
 
 - `engine/api/auth/token_blacklist.py` (단일 파일 수정)
 - `engine/tests/test_token_blacklist.py` (신규 테스트 추가)
+
+## Handoff Checklist
+
+- [x] 설계 완료 (분석 문서)
+- [ ] PR1 구현 (in-memory LRU fallback + 테스트)
