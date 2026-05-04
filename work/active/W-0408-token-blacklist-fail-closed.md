@@ -20,7 +20,8 @@
 - `engine/api/auth/token_blacklist.py` — in-memory LRU fallback 추가
 - `engine/tests/test_token_blacklist.py` — unit test
 
-### Non-Goals
+## Non-Goals
+
 - Redis HA(Sentinel/Cluster) 구축
 - Short-lived JWT + Refresh Token 교체
 - 다중 인스턴스 cross-instance blacklist 동기화

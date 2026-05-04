@@ -23,7 +23,8 @@ exchange_connections 암호화 키의 hardcoded `'cogochi-salt'` → per-user ra
 - `engine/scripts/migrate_scrypt_salt.py` — 기존 rows 재암호화 스크립트
 - 테스트: TS unit test + Python unit test
 
-### Non-Goals
+## Non-Goals
+
 - DB 컬럼 추가 없음 (salt를 ciphertext에 내장)
 - KMS/Vault 도입
 - 키 rotation 자동화

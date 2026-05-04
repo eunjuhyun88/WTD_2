@@ -16,7 +16,8 @@
 - `engine/agents/tools/market_tools.py` — `get_open_interest`, `get_funding_rate` 신규 (PR2)
 - 기존 `alpha_scan` 핸들러 → `engine/agents/tools/_disabled/` 이동 (삭제 아님)
 
-### Non-Goals
+## Non-Goals
+
 - Binance 외 거래소 OI/펀딩 데이터
 - 히스토리 DB 저장 (실시간 fetch만)
 - LLM 분석 레이어 추가
