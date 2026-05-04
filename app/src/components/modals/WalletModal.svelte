@@ -212,10 +212,13 @@
 
       // wallet-first auto login/register
       try {
+        const { getAuthTurnstileToken } = await import('$lib/wallet/turnstileAuth');
+        const turnstileToken = await getAuthTurnstileToken().catch(() => '');
         const authResult = await walletAuth({
           walletAddress: state.address!,
           walletMessage: noncePayload.message,
           walletSignature: signature,
+          turnstileToken: turnstileToken || undefined,
         });
         if (authResult.user) {
           applyAuthenticatedUser(authResult.user);

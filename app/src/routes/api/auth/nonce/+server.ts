@@ -2,7 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { isValidEthAddress, issueWalletNonce, normalizeEthAddress } from '$lib/server/walletAuthRepository';
 import { authNonceLimiter } from '$lib/server/rateLimit';
-import { readAuthBodyWithTurnstile, runAuthAbuseGuard } from '$lib/server/authSecurity';
+import { runAuthAbuseGuard } from '$lib/server/authSecurity';
+import { readJsonBody } from '$lib/server/requestGuards';
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   const fallbackIp = getClientAddress();
@@ -17,13 +18,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   if (!guard.ok) return guard.response;
 
   try {
-    const bodyResult = await readAuthBodyWithTurnstile({
-      request,
-      remoteIp: guard.remoteIp,
-      maxBytes: 8 * 1024,
-    });
-    if (!bodyResult.ok) return bodyResult.response;
-    const body = bodyResult.body;
+    // nonce는 서명 없이 의미없는 단회용 값 — Turnstile 불필요, wallet-auth에서만 검증
+    let body: Record<string, unknown>;
+    try {
+      body = await readJsonBody<Record<string, unknown>>(request, 8 * 1024);
+    } catch {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
 
     const addressField = typeof body?.address === 'string' ? body.address.trim() : '';
     const walletAddressField = typeof body?.walletAddress === 'string' ? body.walletAddress.trim() : '';
