@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`4318f83c` — origin/main (2026-05-04) — chore: CURRENT.md sync 2767ed49 + sweep W-0395B/W-0401-p4/W-0402 → completed (#1061)
+`ab66fdbc` — origin/main (2026-05-04) — feat(terminal): foldable panels + ChartBoardHeader CSS fix (#1072)
 
 ---
 
@@ -78,6 +78,7 @@
 완료:  W-0395 Ph7 PR1 ✅ — /agent/[id] SSR shell + KPI grid (#1006)
 완료:  W-0395 Ph6 PR3 ✅ — HoldTimeStrip Lab 패널 wiring (#1051)
 완료:  W-0402 ✅ — DB audit migrations 057-063 (verdicted_at + 14 indexes) (#1054)
+완료:  W-0402 ✅ — foldable panels + ChartBoardHeader CSS + observe-mode fix (#1072)
 ```
 
 ---
