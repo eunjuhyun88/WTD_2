@@ -19,6 +19,7 @@
     onSetWorkspaceMode: (mode: WorkspaceStageMode) => void;
     onResetWorkspaceStage: () => void;
     onIndicators?: () => void;
+    onReorderTabs?: (fromId: string, toId: string) => void;
   }
 
   const {
@@ -39,7 +40,37 @@
     onSetWorkspaceMode,
     onResetWorkspaceStage,
     onIndicators,
+    onReorderTabs,
   }: Props = $props();
+
+  // ── Tab drag-to-reorder ────────────────────────────────────────────────────
+  let dragFromId = $state<string | null>(null);
+  let dragOverId = $state<string | null>(null);
+
+  function onDragStart(e: DragEvent, id: string) {
+    dragFromId = id;
+    e.dataTransfer?.setData('text/plain', id);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onDragOver(e: DragEvent, id: string) {
+    if (!dragFromId || dragFromId === id) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    dragOverId = id;
+  }
+
+  function onDrop(e: DragEvent, toId: string) {
+    e.preventDefault();
+    if (dragFromId && dragFromId !== toId) onReorderTabs?.(dragFromId, toId);
+    dragFromId = null;
+    dragOverId = null;
+  }
+
+  function onDragEnd() {
+    dragFromId = null;
+    dragOverId = null;
+  }
 
   function tabColor(kind: string): string {
     if (kind === 'trade') return 'var(--brand)';
@@ -120,12 +151,18 @@
         class:active={isActive}
         class:in-pane={inPane && paneCount() > 1}
         class:immersive={isFocused}
+        class:drag-over={dragOverId === t.id}
         style:--tab-color={tabColor(t.kind)}
         style:--pane-color={inPane ? paneColor(slot) : 'transparent'}
         role="button"
         tabindex="0"
+        draggable={onReorderTabs != null}
         onclick={() => setActiveTabId(t.id)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTabId(t.id); } }}
+        ondragstart={(e) => onDragStart(e, t.id)}
+        ondragover={(e) => onDragOver(e, t.id)}
+        ondrop={(e) => onDrop(e, t.id)}
+        ondragend={onDragEnd}
         aria-pressed={isActive}
         title="{t.title} · {tabSymbol(t)} · {tabTF(t)}"
       >
@@ -278,6 +315,11 @@
   }
 
   .tab.in-pane { border-bottom: 1.5px solid var(--pane-color); }
+
+  .tab.drag-over {
+    border-left: 2px solid var(--brand);
+    background: color-mix(in srgb, var(--brand) 6%, transparent);
+  }
 
   .tab.immersive {
     border-top-color: var(--brand);

@@ -50,6 +50,7 @@ export interface IndicatorToggles {
   showCVD:         boolean;
   showFundingPane: boolean;
   showLiqPane:     boolean;
+  heatmapVolume?:  boolean;
 }
 
 /**
@@ -189,13 +190,19 @@ export function mountIndicatorPanes(
     try {
       chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     } catch { /* ignore */ }
+    const maxVol = Math.max(1, ...klines.map((k) => k.volume));
     volSeries.setData(
       toHisto(
-        klines.map((k) => ({
-          time: k.time,
-          value: k.volume,
-          color: k.close >= k.open ? 'rgba(38,166,154,0.45)' : 'rgba(239,83,80,0.45)',
-        })),
+        klines.map((k) => {
+          if (toggles.heatmapVolume) {
+            const t = Math.min(1, k.volume / maxVol);
+            const r = Math.round(239 * t + 38 * (1 - t));
+            const g = Math.round(83 * t + 166 * (1 - t));
+            const b = Math.round(80 * t + 154 * (1 - t));
+            return { time: k.time, value: k.volume, color: `rgba(${r},${g},${b},${0.3 + t * 0.5})` };
+          }
+          return { time: k.time, value: k.volume, color: k.close >= k.open ? 'rgba(38,166,154,0.45)' : 'rgba(239,83,80,0.45)' };
+        }),
       ),
     );
   }

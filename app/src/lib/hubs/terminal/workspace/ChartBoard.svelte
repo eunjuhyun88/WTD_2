@@ -97,6 +97,7 @@
   interface Props {
     symbol:         string;
     tf?:            string;       // controlled externally (gTf); falls back to internal state
+    tabId?:         string;       // W-T7: per-tab drawing isolation
     verdictLevels?: VerdictLevels;
     initialData?: ChartSeriesPayload | null;
     depthSnapshot?: DepthLadderEnvelope['data'] | null;
@@ -150,6 +151,7 @@
   let {
     symbol,
     tf: externalTf,
+    tabId,
     verdictLevels,
     initialData = null,
     depthSnapshot = null,
@@ -265,6 +267,33 @@
   // W-0210 Layer 3: comparison overlay (BTC or benchmark symbol)
   let showComparison = $derived($chartIndicators.comparison);
   let isVeloSurface = $derived(surfaceStyle === 'velo');
+  // W-T11: heatmap coloring for volume bars; volume profile right-side overlay
+  let showHeatmap = $derived($activeTabState?.heatmapOn ?? false);
+  let showVolumeProfile = $derived($activeTabState?.vpOn ?? false);
+  // W-T4: user-created alert price lines
+  let tabAlerts = $derived($activeTabState?.alerts ?? []);
+  let alertInput = $state('');
+  let alertLabelInput = $state('');
+
+  function addAlert() {
+    const price = parseFloat(alertInput.trim());
+    if (!isFinite(price) || price <= 0) return;
+    const label = alertLabelInput.trim() || `${price}`;
+    const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    shellStore.updateTabState((s) => ({
+      ...s,
+      alerts: [...(s.alerts ?? []), { id, price, label }],
+    }));
+    alertInput = '';
+    alertLabelInput = '';
+  }
+
+  function removeAlert(id: string) {
+    shellStore.updateTabState((s) => ({
+      ...s,
+      alerts: (s.alerts ?? []).filter((a) => a.id !== id),
+    }));
+  }
 
   let chartMode = $state<'candle' | 'line' | 'bar' | 'area' | 'heikin'>('candle');
   let priceScaleMode = $state<'normal' | 'log' | 'percent'>('normal');
@@ -934,6 +963,51 @@
   let rateLimitRetryIn = $derived(feed.rateLimitRetryIn);
   let chartData = $derived(feed.chartData);
 
+  // W-T5: aggregated perp fallback — fetched when toggle is ON but chartData has no data
+  let aggOiBars     = $state<Array<{ time: number; value: number; color: string }>>([]);
+  let aggFundingBars = $state<Array<{ time: number; value: number; color: string }>>([]);
+
+  $effect(() => {
+    const sym = symbol;
+    const needOI      = showOI      && !(chartData?.oiBars?.length);
+    const needFunding = showFundingPane && !(chartData?.fundingBars?.length);
+    if (!sym || (!needOI && !needFunding)) return;
+
+    void (async () => {
+      const [oiRes, fundRes] = await Promise.allSettled([
+        needOI      ? fetch(`/api/indicators/aggregated/oi?symbol=${sym}&limit=500`)      : Promise.resolve(null),
+        needFunding ? fetch(`/api/indicators/aggregated/funding?symbol=${sym}&limit=500`) : Promise.resolve(null),
+      ]);
+      if (oiRes.status === 'fulfilled' && oiRes.value?.ok) {
+        const d = (await oiRes.value.json()) as { points?: Array<{ t: number; v: number }> };
+        if (d.points?.length) {
+          aggOiBars = d.points.map((p) => ({ time: Math.floor(p.t / 1000), value: p.v, color: '#63b3ed' }));
+        }
+      }
+      if (fundRes.status === 'fulfilled' && fundRes.value?.ok) {
+        const d = (await fundRes.value.json()) as { points?: Array<{ t: number; v: number }> };
+        if (d.points?.length) {
+          aggFundingBars = d.points.map((p) => ({
+            time: Math.floor(p.t / 1000),
+            value: p.v,
+            color: p.v >= 0 ? 'rgba(52,211,153,0.8)' : 'rgba(248,113,113,0.8)',
+          }));
+        }
+      }
+    })();
+  });
+
+  // Effective payload: chartData with aggregated fallback for missing perp series
+  const effectiveChartData = $derived(
+    chartData
+      ? {
+          ...chartData,
+          oiBars:      chartData.oiBars?.length      ? chartData.oiBars      : aggOiBars,
+          fundingBars: chartData.fundingBars?.length  ? chartData.fundingBars : aggFundingBars,
+        }
+      : null,
+  );
+
   // Keep chartSaveMode payload in sync so SaveStrip can slice indicators (W-0117 Slice B)
   $effect(() => {
     chartSaveMode.setPayload(feed.chartData);
@@ -943,8 +1017,8 @@
   // ── Pane info chips (current value + Δ for each line in each pane) ───────
   // Recomputed any time chartData / tf changes. Cheap (O(N) per pane).
   const oiChips = $derived.by(() => {
-    if (!chartData?.oiBars?.length) return null;
-    return computePaneChips('oi', chartData.oiBars.map((b) => ({ time: b.time, value: b.value })), tf);
+    if (!effectiveChartData?.oiBars?.length) return null;
+    return computePaneChips('oi', effectiveChartData.oiBars.map((b) => ({ time: b.time, value: b.value })), tf);
   });
   const cvdChips = $derived.by(() => {
     if (!chartData) return null;
@@ -961,12 +1035,12 @@
     return computePaneChips('cvd', raw, tf);
   });
   const fundingChips = $derived.by(() => {
-    if (!chartData?.fundingBars?.length) return null;
-    return computePaneChips('funding', chartData.fundingBars.map((b) => ({ time: b.time, value: b.value })), tf);
+    if (!effectiveChartData?.fundingBars?.length) return null;
+    return computePaneChips('funding', effectiveChartData.fundingBars.map((b) => ({ time: b.time, value: b.value })), tf);
   });
   const liqChips = $derived.by(() => {
-    if (!chartData?.liqBars?.length) return null;
-    return computeLiqChips(chartData.liqBars, tf);
+    if (!effectiveChartData?.liqBars?.length) return null;
+    return computeLiqChips(effectiveChartData.liqBars, tf);
   });
   const rsiOrMacdChips = $derived.by(() => {
     if (!chartData) return null;
@@ -1453,6 +1527,7 @@
       showCVD,
       showFundingPane,
       showLiqPane,
+      heatmapVolume: showHeatmap,
     }, tf);
     panePositions = mountResult.positions;
     indicatorSeriesRefs = mountResult.seriesRefs;
@@ -1524,10 +1599,16 @@
       mainChart?.timeScale().scrollToRealTime();
 
       // W-0289: init DrawingManager after chart is ready
+      // W-T7: use tabId-scoped key for per-tab isolation; fall back to legacy sym:tf key
       if (mainChart && priceSeries) {
-        const key = `drawings:${symbol}:${tf}`;
+        const legacyKey = `drawings:${symbol}:${tf}`;
+        const key = tabId ? `drawings:${tabId}:${symbol}:${tf}` : legacyKey;
         if (!drawingMgr || drawingMgr.storageKey !== key) {
           drawingMgr?.detach();
+          // migrate legacy drawings into per-tab key on first use
+          if (tabId && !localStorage.getItem(key) && localStorage.getItem(legacyKey)) {
+            localStorage.setItem(key, localStorage.getItem(legacyKey)!);
+          }
           drawingMgr = new DrawingManager({ storageKey: key });
         }
         drawingMgr.onToolChange = (t) => { shellStore.setDrawingTool(t); };
@@ -1732,7 +1813,7 @@
         const count = indicatorInstances.countByDef(indicator.id);
         if (count < MAX_INSTANCES) {
           indicatorInstances.add(indicator.id, key);
-          if (chartData) renderCharts(chartData);
+          if (effectiveChartData) renderCharts(effectiveChartData);
         }
         indicatorLibraryOpen = false;
         return;
@@ -1746,13 +1827,13 @@
   /** W-0399: Remove a secondary indicator instance and re-render. */
   function removeInstance(instanceId: string) {
     indicatorInstances.remove(instanceId);
-    if (chartData) renderCharts(chartData);
+    if (effectiveChartData) renderCharts(effectiveChartData);
   }
 
   /** W-0399: Update params on a secondary indicator instance and re-render. */
   function updateInstance(instanceId: string, params: Record<string, number | string | boolean>) {
     indicatorInstances.updateParams(instanceId, params);
-    if (chartData) renderCharts(chartData);
+    if (effectiveChartData) renderCharts(effectiveChartData);
   }
 
   onMount(() => {
@@ -1851,8 +1932,11 @@
     void cvdDivergence;
     void derivativesOnMain;
     void showComparison;
+    void showHeatmap;
     void $comparisonStore.data;  // re-render when comparison data arrives
-    const data = chartData;
+    void aggOiBars;
+    void aggFundingBars;
+    const data = effectiveChartData;
     if (!data || loading) return;
     void tick().then(() => {
       renderCharts(data);
@@ -1864,6 +1948,15 @@
   $effect(() => {
     void verdictLevels;
     updateLevels();
+  });
+
+  // W-T4: sync alert price lines when tabAlerts changes
+  $effect(() => {
+    void tabAlerts;
+    if (priceSeries && !loading) {
+      priceLineMgr.setSeries(priceSeries as ISeriesApi<SeriesType> | null);
+      priceLineMgr.updateAlertLines(tabAlerts);
+    }
   });
 
   // W-0210 Layer 1: Re-apply alpha overlay when analysisData changes (no chart rebuild)
@@ -1977,6 +2070,26 @@
   <!-- ── Verdict banner (W-T4) ─────────────────────────────────────────────── -->
   <VerdictBanner {verdictLevels} livePrice={liveTick.price ?? 0} />
 
+  <!-- ── Alert price lines UI (W-T4) ─────────────────────────────────────── -->
+  <div class="alert-row">
+    <input
+      type="number"
+      class="alert-input"
+      placeholder="Price alert…"
+      bind:value={alertInput}
+      onkeydown={(e) => { if (e.key === 'Enter') addAlert(); }}
+      aria-label="Alert price"
+    />
+    {#each tabAlerts as alert (alert.id)}
+      <button
+        type="button"
+        class="alert-chip"
+        onclick={() => removeAlert(alert.id)}
+        title="Remove alert at {alert.price}"
+      >{alert.label} ×</button>
+    {/each}
+  </div>
+
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
   {#if loading}
     <div class="chart-state">
@@ -2011,6 +2124,17 @@
         <PhaseBadge phase={null} />
       </div>
     </div>
+    <!-- W-T11: Volume profile right-side overlay -->
+    {#if showVolumeProfile && volumeProfileRows.length > 0}
+      <div class="volume-profile-overlay">
+        {#each volumeProfileRows as row}
+          <div class="vp-row" style="opacity: {row.opacity}" class:vp-poc={row.isPoc}>
+            <div class="vp-bid" style="width: {row.bidWidth}; background: rgba(38,166,154,0.55)"></div>
+            <div class="vp-ask" style="width: {row.askWidth}; background: rgba(239,83,80,0.55)"></div>
+          </div>
+        {/each}
+      </div>
+    {/if}
     <!-- W-0358: Floating note button (bottom-right of chart) -->
     <FloatingNoteButton
       {symbol}
@@ -2120,7 +2244,7 @@
               sublabel={tf}
               chips={[]}
               closable
-              onClose={() => { indicatorInstances.remove(inst.instanceId); if (chartData) renderCharts(chartData); }}
+              onClose={() => { indicatorInstances.remove(inst.instanceId); if (effectiveChartData) renderCharts(effectiveChartData); }}
             />
           </div>
         {/each}
@@ -2558,6 +2682,48 @@
   .vp-ask {
     background: linear-gradient(90deg, rgba(80,178,232,0.72), rgba(80,178,232,0.20));
   }
+  .vp-poc .vp-bid,
+  .vp-poc .vp-ask { outline: 1px solid rgba(255,255,255,0.25); }
+
+  /* W-T4: alert row */
+  .alert-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+    min-height: 24px;
+    border-bottom: 1px solid rgba(42, 46, 57, 0.6);
+    background: rgba(11, 13, 18, 0.7);
+    flex-wrap: wrap;
+  }
+  .alert-input {
+    height: 18px;
+    width: 90px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    color: rgba(255,255,255,0.7);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs);
+    padding: 0 5px;
+    outline: none;
+  }
+  .alert-input:focus { border-color: rgba(251,191,36,0.6); }
+  .alert-chip {
+    height: 18px;
+    padding: 0 6px;
+    background: rgba(251,191,36,0.1);
+    border: 1px solid rgba(251,191,36,0.35);
+    border-radius: 3px;
+    color: rgba(251,191,36,0.9);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--ui-text-xs);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .alert-chip:hover { background: rgba(251,191,36,0.2); }
+
   .save-toast {
     position: fixed;
     bottom: calc(var(--sc-consent-reserved-h, 0px) + 20px);

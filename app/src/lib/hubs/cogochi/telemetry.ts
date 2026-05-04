@@ -17,7 +17,7 @@ export const AiAskEventSchema = z.object({
 export const TabSwitchEventSchema = z.object({
   event: z.literal('wave6.tab_switch'),
   from: z.string(),
-  to: z.enum(['decision', 'pattern', 'verdict', 'research', 'judge']),
+  to: z.enum(['decision', 'pattern', 'verdict', 'research', 'judge', 'scan']),
   source: z.enum(['click', 'slash', 'nlu']),
   ts: z.number().int().positive(),
 });

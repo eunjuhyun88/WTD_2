@@ -10,7 +10,7 @@ export type WorkspacePanelId = 'analyze' | 'scan' | 'judge';
 export type WorkspaceStageMode = 'single' | 'split-2' | 'grid-4';
 export type ShellWorkMode = 'observe' | 'analyze' | 'execute' | 'decide';
 // v3 migration: analyze→verdict, scan→research (Phase D-7 5-tab: DEC/PAT/VER/RES/JDG)
-export type RightPanelTab = 'decision' | 'pattern' | 'verdict' | 'research' | 'judge' | 'chat';
+export type RightPanelTab = 'decision' | 'pattern' | 'verdict' | 'research' | 'judge' | 'chat' | 'scan';
 export type ChartType = 'candle' | 'line' | 'heikin' | 'bar' | 'area';
 export type Timeframe = '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D';
 export type ChartActiveMode = 'idle' | 'drawing' | 'save-range';
@@ -83,6 +83,10 @@ export interface TabState {
   compares: string[];
   // W-0407: heatmap overlay toggle
   heatmapOn: boolean;
+  // W-T11: volume profile right-side overlay
+  vpOn: boolean;
+  // W-T4: price alert lines
+  alerts: Array<{ id: string; price: number; label: string }>;
 }
 
 export interface Tab {
@@ -226,6 +230,8 @@ const FRESH_TAB_STATE = (): TabState => ({
   panes: [...DEFAULT_PANES],
   compares: [],
   heatmapOn: false,
+  vpOn: false,
+  alerts: [],
 });
 
 const makeDefault = (): ShellState => ({
@@ -260,11 +266,10 @@ const makeDefault = (): ShellState => ({
   drawingTool: 'cursor',
 });
 
-const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge', 'chat']);
+const VALID_RIGHT_PANEL_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge', 'chat', 'scan']);
 function migrateRightPanelTab(raw: unknown): RightPanelTab {
-  // v2→v3: analyze→verdict, scan→research (also covers v1 names)
+  // v2→v3: analyze→verdict (v1 name migration)
   if (raw === 'analyze') return 'verdict';
-  if (raw === 'scan') return 'research';
   if (typeof raw === 'string' && VALID_RIGHT_PANEL_TABS.has(raw)) return raw as RightPanelTab;
   return 'decision';
 }
@@ -285,6 +290,8 @@ function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
     panes: normalizePanes((tabState as any)?.panes),
     compares: Array.isArray((tabState as any)?.compares) ? (tabState as any).compares : [],
     heatmapOn: (tabState as any)?.heatmapOn ?? false,
+    vpOn: (tabState as any)?.vpOn ?? false,
+    alerts: Array.isArray((tabState as any)?.alerts) ? (tabState as any).alerts : [],
   };
 }
 
@@ -381,7 +388,7 @@ function createShellStore() {
 
     // ── Tab CRUD ─────────────────────────────────────────────────────────
 
-    openTab: (tab: Partial<Tab>) => {
+    openTab: (tab: Partial<Tab> & { symbol?: string; prompt?: string }) => {
       update(st => {
         const id = `t${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         const newTab: Tab = {
@@ -391,7 +398,7 @@ function createShellStore() {
           mode: tab.mode || (tab.kind === 'train' || tab.kind === 'flywheel' ? tab.kind : 'trade'),
           kind: tab.kind || 'trade',
           title: tab.title || 'new session',
-          tabState: { ...FRESH_TAB_STATE(), tradePrompt: (tab as any).prompt || '' },
+          tabState: { ...FRESH_TAB_STATE(), tradePrompt: tab.prompt || '', ...(tab.symbol ? { symbol: tab.symbol } : {}) },
           extra: null,
         };
         const tabs = [...st.tabs, newTab];
@@ -425,6 +432,18 @@ function createShellStore() {
         ...st,
         tabs: st.tabs.map(t => t.id === id ? { ...t, pinned: pinned ?? !t.pinned } : t),
       }));
+    },
+
+    reorderTabs: (fromId: string, toId: string) => {
+      update(st => {
+        const tabs = [...st.tabs];
+        const fromIdx = tabs.findIndex(t => t.id === fromId);
+        const toIdx = tabs.findIndex(t => t.id === toId);
+        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return st;
+        const [moved] = tabs.splice(fromIdx, 1);
+        tabs.splice(toIdx, 0, moved);
+        return { ...st, tabs };
+      });
     },
 
     updateTabPanes: (updater: (panes: PaneConfig[]) => PaneConfig[], tabId?: string) => {

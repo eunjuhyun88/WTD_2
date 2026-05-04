@@ -1,6 +1,6 @@
 <script lang="ts">
   import { shellStore, activeRightPanelTab, activeTabState, verdictCount } from '../../shell.store';
-  import type { RightPanelTab, TabState } from '../../shell.store';
+  import type { RightPanelTab, TabState, PaneConfig } from '../../shell.store';
   import { pendingQuery } from '$lib/hubs/cogochi/panelRouter';
   import { trackRightpanelTabSwitch, trackTabSwitch, trackDecideDrawerOpen } from '../../telemetry';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
@@ -30,7 +30,7 @@
     blocks_triggered?: string[];
   }
 
-  // W-0402 PR3 tab order: Decision → Pattern → Verdict → Research → Judge
+  // W-0402 PR3 tab order + W-T6: + Scan
   // `short` is the 5-char strip label; `label` is the full word (kept for existing tests).
   const TABS: Array<{ id: RightPanelTab; label: string; short: string }> = [
     { id: 'decision',  label: 'Decision',  short: 'DEC' },
@@ -38,6 +38,7 @@
     { id: 'verdict',   label: 'Verdict',   short: 'VER' },
     { id: 'research',  label: 'Research',  short: 'RES' },
     { id: 'judge',     label: 'Judge',     short: 'JDG' },
+    { id: 'scan',      label: 'Scan',      short: 'SCN' },
   ];
 
   const DRAWER_TITLE: Record<NonNullable<TabState['drawerKind']>, string> = {
@@ -261,6 +262,128 @@
   });
   $effect(() => { void symbol; void timeframe; judgeResult = null; judgeCacheKey = ''; });
 
+  // ── W-T6: NL intent router ───────────────────────────────────────────────
+  const SYMBOL_RE = /\b([A-Z]{2,10})(?:USDT)?\b/i;
+  const TF_RE = /\b(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|1w)\b/i;
+  const PANE_MAP: Record<string, string> = {
+    fr: 'funding', '펀딩': 'funding', funding: 'funding',
+    oi: 'oi', rsi: 'rsi', macd: 'macd', cvd: 'cvd', liq: 'liq',
+  };
+  const SECTOR_MAP: Record<string, string> = {
+    '밈': 'meme', meme: 'meme', '밈코인': 'meme',
+    defi: 'defi', ai: 'ai', '게임': 'gaming', gaming: 'gaming',
+    layer1: 'layer1', l1: 'layer1', rwa: 'rwa',
+  };
+
+  function parseIntent(text: string): void {
+    const lower = text.toLowerCase().trim();
+    if (!lower) return;
+
+    // Scan intent: "밈코인 강세", "scan meme", "스캔"
+    for (const [kw, sector] of Object.entries(SECTOR_MAP)) {
+      if (lower.includes(kw)) {
+        switchRightPanelTab('scan');
+        scanSector = sector;
+        void loadScanResults();
+        return;
+      }
+    }
+    if (/스캔|scan/.test(lower)) {
+      switchRightPanelTab('scan');
+      void loadScanResults();
+      return;
+    }
+
+    // add_pane: "FR 추가", "RSI 추가"
+    if (/추가|add/.test(lower)) {
+      for (const [kw, paneKey] of Object.entries(PANE_MAP)) {
+        if (lower.includes(kw)) {
+          shellStore.updateTabState((s) => {
+            const exists = s.panes.some((p) => p.kind === paneKey);
+            if (exists) return s;
+            const newPane: PaneConfig = { id: paneKey, kind: paneKey as PaneConfig['kind'], visible: true, stretch: 1 };
+            return { ...s, panes: [...s.panes, newPane] };
+          });
+          return;
+        }
+      }
+    }
+
+    // remove_pane: "RSI 빼", "FR 제거"
+    if (/빼|제거|remove|delete/.test(lower)) {
+      for (const [kw, paneKey] of Object.entries(PANE_MAP)) {
+        if (lower.includes(kw)) {
+          shellStore.updateTabState((s) => ({
+            ...s,
+            panes: s.panes.filter((p) => p.kind !== paneKey),
+          }));
+          return;
+        }
+      }
+    }
+
+    // change_symbol_tf or new_tab
+    const symMatch = SYMBOL_RE.exec(text.toUpperCase());
+    const tfMatch = TF_RE.exec(lower);
+    if (symMatch) {
+      const sym = symMatch[1].toUpperCase() + (symMatch[1].endsWith('USDT') ? '' : 'USDT');
+      const tf = tfMatch?.[1] ?? undefined;
+      if (/새\s*탭|new\s*tab/.test(lower)) {
+        shellStore.openTab({ kind: 'trade', title: sym, symbol: sym });
+      } else {
+        shellStore.setSymbol(sym);
+        if (tf) shellStore.setTimeframe(tf);
+      }
+      return;
+    }
+
+    // decide
+    if (/진입|결정|decide/.test(lower)) {
+      switchRightPanelTab('judge');
+      return;
+    }
+
+    // Fallback: route to research
+    resQueryValue = text;
+    switchRightPanelTab('research');
+  }
+
+  let aiSearchValue = $state('');
+
+  function handleSearchKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      parseIntent(aiSearchValue);
+      aiSearchValue = '';
+    }
+    if (e.key === 'Escape') {
+      aiSearchValue = '';
+      (e.target as HTMLElement)?.blur();
+    }
+  }
+
+  // ── SCN tab — Scan mode ─────────────────────────────────────────────────
+  const SCAN_SECTORS = ['All', 'Layer1', 'DeFi', 'Meme', 'AI', 'Gaming', 'RWA'];
+  let scanSector = $state('All');
+  let scanResults = $state<Array<{ symbol: string; score: number; change24h?: number }>>([]);
+  let scanLoading = $state(false);
+
+  async function loadScanResults() {
+    if (scanLoading) return;
+    scanLoading = true;
+    try {
+      const params = new URLSearchParams({ universe: 'all' });
+      if (scanSector && scanSector !== 'All') params.set('sector', scanSector.toLowerCase());
+      const res = await fetch(`/api/cogochi/alpha/scan?${params}`);
+      if (!res.ok) return;
+      const d = await res.json() as { scores?: Array<{ symbol: string; score: number; change24h?: number }> };
+      scanResults = (d.scores ?? []).slice(0, 20);
+    } catch { /* silent */ } finally { scanLoading = false; }
+  }
+
+  $effect(() => {
+    if (activeTab === 'scan') void loadScanResults();
+  });
+
   // ── RES tab — query input value ───────────────────────────────────────────
   let resQueryValue = $state('');
 
@@ -379,15 +502,15 @@
       >&gt;</button>
     </div>
 
-    <!-- ── AI Search (32px sticky) — inert input, PR6 will wire ── -->
+    <!-- ── AI Search (32px sticky) — W-T6: NL intent router ── -->
     <div class="search-row">
       <input
         type="text"
         class="ai-search"
-        placeholder="AI search... (⌘L)"
-        readonly
-        tabindex="-1"
-        aria-label="AI search"
+        placeholder='"ETH 보여줘" / "FR 추가" / "밈코인 강세"'
+        bind:value={aiSearchValue}
+        onkeydown={handleSearchKeydown}
+        aria-label="AI natural language command"
       />
     </div>
 
@@ -509,6 +632,46 @@
             <button class="more-link" onclick={() => openDrawer('judge')}>Details →</button>
             <button class="more-link" onclick={() => openMoreDrawer('judge-full')}>History →</button>
             <button class="more-link decide" onclick={() => openDecideDrawer(undefined, 'jdg_tab_button')}>Decide →</button>
+          </div>
+        </div>
+
+      {:else if activeTab === 'scan'}
+        <!-- SCN: sector chip strip + alpha score results -->
+        <div class="tab-inner tab-inner--stretch" class:wide-pad={wide}>
+          <div class="scan-sectors">
+            {#each SCAN_SECTORS as sector}
+              <button
+                class="sector-chip"
+                class:sector-chip--active={scanSector === sector}
+                onclick={() => { scanSector = sector; void loadScanResults(); }}
+              >{sector}</button>
+            {/each}
+          </div>
+          <div class="tab-scroll scan-results">
+            {#if scanLoading}
+              <div class="tab-placeholder">Scanning…</div>
+            {:else if scanResults.length === 0}
+              <div class="tab-placeholder">No results</div>
+            {:else}
+              {#each scanResults as row (row.symbol)}
+                <button
+                  type="button"
+                  class="scan-row"
+                  onclick={() => shellStore.setSymbol(row.symbol)}
+                >
+                  <span class="scan-sym">{row.symbol.replace('USDT', '')}</span>
+                  <span class="scan-bar-wrap">
+                    <span class="scan-bar" style="width: {Math.round(row.score * 100)}%"></span>
+                  </span>
+                  <span class="scan-score">{Math.round(row.score * 100)}</span>
+                  {#if row.change24h != null}
+                    <span class="scan-chg" class:pos={row.change24h >= 0} class:neg={row.change24h < 0}>
+                      {row.change24h >= 0 ? '+' : ''}{row.change24h.toFixed(1)}%
+                    </span>
+                  {/if}
+                </button>
+              {/each}
+            {/if}
           </div>
         </div>
 
@@ -690,14 +853,101 @@
   background: var(--g2, #110f0d);
   border: 1px solid var(--g4, #272320);
   border-radius: 2px;
-  color: var(--g6, #6e6860);
+  color: var(--g7, #9d9690);
   font-family: 'JetBrains Mono', monospace;
   font-size: var(--ui-text-xs);
   padding: 0 var(--sp-2, 8px);
-  cursor: default;
   outline: none;
+  cursor: text;
+  box-sizing: border-box;
 }
-.ai-search::placeholder { color: var(--g5, #3d3830); }
+.ai-search::placeholder { color: var(--g4, #272320); }
+.ai-search:focus { border-color: var(--g5, #3d3830); }
+
+/* ── SCN tab ── */
+.scan-sectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--g3, #1c1918);
+  flex-shrink: 0;
+}
+
+.sector-chip {
+  padding: 2px 7px;
+  background: transparent;
+  border: 1px solid var(--g3, #1c1918);
+  border-radius: 3px;
+  color: var(--g5, #3d3830);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  cursor: pointer;
+  transition: border-color 0.08s, color 0.08s;
+}
+.sector-chip:hover { border-color: var(--g5, #3d3830); color: var(--g7, #9d9690); }
+.sector-chip--active { border-color: var(--brand, #4a9eff); color: var(--brand, #4a9eff); }
+
+.scan-results { display: flex; flex-direction: column; }
+
+.scan-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px solid var(--g2, #110f0d);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  color: var(--g7, #9d9690);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.08s;
+}
+.scan-row:hover { background: var(--g2, #110f0d); }
+
+.scan-sym {
+  width: 44px;
+  font-weight: 700;
+  color: var(--g8, #ccc9c5);
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.scan-bar-wrap {
+  flex: 1;
+  height: 4px;
+  background: var(--g2, #110f0d);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.scan-bar {
+  display: block;
+  height: 100%;
+  background: var(--brand, #4a9eff);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.scan-score {
+  width: 24px;
+  text-align: right;
+  color: var(--g6, #6e6860);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.scan-chg {
+  width: 42px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.scan-chg.pos { color: #22AB94; }
+.scan-chg.neg { color: #F23645; }
 
 /* ── Tab content ── */
 .tab-content {

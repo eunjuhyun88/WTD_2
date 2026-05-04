@@ -6,6 +6,7 @@
   import { chartSaveModeV2 } from '$lib/stores/chartSaveMode.store';
   import { priceStore } from '$lib/stores/priceStore';
   import { getBaseSymbolFromPair } from '$lib/utils/price';
+  import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
 
   interface Props {
     onIndicators?: () => void;
@@ -29,6 +30,8 @@
   const tf = $derived($activeTabState.timeframe ?? '4h');
   const symbol = $derived($activeTabState.symbol ?? 'BTCUSDT');
   const heatmapOn = $derived($activeTabState.heatmapOn ?? false);
+  const vpOn = $derived($activeTabState.vpOn ?? false);
+  const compareOn = $derived($chartIndicators.comparison);
 
   const baseSym = $derived(getBaseSymbolFromPair(symbol));
   const dispSym = $derived(baseSym ? `${baseSym}/USDT` : symbol);
@@ -72,6 +75,10 @@
 
   function toggleHeatmap() {
     shellStore.updateTabState((s) => ({ ...s, heatmapOn: !s.heatmapOn }));
+  }
+
+  function toggleVP() {
+    shellStore.updateTabState((s) => ({ ...s, vpOn: !s.vpOn }));
   }
 
   function formatPrice(p: number): string {
@@ -205,6 +212,28 @@
     aria-pressed={heatmapOn}
   >
     <span class="tb-text">Heatmap</span>
+  </button>
+
+  <!-- BTC comparison overlay -->
+  <button
+    class="tb-btn"
+    class:active={compareOn}
+    onclick={() => toggleIndicator('comparison')}
+    title="BTC comparison overlay"
+    aria-pressed={compareOn}
+  >
+    <span class="tb-text">BTC ∥</span>
+  </button>
+
+  <!-- Volume profile -->
+  <button
+    class="tb-btn"
+    class:active={vpOn}
+    onclick={toggleVP}
+    title="Volume profile"
+    aria-pressed={vpOn}
+  >
+    <span class="tb-text">VP</span>
   </button>
 
   <button class="tb-btn" onclick={onSettings ?? onIndicator} title="Chart settings">

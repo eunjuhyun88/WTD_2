@@ -3524,6 +3524,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/indicators/aggregated/{type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Aggregated
+         * @description Return a raw aggregated data series for a chart sub-pane.
+         *
+         *     Types:
+         *       - funding  — 8h funding rate history (Binance /fapi/v1/fundingRate)
+         *       - oi       — open interest (sumOpenInterest, hourly)
+         *       - liq      — taker-buy ratio % (aggression proxy; falls back to LS ratio)
+         *       - vol      — futures volume (hourly klines)
+         *       - returns  — close pct_change (hourly klines)
+         *
+         *     Response: {"type": str, "symbol": str, "points": [{"t": ms, "v": float}], "count": int}
+         */
+        get: operations["get_aggregated_indicators_aggregated__type__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/scoring/active-model": {
         parameters: {
             query?: never;
@@ -12629,6 +12658,46 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_aggregated_indicators_aggregated__type__get: {
+        parameters: {
+            query?: {
+                /** @description Trading pair, e.g. BTCUSDT */
+                symbol?: string;
+                /** @description Max output points */
+                limit?: number;
+                /** @description OI/LS period bucket (1h, 4h, ...) */
+                period?: string;
+            };
+            header?: never;
+            path: {
+                type: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

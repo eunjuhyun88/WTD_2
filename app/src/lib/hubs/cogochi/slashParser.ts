@@ -7,7 +7,7 @@
 
 export type ParsedQuery = {
   intent: 'scan' | 'why' | 'judge' | 'recall' | 'inbox' | 'nlu';
-  tab: 'decision' | 'pattern' | 'verdict' | 'research' | 'judge';
+  tab: 'decision' | 'pattern' | 'verdict' | 'research' | 'judge' | 'scan';
   query: string;
 };
 
@@ -41,7 +41,7 @@ export function parseQuery(input: string): ParsedQuery {
 
     switch (cmd) {
       case '/scan':
-        return { intent: 'scan', tab: 'research', query: rest };
+        return { intent: 'scan', tab: 'scan', query: rest };
       case '/why':
         return { intent: 'why', tab: 'decision', query: rest };
       case '/judge':

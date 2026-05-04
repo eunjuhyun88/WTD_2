@@ -36,6 +36,7 @@ export class PriceLineManager {
   private liqLines: PriceLine[] = [];
   private whaleLines: PriceLine[] = [];
   private aiLines: PriceLine[] = [];
+  private alertLines: Map<string, PriceLine> = new Map();
 
   setSeries(series: ISeriesApi<SeriesType> | null) {
     this.series = series;
@@ -161,6 +162,32 @@ export class PriceLineManager {
   clearAILines() {
     for (const pl of this.aiLines) this._removeLine(pl);
     this.aiLines = [];
+  }
+
+  updateAlertLines(alerts: Array<{ id: string; price: number; label: string }>) {
+    if (!this.series) return;
+    const incoming = new Set(alerts.map((a) => a.id));
+    for (const [id, pl] of this.alertLines) {
+      if (!incoming.has(id)) { this._removeLine(pl); this.alertLines.delete(id); }
+    }
+    for (const alert of alerts) {
+      if (!this.alertLines.has(alert.id)) {
+        const pl = this.series.createPriceLine({
+          price: alert.price,
+          color: 'rgba(251,191,36,0.85)',
+          lineWidth: 1,
+          lineStyle: 1,
+          axisLabelVisible: true,
+          title: alert.label || `Alert ${alert.price}`,
+        });
+        this.alertLines.set(alert.id, pl);
+      }
+    }
+  }
+
+  clearAlertLines() {
+    for (const pl of this.alertLines.values()) this._removeLine(pl);
+    this.alertLines.clear();
   }
 
   clearLiqLines() {

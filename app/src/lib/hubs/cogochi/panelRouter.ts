@@ -37,14 +37,14 @@ export const pendingQuery = writable<PendingQuery | null>(null);
 // ── Tab mapping ────────────────────────────────────────────────────────────
 
 /** Canonical set of routable tab IDs (mirrors RightPanelTab minus 'chat') */
-const VALID_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge']);
+const VALID_TABS = new Set<string>(['decision', 'pattern', 'verdict', 'research', 'judge', 'scan']);
 
 /**
  * kindToTabId — maps slash-command intent to the tab that should handle it.
  * Falls back to the `tab` field already provided by slashParser.
  */
 export const kindToTabId: Record<string, RightPanelTab> = {
-  scan:   'research',
+  scan:   'scan',
   why:    'decision',
   judge:  'judge',
   recall: 'pattern',
