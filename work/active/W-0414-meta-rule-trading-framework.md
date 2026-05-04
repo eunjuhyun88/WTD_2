@@ -166,6 +166,168 @@ variable status (ok / watch / learning / promising / low_sample)
 
 ---
 
+## N. 우리 구조 실측 + W-0414 가 만들 OUR signals/gates/attribution
+
+> §M 은 *kieran* 실측. §N 은 **우리 코드 실측 + W-0414 가 산출할 OUR 사양**. 1:1 직역이 아닌 우리 시스템 이식 결과.
+
+### N1. 현 코드 실측 (확인)
+
+| 자산 | 위치 | 현 상태 |
+|------|------|---------|
+| 17 indicator blocks (5 카테고리) | `app/src/lib/stores/strategyStore.ts` (실측) | ✅ 존재 — kieran 8 signal 보다 **풍부** |
+| Block evaluator | `engine/scoring/block_evaluator.py:228 evaluate_blocks` | ✅ 존재 |
+| LGBM scorer | `engine/scoring/scorer.py LGBMScorer.score_latest` | ✅ 존재 — composite score 산출 |
+| Verdict outcome 저장 | migration 023, 038, 049, 055 (verdict_label_rename / ledger_outcome_pnl / capture_record_verdict / verdict_streak_history) | ✅ 존재 — but TP/stop/timeout **labeling 미통일** |
+| Hill climbing | `engine/scoring/hill_climbing.py` | ✅ 존재 — leaderboard only |
+| Regime detector | `engine/regime/` | ❌ 없음 |
+| Gating layer | `engine/gating/` | ❌ 없음 |
+| Bucket attribution | `engine/attribution/` | ❌ 없음 |
+| Paper runner v2 | `engine/runner/paper_runner.py` | ❌ 없음 (현 PatternRunPanel = 1회 트리거) |
+
+### N2. OUR 8 Signal 정의 (kieran 8 → 우리 17 indicator 합성)
+
+W-0414 는 17 indicator 를 그대로 쓰지 않고 **우리 식 8 signal** 로 합성 (kieran 8 = signal 단위, 우리 17 = building block 단위).
+
+| Our Signal | Bias | Tier | Conf | 합성 룰 (17 indicator 조합) |
+|------------|------|------|------|----------------------------|
+| `bb_squeeze_breakout` | long | 1 | 0.85 | `BB_SQUEEZE < 20` (lower 20 percentile) **AND** `VOLUME_SPIKE > 3` **AND** `HIGHER_HIGH = 1` |
+| `range_top_rejection` | short | 1 | 0.7 | `BB_POSITION > 80` **AND** `RSI > 70` **AND** `LOWER_LOW = 1` |
+| `cvd_divergence_bull` | long | 2 | 0.6 | `LOWER_LOW = 1` (가격) **AND** `CVD_SLOPE > 0` (delta 매수 우위) |
+| `cvd_divergence_bear` | short | 2 | 0.6 | `HIGHER_HIGH = 1` (가격) **AND** `CVD_SLOPE < 0` (delta 매도 우위) |
+| `ema_trend_pullback` | long | 1 | 0.5 | `EMA_TREND > 50bp` **AND** `RSI < 40` **AND** `PRICE_VS_SMA200 > 0` |
+| `ema_dead_rebound` | short | 1 | 0.5 | `EMA_CROSS = -1` 직후 + `BB_POSITION > 60` (반등 매도) |
+| `obv_volume_thrust` | long | 1 | 0.5 | `OBV_TREND > 0` **AND** `VOLUME_SPIKE > 2.5` **AND** `MACD_HISTOGRAM > 0` |
+| `atr_compression_setup` | neutral | 2 | 0.6 | `ATR_PERCENT < 6m_p20` **AND** `BB_WIDTH < 6m_p20` (변동성 코일) |
+
+→ **Tier 1 = level/structure (5)**, **Tier 2 = positioning (3)**. kieran 분포 (Tier1 5개 + Tier2 3개) 와 동일 비율로 매핑.
+
+### N3. OUR 4-gate 변수 인벤토리 (총 32 vars, 우리 코드 기준)
+
+kieran 34 vars → 우리 32 vars (Hyperliquid one-way mode 로 hedge 변수 2개 제거).
+
+#### Gate 1 — `tier_score.py` (composite, 5 vars)
+
+| Var | 정의 | 임계 |
+|-----|------|------|
+| `signal_tier` | 1 또는 2 | tier_1_min_conf 0.5 / tier_2_min_conf 0.6 |
+| `signal_confidence` | N2 표 conf | gate_min 0.5 |
+| `lgbm_score` | `LGBMScorer.score_latest()` | gate_min 0.55 (D3) |
+| `entry_flip_count_24h` | 동일 심볼 long↔short 전환 횟수 | flip > 3 → reject |
+| `composite_score` | `0.4·lgbm + 0.3·conf + 0.2·(1-flip/5) + 0.1·tier` | gate_min 0.5 |
+
+#### Gate 2 — `regime_penalty.py` (10 vars)
+
+| Var | 정의 |
+|-----|------|
+| `regime_id` | 9 buckets = 3 (trend/range/vol) × 3 (bull/neutral/bear) (D4 rule v1) |
+| `regime_distance` | signal bias vs regime 매치 거리 0~1 |
+| `counter_multiplier` | 1.0 (match) / 0.5 (orthogonal) / 0.2 (counter) |
+| `regime_posterior_mean` | bucket 누적 tp_rate (Beta-Binomial) |
+| `regime_n` | bucket sample size |
+| `regime_status` | ok / watch / learning / promising / low_sample |
+| `regime_age_bars` | 현 regime 진입 후 bars |
+| `regime_volatility_bin` | low / mid / high |
+| `regime_trend_strength` | EMA200 slope %/일 |
+| `regime_penalty_applied` | counter_multiplier × regime_distance × posterior_factor |
+
+#### Gate 3 — `portfolio_capacity.py` (5 vars)
+
+| Var | 정의 |
+|-----|------|
+| `open_positions_count` | 현 paper 포지션 수 |
+| `max_positions` | preset 별 (Conservative 3 / Balanced 5 / Aggressive 8, D24 J2) |
+| `slot_utilization` | open / max ∈ [0,1] |
+| `slot_util_bucket` | 0-33 / 34-66 / 67-99 / 100 (kieran 동일 binning) |
+| `max_positions_block` | slot_utilization == 1 → reject |
+
+#### Gate 4 — `position_sizing.py` (12 vars, kieran 14 - hedge 2)
+
+| Var | 정의 |
+|-----|------|
+| `account_equity` | wallet balance USDC (Hyperliquid info) |
+| `risk_pct` | 단일 trade 손실 한도, default 1% (D24) |
+| `risk_usd` | equity × risk_pct |
+| `daily_loss_so_far` | 24h cumulative loss |
+| `daily_loss_limit` | equity × 2% (D9 W-0414, user 명시) |
+| `kelly_fraction` | posterior win_rate × avg_win/avg_loss − (1−p) |
+| `kelly_capped` | min(kelly, 0.25) (D5) |
+| `vol_target_pct` | 15% annualized (D6 Moreira-Muir) |
+| `atr_pct_now` | ATR_14 / close |
+| `effective_RR` | (TP_dist − cost) / (SL_dist + slippage), gate_min 1.5 (D24) |
+| `liq_distance_atr` | (entry − liq_price) / ATR, gate_min 2.0 (D27) |
+| `position_size_usd` | min(kelly_capped·equity, vol_target_size, risk_usd / SL_pct) |
+
+→ **Total = 5 + 10 + 5 + 12 = 32 vars** (W-0414 Hyperliquid one-way mode 적용 결과).
+
+### N4. OUR 데이터 흐름 (단일 trade lifecycle, 우리 코드 기반)
+
+```
+strategyStore.ts 17 blocks
+   ↓ (사용자 Workshop 슬라이더 OR auto-train)
+engine/scoring/block_evaluator.evaluate_blocks() 
+   ↓ feature_matrix
+engine/scoring/scorer.LGBMScorer.score_latest()
+   ↓ composite_score
+engine/signals/composer.py (NEW) — 17 blocks → N2 표 8 signal 합성
+   ↓ {signal_id, tier, conf, bias}
+engine/gating/gate_stack.evaluate(signal, ctx)
+   │ ├─ Gate1 tier_score.evaluate(5 vars) → score
+   │ ├─ Gate2 regime_penalty.apply(10 vars) → score' = score × multiplier
+   │ ├─ Gate3 portfolio_capacity.check(5 vars) → block? continue
+   │ └─ Gate4 position_sizing.compute(12 vars) → size_usd, lev, RR
+   ↓ {decision: enter|skip, full trace}
+meta_decisions 테이블 INSERT (모든 signal 영속화 — entry/skip 무관, §L4)
+   ↓ if enter
+engine/runner/paper_runner.submit_order()
+   ↓ Hyperliquid info (paper) OR exchange (live, D10 opt-in)
+meta_positions UPSERT
+   ↓ poll 1m + funding 1h
+engine/labeling/triple_barrier.label_outcome(position) when exit
+   ↓ {outcome: TP|SL|timeout, realized_pnl, hold_bars}
+meta_outcomes INSERT (PR1)
+   ↓ nightly 02:00 UTC (D33)
+engine/attribution/bucket_stats.update_posterior()
+   ↓ 모든 32 var × bucket 별 (n, tp, sl, accepted, posterior_mean) 갱신
+meta_bucket_stats UPSERT
+   ↓ 다음 signal 평가 시 Gate2/Gate3/Gate4 의 posterior_* 변수가 자동 갱신된 값 사용 (closed loop)
+```
+
+### N5. OUR sample attribution computation (kieran §M4 등가, 우리 sample)
+
+가정: balanced preset, 90일 운영 후 누적.
+
+| Bucket key | n | tp | sl | tp_rate | posterior_mean | status | future_block? |
+|-----------|---|----|----|---------|----------------|--------|---------------|
+| `slot_util_bucket=67-99` | 47 | 16 | 28 | 34% | 36.2% | watch | accepted_rate 자동 ↓ 12% |
+| `regime_id=trend_bull, signal=bb_squeeze_breakout` | 22 | 14 | 6 | 64% | 60.3% | promising | counter_multiplier 1.1 적용 |
+| `regime_id=range_neutral, signal=ema_trend_pullback` | 31 | 9 | 19 | 29% | 31.5% | watch | counter_multiplier 0.6 |
+| `signal=cvd_divergence_bear, atr_pct_now=high` | 8 | 5 | 2 | 63% | 55.8% | learning (n<10) | conservative size 0.5x |
+| `kelly_fraction>0.4` (overlev candidate) | 12 | 3 | 8 | 25% | 28.1% | watch | size cap to 0.15 |
+
+→ §A3 Beta-Binomial: prior Beta(2,2), n=47, k=16 → posterior Beta(18, 33), mean = 18/51 = 35.3% (표 36.2% 와 prior 효과 차이). N5 의 *모든 행은 우리 시스템 구동 후 산출* — 현재는 schema 만 정의 (PR2).
+
+### N6. OUR UI — kieran §M7 매핑을 우리 컴포넌트 트리에 흡수
+
+| 우리 페이지 | 신규/기존 | 컴포넌트 | 데이터 소스 |
+|-----------|---------|----------|-----------|
+| `/patterns?tab=workshop` | 기존 (W-0409 PR5) | `StrategyBuilder.svelte` 슬라이더 | `strategyStore.ts` 17 blocks |
+| `/patterns?tab=workshop` 우측 | **신규 (W-0414 PR5)** | `PreTradeGatesPanel.svelte` | `/api/gates/evaluate` (gate_stack 4축 라이브 시뮬) |
+| `/patterns?tab=research` | **신규 (W-0414 PR6)** | `BucketAttributionSection.svelte` (= kieran formula-attribution) | `/api/research/bucket-attribution` |
+| `/patterns?tab=live` (또는 신규 `/runner`) | **신규 (W-0414 PR5)** | `LiveSignalsStream.svelte` + `OpenPositionsPanel.svelte` + `TradeLogTable.svelte` | `/ws/runner` WS push |
+| modal (live 어디서나) | **신규 (W-0414 PR5)** | `DecisionTraceModal.svelte` (32 var trace) | `/api/runner/decisions/:id` |
+| `/patterns?tab=workshop` 우측 통계 하단 | **신규 (W-0414 PR11)** | `BacktestResultPanel.svelte` (DSR + equity curve + per-bucket) | `/api/backtest/runs/:id` |
+| Settings → Meta-rule | **신규 (W-0414 PR9)** | `MetaRuleSettings.svelte` (32+ 슬라이더 + 3 preset) | `meta_user_config` 테이블 |
+
+### N7. OUR W-0414 차별점 (§M9 보다 *우리 시스템 강점* 강조)
+
+1. **17 indicator → 8 signal 합성 분리** — kieran 은 signal 단위 black-box, 우리는 N2 표로 indicator 조합이 명시적 → 사용자가 Workshop 에서 signal 정의 자체를 편집 가능
+2. **Hyperliquid wallet-auth 통합** (#1154 재사용) — kieran 은 Binance API key 직접 입력, 우리는 EVM 서명 1회 → 키 노출 0
+3. **W-0415 forensic prior 주입** — Gate2 `regime_posterior_mean` 의 초깃값을 W-0415 BigQuery 80-signal confluence score 로 bootstrap → cold-start 문제 해결 (kieran 은 초기 90일 학습 필요)
+4. **AC30 Decision Modal 1초 + AC32 deterministic 재현** — 모든 entry 가 32-var trace 영구 보존 + 같은 seed 로 재실행 시 결과 일치
+5. **3 preset (J2) Korean-aligned** — Conservative/Balanced/Aggressive 가 한국 자본 규모 (1k~50k USDC) 기준 calibration
+
+---
+
 ## A. 학술 근거 (이론 매핑)
 
 ### A1. Meta-labeling (López de Prado 2018, Ch 3.6)
