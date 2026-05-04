@@ -1,4 +1,4 @@
-# CURRENT — 2026-05-04
+# CURRENT — 2026-05-05
 
 > 신규 진입자: `./tools/start.sh` 출력 확인 후 아래 활성 work item만 본다.
 
@@ -36,7 +36,12 @@
 
 ## main SHA
 
-`5efbc093` — origin/main (2026-05-05) — fix(auth): wallet-auth Turnstile 수정 + WalletConnect Project ID 복원 (#1154)
+`654c230b` — origin/main (2026-05-05) — feat(W-0405): 4-layer AI prompt injection defense (#1159)
+
+W-0405 PR1~PR4 완료:
+- PR1 ExchangeTab Binance API key UI (#1150) / PR2 /api/agent/binance (#1151) / PR3 telemetry (#1153)
+- PR4 get_binance_balance + get_binance_positions tools (#1156)
+- fix: ExchangeTab SettingsHub wiring (#1158) / 4-layer prompt injection defense (#1159)
 
 W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
 - PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
