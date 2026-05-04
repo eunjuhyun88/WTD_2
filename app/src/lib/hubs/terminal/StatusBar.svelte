@@ -1,5 +1,6 @@
 <script lang="ts">
   import StatusBarExpand from './StatusBarExpand.svelte';
+  import HoldTimeStrip from '$lib/components/shared/HoldTimeStrip.svelte';
 
   interface Props {
     verdicts: number;
@@ -184,6 +185,7 @@
   <!-- Tier-2: hover-expand or click-expand strip -->
   {#if expanded}
     <div id="statusbar-tier2">
+      <HoldTimeStrip p50={holdP50} p90={holdP90} label="hold" />
       <StatusBarExpand
         {btcFR}
         {kimchiPct}
@@ -320,7 +322,7 @@
     background: var(--surface-2, #1c2026);
   }
   .chevron {
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     line-height: 1;
   }
 
