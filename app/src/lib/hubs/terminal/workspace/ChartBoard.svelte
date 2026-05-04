@@ -56,6 +56,7 @@
     refreshLiqPane,
     type IndicatorSeriesRefs,
     type SecondaryIndicatorPayload,
+    type PanePositions,
   } from '$lib/chart/mountIndicatorPanes';
   import { indicatorInstances } from '$lib/chart/indicatorInstances.svelte';
   import {
@@ -498,7 +499,7 @@
   let mainChart = $state<IChartApi | null>(null);
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | ISeriesApi<'Area'> | ISeriesApi<'Bar'> | null = null;
   /** Pane indices for indicator panes — assigned during renderCharts(). */
-  let panePositions = $state<{ rsiOrMacd: number; oi: number; cvd: number; funding: number; liq: number; [key: string]: number }>({
+  let panePositions = $state<PanePositions>({
     rsiOrMacd: -1, oi: -1, cvd: -1, funding: -1, liq: -1,
   });
   /** Secondary indicator instances mounted on extra panes (W-0399-p2). */

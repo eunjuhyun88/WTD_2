@@ -38,6 +38,7 @@ export interface PanePositions {
   cvd:       number;
   funding:   number;
   liq:       number;
+  [key: string]: number;
 }
 
 /** Which indicators to render. Snapshot of the reactive chartIndicators store. */
