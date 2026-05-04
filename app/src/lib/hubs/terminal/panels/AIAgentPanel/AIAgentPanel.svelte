@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { shellStore, activeRightPanelTab, activeTabState, verdictCount } from '../../shell.store';
   import type { RightPanelTab, TabState } from '../../shell.store';
-  import { trackRightpanelTabSwitch } from '../../telemetry';
+  import { trackRightpanelTabSwitch, trackTabSwitch } from '../../telemetry';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import AIPanel from './AIPanel.svelte';
@@ -12,7 +11,7 @@
   import DecisionHUDAdapter from '../../workspace/DecisionHUDAdapter.svelte';
   import DrawerSlide from './DrawerSlide.svelte';
   import PatternTab from './PatternTab.svelte';
-  import { routeQuery } from '../../aiQueryRouter';
+  import AskInput from './AskInput.svelte';
 
   // ── Types ─────────────────────────────────────────────────────────────────
   interface EngineCapture {
@@ -63,46 +62,8 @@
   // ── Pending verdict count (for UnverifiedDot in header) ─────────────────
   let pendingVerdictCount = $state(0);
 
-  // ── AI Search ─────────────────────────────────────────────────────────────
-  let searchQuery = $state('');
-  let searchEl = $state<HTMLInputElement | null>(null);
-
-  function handleSearchKey(e: KeyboardEvent) {
-    if (e.key === 'Enter') submitSearch();
-  }
-
-  function submitSearch() {
-    const q = searchQuery.trim();
-    if (!q) return;
-    const action = routeQuery(q);
-    if (action) {
-      if (action.type === 'set-tab') {
-        shellStore.setRightPanelTab(action.tab);
-      } else if (action.type === 'toggle-drawing') {
-        shellStore.setDrawingTool('trendLine');
-      } else if (action.type === 'analyze') {
-        shellStore.setRightPanelTab('research');
-      } else if (action.type === 'pattern-recall') {
-        shellStore.setRightPanelTab('pattern');
-      } else if (action.type === 'open-whale-data') {
-        shellStore.setRightPanelTab('verdict');
-      } else {
-        window.dispatchEvent(new CustomEvent('cogochi:ai-query', { detail: action }));
-      }
-    }
-    searchQuery = '';
-  }
-
-  onMount(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.metaKey && e.key === 'l') {
-        e.preventDefault();
-        searchEl?.focus();
-      }
-    }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  });
+  // ── AI Search — delegated to AskInput.svelte ─────────────────────────────
+  // (Cmd+L shortcut is handled inside AskInput)
 
   // ── DEC tab — auto-refresh on tab switch or symbol change ─────────────────
   let decisionData = $state<AnalyzeEnvelope | null>(null);
@@ -274,7 +235,8 @@
     const prev = activeTab;
     shellStore.setRightPanelTab(tab);
     if (prev !== tab) {
-      trackRightpanelTabSwitch(prev, tab);
+      trackRightpanelTabSwitch(prev, tab); // legacy
+      trackTabSwitch({ from: prev, to: tab, trigger: 'manual' });
     }
   }
 
@@ -309,15 +271,7 @@
   </div>
 
   <!-- ── AI Search ── -->
-  <div class="ai-search-bar">
-    <input
-      class="ai-search-input"
-      placeholder="AI search… (⌘L)"
-      bind:value={searchQuery}
-      bind:this={searchEl}
-      onkeydown={handleSearchKey}
-    />
-  </div>
+  <AskInput />
 
   <!-- ── Tab content ── -->
   <div class="tab-content">
@@ -522,26 +476,6 @@
   transition: color 0.08s;
 }
 .expand-btn:hover { color: var(--g7, #9d9690); }
-
-/* ── AI Search ── */
-.ai-search-bar {
-  padding: 5px 8px;
-  border-bottom: 1px solid var(--g3, #1c1918);
-  flex-shrink: 0;
-}
-.ai-search-input {
-  width: 100%;
-  background: var(--g2, #131110);
-  border: 1px solid var(--g4, #272320);
-  border-radius: 2px;
-  color: var(--g8, #cec9c4);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--ui-text-xs);
-  padding: 4px 8px;
-  outline: none;
-  box-sizing: border-box;
-}
-.ai-search-input:focus { border-color: var(--amb, #f5a623); }
 
 /* ── Tab content ── */
 .tab-content {

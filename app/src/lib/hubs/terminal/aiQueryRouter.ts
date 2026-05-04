@@ -110,3 +110,77 @@ export function routeQuery(query: string): AIQueryAction | null {
   if (q.length > 3) return { type: 'analyze' };
   return null;
 }
+
+// ── classifyAsk — slash-first NL classifier ────────────────────────────────
+
+export type AskIntent = 'scan' | 'why' | 'judge' | 'recall' | 'inbox' | 'unknown';
+export type AskSource = 'slash' | 'nl';
+
+export interface AskResult {
+  intent: AskIntent;
+  source: AskSource;
+  tab: 'research' | 'decision' | 'judge' | 'pattern' | 'verdict';
+  query: string;
+}
+
+const SLASH_RE = /^\/(scan|why|judge|recall|inbox)\b\s*(.*)/i;
+
+// NL fallback rules: [patterns, intent, tab]
+const NL_RULES: Array<[RegExp[], AskIntent, AskResult['tab']]> = [
+  [
+    [/비슷한\s*패턴/i, /similar\s+pattern/i, /패턴\s*찾/i, /recall/i, /pattern/i],
+    'recall',
+    'pattern',
+  ],
+  [
+    [/왜\s*빠/i, /왜\s*올/i, /why/i, /분석/i, /explain/i, /이유/i],
+    'why',
+    'decision',
+  ],
+  [
+    [/judge/i, /판정/i, /판단/i],
+    'judge',
+    'judge',
+  ],
+  [
+    [/scan/i, /find/i, /screening/i, /스캔/i, /찾아/i],
+    'scan',
+    'research',
+  ],
+  [
+    [/inbox/i, /unverified/i, /verdict/i, /미검증/i],
+    'inbox',
+    'verdict',
+  ],
+];
+
+export function classifyAsk(input: string): AskResult {
+  const q = input.trim();
+
+  // 1. Slash branch — deterministic
+  const slashMatch = q.match(SLASH_RE);
+  if (slashMatch) {
+    const cmd = slashMatch[1].toLowerCase() as 'scan' | 'why' | 'judge' | 'recall' | 'inbox';
+    const rest = slashMatch[2].trim();
+    const tabMap: Record<typeof cmd, AskResult['tab']> = {
+      scan: 'research',
+      why: 'decision',
+      judge: 'judge',
+      recall: 'pattern',
+      inbox: 'verdict',
+    };
+    return { intent: cmd, source: 'slash', tab: tabMap[cmd], query: rest };
+  }
+
+  // 2. NL fallback
+  for (const [patterns, intent, tab] of NL_RULES) {
+    for (const pat of patterns) {
+      if (pat.test(q)) {
+        return { intent, source: 'nl', tab, query: q };
+      }
+    }
+  }
+
+  // 3. Unknown — default to research tab
+  return { intent: 'unknown', source: 'nl', tab: 'research', query: q };
+}

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { TerminalHub } from '$lib/hubs/terminal';
-  import { activateLegacyMode, readLegacyMode } from '$lib/hubs/terminal/shell.store';
+  import { activateLegacyMode, readLegacyMode, shellStore } from '$lib/hubs/terminal/shell.store';
+  import type { RightPanelTab } from '$lib/hubs/terminal/shell.store';
   import { track } from '$lib/analytics';
   import { workMode } from '$lib/hubs/terminal/workMode.store';
   import TrainStage from '$lib/hubs/terminal/panels/TrainStage.svelte';
   import FlywheelStage from '$lib/hubs/terminal/panels/FlywheelStage.svelte';
 
-  const { data } = $props<{ data: { legacy: boolean } }>();
+  const { data } = $props<{ data: { legacy: boolean; initialTab: RightPanelTab | null } }>();
 
   let legacyMode = false;
 
@@ -17,6 +18,9 @@
       track('cogochi_legacy_toggle', { enabled: true });
     }
     legacyMode = readLegacyMode();
+    if (data.initialTab) {
+      shellStore.setRightPanelTab(data.initialTab);
+    }
   });
 </script>
 
