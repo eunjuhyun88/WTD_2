@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`7b1e6fb9` — origin/main (2026-05-04) — chore: CURRENT.md — main SHA 5042e679, W-0402/W-0395-Ph6PR3 완료 표시 (#1056)
+`2767ed49` — origin/main (2026-05-04) — feat(W-0401-P1): StreakBadgeCard component + passport.py streak fix (#1060)
 
 ---
 
