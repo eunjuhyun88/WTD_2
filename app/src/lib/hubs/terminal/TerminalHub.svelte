@@ -550,6 +550,7 @@
       <WatchlistRail
         activeSymbol={desktopSymbol}
         onSelectSymbol={(s) => shellStore.setSymbol(s)}
+        onNewTab={(s) => shellStore.openTab({ kind: 'trade', title: s, symbol: s })}
       />
       <!-- Fold chevron: right edge of watchlist column, hover-revealed -->
       <button

@@ -11,22 +11,55 @@
   import WatchlistHeader from './WatchlistHeader.svelte';
   import WatchlistItem from './WatchlistItem.svelte';
 
-  const STORAGE_KEY = 'cogochi:watchlist:v1';
+  const STORAGE_KEY     = 'cogochi:watchlist:v1';
+  const FAVS_KEY        = 'cogochi:watchlist:favs:v1';
   const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'AVAXUSDT', 'DOGEUSDT'];
-  const MAX_SYMBOLS = 20;
+  const MAX_SYMBOLS     = 20;
+
+  type WatchFilter = 'all' | 'favs';
 
   interface PatternRow { slug: string; label: string; symbol?: string; }
   interface WhaleAlert {
     symbol: string;
-    amount: number;       // USD
+    amount: number;
     direction: 'buy' | 'sell';
     exchange: string;
-    timestamp: number;    // unix ms
-    confidence?: number;  // 0-100
+    timestamp: number;
+    confidence?: number;
   }
-  interface Props { activeSymbol?: string; onSelectSymbol?: (symbol: string) => void; }
+  interface Props {
+    activeSymbol?: string;
+    onSelectSymbol?: (symbol: string) => void;
+    onNewTab?: (symbol: string) => void;
+  }
 
-  let { activeSymbol = 'BTCUSDT', onSelectSymbol }: Props = $props();
+  let { activeSymbol = 'BTCUSDT', onSelectSymbol, onNewTab }: Props = $props();
+
+  function loadFavs(): Set<string> {
+    if (typeof localStorage === 'undefined') return new Set();
+    try {
+      const raw = localStorage.getItem(FAVS_KEY);
+      if (raw) return new Set(JSON.parse(raw) as string[]);
+    } catch {}
+    return new Set();
+  }
+  function saveFavs(f: Set<string>) {
+    try { localStorage.setItem(FAVS_KEY, JSON.stringify([...f])); } catch {}
+  }
+
+  let favs: Set<string> = $state(loadFavs());
+  let watchFilter = $state<WatchFilter>('all');
+
+  function toggleFav(sym: string) {
+    const next = new Set(favs);
+    if (next.has(sym)) next.delete(sym); else next.add(sym);
+    favs = next;
+    saveFavs(next);
+  }
+
+  const visibleSymbols = $derived(
+    watchFilter === 'favs' ? symbols.filter((s) => favs.has(s)) : symbols,
+  );
 
   function loadSymbols(): string[] {
     if (typeof localStorage === 'undefined') return [...DEFAULT_SYMBOLS];
@@ -263,9 +296,25 @@
     {onAddKeydown}
   />
 
+  <!-- Filter chips (all / favs) -->
+  {#if !folded}
+    <div class="filter-strip">
+      <button
+        class="chip"
+        class:chip--active={watchFilter === 'all'}
+        onclick={() => (watchFilter = 'all')}
+      >All</button>
+      <button
+        class="chip"
+        class:chip--active={watchFilter === 'favs'}
+        onclick={() => (watchFilter = 'favs')}
+      >★ Favs{favs.size > 0 ? ` (${favs.size})` : ''}</button>
+    </div>
+  {/if}
+
   <!-- Symbol list -->
   <ul class="symbol-list">
-    {#each symbols as sym, i (sym)}
+    {#each visibleSymbols as sym, i (sym)}
       <WatchlistItem
         {sym}
         tick={ticks[sym]}
@@ -274,8 +323,11 @@
         focused={i === focusedIdx}
         {folded}
         fr={frMap[sym] ?? null}
+        favorited={favs.has(sym)}
         onSelect={(s) => { focusedIdx = -1; pick(s); }}
         onRemove={removeSymbol}
+        onToggleFav={toggleFav}
+        {onNewTab}
       />
     {/each}
   </ul>
@@ -524,4 +576,28 @@
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
   }
+
+  .filter-strip {
+    display: flex;
+    gap: 4px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--g3);
+    background: var(--g0);
+    flex-shrink: 0;
+  }
+
+  .chip {
+    background: none;
+    border: 1px solid var(--g3);
+    border-radius: 4px;
+    color: var(--g6);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--ui-text-xs);
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    transition: border-color 0.1s, color 0.1s, background 0.1s;
+  }
+  .chip:hover { border-color: var(--g5); color: var(--g8); }
+  .chip--active { border-color: var(--brand); color: var(--brand); background: rgba(var(--brand-rgb, 82,130,255), 0.08); }
 </style>

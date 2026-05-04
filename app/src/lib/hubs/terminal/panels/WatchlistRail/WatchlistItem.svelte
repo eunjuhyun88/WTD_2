@@ -10,11 +10,23 @@
     folded: boolean;
     fr?: number | null;
     alphaScore?: number | null;
+    favorited?: boolean;
     onSelect: (sym: string) => void;
     onRemove: (sym: string) => void;
+    onNewTab?: (sym: string) => void;
+    onToggleFav?: (sym: string) => void;
   }
 
-  let { sym, tick, spark, active, focused = false, folded, fr = null, alphaScore = null, onSelect, onRemove }: Props = $props();
+  let { sym, tick, spark, active, focused = false, folded, fr = null, alphaScore = null, favorited = false, onSelect, onRemove, onNewTab, onToggleFav }: Props = $props();
+
+  function handleClick(e: MouseEvent) {
+    if ((e.metaKey || e.ctrlKey) && onNewTab) {
+      e.preventDefault();
+      onNewTab(sym);
+    } else {
+      onSelect(sym);
+    }
+  }
 
   const frClass = $derived(fr === null ? '' : fr > 0 ? 'fr-long' : 'fr-short');
 
@@ -54,10 +66,20 @@
     class:focused
     role="button"
     tabindex="0"
-    onclick={() => onSelect(sym)}
+    onclick={handleClick}
     onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(sym); }}
-    title={sym}
+    title="{sym} · ⌘click = new tab"
   >
+    {#if onToggleFav}
+      <button
+        type="button"
+        class="fav-btn"
+        class:fav-btn--on={favorited}
+        onclick={(e) => { e.stopPropagation(); onToggleFav?.(sym); }}
+        title={favorited ? 'Remove from favourites' : 'Add to favourites'}
+        aria-label={favorited ? 'Unfavourite' : 'Favourite'}
+      >★</button>
+    {/if}
     <span class="sym-name">{shortName(sym)}</span>
     {#if !folded}
       <span class="sym-right">
@@ -154,6 +176,21 @@
     flex-shrink: 0;
   }
   .del-btn:hover { color: #F23645; }
+
+  .fav-btn {
+    background: none;
+    border: none;
+    color: var(--g4);
+    cursor: pointer;
+    font-size: 10px;
+    line-height: 1;
+    padding: 0 2px 0 0;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s, color 0.1s;
+  }
+  .symbol-row:hover .fav-btn { opacity: 1; }
+  .fav-btn--on { opacity: 1 !important; color: var(--amb, #d6a347) !important; }
 
   .sym-name {
     font-weight: 600;
