@@ -101,12 +101,13 @@ async def get_public_passport(username: str) -> dict[str, Any]:
 
         accuracy = (correct / verdict_count) if verdict_count > 0 else 0.0
 
-        # Streak: consecutive days with at least one verdict
+        # Streak: consecutive distinct UTC days with ≥1 verdict (qualified)
+        # Uses verdict_streak_history view (capture_records base, migration 058)
         streak_res = (
-            sb.table("pattern_ledger_records")
-            .select("created_at")
+            sb.table("verdict_streak_history")
+            .select("day_utc, verdict_count")
             .eq("user_id", user_id)
-            .order("created_at", desc=True)
+            .order("day_utc", desc=True)
             .limit(365)
             .execute()
         )
@@ -137,7 +138,7 @@ async def get_public_passport(username: str) -> dict[str, Any]:
 
 
 def _compute_streak(rows: list[dict]) -> int:
-    """Count consecutive days with at least one verdict (most recent first)."""
+    """Count consecutive days from verdict_streak_history view (day_utc field)."""
     from datetime import datetime, timedelta, timezone
 
     if not rows:
@@ -145,13 +146,9 @@ def _compute_streak(rows: list[dict]) -> int:
 
     seen_days: set[str] = set()
     for row in rows:
-        ts = row.get("created_at", "")
-        if ts:
-            try:
-                day = ts[:10]  # YYYY-MM-DD
-                seen_days.add(day)
-            except Exception:
-                continue
+        day = row.get("day_utc") or row.get("created_at", "")[:10]
+        if day:
+            seen_days.add(str(day)[:10])
 
     if not seen_days:
         return 0
@@ -160,8 +157,7 @@ def _compute_streak(rows: list[dict]) -> int:
     streak = 0
     current = today
     while True:
-        day_str = current.isoformat()
-        if day_str in seen_days:
+        if current.isoformat() in seen_days:
             streak += 1
             current -= timedelta(days=1)
         else:
