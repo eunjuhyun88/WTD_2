@@ -125,16 +125,7 @@ class EvaluationStateMachine:
             hashlib.sha256,
         ).hexdigest()
 
-        # verification_runs insert 먼저
-        client.table("verification_runs").insert({
-            "evaluation_id": eval_id,
-            "result": "PASS",
-            "snapshot": snapshot,
-            "signed_hash": signed_hash,
-            "verified_at": datetime.now(timezone.utc).isoformat(),
-        }).execute()
-
-        # CAS UPDATE: ACTIVE → PASSED
+        # CAS UPDATE 먼저 — 성공 시에만 verification_runs insert (CAS miss = 고아 행 방지)
         cas_resp = (
             client.table("evaluations")
             .update({"status": "PASSED"})
@@ -144,6 +135,12 @@ class EvaluationStateMachine:
         )
         cas_count = len(cas_resp.data) if cas_resp.data else 0
         if cas_count == 1:
+            client.table("verification_runs").insert({
+                "evaluation_id": eval_id,
+                "result": "PASS",
+                "snapshot": snapshot,
+                "signed_hash": signed_hash,
+            }).execute()
             log.info("evaluation: ACTIVE→PASSED eval_id=%s", eval_id)
             return True
         else:
