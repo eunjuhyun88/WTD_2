@@ -36,7 +36,7 @@
 
 ## main SHA
 
-`2767ed49` — origin/main (2026-05-04) — feat(W-0401-P1): StreakBadgeCard component + passport.py streak fix (#1060)
+`a17f1302` — origin/main (2026-05-04) — feat(terminal): foldable side panels + ⌘0/⌘\\ shortcuts; remove auto-opening Pattern Library (#1066)
 
 ---
 
