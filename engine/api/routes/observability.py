@@ -179,3 +179,45 @@ async def agent_status() -> dict[str, Any]:
         "flywheel": compute_flywheel_health(),
         "ts": datetime.utcnow().isoformat() + "Z",
     }
+
+
+@router.get("/verdict-velocity")
+async def verdict_velocity(days: int = 30) -> dict[str, Any]:
+    """Return rolling 7d verdict velocity snapshots for the last N days (default 30).
+
+    Used by F60 dashboard to chart flywheel acceleration over time.
+    Aggregates across all users (cohort view).
+    """
+    import os
+    from supabase import create_client
+    from datetime import date, timedelta
+
+    url = os.environ.get("SUPABASE_URL", "")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not url or not key:
+        return {"ok": False, "reason": "SUPABASE creds not configured", "snapshots": []}
+
+    since = (date.today() - timedelta(days=days)).isoformat()
+    try:
+        sb = create_client(url, key)
+        res = (
+            sb.table("verdict_velocity_snapshots")
+            .select("snapshot_date, count_7d")
+            .gte("snapshot_date", since)
+            .order("snapshot_date", desc=False)
+            .execute()
+        )
+        # Aggregate per day across all users
+        from collections import defaultdict
+        daily: dict[str, int] = defaultdict(int)
+        for row in (res.data or []):
+            daily[row["snapshot_date"]] += row["count_7d"]
+
+        snapshots = [
+            {"date": d, "total_7d": total}
+            for d, total in sorted(daily.items())
+        ]
+        return {"ok": True, "snapshots": snapshots}
+    except Exception as exc:
+        log.error("verdict_velocity endpoint failed: %s", exc)
+        return {"ok": False, "reason": str(exc), "snapshots": []}

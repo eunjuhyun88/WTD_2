@@ -16,6 +16,13 @@
     gate_pct: number;
   }
 
+  interface VelocitySnapshot {
+    date: string;
+    total_7d: number;
+  }
+  let velocityData = $state<VelocitySnapshot[]>([]);
+  let velocityError = $state(false);
+
   let runs = $state<LayerCRun[]>([]);
   let f60 = $state<F60Progress | null>(null);
   let loading = $state(true);
@@ -32,6 +39,17 @@
       error = true;
     } finally {
       loading = false;
+    }
+
+    // Fetch velocity data
+    try {
+      const vRes = await fetch('/api/observability/verdict-velocity?days=30');
+      if (vRes.ok) {
+        const vData = await vRes.json() as { ok: boolean; snapshots: VelocitySnapshot[] };
+        velocityData = vData.snapshots ?? [];
+      }
+    } catch {
+      velocityError = true;
     }
   });
 
@@ -116,6 +134,22 @@
             {accuracyFmt}
           </span>
         </span>
+      </div>
+    </div>
+  {/if}
+
+  {#if velocityData.length > 0}
+    <div class="velocity-section">
+      <div class="velocity-label">Verdict Velocity (7d rolling)</div>
+      <div class="velocity-bars">
+        {#each velocityData.slice(-14) as snap}
+          <div class="velocity-bar-wrap" title="{snap.date}: {snap.total_7d} verdicts">
+            <div
+              class="velocity-bar"
+              style="height: {Math.min(100, (snap.total_7d / Math.max(1, Math.max(...velocityData.map(s => s.total_7d)))) * 100)}%"
+            ></div>
+          </div>
+        {/each}
       </div>
     </div>
   {/if}
@@ -257,5 +291,38 @@
 
   .f60-stat-val.ok {
     color: #4ade80;
+  }
+
+  .velocity-section {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--surface-2, #2a2a2a);
+  }
+
+  .velocity-label {
+    font-size: var(--ui-text-xs);
+    color: var(--text-muted, #666);
+    margin-bottom: 0.5rem;
+  }
+
+  .velocity-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 40px;
+  }
+
+  .velocity-bar-wrap {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .velocity-bar {
+    width: 100%;
+    background: var(--accent, #4ade80);
+    border-radius: 1px;
+    min-height: 2px;
   }
 </style>

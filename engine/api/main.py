@@ -25,6 +25,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
 from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime, auth as auth_routes, users, viz, metrics_user, research, propfirm as propfirm_routes, agent, passport as passport_routes, extreme_events, counterfactual as counterfactual_routes, tv_import, indicators
+from api.admin.db_stats import router as admin_router
 from notifications.digest import router as digest_router
 from api.routes.scoring_status import router as scoring_status_router
 from personalization.api import router as personalization_router
@@ -182,6 +183,42 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
             max_instances=1,
         )
         log.info("LightGBM Layer C nightly eval registered (03:00 UTC)")
+        # W-0401-P4: daily verdict velocity snapshot
+        from observability.verdict_velocity import snapshot_verdict_velocity
+        _kline_scheduler.add_job(
+            snapshot_verdict_velocity,
+            "cron",
+            hour=3,
+            minute=15,
+            id="verdict_velocity_snapshot",
+            replace_existing=True,
+            max_instances=1,
+        )
+        log.info("verdict_velocity snapshot registered (03:15 UTC)")
+        # W-0402 PR2: nightly MATERIALIZED VIEW refresh
+        from jobs.refresh_streak_matview import refresh_verdict_streak_matview
+        _kline_scheduler.add_job(
+            refresh_verdict_streak_matview,
+            "cron",
+            hour=3,
+            minute=30,
+            id="refresh_streak_matview",
+            replace_existing=True,
+            max_instances=1,
+        )
+        log.info("verdict_streak_history REFRESH registered (03:30 UTC)")
+        # W-0402 PR4: daily DB health check
+        from jobs.db_health_check import run_db_health_check
+        _kline_scheduler.add_job(
+            run_db_health_check,
+            "cron",
+            hour=4,
+            minute=0,
+            id="db_health_check",
+            replace_existing=True,
+            max_instances=1,
+        )
+        log.info("DB health check registered (04:00 UTC)")
         _kline_scheduler.start()
         start_scheduler()
         log.info("Engine started — Redis warm, GlobalCtx warm, background scanner active")
@@ -351,6 +388,7 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(indicators.router, prefix="/indicators", tags=["indicators"])
     target.include_router(scoring_status_router, tags=["scoring"])
     target.include_router(digest_router, prefix="/digest", tags=["digest"])
+    target.include_router(admin_router, tags=["admin"])
 
 
 def _include_worker_control_routes(target: FastAPI) -> None:
