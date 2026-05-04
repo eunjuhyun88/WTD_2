@@ -161,7 +161,7 @@ verdict hook + 1h scheduler job 배선 → Layer C 실 활성화
 | Phase | 내용 | Effort | 상태 |
 |---|---|---|---|
 | P1 | Paper Auto-Execution (/lab 패턴 런 탭) | M | ✅ 완료 (PR #783 #787 #802) |
-| P2 | Eval Challenge 결제·통과 | L | ⬜ 24h live AC 검증 후 |
+| P2 | Eval Challenge 결제·통과 | L | 🟡 진행 중 — DB schema(#1109) + rules engine(#1111) + evaluation fix(#1145) 완료. Stripe checkout(#W-PF-203) 다른 에이전트 |
 | P3 | Entry Gate → 실 USDC funded 계정 | L + legal | ⬜ P2 완료 후 |
 
 ---
