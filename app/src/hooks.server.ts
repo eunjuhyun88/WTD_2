@@ -107,6 +107,7 @@ function isPublicApiPath(pathname: string): boolean {
 }
 
 function isPublicPagePath(pathname: string): boolean {
+  if (dev) return true; // DEV: bypass auth for local UI review
   return (
     pathname === '/' ||
     pathname === '/cogochi' ||
