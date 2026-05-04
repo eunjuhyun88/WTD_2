@@ -7,9 +7,11 @@
   import NotificationsPanel from './panels/NotificationsPanel.svelte';
   import DisplayPanel from './panels/DisplayPanel.svelte';
   import Ac10Badge from './panels/Ac10Badge.svelte';
+  import ExchangeTab from '../../../components/settings/ExchangeTab.svelte';
 
   /**
    * W-0402 PR15: 3 primary tabs (Account / Notifications / Display).
+   * W-0405: Exchange tab added for Binance API key management.
    * Legacy tab IDs (general, subscription, api-keys, passport, status) remain
    * routable but are not shown in the primary strip — overflow is deferred.
    *
@@ -17,11 +19,13 @@
    *   account       ← general + subscription + wallet (existing GeneralPanel + SubscriptionPanel)
    *   notifications ← email digest, signal alerts, telegram (new NotificationsPanel)
    *   display       ← theme, density toggle (new DisplayPanel)
+   *   exchange      ← Binance Read-Only API key (W-0405)
    */
   const PRIMARY_TABS = [
     { id: 'account',       label: 'Account' },
     { id: 'notifications', label: 'Notifications' },
     { id: 'display',       label: 'Display' },
+    { id: 'exchange',      label: 'Exchange' },
   ];
 
   // Legacy tab IDs kept for backward compat (not shown in strip)
@@ -69,6 +73,8 @@
       <NotificationsPanel />
     {:else if activeTab === 'display'}
       <DisplayPanel />
+    {:else if activeTab === 'exchange'}
+      <ExchangeTab />
     {/if}
   </div>
 </div>
