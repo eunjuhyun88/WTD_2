@@ -37,3 +37,19 @@ class MinDaysInput:
     trading_days: int             # evaluations.trading_days 캐시 값
     min_required: int             # challenge_tiers.min_trading_days (10)
     evaluated_at: datetime | None = None
+
+
+@dataclass
+class ConsistencyInput:
+    total_pnl: float              # 챌린지 전체 누적 PnL
+    max_single_day_pnl: float     # 단일 최대 거래일 PnL
+    consistency_limit: float = 0.40  # 0.40 = 40%
+    evaluated_at: datetime | None = None
+
+
+@dataclass
+class ProfitGoalInput:
+    equity_start: float           # 챌린지 시작 equity
+    total_pnl: float              # 챌린지 전체 누적 PnL
+    profit_goal_pct: float = 0.08  # 0.08 = 8%
+    evaluated_at: datetime | None = None
