@@ -10,6 +10,7 @@
   import DecisionHUDAdapter from '../../workspace/DecisionHUDAdapter.svelte';
   import DecideRightPanel from '../../DecideRightPanel.svelte';
   import DrawerSlide from './DrawerSlide.svelte';
+  import AIDrawer from './AIDrawer.svelte';
   import PatternTab from './PatternTab.svelte';
   import AskInput from './AskInput.svelte';
   import DirectionBadge from '$lib/shared/panels/DirectionBadge.svelte';
@@ -279,13 +280,13 @@
     trackDecideDrawerOpen({ verdict_id: verdictId ?? undefined, trigger });
   }
 
-  /**
-   * openDrawer(tab) — stub for PR10 AI Drawer.
-   * PR10 will replace this with real slide-out implementation.
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function openDrawer(_tab: string) {
-    // PR10: wire to Drawer slide-out
+  // ── AI Drawer (PR10) — L3 drill-down slide-out ──────────────────────────
+  let aiDrawerOpen = $state(false);
+  let aiDrawerTab  = $state<string | null>(null);
+
+  function openDrawer(tab: string) {
+    aiDrawerTab  = tab;
+    aiDrawerOpen = true;
   }
 
   // Deeplink: if initialDecideId is provided, switch to judge tab and open decide drawer
@@ -383,18 +384,25 @@
 
       {:else if activeTab === 'pattern'}
         <!-- PAT: 5 matching capture cards + library link -->
-        <PatternTab
-          records={patternRecords}
-          loading={patternLoading}
-          loaded={patternLoaded}
-          filter={patternFilter}
-          verdictFilter={patternVerdictFilter}
-          selectedIdx={patternSelectedIdx}
-          onFilterChange={(v) => { patternFilter = v; patternSelectedIdx = -1; }}
-          onVerdictFilterChange={(v) => { patternVerdictFilter = v; patternSelectedIdx = -1; }}
-          onSelectCapture={(r, idx) => { patternSelectedIdx = idx; openCapture(r); }}
-          onOpenLibrary={() => openMoreDrawer('pattern-library')}
-        />
+        <div class="tab-inner tab-inner--stretch" class:wide-pad={wide}>
+          <div class="tab-scroll">
+            <PatternTab
+              records={patternRecords}
+              loading={patternLoading}
+              loaded={patternLoaded}
+              filter={patternFilter}
+              verdictFilter={patternVerdictFilter}
+              selectedIdx={patternSelectedIdx}
+              onFilterChange={(v) => { patternFilter = v; patternSelectedIdx = -1; }}
+              onVerdictFilterChange={(v) => { patternVerdictFilter = v; patternSelectedIdx = -1; }}
+              onSelectCapture={(r, idx) => { patternSelectedIdx = idx; openCapture(r); }}
+              onOpenLibrary={() => openMoreDrawer('pattern-library')}
+            />
+          </div>
+          <div class="more-row">
+            <button class="more-link" onclick={() => openDrawer('pattern')}>Details →</button>
+          </div>
+        </div>
 
       {:else if activeTab === 'verdict'}
         <!-- VER: 10 latest verdicts -->
@@ -406,6 +414,7 @@
             />
           </div>
           <div class="more-row">
+            <button class="more-link" onclick={() => openDrawer('verdict')}>Details →</button>
             <button class="more-link" onclick={() => openMoreDrawer('verdict-card')}>VIEW →</button>
           </div>
         </div>
@@ -422,6 +431,7 @@
             <div class="res-summary-line res-muted">—</div>
           </div>
           <div class="more-row">
+            <button class="more-link" onclick={() => openDrawer('research')}>Details →</button>
             <button class="more-link" onclick={() => openMoreDrawer('research-full')}>Full →</button>
           </div>
         </div>
@@ -459,6 +469,7 @@
             />
           </div>
           <div class="more-row">
+            <button class="more-link" onclick={() => openDrawer('judge')}>Details →</button>
             <button class="more-link" onclick={() => openMoreDrawer('judge-full')}>History →</button>
             <button class="more-link decide" onclick={() => openDecideDrawer(undefined, 'jdg_tab_button')}>Decide →</button>
           </div>
@@ -469,7 +480,14 @@
   {/if}
 </div>
 
-<!-- ── Drawer (PR10 will extend) ── -->
+<!-- ── AI Drawer (PR10) — L3 tab drill-down ── -->
+<AIDrawer
+  open={aiDrawerOpen}
+  tab={aiDrawerTab}
+  onClose={() => { aiDrawerOpen = false; }}
+/>
+
+<!-- ── Drawer (existing kind-based drawers) ── -->
 <DrawerSlide
   open={drawerOpen}
   title={drawerKind ? DRAWER_TITLE[drawerKind] : ''}
@@ -660,6 +678,16 @@
   overflow: hidden;
   padding: var(--sp-3, 12px);
   gap: var(--sp-2, 8px);
+}
+
+/* Stretch variant: no padding, used when child handles its own spacing */
+.tab-inner--stretch {
+  padding: 0;
+  gap: 0;
+}
+.tab-inner--stretch .more-row {
+  padding: var(--sp-1, 4px) var(--sp-3, 12px);
+  margin-top: 0;
 }
 
 /* Wide mode: more breathing room */
