@@ -335,6 +335,34 @@ else
 fi
 
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚡ 작업 시작 전 선점 선언 (MANDATORY)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# 이미 이 worktree가 issue를 선점했는지 확인
+WT_ISSUE="$(echo "${WT_INFO:-}" | jq -r '.issue // empty' 2>/dev/null || true)"
+if [ -n "$WT_ISSUE" ] && [ "$WT_ISSUE" != "null" ]; then
+  WT_WORK_ITEM="$(echo "${WT_INFO:-}" | jq -r '.work_item // "-"' 2>/dev/null || true)"
+  echo "  ✅ 이 worktree → Issue #${WT_ISSUE} (${WT_WORK_ITEM}) 이미 선점됨"
+  echo "     파일 건드리기 전 CURRENT.md 락 테이블 재확인:"
+  echo "       grep -i '<건드릴파일명>' work/active/CURRENT.md"
+else
+  echo "  파일 한 줄 건드리기 전에 아래 순서 실행:"
+  echo ""
+  echo "    1. CURRENT.md 락 테이블 확인 (충돌 예방)"
+  echo "       grep -i '<건드릴파일>' work/active/CURRENT.md"
+  echo ""
+  echo "    2. GitHub Issue 선점 (mutex 획득)"
+  echo "       gh issue edit <N> --add-assignee @me"
+  echo ""
+  echo "    3. file-domain 락 선언"
+  echo "       ./tools/claim.sh '<path/to/file>' --issue <N>"
+  echo ""
+  echo "  ❌ 선점 없이 구현 시작 → 병렬 충돌 (W-PF-202 사례)"
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+echo ""
 echo "🎯 Core (spec/CHARTER.md §In-Scope):"
 if [ -f spec/CHARTER.md ]; then
   awk '/^## ✅ In-Scope/,/^---/' spec/CHARTER.md \
@@ -442,8 +470,8 @@ GitHub Issue mutex (primary — CHARTER §Coordination):
   PR body에 "Closes #N"                                 머지 = 자동 해제
   세부: docs/runbooks/multi-agent-coordination.md
 
-Slash commands (legacy/보조):
-  /claim "<file-domain>"      file-domain lock (CONTRACTS.md, deprecated)
+Slash commands:
+  /claim "<path>" --issue <N>  file-domain 락 + worktree registry 등록 (선점 필수)
   /save "<다음에 할 일>"       세션 중간 체크포인트
   /end "shipped" "handoff"    세션 종료
   /agent-status               현재 상태 한눈에
