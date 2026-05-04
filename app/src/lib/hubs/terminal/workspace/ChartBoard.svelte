@@ -500,9 +500,9 @@
   /** Per-pane layout store (visibility + stretch persistence). */
   const paneLayout = createPaneLayoutStore();
 
-  // W-0407: sync per-tab PaneConfig[] → paneLayout when active tab changes
-  // Use store.subscribe() instead of $effect to avoid Svelte 5 state_unsafe_mutation
-  // warnings when $state is written during hydration.
+  // W-0407: sync per-tab PaneConfig[] → paneLayout when active tab changes.
+  // Subscribe in onMount (post-hydration) to avoid Svelte 5 state_unsafe_mutation
+  // warnings that fire when $state is written during the hydration phase.
   const _LAYOUT_KINDS = new Set<string>(PANE_KINDS);
   function _syncPanesFromTab(tabState: { panes?: { kind: string; visible: boolean; stretch: number }[] }) {
     const panes = tabState?.panes;
@@ -518,8 +518,7 @@
       }
     }
   }
-  const _unsubPanes = activeTabState.subscribe(_syncPanesFromTab);
-  onDestroy(_unsubPanes);
+  let _unsubPanes: (() => void) | undefined;
 
   /**
    * Live chips driven by crosshair. null = crosshair off chart;
@@ -1740,6 +1739,9 @@
   }
 
   onMount(() => {
+    // W-0407: subscribe post-hydration so $state writes don't trigger Svelte 5 warning
+    _unsubPanes = activeTabState.subscribe(_syncPanesFromTab);
+
     const onWin = () => {
       viewportWidth = containerEl?.offsetWidth ?? window.innerWidth;
       handleResize();
@@ -1760,6 +1762,7 @@
     };
   });
   onDestroy(() => {
+    _unsubPanes?.();
     saveModeUnsubscribe?.();
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleRangeModeKeydown);
