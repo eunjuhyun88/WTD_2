@@ -79,25 +79,47 @@ async def get_public_passport(username: str) -> dict[str, Any]:
 
         user_id = profile["user_id"]
 
-        # Fetch verdict accuracy stats
-        accuracy_res = (
-            sb.table("pattern_ledger_records")
-            .select("user_verdict, outcome")
+        # Fetch verdict accuracy stats from ledger_verdicts + ledger_outcomes
+        # (pattern_ledger_records has 0 rows — legacy table, never populated)
+        verdict_res = (
+            sb.table("ledger_verdicts")
+            .select("verdict, outcome_id, pattern_slug")
             .eq("user_id", user_id)
-            .not_.is_("outcome", "null")
+            .not_.is_("outcome_id", "null")
             .execute()
         )
 
-        rows = accuracy_res.data or []
+        verdicts = verdict_res.data or []
+        outcome_ids = [v["outcome_id"] for v in verdicts if v.get("outcome_id")]
+
+        outcome_map: dict[str, str] = {}
+        if outcome_ids:
+            outcomes_res = (
+                sb.table("ledger_outcomes")
+                .select("id, outcome")
+                .in_("id", outcome_ids)
+                .in_("outcome", ["success", "failure"])
+                .execute()
+            )
+            for o in (outcomes_res.data or []):
+                outcome_map[o["id"]] = o["outcome"]
+
+        rows = [
+            {
+                "user_verdict": v["verdict"],
+                "outcome": outcome_map[v["outcome_id"]],
+                "pattern_slug": v.get("pattern_slug"),
+            }
+            for v in verdicts
+            if v.get("outcome_id") in outcome_map
+        ]
+
         verdict_count = len(rows)
-        correct = 0
-        for row in rows:
-            verdict = row.get("user_verdict")
-            outcome = row.get("outcome")
-            if verdict == "valid" and outcome == "success":
-                correct += 1
-            elif verdict == "invalid" and outcome == "failure":
-                correct += 1
+        correct = sum(
+            1 for r in rows
+            if (r["user_verdict"] == "valid" and r["outcome"] == "success")
+            or (r["user_verdict"] == "invalid" and r["outcome"] == "failure")
+        )
 
         accuracy = (correct / verdict_count) if verdict_count > 0 else 0.0
 
