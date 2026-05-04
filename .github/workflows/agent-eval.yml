@@ -1,0 +1,47 @@
+name: Agent Eval (Weekly)
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday 09:00 UTC
+  workflow_dispatch:     # Manual trigger
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run eval (limit 50, timeout 25min)
+        env:
+          ENGINE_LLM_PROVIDER: ${{ secrets.ENGINE_LLM_PROVIDER || 'ollama' }}
+          ENGINE_LLM_MODEL: ${{ secrets.ENGINE_LLM_MODEL || 'qwen3.5:latest' }}
+          ENGINE_LLM_BASE_URL: ${{ secrets.ENGINE_LLM_BASE_URL || 'http://localhost:11434' }}
+        run: |
+          uv run python -m agents.eval.runner --out eval_report.json
+          cat eval_report.json | python3 -c "
+          import sys, json
+          r = json.load(sys.stdin)
+          print(f'Win rate: {r[\"win_rate\"]}%')
+          if r['win_rate'] < 50:
+              print('FAIL: win rate below 50%')
+              sys.exit(1)
+          "
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report-${{ github.run_id }}
+          path: engine/eval_report.json
