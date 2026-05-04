@@ -94,10 +94,9 @@
     <span>Indicators</span>
   </button>
 
-  <!-- View tabs: Terminal / Peek -->
+  <!-- View tabs: Terminal -->
   <div class="view-tabs">
     <a href="/terminal" class="view-tab" class:view-tab--active={$page.url.pathname === '/terminal'}>CHART</a>
-    <a href="/terminal/peek" class="view-tab" class:view-tab--active={$page.url.pathname === '/terminal/peek'}>PEEK</a>
   </div>
 
   <!-- Markets toggle -->
