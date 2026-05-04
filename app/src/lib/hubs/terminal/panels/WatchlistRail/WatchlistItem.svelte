@@ -182,7 +182,7 @@
     border: none;
     color: var(--g4);
     cursor: pointer;
-    font-size: 10px;
+    font-size: var(--ui-text-xs);
     line-height: 1;
     padding: 0 2px 0 0;
     flex-shrink: 0;

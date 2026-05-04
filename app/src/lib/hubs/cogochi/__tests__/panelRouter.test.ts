@@ -19,8 +19,8 @@ beforeEach(() => {
 // ── kindToTabId mapping ────────────────────────────────────────────────────
 
 describe('kindToTabId — static mapping', () => {
-  it('scan → research', () => {
-    expect(kindToTabId['scan']).toBe('research');
+  it('scan → scan', () => {
+    expect(kindToTabId['scan']).toBe('scan');
   });
   it('why → decision', () => {
     expect(kindToTabId['why']).toBe('decision');
@@ -39,13 +39,13 @@ describe('kindToTabId — static mapping', () => {
 // ── routeAiAsk — tab resolution ────────────────────────────────────────────
 
 describe('routeAiAsk — routes each tab correctly', () => {
-  it('/scan → research tab', () => {
+  it('/scan → scan tab', () => {
     const setTab = makeSetTab();
-    const detail: AiAskDetail = { intent: 'scan', tab: 'research', query: 'funding<0' };
+    const detail: AiAskDetail = { intent: 'scan', tab: 'scan', query: 'funding<0' };
     routeAiAsk(detail, setTab);
-    expect(setTab).toHaveBeenCalledWith('research');
+    expect(setTab).toHaveBeenCalledWith('scan');
     const pq = get(pendingQuery);
-    expect(pq?.tab).toBe('research');
+    expect(pq?.tab).toBe('scan');
     expect(pq?.query).toBe('funding<0');
     expect(pq?.intent).toBe('scan');
   });
@@ -114,7 +114,7 @@ describe('routeAiAsk — NLU routes via tab field', () => {
 describe('routeAiAsk — payload pass-through', () => {
   it('stores query and intent unchanged in pendingQuery', () => {
     const setTab = makeSetTab();
-    const detail: AiAskDetail = { intent: 'scan', tab: 'research', query: 'rsi<30 AND vol>1M' };
+    const detail: AiAskDetail = { intent: 'scan', tab: 'scan', query: 'rsi<30 AND vol>1M' };
     routeAiAsk(detail, setTab);
     const pq = get(pendingQuery);
     expect(pq?.intent).toBe('scan');
@@ -124,7 +124,7 @@ describe('routeAiAsk — payload pass-through', () => {
   it('sets a numeric ts in pendingQuery', () => {
     const setTab = makeSetTab();
     const before = Date.now();
-    routeAiAsk({ intent: 'scan', tab: 'research', query: '' }, setTab);
+    routeAiAsk({ intent: 'scan', tab: 'scan', query: '' }, setTab);
     const after = Date.now();
     const pq = get(pendingQuery);
     expect(pq?.ts).toBeGreaterThanOrEqual(before);
@@ -133,11 +133,11 @@ describe('routeAiAsk — payload pass-through', () => {
 
   it('consecutive calls produce distinct ts values', async () => {
     const setTab = makeSetTab();
-    routeAiAsk({ intent: 'scan', tab: 'research', query: 'a' }, setTab);
+    routeAiAsk({ intent: 'scan', tab: 'scan', query: 'a' }, setTab);
     const first = get(pendingQuery)?.ts;
     // Force a 1ms gap
     await new Promise(r => setTimeout(r, 2));
-    routeAiAsk({ intent: 'scan', tab: 'research', query: 'b' }, setTab);
+    routeAiAsk({ intent: 'scan', tab: 'scan', query: 'b' }, setTab);
     const second = get(pendingQuery)?.ts;
     expect(second).toBeGreaterThan(first!);
   });

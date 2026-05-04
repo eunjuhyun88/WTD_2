@@ -4,19 +4,19 @@ import type { ParsedQuery } from '../slashParser';
 
 // ── Slash commands ─────────────────────────────────────────────────────────────
 
-describe('parseQuery — slash /scan', () => {
-  it('/scan with args → research tab, intent=scan', () => {
+describe('parseQuery — slash /scan', () => { // W-T6: scan tab
+  it('/scan with args → scan tab, intent=scan', () => {
     const result = parseQuery('/scan funding<0');
     expect(result).toMatchObject<ParsedQuery>({
       intent: 'scan',
-      tab: 'research',
+      tab: 'scan',
       query: 'funding<0',
     });
   });
 
-  it('/scan with no args → research tab, intent=scan, empty query', () => {
+  it('/scan with no args → scan tab, intent=scan, empty query', () => {
     const result = parseQuery('/scan');
-    expect(result).toMatchObject({ intent: 'scan', tab: 'research', query: '' });
+    expect(result).toMatchObject({ intent: 'scan', tab: 'scan', query: '' });
   });
 });
 
