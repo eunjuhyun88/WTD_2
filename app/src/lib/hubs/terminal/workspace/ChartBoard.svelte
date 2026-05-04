@@ -501,9 +501,11 @@
   const paneLayout = createPaneLayoutStore();
 
   // W-0407: sync per-tab PaneConfig[] → paneLayout when active tab changes
+  // Use store.subscribe() instead of $effect to avoid Svelte 5 state_unsafe_mutation
+  // warnings when $state is written during hydration.
   const _LAYOUT_KINDS = new Set<string>(PANE_KINDS);
-  $effect(() => {
-    const panes = $activeTabState.panes;
+  function _syncPanesFromTab(tabState: { panes?: { kind: string; visible: boolean; stretch: number }[] }) {
+    const panes = tabState?.panes;
     if (!panes?.length) return;
     const vis: Partial<Record<PaneKind, boolean>> = {};
     for (const p of panes) {
@@ -515,7 +517,9 @@
         paneLayout.setStretch(p.kind as PaneKind, p.stretch);
       }
     }
-  });
+  }
+  const _unsubPanes = activeTabState.subscribe(_syncPanesFromTab);
+  onDestroy(_unsubPanes);
 
   /**
    * Live chips driven by crosshair. null = crosshair off chart;
