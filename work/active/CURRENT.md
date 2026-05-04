@@ -36,12 +36,12 @@
 
 ## main SHA
 
-`654c230b` — origin/main (2026-05-05) — feat(W-0405): 4-layer AI prompt injection defense (#1159)
+`ba8f76f0` — origin/main (2026-05-05) — feat(wallet): enterprise auth hardening — Privy email + wallet fixes (#1191)
 
-W-0405 PR1~PR4 완료:
-- PR1 ExchangeTab Binance API key UI (#1150) / PR2 /api/agent/binance (#1151) / PR3 telemetry (#1153)
-- PR4 get_binance_balance + get_binance_positions tools (#1156)
-- fix: ExchangeTab SettingsHub wiring (#1158) / 4-layer prompt injection defense (#1159)
+W-0411 wallet enterprise hardening 완료 (#1191):
+- Privy email login fix (identity_token), SDK static imports, credentials:'include', hydrateAuthSession
+- isAuthenticated email-only, beta gate email, EIP-6963, signMessage tier, localStorage flash
+- GMX/Polymarket ownership check, JSON parse safety, email-only user messaging
 
 W-0402 Terminal/Cogochi UX 재설계 16-PR 전부 완료:
 - PR1 design tokens (#1123) / PR2 CSS Grid app-shell (#1134) / PR3 AIAgentPanel 3-state shell (#1140)
