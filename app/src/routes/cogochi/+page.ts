@@ -22,5 +22,7 @@ function normalizePanel(raw: string | null): RightPanelTab | null {
 export const load: PageLoad = ({ url }) => {
   const legacy = url.searchParams.get('cogochi_legacy') === '1';
   const initialTab = normalizePanel(url.searchParams.get('panel'));
-  return { legacy, initialTab };
+  // PR7-AC3: ?decide=<verdictId> — pre-open JDG decide drawer
+  const decideId = url.searchParams.get('decide') ?? null;
+  return { legacy, initialTab, decideId };
 };

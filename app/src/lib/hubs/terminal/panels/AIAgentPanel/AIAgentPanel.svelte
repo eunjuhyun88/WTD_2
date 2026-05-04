@@ -1,7 +1,7 @@
 <script lang="ts">
   import { shellStore, activeRightPanelTab, activeTabState, verdictCount } from '../../shell.store';
   import type { RightPanelTab, TabState } from '../../shell.store';
-  import { trackRightpanelTabSwitch, trackTabSwitch } from '../../telemetry';
+  import { trackRightpanelTabSwitch, trackTabSwitch, trackDecideDrawerOpen } from '../../telemetry';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import AIPanel from './AIPanel.svelte';
@@ -9,6 +9,7 @@
   import UnverifiedDot from '$lib/components/header/UnverifiedDot.svelte';
   import JudgePanel from '../../peek/JudgePanel.svelte';
   import DecisionHUDAdapter from '../../workspace/DecisionHUDAdapter.svelte';
+  import DecideRightPanel from '../../DecideRightPanel.svelte';
   import DrawerSlide from './DrawerSlide.svelte';
   import PatternTab from './PatternTab.svelte';
   import AskInput from './AskInput.svelte';
@@ -42,6 +43,7 @@
     'verdict-card':    'VERDICT DETAIL',
     'research-full':   'RESEARCH',
     'judge-full':      'JUDGE HISTORY',
+    'decide-full':     'DECIDE',
   };
 
   interface Message { role: 'user' | 'assistant'; text: string; }
@@ -51,8 +53,20 @@
     onSelectSymbol?: (s: string) => void;
     symbol?: string;
     timeframe?: string;
+    /** deeplink: pre-open decide drawer for this verdict id */
+    initialDecideId?: string | null;
   }
-  let { messages = [], onSend, onSelectSymbol, symbol = 'BTCUSDT', timeframe = '4h' }: Props = $props();
+  let { messages = [], onSend, onSelectSymbol, symbol = 'BTCUSDT', timeframe = '4h', initialDecideId = null }: Props = $props();
+
+  // ── Feature flag: decide_in_jdg ─────────────────────────────────────────
+  // Default ON. Disable via URL ?decide_in_jdg=off or localStorage decide_in_jdg=off
+  const decideInJdg = $derived.by<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const url = new URLSearchParams(window.location.search);
+    if (url.get('decide_in_jdg') === 'off') return false;
+    try { if (localStorage.getItem('decide_in_jdg') === 'off') return false; } catch { /* ignore */ }
+    return true;
+  });
 
   const activeTab  = $derived($activeRightPanelTab);
   const expanded   = $derived($activeTabState.rightPanelExpanded ?? false);
@@ -248,6 +262,19 @@
   function openMoreDrawer(kind: TabState['drawerKind']) {
     shellStore.openDrawer(kind);
   }
+
+  function openDecideDrawer(verdictId?: string, trigger: 'jdg_tab_button' | 'deeplink' = 'jdg_tab_button') {
+    shellStore.openDrawer('decide-full');
+    trackDecideDrawerOpen({ verdict_id: verdictId ?? undefined, trigger });
+  }
+
+  // Deeplink: if initialDecideId is provided, switch to judge tab and open decide drawer
+  $effect(() => {
+    if (initialDecideId && decideInJdg) {
+      shellStore.setRightPanelTab('judge');
+      openDecideDrawer(initialDecideId, 'deeplink');
+    }
+  });
 </script>
 
 <div class="agent-panel" class:expanded>
@@ -346,9 +373,18 @@
             onSaveJudgment={handleSaveJudgment}
             onOpenCapture={openCapture}
           />
+          {#if decideInJdg}
+            <div class="decide-hud-inline">
+              <div class="decide-hud-label">DECISION HUD</div>
+              <DecisionHUDAdapter />
+            </div>
+          {/if}
         </div>
         <div class="more-btn">
           <button onclick={() => openMoreDrawer('judge-full')}>History →</button>
+          {#if decideInJdg}
+            <button class="decide-btn" onclick={() => openDecideDrawer(undefined, 'jdg_tab_button')}>Decide →</button>
+          {/if}
         </div>
       </div>
 
@@ -402,6 +438,8 @@
       <span>Why Panel</span>
       <p>Reasoning breakdown coming soon.</p>
     </div>
+  {:else if drawerKind === 'decide-full'}
+    <DecideRightPanel />
   {/if}
 </DrawerSlide>
 
@@ -520,6 +558,35 @@
   transition: color 0.07s, border-color 0.07s;
 }
 .more-btn button:hover { color: var(--g7, #9d9690); border-color: var(--g5, #3d3830); }
+
+/* ── Decide HUD inline (JDG tab) ── */
+.decide-hud-inline {
+  border-top: 1px solid var(--g3, #1c1918);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.decide-hud-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--g5, #3d3830);
+  padding: 0 2px 6px;
+  text-transform: uppercase;
+}
+.decide-btn {
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--amb, #f5a623);
+  border-radius: 2px;
+  color: var(--amb, #f5a623);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--ui-text-xs);
+  cursor: pointer;
+  transition: color 0.07s, border-color 0.07s, background 0.07s;
+  margin-left: 6px;
+}
+.decide-btn:hover { background: color-mix(in srgb, var(--amb, #f5a623) 12%, transparent); }
 
 /* ── Drawer placeholder ── */
 .drawer-placeholder {

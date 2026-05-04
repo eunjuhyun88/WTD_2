@@ -54,7 +54,7 @@ export interface TabState {
   rightPanelTab: RightPanelTab;
   rightPanelExpanded: boolean;
   drawerOpen: boolean;
-  drawerKind: 'evidence-grid' | 'why-panel' | 'pattern-library' | 'verdict-card' | 'research-full' | 'judge-full' | null;
+  drawerKind: 'evidence-grid' | 'why-panel' | 'pattern-library' | 'verdict-card' | 'research-full' | 'judge-full' | 'decide-full' | null;
   drawingMode: boolean;
 }
 

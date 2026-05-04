@@ -8,7 +8,7 @@
   import TrainStage from '$lib/hubs/terminal/panels/TrainStage.svelte';
   import FlywheelStage from '$lib/hubs/terminal/panels/FlywheelStage.svelte';
 
-  const { data } = $props<{ data: { legacy: boolean; initialTab: RightPanelTab | null } }>();
+  const { data } = $props<{ data: { legacy: boolean; initialTab: RightPanelTab | null; decideId: string | null } }>();
 
   let legacyMode = false;
 
@@ -21,6 +21,8 @@
     if (data.initialTab) {
       shellStore.setRightPanelTab(data.initialTab);
     }
+    // PR7-AC3: ?decide=<id> — handled in TerminalHub.svelte via initialDecideId prop
+    // (TerminalHub reads window.location.search directly in onMount)
   });
 </script>
 
